@@ -13,41 +13,31 @@ import { purgeLocaleCache } from '../../utils/cdn-cache.js';
 // Each namespace file holds that namespace's keys at the top level
 // (`landing.json` is `{ heroBadge: "..." }`, NOT wrapped). Nesting each file
 // under its namespace name when assembling EN_CATALOG keeps the per-key SHA
-// fingerprints used by the staleness panel byte-identical to the layout
-// that existed before the split — so "Refresh all" does not light up every
-// cached locale on the deploy that ships the namespace split.
+// fingerprints used by the staleness panel stable, so adding a key to one
+// namespace does not light up every cached non-English locale.
+//
+// Active scope (Apr 24, 2026): only the public landing surfaces use
+// i18next, so the source catalog ships only 4 namespaces. The previously
+// shipped namespaces (auth, admin, owner, dashboard, products, customers,
+// wizard, legal, about, plans, storefront) were deleted along with their
+// JSON files — see frontend/src/shared/i18n/locales/en/index.js for the
+// full history. Re-introduce a namespace here only when the matching JSON
+// is restored AND a UI surface actually calls useTranslation() on it.
 import EN_COMMON from '../../../frontend/src/shared/i18n/locales/en/common.json';
 import EN_NAV from '../../../frontend/src/shared/i18n/locales/en/nav.json';
 import EN_LANGUAGES from '../../../frontend/src/shared/i18n/locales/en/languages.json';
 import EN_LANDING from '../../../frontend/src/shared/i18n/locales/en/landing.json';
-import EN_AUTH from '../../../frontend/src/shared/i18n/locales/en/auth.json';
-import EN_ADMIN from '../../../frontend/src/shared/i18n/locales/en/admin.json';
-import EN_OWNER from '../../../frontend/src/shared/i18n/locales/en/owner.json';
-import EN_DASHBOARD from '../../../frontend/src/shared/i18n/locales/en/dashboard.json';
-import EN_PRODUCTS from '../../../frontend/src/shared/i18n/locales/en/products.json';
-import EN_CUSTOMERS from '../../../frontend/src/shared/i18n/locales/en/customers.json';
-import EN_WIZARD from '../../../frontend/src/shared/i18n/locales/en/wizard.json';
-import EN_LEGAL from '../../../frontend/src/shared/i18n/locales/en/legal.json';
-import EN_ABOUT from '../../../frontend/src/shared/i18n/locales/en/about.json';
-import EN_PLANS from '../../../frontend/src/shared/i18n/locales/en/plans.json';
-import EN_STOREFRONT from '../../../frontend/src/shared/i18n/locales/en/storefront.json';
+import {
+  SEO_TITLE_TEMPLATES,
+  SEO_DESCRIPTION_TEMPLATES,
+  DEFAULT_CATEGORIES,
+} from './wizard-seed-data.js';
 
 const EN_CATALOG = {
   common: EN_COMMON,
   nav: EN_NAV,
   languages: EN_LANGUAGES,
   landing: EN_LANDING,
-  auth: EN_AUTH,
-  admin: EN_ADMIN,
-  owner: EN_OWNER,
-  dashboard: EN_DASHBOARD,
-  products: EN_PRODUCTS,
-  customers: EN_CUSTOMERS,
-  wizard: EN_WIZARD,
-  legal: EN_LEGAL,
-  about: EN_ABOUT,
-  plans: EN_PLANS,
-  storefront: EN_STOREFRONT,
 };
 
 export const SUPPORTED_LOCALES = new Set([
@@ -1187,29 +1177,14 @@ export async function ensureLocaleCached(env, lang) {
 }
 
 /**
- * Returns localized wizard seed helpers for a given content language.
- * Falls back per-field to the bundled English catalog so partially-translated
- * (or never-generated) locales still produce sensible defaults. Slugs are
- * always derived from the English source so URLs stay ASCII / stable across
- * languages.
+ * Returns wizard seed helpers (SEO title/description templates and starter
+ * categories) for site creation. The `lang` argument is accepted for API
+ * compatibility but ignored — these defaults are English-only because they're
+ * just placeholders the merchant edits during the wizard. The merchant types
+ * the final SEO copy and category names in whatever language they want, and
+ * `<TranslatedText>` translates them per-shopper at storefront render time.
  */
-export async function getLocalizedWizardSeed(env, lang) {
-  let translated = null;
-  if (lang && lang !== 'en') {
-    try {
-      const cached = await readCachedLocale(env, lang);
-      translated = (cached && cached.data && cached.data.wizard) || null;
-    } catch (e) {
-      console.warn('[i18n] getLocalizedWizardSeed read failed:', lang, e.message || e);
-    }
-  }
-  const enT = EN_WIZARD.seoTitleTemplates || {};
-  const enD = EN_WIZARD.seoDescriptionTemplates || {};
-  const enC = EN_WIZARD.defaultCategories || {};
-  const trT = (translated && translated.seoTitleTemplates) || {};
-  const trD = (translated && translated.seoDescriptionTemplates || {}) || {};
-  const trC = (translated && translated.defaultCategories) || {};
-
+export async function getLocalizedWizardSeed(_env, _lang) {
   const sub = (tpl, brand) => String(tpl || '').replace(/\{\{\s*brand\s*\}\}/g, brand);
   const slugify = (s) => String(s || '').toLowerCase().trim()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -1217,17 +1192,15 @@ export async function getLocalizedWizardSeed(env, lang) {
     .replace(/-+/g, '-');
 
   return {
-    seoTitle: (cat, brand) => sub(trT[cat] || enT[cat] || enT.general || '{{brand}}', brand),
-    seoDescription: (cat, brand) => sub(trD[cat] || enD[cat] || enD.general || '', brand),
+    seoTitle: (cat, brand) => sub(SEO_TITLE_TEMPLATES[cat] || SEO_TITLE_TEMPLATES.general, brand),
+    seoDescription: (cat, brand) => sub(SEO_DESCRIPTION_TEMPLATES[cat] || SEO_DESCRIPTION_TEMPLATES.general, brand),
     defaultCategories: (cat) => {
-      const enCats = enC[cat] || enC.general || {};
-      const trCats = trC[cat] || {};
+      const enCats = DEFAULT_CATEGORIES[cat] || DEFAULT_CATEGORIES.general || {};
       return Object.keys(enCats).map((key) => {
         const enEntry = enCats[key] || {};
-        const locEntry = trCats[key] || {};
         return {
-          name: locEntry.name || enEntry.name || '',
-          subtitle: locEntry.subtitle || enEntry.subtitle || null,
+          name: enEntry.name || '',
+          subtitle: enEntry.subtitle || null,
           slug: slugify(enEntry.name || key),
         };
       });

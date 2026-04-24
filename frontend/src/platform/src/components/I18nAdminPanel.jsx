@@ -285,7 +285,7 @@ export default function I18nAdminPanel() {
 
   return (
     <div className="oa-section">
-      <GuideCard t={t} />
+      <GuideCard />
 
       <div className="oa-card">
         <h3>{"Admin UI Translations"}</h3>
@@ -353,7 +353,7 @@ export default function I18nAdminPanel() {
         </div>
       )}
 
-      <TmStatsCard stats={tmStats} t={t} />
+      <TmStatsCard stats={tmStats} />
 
       <div className="oa-card" style={{ marginTop: '1rem' }}>
         <h3>{"Cached locales"}</h3>
@@ -493,7 +493,7 @@ export default function I18nAdminPanel() {
 /* the toggle state persists in localStorage so power users keep their   */
 /* preference across sessions.                                           */
 /* --------------------------------------------------------------------- */
-function GuideCard({ t }) {
+function GuideCard() {
   const [open, setOpen] = useState(() => {
     try { return localStorage.getItem('flomerce.i18n.guideOpen') === '1'; } catch { return false; }
   });
@@ -546,7 +546,7 @@ function GuideCard({ t }) {
 /* --------------------------------------------------------------------- */
 /* Phase D: TM efficiency stats card.                                    */
 /* --------------------------------------------------------------------- */
-function TmStatsCard({ stats, t }) {
+function TmStatsCard({ stats }) {
   if (!stats) return null;
   const empty = !stats.rows;
   return (
