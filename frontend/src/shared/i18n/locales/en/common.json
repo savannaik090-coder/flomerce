@@ -23,6 +23,6 @@
   "emailPlaceholder": "name@company.com",
   "namePlaceholder": "John Doe",
   "passwordPlaceholder": "••••••••",
-  "legalBindingTitle": "English version is binding",
+  "legalBindingTitle": "The English version is the binding one",
   "legalBindingBody": "This page is provided in your language as a courtesy. The English version of this document is the legally binding text. If there is any conflict or ambiguity between the translation and the English original, the English version prevails."
 }
