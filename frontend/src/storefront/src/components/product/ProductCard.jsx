@@ -144,7 +144,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
               whiteSpace: 'nowrap',
             }}
           >
-            <TranslatedText text={product.name} />
+            {product.name}
           </h3>
           <div className="product-pricing">
             <span

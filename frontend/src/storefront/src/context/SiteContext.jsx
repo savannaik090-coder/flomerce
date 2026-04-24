@@ -129,6 +129,17 @@ export function SiteProvider({ children }) {
         apiUrl = `${apiBase}/api/site?subdomain=${encodeURIComponent(sub)}`;
       }
       const adminToken = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('site_admin_token') : null;
+      // Phase 3: SiteContext is the very first fetch on page load and the source
+      // of nav/footer/category names. It bypasses apiRequest, so the shopper's
+      // chosen language must be appended directly here. Admins are excluded so
+      // they always edit against the source-language data.
+      if (!adminToken && typeof window !== 'undefined') {
+        let shopperLang = null;
+        try { shopperLang = window.localStorage?.getItem('flomerce_lang'); } catch (e) { /* ignore */ }
+        if (shopperLang && !apiUrl.includes('lang=')) {
+          apiUrl += (apiUrl.includes('?') ? '&' : '?') + 'lang=' + encodeURIComponent(shopperLang);
+        }
+      }
       const fetchOpts = adminToken ? { cache: 'no-store' } : {};
       const response = await fetch(apiUrl, fetchOpts);
       if (!response.ok) {

@@ -250,7 +250,7 @@ export default function ProductDetailPage() {
 
         <div className="product-detail-right">
           <div className="product-detail-info">
-            <h1 className="product-title"><TranslatedText text={product.name} /></h1>
+            <h1 className="product-title">{product.name}</h1>
             <div className="price">
               <span className="product-price">{formatAmount(effectivePrice)}</span>
             </div>
@@ -342,7 +342,7 @@ export default function ProductDetailPage() {
             {product.description && (
               <div className="product-description-section product-description-inline">
                 <h3><TranslatedText text="Product Description" /></h3>
-                <p><TranslatedText text={product.description} /></p>
+                <p>{product.description}</p>
               </div>
             )}
 

@@ -74,7 +74,7 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
           </button>
         </div>
         <div className="mn-product-info">
-          <h3 className="mn-product-name"><TranslatedText text={product.name} /></h3>
+          <h3 className="mn-product-name">{product.name}</h3>
           <div className="mn-product-pricing">
             <span className="mn-product-price">{formatAmount(product.price)}</span>
             {hasComparePrice && (
@@ -82,7 +82,7 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
             )}
           </div>
           {product.category_name && (
-            <span className="mn-product-category"><TranslatedText text={product.category_name} /></span>
+            <span className="mn-product-category">{product.category_name}</span>
           )}
         </div>
       </Link>

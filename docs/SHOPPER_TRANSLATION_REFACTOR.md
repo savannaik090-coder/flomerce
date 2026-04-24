@@ -109,10 +109,34 @@ about, recursive categories, pageSEO entries). Each endpoint stays
 fully backward compatible: omit `?lang=` and the response is identical
 to today.
 
-### Phase 3 — Frontend: pass `?lang=` and stop wrapping content fields [⏳ Next]
-`api.js` reads `localStorage flomerce_lang`, appends `&lang=...` to every
-storefront API call. Remove `<TranslatedText>` wrappers from `product.name`,
-`category.name`, etc. Keep wrappers for static UI labels.
+### Phase 3 — Frontend: pass `?lang=` and stop wrapping content fields [✅ Done]
+`api.js` now appends `&lang=` to every storefront GET (skipping mutations,
+admin contexts, the `/translate` proxy itself, and any URL that already
+carries `lang=`). When the shopper switches language via `LanguageSwitcher`,
+`App.jsx` listens for the `flomerce_lang_change` event and triggers a hard
+reload so every in-flight component refetches with the new language.
+
+`<TranslatedText>` wrappers were stripped from API-sourced content fields
+across 13 storefront files (Footer, Navbar, NavbarModern, FooterModern,
+ProductCard, ProductCardModern, ProductDetailPage, CategoryPage,
+CategorySection, ProductShowcase, ChooseByCategory, ChooseByCategoryModern,
+CategoryGrid). All `<TranslatedText text="…literal…">` wrappers around
+static UI labels are deliberately preserved.
+
+Wrappers also intentionally retained on:
+- `PrivacyPolicyPage`, `TermsPage`, `AboutPage` — content sources from
+  `siteConfig.settings.privacyContent / termsContent / aboutPage`, paths
+  not yet covered by the Phase 2 `translateSiteInfoInPlace`. Promote them
+  to server-translation in a follow-up extension of Phase 2 if desired.
+- `SubcategorySection` (`section.name`, `section.subtitle`) — sourced
+  from `siteConfig.settings.subcategorySections`, also not yet covered.
+- `CancelPage`, `ReturnPage`, `ProfilePage` reason lists — hardcoded JS
+  arrays (`CANCEL_REASONS`, `RETURN_REASONS`) baked into the bundle, so
+  the API path can never translate them; System B remains the right tool.
+- `ProductDetailPage` `PolicyItem` — values come from
+  `siteConfig.settings.policies`, also not yet in server-translator scope.
+
+Both storefront and platform builds are clean.
 
 ### Phase 4 — Per-language cache purge
 Extend `purgeStorefrontCache` to fan out one purge URL per enabled language
@@ -172,3 +196,23 @@ prioritized after this refactor lands.
 
 - **Phase 0 complete** — server-translator helper created. No production
   behavior change. Validated workflow restart.
+- **Phase 1 complete** — `?lang=` wired into `/api/products` and
+  `/api/products/:id` via `translateProductsInPlace`. Backward compatible.
+- **Phase 2 complete** — Same pattern rolled out to `/api/categories`
+  (recursive), `/api/blog/posts` + `/api/blog/post/:slug`,
+  `/api/reviews/product/:id`, and `/api/site` (recursive categories +
+  pageSEO). All endpoints stay backward compatible.
+- **Phase 3 complete** — `apiRequest` auto-appends `&lang=` from
+  `localStorage.flomerce_lang` for storefront GETs. `LanguageSwitcher`
+  triggers a hard reload via the existing `flomerce_lang_change` event so
+  pages refetch in the new language. `<TranslatedText>` wrappers stripped
+  from API-translated content fields across 14 storefront files; static
+  UI labels keep their wrappers; settings paths and hardcoded JS reason
+  lists keep their wrappers pending a future Phase-2 extension. Both
+  storefront and platform builds compile clean.
+  - **Critical follow-up shipped same phase**: `SiteContext.fetchSiteConfig`
+    bypasses `apiRequest` (it's the very first fetch on page load and the
+    source of nav/footer/category names). Caught in code review — added a
+    direct `lang=` append there too, gated by the same admin-token check.
+    Without this, the unwrapped navbar/footer would have rendered in
+    source language only.

@@ -130,19 +130,19 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
                     <ul className="mn-sub-menu">
                       {directSubs.map(sub => (
                         <li key={sub.id || sub.slug}>
-                          <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}><TranslatedText text={sub.name} /></Link>
+                          <Link to={`/category/${linkedCat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
                         </li>
                       ))}
                       {groups.map(group => (
                         <li key={group.id || group.slug} className={`mn-sub-group${openSubGroups.has(group.id) ? ' mn-sub-group-open' : ''}`}>
                           <span className="mn-sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
-                            <TranslatedText text={group.name} />
+                            {group.name}
                             <svg className="mn-chevron" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6"/></svg>
                           </span>
                           <ul className="mn-sub-menu">
                             {(group.children || []).map(val => (
                               <li key={val.id || val.slug}>
-                                <Link to={`/category/${linkedCat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}><TranslatedText text={val.name} /></Link>
+                                <Link to={`/category/${linkedCat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}>{val.name}</Link>
                               </li>
                             ))}
                           </ul>
@@ -177,25 +177,25 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
       return (
         <li className={`mn-nav-item mn-dropdown${openDropdown === (cat.id || cat.slug) ? ' mn-dropdown-open' : ''}`} key={cat.id || cat.slug}>
           <span className="mn-nav-link" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)}>
-            <Link to={`/category/${cat.slug}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}><TranslatedText text={cat.name} /></Link>
+            <Link to={`/category/${cat.slug}`} onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', textDecoration: 'none' }}>{cat.name}</Link>
             <svg className="mn-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
           </span>
           <ul className="mn-dropdown-menu">
             {directSubs.map(sub => (
               <li key={sub.id || sub.slug}>
-                <Link to={`/category/${cat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}><TranslatedText text={sub.name} /></Link>
+                <Link to={`/category/${cat.slug}?subcategory=${sub.id}`} onClick={closeMobileMenu}>{sub.name}</Link>
               </li>
             ))}
             {groups.map(group => (
               <li key={group.id || group.slug} className={`mn-sub-group${openSubGroups.has(group.id) ? ' mn-sub-group-open' : ''}`}>
                 <span className="mn-sub-group-toggle" onClick={(e) => toggleSubGroup(group.id, e)}>
-                  <TranslatedText text={group.name} />
+                  {group.name}
                   <svg className="mn-chevron" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6"/></svg>
                 </span>
                 <ul className="mn-sub-menu">
                   {(group.children || []).map(val => (
                     <li key={val.id || val.slug}>
-                      <Link to={`/category/${cat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}><TranslatedText text={val.name} /></Link>
+                      <Link to={`/category/${cat.slug}?subcategory=${val.id}`} onClick={closeMobileMenu}>{val.name}</Link>
                     </li>
                   ))}
                 </ul>
@@ -208,7 +208,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
 
     return (
       <li className="mn-nav-item" key={cat.id || cat.slug}>
-        <Link to={`/category/${cat.slug}`} className="mn-nav-link" onClick={closeMobileMenu}><TranslatedText text={cat.name} /></Link>
+        <Link to={`/category/${cat.slug}`} className="mn-nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
       </li>
     );
   }

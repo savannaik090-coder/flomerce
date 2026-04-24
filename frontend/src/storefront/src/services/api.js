@@ -94,7 +94,35 @@ export class APIError extends Error {
   }
 }
 
+// Phase 3 of the shopper-translation refactor: every storefront GET
+// automatically picks up the shopper's chosen language from localStorage and
+// asks the backend to compose the payload in that language. The backend
+// caches per ?lang= variant at the edge for 7 days, so this is essentially
+// free after the first request per (URL × lang) tuple.
+//
+// Skipped on:
+//   * Non-GET methods (mutations don't need translation).
+//   * Authenticated admin contexts (admins always see the source language).
+//   * Endpoints already carrying their own ?lang= (idempotent).
+//   * The /translate proxy itself (avoid a recursive loop).
+function withShopperLang(endpoint, method) {
+  if (method && method.toUpperCase() !== 'GET') return endpoint;
+  if (typeof window === 'undefined') return endpoint;
+  // Site admins editing their store must always see source-language data.
+  try {
+    if (sessionStorage?.getItem('site_admin_token')) return endpoint;
+  } catch (e) { /* fall through */ }
+  let lang = null;
+  try { lang = window.localStorage?.getItem('flomerce_lang'); } catch (e) { return endpoint; }
+  if (!lang) return endpoint;
+  if (endpoint.includes('lang=')) return endpoint;
+  if (endpoint.includes('/storefront/translate')) return endpoint;
+  const sep = endpoint.includes('?') ? '&' : '?';
+  return `${endpoint}${sep}lang=${encodeURIComponent(lang)}`;
+}
+
 export async function apiRequest(endpoint, options = {}) {
+  endpoint = withShopperLang(endpoint, options.method || 'GET');
   const url = getApiUrl(endpoint);
   const token = getAuthToken();
 

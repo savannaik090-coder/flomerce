@@ -102,7 +102,7 @@ export default function FooterModern() {
             </h4>
             <ul className={`mn-footer-links${openSections.categories ? ' mn-footer-links-open' : ''}`}>
               {categories.map((cat) => (
-                <li key={cat.id || cat.slug}><Link to={`/category/${cat.slug}`}><TranslatedText text={cat.name} /></Link></li>
+                <li key={cat.id || cat.slug}><Link to={`/category/${cat.slug}`}>{cat.name}</Link></li>
               ))}
             </ul>
           </div>

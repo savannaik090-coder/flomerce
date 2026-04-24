@@ -82,7 +82,9 @@ export default function SubcategorySection({ section }) {
           {loading ? (
             <div className="product-loader show">
               <div className="product-loader-spinner"></div>
-              <div className="product-loader-text">Loading {section.name.toLowerCase()}...</div>
+              <div className="product-loader-text">
+                <TranslatedText text="Loading" /> <TranslatedText text={section.name.toLowerCase()} />...
+              </div>
             </div>
           ) : (
             products.map((product) => (
@@ -103,7 +105,7 @@ export default function SubcategorySection({ section }) {
 
       <div className="home-category-cta">
         <Link to={viewAllUrl} className="home-category-view-all" style={{ textDecoration: 'none' }}>
-          VIEW ALL
+          <TranslatedText text="VIEW ALL" />
         </Link>
       </div>
     </section>

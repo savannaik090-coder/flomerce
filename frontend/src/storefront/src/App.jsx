@@ -138,6 +138,20 @@ class AdminErrorBoundary extends React.Component {
 }
 
 export default function App() {
+  // Phase 3: when the shopper picks a new language we need every in-flight
+  // page to refetch its API data with the new ?lang= param. The simplest
+  // robust mechanism is a hard reload — cart/wishlist live in localStorage,
+  // so nothing meaningful is lost. A future phase can replace this with a
+  // SPA-level cache invalidation if reload becomes a UX concern.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const onLangChange = () => {
+      try { window.location.reload(); } catch (e) {}
+    };
+    window.addEventListener('flomerce_lang_change', onLangChange);
+    return () => window.removeEventListener('flomerce_lang_change', onLangChange);
+  }, []);
+
   return (
     <ToastProvider>
       <ConfirmProvider>
