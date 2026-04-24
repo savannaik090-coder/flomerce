@@ -7,6 +7,26 @@ import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
 import { cancelRazorpaySubscription } from './payments-worker.js';
 import { sendEmail, getOwnerRecipients } from '../../utils/email.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
+import { purgePlansLocaleCache } from '../../utils/cdn-cache.js';
+
+// Helper: run the plans CDN purge after a successful plan or enterprise_*
+// mutation. Awaited (not fire-and-forget) so the purge actually completes
+// before the worker isolate is potentially torn down — Cloudflare Workers
+// drop un-awaited Promises that aren't wrapped in `ctx.waitUntil`, which
+// would silently break the purge contract under load. The purge call is
+// internally try/catch'd here so a CF API blip never turns a successful
+// save into a user-facing error; stale data self-heals at the 7-day edge
+// TTL in the worst case. See `backend/utils/cdn-cache.js`
+// purgePlansLocaleCache for the full contract. Latency cost: ~100-300ms
+// added to plan-edit saves (one CF purge round trip) — acceptable for an
+// admin-only mutation path.
+async function firePlansPurge(env) {
+  try {
+    await purgePlansLocaleCache(env);
+  } catch (e) {
+    console.warn('[admin] plans purge failed (non-fatal):', e?.message || e);
+  }
+}
 
 const ADMIN_EMAILS = [
   'savannaik090@gmail.com',
@@ -262,6 +282,14 @@ async function handlePlansManagement(request, env, pathParts) {
 
 async function getPlans(env) {
   try {
+    // Opportunistic cleanup of any rows left behind by a prior schema with
+    // legacy billing cycles. This is technically a write-on-read but it only
+    // fires when stale rows actually exist; once the table is clean it's a
+    // no-op SELECT. Whenever the cleanup actually deletes anything, fire the
+    // plans CDN purge so the System A.5 invariant ("every subscription_plans
+    // mutation triggers a translation-overlay purge") holds even on this
+    // unusual write path. See replit.md → System A.5.
+    let cleanupDeleted = false;
     try {
       const deprecated = await env.DB.prepare(
         `SELECT id FROM subscription_plans WHERE billing_cycle NOT IN ('monthly', '3months', '6months', 'yearly')`
@@ -272,10 +300,12 @@ async function getPlans(env) {
           `DELETE FROM subscription_plans WHERE billing_cycle NOT IN ('monthly', '3months', '6months', 'yearly')`
         ).run();
         console.log(`Cleaned up ${deprecatedIds.length} deprecated billing cycle plan(s)`);
+        cleanupDeleted = true;
       }
     } catch (cleanupErr) {
       console.error('Plan cleanup error (non-fatal):', cleanupErr.message);
     }
+    if (cleanupDeleted) await firePlansPurge(env);
 
     const result = await env.DB.prepare(
       `SELECT * FROM subscription_plans ORDER BY display_order ASC, plan_name ASC`
@@ -331,6 +361,7 @@ async function createPlan(request, env) {
       plan_tier
     ).run();
 
+    await firePlansPurge(env);
     return successResponse({ id }, 'Plan created successfully');
   } catch (error) {
     console.error('Create plan error:', error);
@@ -384,6 +415,7 @@ async function updatePlan(request, env, planId) {
       planId
     ).run();
 
+    await firePlansPurge(env);
     return successResponse(null, 'Plan updated successfully');
   } catch (error) {
     console.error('Update plan error:', error);
@@ -500,6 +532,7 @@ async function bulkSavePlan(request, env) {
 
     await env.DB.batch(statements);
 
+    await firePlansPurge(env);
     return successResponse(null, 'Plan saved successfully across all billing cycles');
   } catch (error) {
     console.error('Bulk save plan error:', error);
@@ -513,6 +546,7 @@ async function bulkDeletePlan(request, env) {
     if (!plan_name) return errorResponse('Plan name is required');
 
     await env.DB.prepare('DELETE FROM subscription_plans WHERE plan_name = ?').bind(plan_name).run();
+    await firePlansPurge(env);
     return successResponse(null, `All cycles of "${plan_name}" deleted successfully`);
   } catch (error) {
     console.error('Bulk delete plan error:', error);
@@ -528,6 +562,7 @@ async function deletePlan(env, planId) {
     }
 
     await env.DB.prepare('DELETE FROM subscription_plans WHERE id = ?').bind(planId).run();
+    await firePlansPurge(env);
     return successResponse(null, 'Plan deleted successfully');
   } catch (error) {
     console.error('Delete plan error:', error);
@@ -605,6 +640,15 @@ async function updateSettings(request, env) {
       'translator_region',
     ];
 
+    // Track whether any plans-overlay-relevant setting was actually written
+    // this round, so we only fire the CDN purge when it would matter.
+    // `enterprise_message` is the only owner-editable setting that flows into
+    // the per-language plans payload (planTranslations + enterpriseMessage),
+    // so it's the only one that requires a purge. enterprise_enabled /
+    // enterprise_email change the LandingPricing rendering path but are read
+    // from /api/payments/plans (not the translated overlay), so they don't.
+    let plansOverlayDirty = false;
+
     for (const [key, rawValue] of Object.entries(updates)) {
       if (!allowedKeys.includes(key)) continue;
 
@@ -621,8 +665,11 @@ async function updateSettings(request, env) {
          VALUES (?, ?, datetime('now'))
          ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, updated_at = datetime('now')`
       ).bind(key, value, value).run();
+
+      if (key === 'enterprise_message') plansOverlayDirty = true;
     }
 
+    if (plansOverlayDirty) await firePlansPurge(env);
     return successResponse(null, 'Settings updated successfully');
   } catch (error) {
     console.error('Update settings error:', error);

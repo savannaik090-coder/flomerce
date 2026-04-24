@@ -4,6 +4,20 @@ export async function getAvailablePlans() {
   return apiRequest('/api/payments/plans');
 }
 
+// Fetch the per-language translation overlay for the dynamic plan strings
+// (plan_name / tagline / features / enterprise_message). Long-cached at the
+// CDN edge (~7d) and purged automatically when the admin edits a plan or an
+// enterprise_* setting, so steady-state cost is near zero — see
+// backend/workers/platform/i18n-worker.js handlePlansLocale + the
+// purgePlansLocaleCache calls in admin-worker.js.
+//
+// Returns: { planTranslations: { "<plan_name>": { plan_name, tagline,
+// features: string[] } }, enterpriseMessage: string|null, source: "en"|"r2"|
+// "translator"|"fallback-en" }
+export async function getPlanTranslations(lang) {
+  return apiRequest(`/api/i18n/plans/${encodeURIComponent(lang)}`);
+}
+
 export async function createSubscription(planId, siteId) {
   return apiRequest('/api/payments/subscription', {
     method: 'POST',

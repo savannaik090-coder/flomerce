@@ -1,13 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getAvailablePlans } from '../services/paymentService.js';
+import { getAvailablePlans, getPlanTranslations } from '../services/paymentService.js';
 import { SUPPORT_EMAIL } from '../config.js';
 
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
 
+// Apply a per-language translation overlay (loaded from /api/i18n/plans/:lang)
+// onto the raw plans array returned by /api/payments/plans. The overlay only
+// covers strings: plan_name (group key), tagline, and the features list. The
+// raw row's price / billing_cycle / razorpay_plan_id stay untouched so the
+// checkout flow always references the canonical English plan_name on the
+// server side. The visible plan_name is replaced ONLY for rendering; we keep
+// the original under `_original_plan_name` so future logic that needs the
+// raw key (e.g. analytics or a switch to a Razorpay flow) can still find it.
+function applyPlanTranslations(rawPlans, overlay) {
+  if (!overlay || !overlay.planTranslations) return rawPlans;
+  return rawPlans.map((p) => {
+    const t = overlay.planTranslations[p.plan_name];
+    if (!t) return p;
+    return {
+      ...p,
+      _original_plan_name: p.plan_name,
+      plan_name: t.plan_name || p.plan_name,
+      tagline: t.tagline || p.tagline,
+      features: Array.isArray(t.features) && t.features.length ? t.features : p.features,
+    };
+  });
+}
+
 export default function LandingPricing() {
-  const { t } = useTranslation('landing');
+  const { t, i18n } = useTranslation('landing');
   const [duration, setDuration] = useState(null);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,19 +40,42 @@ export default function LandingPricing() {
   const durationLabel = (key) => t(`pricing.duration.${key}`, { defaultValue: key });
   const durationText = (key) => t(`pricing.duration.${key}Per`, { defaultValue: key });
 
-  useEffect(() => {
-    loadPlans();
-  }, []);
-
-  const loadPlans = async () => {
+  // Re-fetch whenever the active language changes so the visitor sees the
+  // pricing tiles in their selected language. The translation overlay endpoint
+  // is long-cached at the Cloudflare edge (~7d) and purged automatically when
+  // the admin saves a plan, so this fetch costs effectively zero worker time
+  // in steady state — see backend/workers/platform/i18n-worker.js
+  // handlePlansLocale.
+  const loadPlans = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getAvailablePlans();
-      const loadedPlans = data.plans || [];
-      setPlans(loadedPlans);
-      if (data.enterpriseConfig) setEnterpriseConfig(data.enterpriseConfig);
-      if (!duration && loadedPlans.length > 0) {
-        const cycles = [...new Set(loadedPlans.map(p => p.billing_cycle))];
+      const lang = (i18n.language || 'en').split('-')[0] === 'en' ? 'en' : i18n.language;
+      const [plansData, overlayResp] = await Promise.all([
+        getAvailablePlans(),
+        lang && lang !== 'en'
+          ? getPlanTranslations(lang).catch((e) => {
+              // Translation failure must NEVER break the page — fall back to
+              // English plan strings silently. The visitor still sees the rest
+              // of the UI in their language; only the plan tiles stay English.
+              console.warn('[pricing] plan translations fetch failed:', e?.message || e);
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
+      const rawPlans = plansData.plans || [];
+      const translated = overlayResp ? applyPlanTranslations(rawPlans, overlayResp) : rawPlans;
+      setPlans(translated);
+      if (plansData.enterpriseConfig) {
+        // Overlay the enterprise banner message too. enterprise_enabled and
+        // enterprise_email are not translated (boolean + raw email).
+        const ent = { ...plansData.enterpriseConfig };
+        if (overlayResp && overlayResp.enterpriseMessage) {
+          ent.message = overlayResp.enterpriseMessage;
+        }
+        setEnterpriseConfig(ent);
+      }
+      if (!duration && rawPlans.length > 0) {
+        const cycles = [...new Set(rawPlans.map(p => p.billing_cycle))];
         const cycleOrder = ['monthly', '3months', '6months', 'yearly'];
         const sorted = cycles.sort((a, b) => cycleOrder.indexOf(a) - cycleOrder.indexOf(b));
         setDuration(sorted[0]);
@@ -39,7 +85,13 @@ export default function LandingPricing() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [i18n.language, t, duration]);
+
+  useEffect(() => {
+    loadPlans();
+    // Re-run whenever i18n.language changes (visitor switches language).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language]);
 
   const availableDurations = [...new Set(plans.map(p => p.billing_cycle))].sort((a, b) => {
     const order = ['monthly', '3months', '6months', 'yearly'];

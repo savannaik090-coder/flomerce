@@ -9,7 +9,7 @@ import {
   translateBatch,
   hashString,
 } from '../../utils/translator.js';
-import { purgeLocaleCache } from '../../utils/cdn-cache.js';
+import { purgeLocaleCache, PLATFORM_PLANS_R2_PREFIX } from '../../utils/cdn-cache.js';
 // Each namespace file holds that namespace's keys at the top level
 // (`landing.json` is `{ heroBadge: "..." }`, NOT wrapped). Nesting each file
 // under its namespace name when assembling EN_CATALOG keeps the per-key SHA
@@ -597,6 +597,10 @@ export async function handleI18nPublic(request, env, path, ctx) {
   }
 
   // /api/i18n/locale/:lang
+  if (parts[2] === 'plans' && parts[3]) {
+    return handlePlansLocale(request, env, parts[3]);
+  }
+
   if (parts[2] !== 'locale' || !parts[3]) {
     return errorResponse('Not found', 404);
   }
@@ -652,6 +656,286 @@ export async function handleI18nPublic(request, env, path, ctx) {
       { lang, transient: true },
     );
   }
+}
+
+// =============================================================================
+// /api/i18n/plans/:lang  — Dynamic plan translations (Route 1 / Option B)
+// =============================================================================
+//
+// Why this exists:
+//   The /api/payments/plans endpoint returns owner-defined strings
+//   (plan_name, tagline, features[]) that live in subscription_plans rows
+//   plus enterprise_message from platform_settings — these are NOT in the
+//   bundled locale catalogs (landing.json etc.) because they change at
+//   runtime. So even when a Hindi visitor loads the landing page and the
+//   System A i18next pipeline gives them "Pricing" / "Get Started" /
+//   duration buttons in Hindi, the actual plan tiles ("Starter", "Build a
+//   beautiful storefront in minutes", "Up to 5 products") stayed English.
+//   This endpoint returns a per-language overlay that LandingPricing.jsx
+//   merges on top of the raw plans response.
+//
+// Why a separate endpoint (instead of baking into the locale JSON):
+//   The owner edits plans much more often than they edit static UI copy,
+//   and we want plan edits to go live AUTOMATICALLY — no "Refresh all
+//   out-of-date" click. Baking plan strings into the locale catalog would
+//   require the owner to remember to refresh after every plan edit (the
+//   same gotcha the static-string flow already has). Splitting it out lets
+//   the admin worker call purgePlansLocaleCache() directly from every
+//   plan-mutation handler, so a save propagates within seconds.
+//
+// Cost model (the whole point):
+//   - Long CDN edge cache (max-age=7d) → 99%+ of visitor requests are
+//     served entirely from the Cloudflare edge with zero worker invocation.
+//   - On the rare cache miss (first visitor per lang per region after a
+//     purge / TTL roll), the worker reads from R2 (single-digit ms). No
+//     translator call.
+//   - On a cold R2 miss (first visitor per lang since the last plan edit),
+//     the worker calls Microsoft Translator (~200-500ms one-time cost),
+//     stores the result in R2, and serves. Translation Memory in D1 also
+//     short-circuits per-string costs across languages — so the second
+//     language to lazy-gen typically pays nothing for strings that match
+//     a previously-translated source.
+//
+// Cache layout (R2):
+//   platform-plans/<lang>.json  → { planTranslations, enterpriseMessage,
+//                                   pipeline_version, generated_at }
+//
+// Failure modes (always degrade to English, never break the page):
+//   - lang === 'en'           → return raw EN map directly (no R2, no MS)
+//   - lang not in allowlist   → fall back to EN, mark transient (60s TTL)
+//   - translator unconfigured → fall back to EN, mark transient
+//   - translator throws       → fall back to EN, mark transient
+//   - rate limit hit          → fall back to EN, mark transient
+//
+// Purge invariant:
+//   Every code path in admin-worker.js that mutates subscription_plans or
+//   platform_settings.enterprise_* MUST call purgePlansLocaleCache(env)
+//   after the DB write. Without that, non-English visitors see stale plan
+//   names for up to 7 days. Failures of the purge are non-fatal; the next
+//   regenerate will self-heal.
+async function handlePlansLocale(request, env, lang) {
+  if (request.method !== 'GET') {
+    return errorResponse('Method not allowed', 405);
+  }
+  if (!isValidLocale(lang)) {
+    return errorResponse('Invalid locale code', 400);
+  }
+
+  // Helper: lazy D1 read of the canonical EN payload. Only called on paths
+  // that actually need the English text (lang=en, R2 miss, or any fallback).
+  // Crucially this is NOT called on the R2 hot path so that warm CDN edge
+  // misses cost a single R2 read with no D1 query — that's the cost-shape
+  // claim documented in replit.md (System A.5). Memoized so the rare paths
+  // that hit it twice (e.g. translator failure → fallback) don't double-read.
+  let enPayloadCache;
+  const loadEN = async () => {
+    if (enPayloadCache) return enPayloadCache;
+    enPayloadCache = await readPlansEnglishFromDB(env);
+    return enPayloadCache;
+  };
+
+  if (lang === 'en') {
+    let enPayload;
+    try {
+      enPayload = await loadEN();
+    } catch (e) {
+      console.error('[i18n] plans EN load failed', e?.message || e);
+      return errorResponse('Failed to load plans', 500);
+    }
+    return cachedJson(
+      request,
+      { success: true, message: 'Success', data: { ...enPayload, source: 'en' } },
+      { lang: 'en' },
+    );
+  }
+
+  if (!SUPPORTED_LOCALES.has(lang)) {
+    let enPayload;
+    try {
+      enPayload = await loadEN();
+    } catch (e) {
+      console.error('[i18n] plans EN load failed', e?.message || e);
+      return errorResponse('Failed to load plans', 500);
+    }
+    return cachedJson(
+      request,
+      { success: true, message: 'plans fallback to en (locale not supported)', data: { ...enPayload, source: 'fallback-en' } },
+      { lang, transient: true },
+    );
+  }
+
+  // R2 hot path — instant for any language that has been generated since
+  // the last admin plan edit (which purges R2 + CDN together). This MUST
+  // come before any D1 read so warm-edge misses are R2-only.
+  try {
+    const cached = await readJsonFromR2(env, `${PLATFORM_PLANS_R2_PREFIX}${lang}.json`);
+    if (cached?.data) {
+      return cachedJson(
+        request,
+        { success: true, message: 'Success', data: { ...cached.data, source: 'r2' } },
+        { lang },
+      );
+    }
+  } catch (e) {
+    console.warn('[i18n] plans R2 read failed for', lang, e?.message || e);
+  }
+
+  // Past here = cold path: R2 missed, we need to either translate or fall
+  // back to EN. EITHER way we now need the EN payload, so load it once.
+  let enPayload;
+  try {
+    enPayload = await loadEN();
+  } catch (e) {
+    console.error('[i18n] plans EN load failed', e?.message || e);
+    return errorResponse('Failed to load plans', 500);
+  }
+
+  // Reuse the per-locale daily rate limit so a runaway client cannot force
+  // arbitrary lazy generation by spamming language codes.
+  const rl = await checkRateLimit(env, lang);
+  if (!rl.ok) {
+    return cachedJson(
+      request,
+      { success: true, message: 'plans fallback to en (rate limit reached)', data: { ...enPayload, source: 'fallback-en' } },
+      { lang, transient: true },
+    );
+  }
+
+  try {
+    const translated = await translatePlansPayload(env, enPayload, lang);
+    try {
+      await env.STORAGE.put(
+        `${PLATFORM_PLANS_R2_PREFIX}${lang}.json`,
+        JSON.stringify(translated),
+        { httpMetadata: { contentType: 'application/json; charset=utf-8' } },
+      );
+    } catch (e) {
+      console.warn('[i18n] plans R2 write failed for', lang, e?.message || e);
+    }
+    await bumpRateLimit(env, lang, rl.day);
+    return cachedJson(
+      request,
+      { success: true, message: 'Success', data: { ...translated, source: 'translator' } },
+      { lang },
+    );
+  } catch (e) {
+    console.error('[i18n] plans lazy generation failed for', lang, e?.message || e);
+    return cachedJson(
+      request,
+      { success: true, message: 'plans fallback to en', data: { ...enPayload, source: 'fallback-en' } },
+      { lang, transient: true },
+    );
+  }
+}
+
+// Reads the canonical English payload directly from D1. We key
+// planTranslations by plan_name (not id) because the LandingPricing
+// component groups plans by plan_name across billing cycles — that's the
+// stable identity from the visitor's perspective. The same plan_name
+// across "monthly" and "yearly" rows shares one tagline + one features
+// list, so we de-duplicate here.
+async function readPlansEnglishFromDB(env) {
+  const planTranslations = {};
+  const seen = new Set();
+
+  const plansResult = await env.DB.prepare(
+    `SELECT plan_name, features, tagline FROM subscription_plans
+     WHERE is_active = 1 AND billing_cycle IN ('monthly', '3months', '6months', 'yearly')`
+  ).all();
+  for (const row of (plansResult.results || [])) {
+    if (!row.plan_name || seen.has(row.plan_name)) continue;
+    seen.add(row.plan_name);
+    let features = [];
+    try { features = JSON.parse(row.features) || []; } catch { features = []; }
+    if (!Array.isArray(features)) features = [];
+    planTranslations[row.plan_name] = {
+      plan_name: row.plan_name,
+      tagline: row.tagline || '',
+      features: features.map((f) => (typeof f === 'string' ? f : String(f ?? ''))),
+    };
+  }
+
+  let enterpriseMessage = '';
+  try {
+    const row = await env.DB.prepare(
+      `SELECT setting_value FROM platform_settings WHERE setting_key = 'enterprise_message'`
+    ).first();
+    if (row?.setting_value) enterpriseMessage = row.setting_value;
+  } catch {}
+
+  return {
+    planTranslations,
+    enterpriseMessage,
+    pipeline_version: TRANSLATOR_PIPELINE_VERSION,
+    generated_at: Date.now(),
+  };
+}
+
+// Translate the EN payload into the target language using the platform's
+// Microsoft Translator credentials + D1 Translation Memory. Sends ALL
+// translatable strings as ONE batch so we pay one MS API round trip per
+// lazy-gen, regardless of how many plans / features the owner has
+// configured.
+async function translatePlansPayload(env, enPayload, lang) {
+  const sources = [];
+  const slots = [];
+
+  for (const [planKey, p] of Object.entries(enPayload.planTranslations || {})) {
+    if (p.plan_name) {
+      sources.push(p.plan_name);
+      slots.push({ kind: 'plan_name', planKey });
+    }
+    if (p.tagline) {
+      sources.push(p.tagline);
+      slots.push({ kind: 'tagline', planKey });
+    }
+    for (let i = 0; i < (p.features || []).length; i++) {
+      sources.push(p.features[i]);
+      slots.push({ kind: 'feature', planKey, idx: i });
+    }
+  }
+  if (enPayload.enterpriseMessage) {
+    sources.push(enPayload.enterpriseMessage);
+    slots.push({ kind: 'enterpriseMessage' });
+  }
+
+  if (sources.length === 0) {
+    return {
+      planTranslations: {},
+      enterpriseMessage: '',
+      pipeline_version: TRANSLATOR_PIPELINE_VERSION,
+      generated_at: Date.now(),
+    };
+  }
+
+  const translated = await translateBatch(env, sources, lang, 'en');
+
+  // Re-assemble into the same structure as enPayload, substituting the
+  // translated string at each slot. Start from a deep copy of EN so any
+  // missing translations (defensive) gracefully fall back to the source.
+  const out = {
+    planTranslations: {},
+    enterpriseMessage: enPayload.enterpriseMessage || '',
+    pipeline_version: TRANSLATOR_PIPELINE_VERSION,
+    generated_at: Date.now(),
+  };
+  for (const [planKey, p] of Object.entries(enPayload.planTranslations || {})) {
+    out.planTranslations[planKey] = {
+      plan_name: p.plan_name,
+      tagline: p.tagline || '',
+      features: [...(p.features || [])],
+    };
+  }
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const v = translated[i];
+    if (typeof v !== 'string' || !v) continue;
+    if (slot.kind === 'plan_name') out.planTranslations[slot.planKey].plan_name = v;
+    else if (slot.kind === 'tagline') out.planTranslations[slot.planKey].tagline = v;
+    else if (slot.kind === 'feature') out.planTranslations[slot.planKey].features[slot.idx] = v;
+    else if (slot.kind === 'enterpriseMessage') out.enterpriseMessage = v;
+  }
+  return out;
 }
 
 // 7-day edge cache + 1-day stale-while-revalidate for stable locale responses
