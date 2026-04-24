@@ -7,12 +7,29 @@ import { PRESHIPPED } from '../../../shared/i18n/init.js';
 
 // Native labels for the content-language picker. Mirrors the platform
 // language switcher so the wizard offers the same locales out of the box.
+// Native-script labels for every code in the new active PRESHIPPED set
+// (India bucket ∪ Foreign bucket = 17 languages). Keep in sync with
+// shared/i18n/init.js INDIA_LANGUAGES + FOREIGN_LANGUAGES so the merchant
+// content-language picker never falls back to a raw locale code.
 const CONTENT_LANGUAGE_LABELS = {
   en: 'English',
   hi: 'हिन्दी',
+  ta: 'தமிழ்',
+  te: 'తెలుగు',
+  ml: 'മലയാളം',
+  kn: 'ಕನ್ನಡ',
+  mr: 'मराठी',
+  bn: 'বাংলা',
+  gu: 'ગુજરાતી',
   es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
+  it: 'Italiano',
+  nl: 'Nederlands',
+  pt: 'Português',
+  ja: '日本語',
+  ko: '한국어',
   'zh-CN': '简体中文',
-  ar: 'العربية',
 };
 
 // SEO + category seed data are now sourced from the wizard i18n catalog so

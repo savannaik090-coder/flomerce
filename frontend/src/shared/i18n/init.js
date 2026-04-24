@@ -11,15 +11,29 @@ import { NAMESPACE_FILES, NAMESPACES, STOREFRONT_NAMESPACES } from './locales/en
 // ARE the namespace names, so per-namespace `read()` slices it locally.
 const BUNDLED_NS = { en: NAMESPACE_FILES };
 
-// PRESHIPPED is what the language switcher offers out of the box. These are
-// fetched (not bundled) — the worker has the seeds.
-const PRESHIPPED = ['en', 'hi', 'es', 'zh-CN', 'ar'];
+// PRESHIPPED is the FULL set of languages the platform supports out of the box
+// across both buckets (India + Foreign). The actual options shown in the
+// dropdown for any given visitor are filtered geographically inside
+// LanguageSwitcher.jsx using GET /api/i18n/geo. None of these are bundled
+// into the JS payload — they're fetched on demand from the locale worker.
+//
+// Bucket policy (must stay in sync with backend i18n-worker.js handleI18nPublic
+// /api/i18n/geo handler):
+//   IN visitors  → en, hi, ta, te, ml, kn, mr, bn, gu                  (9)
+//   non-IN       → en, hi, es, fr, de, it, nl, pt, ja, ko, zh-CN       (11)
+//   union        → 17 unique active codes
+const INDIA_LANGUAGES = ['en', 'hi', 'ta', 'te', 'ml', 'kn', 'mr', 'bn', 'gu'];
+const FOREIGN_LANGUAGES = ['en', 'hi', 'es', 'fr', 'de', 'it', 'nl', 'pt', 'ja', 'ko', 'zh-CN'];
+const PRESHIPPED = Array.from(new Set([...INDIA_LANGUAGES, ...FOREIGN_LANGUAGES]));
 const NORMALIZABLE = new Set(PRESHIPPED);
+// Arabic intentionally removed from the active set (see strategy notes); kept
+// in RTL_LOCALES only so any user-typed override or legacy stored preference
+// still flips direction correctly instead of rendering broken LTR Arabic.
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 
 // Map from base/regional codes to our pre-shipped locale codes so things like
-// `zh`, `zh-Hans`, `zh-TW`, `es-ES`, `hi-IN`, `pt-BR` resolve to a real bundled
-// catalog instead of triggering a lazy fetch.
+// `zh`, `zh-Hans`, `zh-TW`, `es-ES`, `hi-IN`, `pt-BR` resolve to a real
+// active catalog instead of triggering a lazy fetch for an unknown variant.
 function normalizeLocale(lng) {
   if (!lng) return 'en';
   if (NORMALIZABLE.has(lng)) return lng;
@@ -30,6 +44,20 @@ function normalizeLocale(lng) {
   if (lower.startsWith('hi')) return 'hi';
   if (lower.startsWith('ar')) return 'ar';
   if (lower.startsWith('en')) return 'en';
+  if (lower.startsWith('pt')) return 'pt';
+  if (lower.startsWith('fr')) return 'fr';
+  if (lower.startsWith('de')) return 'de';
+  if (lower.startsWith('it')) return 'it';
+  if (lower.startsWith('nl')) return 'nl';
+  if (lower.startsWith('ja')) return 'ja';
+  if (lower.startsWith('ko')) return 'ko';
+  if (lower.startsWith('ta')) return 'ta';
+  if (lower.startsWith('te')) return 'te';
+  if (lower.startsWith('ml')) return 'ml';
+  if (lower.startsWith('kn')) return 'kn';
+  if (lower.startsWith('mr')) return 'mr';
+  if (lower.startsWith('bn')) return 'bn';
+  if (lower.startsWith('gu')) return 'gu';
   // For other base codes, return as-is so the lazy-gen path can attempt them.
   const base = lower.split('-')[0];
   return base;
@@ -125,16 +153,19 @@ try {
   }
 } catch (e) { /* ignore */ }
 
-// On any storefront visit (first or returning), if the shopper has NOT
-// explicitly chosen a language, seed `flomerce_lang` with the merchant's
-// content_language we cached on the previous load for this host. This runs
-// BEFORE i18next initializes, so the detector picks it up and the UI boots
-// directly into the merchant's language with no flicker.
+// Strict English-default policy: the UI must boot in English for every
+// visitor regardless of browser locale, geo, or merchant content_language.
+// The user only ever leaves English by explicitly picking another option
+// from the LanguageSwitcher (which calls markLanguageExplicit() and writes
+// `flomerce_lang` + `flomerce_lang_explicit`). Any prior implicit cache —
+// for example a stale `flomerce_lang` value left over from the old
+// browser-detection path or from the old merchant content-language seeder —
+// is cleared at boot if the explicit marker is absent, so old installs
+// don't keep auto-loading non-English forever.
 try {
-  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && !hadExplicitLangAtBoot) {
-    const cached = localStorage.getItem(`flomerce_site_lang:${window.location.hostname}`);
-    if (cached && cached !== 'en') {
-      localStorage.setItem('flomerce_lang', cached);
+  if (typeof localStorage !== 'undefined' && !hadExplicitLangAtBoot) {
+    if (localStorage.getItem('flomerce_lang')) {
+      localStorage.removeItem('flomerce_lang');
     }
   }
 } catch (e) { /* ignore */ }
@@ -185,13 +216,19 @@ function initWithNamespaces(namespaces, options = {}) {
       partialBundledLanguages: true,
       interpolation: { escapeValue: false },
       detection: {
-        order: ['localStorage', 'navigator', 'htmlTag'],
+        // Strict English-default policy: localStorage ONLY. Browser navigator
+        // and htmlTag detection are intentionally disabled — a German Chrome
+        // visitor must still land on English. Users opt out of English by
+        // picking another option from the LanguageSwitcher, which writes
+        // `flomerce_lang` (read here) + `flomerce_lang_explicit` (read by the
+        // boot guard above). When neither is present, i18next falls back to
+        // `fallbackLng: 'en'` and the UI boots in English.
+        order: ['localStorage'],
         lookupLocalStorage: 'flomerce_lang',
         caches: ['localStorage'],
-        // Normalize browser-detected codes so regional variants
-        // (en-US, en-GB, zh-Hans, es-ES, hi-IN, pt-BR, ar-SA, ...) resolve to
-        // a bundled pre-shipped catalog instead of triggering a lazy fetch
-        // against an endpoint that returns SPA HTML on Pages and crashes init.
+        // Normalize any stored regional variant (en-US, hi-IN, zh-Hans, ...)
+        // up front so we never try to fetch a non-existent locale endpoint
+        // that returns SPA HTML and crashes init.
         convertDetectedLanguage: (lng) => normalizeLocale(lng),
       },
       // bindI18n: re-render React components on languageChanged AND `loaded`,
@@ -300,5 +337,5 @@ export function initStorefrontI18n(options = {}) {
   return initWithNamespaces(STOREFRONT_NAMESPACES, options);
 }
 
-export { PRESHIPPED, RTL_LOCALES, normalizeLocale, STOREFRONT_NAMESPACES };
+export { PRESHIPPED, INDIA_LANGUAGES, FOREIGN_LANGUAGES, RTL_LOCALES, normalizeLocale, STOREFRONT_NAMESPACES };
 export default i18n;

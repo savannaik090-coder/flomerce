@@ -2,10 +2,33 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../services/api.js';
 import { useToast } from '../../../shared/ui/Toast.jsx';
-import { refreshLocale } from '../../../shared/i18n/init.js';
+import { refreshLocale, PRESHIPPED as ALL_ACTIVE } from '../../../shared/i18n/init.js';
 
-const PRESHIPPED = ['hi', 'es', 'zh-CN', 'ar'];
-const LABELS = { hi: 'हिन्दी (Hindi)', es: 'Español (Spanish)', 'zh-CN': '简体中文 (Chinese)', ar: 'العربية (Arabic)' };
+// Owner-side translation panel manages every active non-English locale. The
+// list is derived from the shared PRESHIPPED set (India bucket ∪ Foreign
+// bucket) so adding/removing a language in `init.js` automatically flows here
+// — no parallel hardcoded list to keep in sync. English is excluded because
+// it's the source catalog (no translation to manage).
+const PRESHIPPED = ALL_ACTIVE.filter((c) => c !== 'en');
+const LABELS = {
+  hi: 'हिन्दी (Hindi)',
+  ta: 'தமிழ் (Tamil)',
+  te: 'తెలుగు (Telugu)',
+  ml: 'മലയാളം (Malayalam)',
+  kn: 'ಕನ್ನಡ (Kannada)',
+  mr: 'मराठी (Marathi)',
+  bn: 'বাংলা (Bengali)',
+  gu: 'ગુજરાતી (Gujarati)',
+  es: 'Español (Spanish)',
+  fr: 'Français (French)',
+  de: 'Deutsch (German)',
+  it: 'Italiano (Italian)',
+  nl: 'Nederlands (Dutch)',
+  pt: 'Português (Portuguese)',
+  ja: '日本語 (Japanese)',
+  ko: '한국어 (Korean)',
+  'zh-CN': '简体中文 (Chinese Simplified)',
+};
 
 // Format USD with up to 4 decimals so very small amounts ($0.0012) still
 // surface a real number instead of rounding to "$0.00".

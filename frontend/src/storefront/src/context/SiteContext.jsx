@@ -179,32 +179,19 @@ export function SiteProvider({ children }) {
         })(),
       };
 
-      // First-time shoppers who have no saved language preference get the
-      // merchant's content_language by default. We check the pre-init
-      // snapshot (captured in shared/i18n/init.js before the detector ran)
-      // because the i18next browser language detector writes its detected
-      // value into `flomerce_lang` on init — reading localStorage here
-      // cannot distinguish "shopper explicitly picked this" from
-      // "browser default got autosaved on first load". Returning shoppers
-      // who actually chose a language keep their choice.
-      try {
-        if (!hasExplicitLanguagePreference() && config.contentLanguage && config.contentLanguage !== 'en' && i18n.language !== config.contentLanguage) {
-          i18n.changeLanguage(config.contentLanguage);
-        }
-      } catch (e) { /* ignore */ }
-
-      // Cache the merchant's content_language per-host so the next visit can
-      // boot directly into the right language and skip the load-then-switch
-      // flicker. Read on the next page load happens synchronously in
-      // shared/i18n/init.js BEFORE i18n initializes.
-      try {
-        if (typeof localStorage !== 'undefined' && config.contentLanguage) {
-          const host = typeof window !== 'undefined' ? window.location.hostname : '';
-          if (host) {
-            localStorage.setItem(`flomerce_site_lang:${host}`, config.contentLanguage);
-          }
-        }
-      } catch (e) { /* ignore */ }
+      // English-default policy (set in shared/i18n/init.js): the storefront
+      // intentionally does NOT auto-switch a first-time shopper into the
+      // merchant's content_language. Every visitor — Indian, foreign,
+      // returning, brand-new — boots in English and only changes language
+      // when they explicitly pick another option from the LanguageSwitcher.
+      // The merchant's content_language is still used elsewhere (SEO, admin
+      // labels, server-side product translation), but it no longer drives
+      // the shopper UI on first paint. This block is kept as a documented
+      // no-op so the policy decision is visible at the call site instead of
+      // looking like an accidental omission. To restore the old behavior,
+      // re-enable the i18n.changeLanguage(config.contentLanguage) call here
+      // and the per-host localStorage seed in shared/i18n/init.js together.
+      void hasExplicitLanguagePreference; // keep import alive across refactors
 
       config.seo = {
         seo_title: data.seo_title || null,

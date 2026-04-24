@@ -566,6 +566,46 @@ export async function handleI18nPublic(request, env, path, ctx) {
 
   const parts = path.split('/').filter(Boolean);
 
+  // /api/i18n/geo  → public, returns the visitor country and the curated
+  // language list to show in the language switcher. Uses Cloudflare's
+  // `cf-ipcountry` header (free, present on every request). Two buckets:
+  //   - India (IN)  → 9 Indian languages
+  //   - Else        → 10 foreign languages (English + Hindi diaspora + 8 majors)
+  // Default UI language is always English regardless of country; this endpoint
+  // only controls *which options* the dropdown shows, never the active one.
+  if (parts[2] === 'geo') {
+    const country = (
+      request.headers.get('cf-ipcountry') ||
+      request.headers.get('CF-IPCountry') ||
+      ''
+    ).toUpperCase();
+    const isIndia = country === 'IN';
+    const languages = isIndia
+      ? ['en', 'hi', 'ta', 'te', 'ml', 'kn', 'mr', 'bn', 'gu']
+      : ['en', 'hi', 'es', 'fr', 'de', 'it', 'nl', 'pt', 'ja', 'ko', 'zh-CN'];
+    // Build the response inline (rather than via cachedJson) because we need
+    // a `Vary: cf-ipcountry` header so Cloudflare's edge keys the 60-second
+    // cache by visitor country. Without Vary, an India response cached at
+    // the edge during one visitor's hit would be replayed to a US visitor
+    // arriving in the next 60s — silently giving them an Indian-language
+    // dropdown. We also drop the browser cache entirely (no-store) so the
+    // shopper's own browser never pins the wrong bucket either.
+    const cors = corsHeaders(request);
+    return new Response(
+      JSON.stringify({ success: true, message: 'Success', data: { country: country || 'XX', isIndia, languages } }),
+      {
+        status: 200,
+        headers: {
+          ...cors,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'CDN-Cache-Control': `public, max-age=${FALLBACK_CACHE_MAX_AGE}`,
+          'Vary': 'cf-ipcountry, Accept-Encoding',
+        },
+      },
+    );
+  }
+
   // /api/i18n/locale/:lang
   if (parts[2] !== 'locale' || !parts[3]) {
     return errorResponse('Not found', 404);
