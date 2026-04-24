@@ -178,17 +178,17 @@ export default function LandingPage() {
             </div>
             <div className="footer-links-group">
               <h4>{t('footerCompany')}</h4>
-              <Link to="/about">About Us</Link>
-              <Link to="/terms">Terms & Conditions</Link>
-              <Link to="/privacy-policy">Privacy Policy</Link>
-              <Link to="/refund-policy">Refund & Cancellation Policy</Link>
-              <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
+              <Link to="/about">{t('footerAbout')}</Link>
+              <Link to="/terms">{t('footerTerms')}</Link>
+              <Link to="/privacy-policy">{t('footerPrivacy')}</Link>
+              <Link to="/refund-policy">{t('footerRefund')}</Link>
+              <Link to="/shipping-policy">{t('footerShipping')}</Link>
             </div>
             <div className="footer-links-group">
               <h4>{t('footerContact')}</h4>
               <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <a href="tel:+919901954610">+91 9901954610</a>
-              <span>Karwar, Karnataka, India — 581400</span>
+              <span>{t('footerAddress')}</span>
             </div>
           </div>
           <div className="footer-bottom">

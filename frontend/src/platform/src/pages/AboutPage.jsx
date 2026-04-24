@@ -93,15 +93,15 @@ export default function AboutPage() {
 
         <footer className="legal-footer">
           <div className="legal-footer-links">
-            <Link to="/about">About Us</Link>
-            <Link to="/terms">Terms & Conditions</Link>
-            <Link to="/privacy-policy">Privacy Policy</Link>
-            <Link to="/refund-policy">Refund & Cancellation Policy</Link>
-            <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
+            <Link to="/about">{t('footerAbout')}</Link>
+            <Link to="/terms">{t('footerTerms')}</Link>
+            <Link to="/privacy-policy">{t('footerPrivacy')}</Link>
+            <Link to="/refund-policy">{t('footerRefund')}</Link>
+            <Link to="/shipping-policy">{t('footerShipping')}</Link>
           </div>
           <p>&copy; {new Date().getFullYear()} {RAW_BRAND}. {t('rightsReserved')}</p>
           <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-            {RAW_ADDRESS} | {RAW_PHONE} | {SUPPORT_EMAIL}
+            {t('footerAddress')} | {RAW_PHONE} | {SUPPORT_EMAIL}
           </p>
         </footer>
       </div>
