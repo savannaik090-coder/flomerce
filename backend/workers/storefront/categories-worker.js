@@ -4,6 +4,38 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock } from '../../utils/site-db.js';
+import { translateContentBatch, isTargetSupported } from '../../utils/server-translator.js';
+
+// Walks the parent → child → grandchild category tree and translates the
+// human-visible text fields (name, description, subtitle) in place.
+// Mutations only happen on locally-allocated objects from this request, so
+// no cross-request state is touched. Errors are swallowed and originals are
+// returned (Phase 1 invariant — translation must never break the response).
+async function translateCategoriesInPlace(env, siteId, lang, categories) {
+  if (!Array.isArray(categories) || categories.length === 0) return;
+  const slots = [];
+  function walk(cats) {
+    for (const c of cats) {
+      if (!c || typeof c !== 'object') continue;
+      if (typeof c.name === 'string' && c.name) slots.push({ ref: c, key: 'name', value: c.name });
+      if (typeof c.description === 'string' && c.description) slots.push({ ref: c, key: 'description', value: c.description });
+      if (typeof c.subtitle === 'string' && c.subtitle) slots.push({ ref: c, key: 'subtitle', value: c.subtitle });
+      if (Array.isArray(c.children)) walk(c.children);
+    }
+  }
+  walk(categories);
+  if (slots.length === 0) return;
+
+  const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+  const translations = result.translations;
+  for (let i = 0; i < slots.length; i++) {
+    const t = translations[i];
+    if (t === undefined || t === null) continue;
+    try { slots[i].ref[slots[i].key] = t; } catch (e) {
+      console.error('[categories] splice failed:', slots[i].key, e.message || e);
+    }
+  }
+}
 
 export async function handleCategories(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -18,11 +50,12 @@ export async function handleCategories(request, env, path, ctx) {
     const siteId = url.searchParams.get('siteId');
     const subdomain = url.searchParams.get('subdomain');
     const slug = url.searchParams.get('slug');
-    
+    const lang = url.searchParams.get('lang');
+
     if (categoryId) {
-      return getCategory(env, categoryId, siteId, subdomain);
+      return getCategory(env, categoryId, siteId, subdomain, lang);
     }
-    return getCategories(env, { siteId, subdomain, slug });
+    return getCategories(env, { siteId, subdomain, slug, lang });
   }
 
   let user = await validateAuth(request, env);
@@ -78,7 +111,7 @@ export async function handleCategories(request, env, path, ctx) {
   }
 }
 
-async function getCategories(env, { siteId, subdomain, slug }) {
+async function getCategories(env, { siteId, subdomain, slug, lang }) {
   try {
     let db;
     let resolvedSiteId = siteId;
@@ -142,6 +175,17 @@ async function getCategories(env, { siteId, subdomain, slug }) {
       })),
     }));
 
+    if (lang && resolvedSiteId) {
+      try {
+        const supported = await isTargetSupported(env, resolvedSiteId, lang);
+        if (supported.ok) {
+          await translateCategoriesInPlace(env, resolvedSiteId, lang, result);
+        }
+      } catch (e) {
+        console.error('[categories] translation skipped:', e.message || e);
+      }
+    }
+
     return cachedJsonResponse({ success: true, message: 'Success', data: result });
   } catch (error) {
     console.error('Get categories error:', error);
@@ -149,7 +193,7 @@ async function getCategories(env, { siteId, subdomain, slug }) {
   }
 }
 
-async function getCategory(env, categoryId, siteId, subdomain) {
+async function getCategory(env, categoryId, siteId, subdomain, lang) {
   try {
     if (!siteId && subdomain) {
       const site = await env.DB.prepare(
@@ -184,10 +228,23 @@ async function getCategory(env, categoryId, siteId, subdomain) {
       'SELECT * FROM categories WHERE parent_id = ? ORDER BY display_order'
     ).bind(categoryId).all();
 
-    return cachedJsonResponse({ success: true, message: 'Success', data: {
+    const data = {
       ...category,
-      children: children.results,
-    }});
+      children: children.results || [],
+    };
+
+    if (lang && category.site_id) {
+      try {
+        const supported = await isTargetSupported(env, category.site_id, lang);
+        if (supported.ok) {
+          await translateCategoriesInPlace(env, category.site_id, lang, [data]);
+        }
+      } catch (e) {
+        console.error('[category] translation skipped:', e.message || e);
+      }
+    }
+
+    return cachedJsonResponse({ success: true, message: 'Success', data });
   } catch (error) {
     console.error('Get category error:', error);
     return errorResponse('Failed to fetch category', 500);

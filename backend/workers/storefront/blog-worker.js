@@ -3,6 +3,51 @@ import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { resolveSiteDBById } from '../../utils/site-db.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, checkFeatureAccess } from '../../utils/usage-tracker.js';
+import { translateContentBatch, isTargetSupported } from '../../utils/server-translator.js';
+
+// Translates blog post content fields in place across an array of post
+// objects. The list endpoint hands us posts WITHOUT `content` (only excerpt
+// is exposed there) so we just check field-presence per post. tags[] is JSON
+// in the DB and parsed at the call site.
+// Errors are swallowed — translation must never break the response.
+async function translateBlogPostsInPlace(env, siteId, lang, posts) {
+  if (!Array.isArray(posts) || posts.length === 0) return;
+  const slots = [];
+  for (const p of posts) {
+    if (!p || typeof p !== 'object') continue;
+    if (typeof p.title === 'string' && p.title) slots.push({ ref: p, key: 'title', value: p.title });
+    if (typeof p.excerpt === 'string' && p.excerpt) slots.push({ ref: p, key: 'excerpt', value: p.excerpt });
+    if (typeof p.content === 'string' && p.content) slots.push({ ref: p, key: 'content', value: p.content });
+    if (typeof p.meta_title === 'string' && p.meta_title) slots.push({ ref: p, key: 'meta_title', value: p.meta_title });
+    if (typeof p.meta_description === 'string' && p.meta_description) slots.push({ ref: p, key: 'meta_description', value: p.meta_description });
+    if (typeof p.author === 'string' && p.author) slots.push({ ref: p, key: 'author', value: p.author });
+    if (Array.isArray(p.tags)) {
+      for (let i = 0; i < p.tags.length; i++) {
+        if (typeof p.tags[i] === 'string' && p.tags[i]) {
+          slots.push({ ref: p.tags, idx: i, kind: 'tag', value: p.tags[i] });
+        }
+      }
+    }
+  }
+  if (slots.length === 0) return;
+
+  const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+  const translations = result.translations;
+  for (let i = 0; i < slots.length; i++) {
+    const t = translations[i];
+    if (t === undefined || t === null) continue;
+    const s = slots[i];
+    try {
+      if (s.kind === 'tag') {
+        if (Array.isArray(s.ref) && s.idx < s.ref.length) s.ref[s.idx] = t;
+      } else if (s.ref && s.key) {
+        s.ref[s.key] = t;
+      }
+    } catch (e) {
+      console.error('[blog] splice failed:', s.key || s.kind, e.message || e);
+    }
+  }
+}
 
 const _tableReady = new Set();
 
@@ -141,10 +186,19 @@ async function isBlogEnabled(db, siteId) {
   }
 }
 
+function parseTagsField(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string' && raw) {
+    try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  return [];
+}
+
 async function listPosts(request, env) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
+    const lang = url.searchParams.get('lang');
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const db = await resolveSiteDBById(env, siteId);
@@ -168,8 +222,21 @@ async function listPosts(request, env) {
       `SELECT COUNT(*) as total FROM blog_posts WHERE site_id = ? AND status = 'published'`
     ).bind(siteId).first();
 
+    const postsList = (posts.results || []).map((p) => ({ ...p, tags: parseTagsField(p.tags) }));
+
+    if (lang) {
+      try {
+        const supported = await isTargetSupported(env, siteId, lang);
+        if (supported.ok) {
+          await translateBlogPostsInPlace(env, siteId, lang, postsList);
+        }
+      } catch (e) {
+        console.error('[blog] translation skipped:', e.message || e);
+      }
+    }
+
     return cachedJsonResponse({ success: true, message: 'Success', data: {
-      posts: posts.results || [],
+      posts: postsList,
       total: countResult?.total || 0,
       page,
       totalPages: Math.ceil((countResult?.total || 0) / limit),
@@ -184,6 +251,7 @@ async function getPost(request, env, slug) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
+    const lang = url.searchParams.get('lang');
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const db = await resolveSiteDBById(env, siteId);
@@ -200,6 +268,19 @@ async function getPost(request, env, slug) {
     ).bind(siteId, slug).first();
 
     if (!post) return errorResponse('Blog post not found', 404);
+
+    post.tags = parseTagsField(post.tags);
+
+    if (lang) {
+      try {
+        const supported = await isTargetSupported(env, siteId, lang);
+        if (supported.ok) {
+          await translateBlogPostsInPlace(env, siteId, lang, [post]);
+        }
+      } catch (e) {
+        console.error('[blog] translation skipped:', e.message || e);
+      }
+    }
 
     return cachedJsonResponse({ success: true, message: 'Success', data: post });
   } catch (error) {

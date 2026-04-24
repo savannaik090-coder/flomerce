@@ -3,6 +3,32 @@ import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAnyAuth } from '../../utils/auth.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Write, checkFeatureAccess } from '../../utils/usage-tracker.js';
+import { translateContentBatch, isTargetSupported } from '../../utils/server-translator.js';
+
+// Translates the user-written portion of each review (title + content). We
+// deliberately do NOT translate `customer_name` because that's a person's
+// actual name. Errors are swallowed so review listings keep working even if
+// the translator is unavailable.
+async function translateReviewsInPlace(env, siteId, lang, reviews) {
+  if (!Array.isArray(reviews) || reviews.length === 0) return;
+  const slots = [];
+  for (const r of reviews) {
+    if (!r || typeof r !== 'object') continue;
+    if (typeof r.title === 'string' && r.title) slots.push({ ref: r, key: 'title', value: r.title });
+    if (typeof r.content === 'string' && r.content) slots.push({ ref: r, key: 'content', value: r.content });
+  }
+  if (slots.length === 0) return;
+
+  const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+  const translations = result.translations;
+  for (let i = 0; i < slots.length; i++) {
+    const t = translations[i];
+    if (t === undefined || t === null) continue;
+    try { slots[i].ref[slots[i].key] = t; } catch (e) {
+      console.error('[reviews] splice failed:', slots[i].key, e.message || e);
+    }
+  }
+}
 
 async function ensureReviewColumns(db) {
   try { await db.prepare(`ALTER TABLE reviews ADD COLUMN order_id TEXT`).run(); } catch (e) {}
@@ -99,6 +125,7 @@ async function getProductReviews(request, env, productId) {
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
+    const lang = url.searchParams.get('lang');
     if (!siteId) return errorResponse('siteId is required', 400);
 
     const db = await resolveSiteDBById(env, siteId);
@@ -129,6 +156,17 @@ async function getProductReviews(request, env, productId) {
       ...r,
       images: parseJsonSafe(r.images),
     }));
+
+    if (lang) {
+      try {
+        const supported = await isTargetSupported(env, siteId, lang);
+        if (supported.ok) {
+          await translateReviewsInPlace(env, siteId, lang, reviewsData);
+        }
+      } catch (e) {
+        console.error('[reviews] translation skipped:', e.message || e);
+      }
+    }
 
     return cachedJsonResponse({
       success: true,

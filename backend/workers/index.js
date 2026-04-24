@@ -27,6 +27,7 @@ import { cachedJsonResponse } from '../utils/cache.js';
 import { PLATFORM_DOMAIN } from '../config.js';
 import { ensureTablesExist } from '../utils/db-init.js';
 import { resolveSiteDBById, getSiteConfig } from '../utils/site-db.js';
+import { translateContentBatch, isTargetSupported } from '../utils/server-translator.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -482,6 +483,7 @@ async function handleSiteInfo(request, env) {
   const url = new URL(request.url);
   const hostname = url.hostname;
   const subdomain = url.searchParams.get('subdomain');
+  const lang = url.searchParams.get('lang');
 
   let siteRow = null;
 
@@ -584,21 +586,87 @@ async function handleSiteInfo(request, env) {
       };
     }
 
+    const responseData = {
+      ...site,
+      socialLinks,
+      settings: publicSettings,
+      categories: categoriesResult,
+      pageSEO,
+      googleClientId,
+      vapidPublicKey,
+    };
+
+    if (lang && site.id) {
+      try {
+        const supported = await isTargetSupported(env, site.id, lang);
+        if (supported.ok) {
+          await translateSiteInfoInPlace(env, site.id, lang, responseData);
+        }
+      } catch (e) {
+        console.error('[site] translation skipped:', e.message || e);
+      }
+    }
+
     return cachedJsonResponse({
       success: true,
-      data: {
-        ...site,
-        socialLinks,
-        settings: publicSettings,
-        categories: categoriesResult,
-        pageSEO,
-        googleClientId,
-        vapidPublicKey,
-      },
+      data: responseData,
     }, 200, request);
   } catch (error) {
     console.error('Get site info error:', error);
     return errorResponse('Failed to fetch site info: ' + error.message, 500);
+  }
+}
+
+// Translates the merchant-facing strings on the /api/site payload in place.
+// Covers: brand name, tagline (if present in settings), recursive categories
+// (name/description/subtitle), and pageSEO entries (seo_title/seo_description).
+// Errors are swallowed — translation failure must never break /api/site.
+async function translateSiteInfoInPlace(env, siteId, lang, data) {
+  const slots = [];
+
+  if (typeof data.brand_name === 'string' && data.brand_name) {
+    slots.push({ ref: data, key: 'brand_name', value: data.brand_name });
+  }
+  if (data.settings && typeof data.settings === 'object') {
+    if (typeof data.settings.tagline === 'string' && data.settings.tagline) {
+      slots.push({ ref: data.settings, key: 'tagline', value: data.settings.tagline });
+    }
+    if (typeof data.settings.about === 'string' && data.settings.about) {
+      slots.push({ ref: data.settings, key: 'about', value: data.settings.about });
+    }
+  }
+
+  function walkCats(cats) {
+    if (!Array.isArray(cats)) return;
+    for (const c of cats) {
+      if (!c || typeof c !== 'object') continue;
+      if (typeof c.name === 'string' && c.name) slots.push({ ref: c, key: 'name', value: c.name });
+      if (typeof c.description === 'string' && c.description) slots.push({ ref: c, key: 'description', value: c.description });
+      if (typeof c.subtitle === 'string' && c.subtitle) slots.push({ ref: c, key: 'subtitle', value: c.subtitle });
+      if (Array.isArray(c.children)) walkCats(c.children);
+    }
+  }
+  walkCats(data.categories);
+
+  if (data.pageSEO && typeof data.pageSEO === 'object') {
+    for (const key of Object.keys(data.pageSEO)) {
+      const ps = data.pageSEO[key];
+      if (!ps || typeof ps !== 'object') continue;
+      if (typeof ps.seo_title === 'string' && ps.seo_title) slots.push({ ref: ps, key: 'seo_title', value: ps.seo_title });
+      if (typeof ps.seo_description === 'string' && ps.seo_description) slots.push({ ref: ps, key: 'seo_description', value: ps.seo_description });
+    }
+  }
+
+  if (slots.length === 0) return;
+
+  const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+  const translations = result.translations;
+  for (let i = 0; i < slots.length; i++) {
+    const t = translations[i];
+    if (t === undefined || t === null) continue;
+    try { slots[i].ref[slots[i].key] = t; } catch (e) {
+      console.error('[site] splice failed:', slots[i].key, e.message || e);
+    }
   }
 }
 

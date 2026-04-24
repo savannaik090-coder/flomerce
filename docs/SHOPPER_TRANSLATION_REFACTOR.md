@@ -99,11 +99,17 @@ Wired the helper into the products endpoint. Fully backward compatible: no
 products into a single Microsoft round-trip (when needed). Translation errors
 are swallowed and originals returned so the storefront never breaks.
 
-### Phase 2 — Roll out to remaining storefront endpoints [⏳ Next]
-`/api/categories`, `/api/categories/:id`, `/api/blog/posts`,
-`/api/blog/post/:slug`, `/api/site`, `/api/reviews/product/:id`.
+### Phase 2 — Roll out to remaining storefront endpoints [✅ Done]
+Same `?lang=` pattern applied to `/api/categories` (list + by-id, recursive
+through children + grandchildren), `/api/blog/posts` and
+`/api/blog/post/:slug` (title, excerpt, content, meta tags, author,
+parsed `tags[]`), `/api/reviews/product/:id` (review title + body,
+intentionally NOT customer name), and `/api/site` (brand name, tagline,
+about, recursive categories, pageSEO entries). Each endpoint stays
+fully backward compatible: omit `?lang=` and the response is identical
+to today.
 
-### Phase 3 — Frontend: pass `?lang=` and stop wrapping content fields
+### Phase 3 — Frontend: pass `?lang=` and stop wrapping content fields [⏳ Next]
 `api.js` reads `localStorage flomerce_lang`, appends `&lang=...` to every
 storefront API call. Remove `<TranslatedText>` wrappers from `product.name`,
 `category.name`, etc. Keep wrappers for static UI labels.
@@ -126,13 +132,13 @@ deprecated. Update `replit.md`.
 | Endpoint | Fields translated server-side |
 |---|---|
 | `/api/products` | `name`, `description`, `short_description`, `category_name`, `subcategory_name`, parsed `tags[]`, parsed `options[].name` and `options[].values[]` |
-| `/api/products/:id` | Same as above + review excerpts (if joined) |
-| `/api/categories` | `name`, `description` |
-| `/api/categories/:id` | Same |
-| `/api/blog/posts` | `title`, `excerpt` |
-| `/api/blog/post/:slug` | `title`, `excerpt`, `content` (long-form: chunked + cached per-paragraph) |
-| `/api/site` | `name`, `tagline`, `description`, footer copy in `settings.*` |
-| `/api/reviews/product/:id` | `comment`, `title` |
+| `/api/products/:id` | Same as above |
+| `/api/categories` | `name`, `description`, `subtitle` (recursive through `children[]` and grandchildren) |
+| `/api/categories/:id` | Same (recursive) |
+| `/api/blog/posts` | `title`, `excerpt`, `author`, parsed `tags[]` |
+| `/api/blog/post/:slug` | `title`, `excerpt`, `content`, `meta_title`, `meta_description`, `author`, parsed `tags[]` |
+| `/api/reviews/product/:id` | Review `title`, `content` (NOT `customer_name` — that's a real person's name) |
+| `/api/site` | `brand_name`, `settings.tagline`, `settings.about`, recursive `categories[].name/description/subtitle`, `pageSEO[*].seo_title/seo_description` |
 
 Fields explicitly NOT translated: prices, currency codes, slugs, IDs, image
 URLs, dates, SKUs, status enums.
