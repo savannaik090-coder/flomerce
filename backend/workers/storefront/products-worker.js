@@ -5,6 +5,94 @@ import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update, removeMediaFile } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn } from '../../utils/site-db.js';
 import { triggerAutoNotification } from './notifications-worker.js';
+import { translateContentBatch, isTargetSupported } from '../../utils/server-translator.js';
+
+/**
+ * Walk a list of products and collect every translatable string into a flat
+ * array, remembering the (productIndex, accessor) for each so we can splice
+ * translations back. Then call translateContentBatch once for all products
+ * in one Microsoft round-trip (when needed). Mutates products in place.
+ *
+ * Translatable fields per product:
+ *   - name, description, short_description
+ *   - category_name, subcategory_name (joined columns)
+ *   - tags[] (JSON array of strings)
+ *   - options[].name and options[].values[] (JSON)
+ *
+ * Fields explicitly NOT translated: prices, slugs, IDs, image URLs, dates,
+ * SKUs, status enums, brand_name (treated as proper noun).
+ */
+async function translateProductsInPlace(env, siteId, products, lang) {
+  if (!Array.isArray(products) || products.length === 0) return;
+
+  const slots = [];
+  for (let pi = 0; pi < products.length; pi++) {
+    const p = products[pi];
+    if (p.name) slots.push({ pi, kind: 'name', value: String(p.name) });
+    if (p.description) slots.push({ pi, kind: 'description', value: String(p.description) });
+    if (p.short_description) slots.push({ pi, kind: 'short_description', value: String(p.short_description) });
+    if (p.category_name) slots.push({ pi, kind: 'category_name', value: String(p.category_name) });
+    if (p.subcategory_name) slots.push({ pi, kind: 'subcategory_name', value: String(p.subcategory_name) });
+    if (Array.isArray(p.tags)) {
+      for (let ti = 0; ti < p.tags.length; ti++) {
+        if (typeof p.tags[ti] === 'string' && p.tags[ti]) {
+          slots.push({ pi, kind: 'tag', idx: ti, value: p.tags[ti] });
+        }
+      }
+    }
+    if (Array.isArray(p.options)) {
+      for (let oi = 0; oi < p.options.length; oi++) {
+        const opt = p.options[oi];
+        if (opt && typeof opt.name === 'string' && opt.name) {
+          slots.push({ pi, kind: 'option_name', oi, value: opt.name });
+        }
+        if (opt && Array.isArray(opt.values)) {
+          for (let vi = 0; vi < opt.values.length; vi++) {
+            if (typeof opt.values[vi] === 'string' && opt.values[vi]) {
+              slots.push({ pi, kind: 'option_value', oi, vi, value: opt.values[vi] });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (slots.length === 0) return;
+
+  const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+  const translations = result.translations;
+
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    const t = translations[i];
+    if (t === undefined || t === null) continue;
+    const p = products[s.pi];
+    if (!p) continue;
+    try {
+      switch (s.kind) {
+        case 'name': p.name = t; break;
+        case 'description': p.description = t; break;
+        case 'short_description': p.short_description = t; break;
+        case 'category_name': p.category_name = t; break;
+        case 'subcategory_name': p.subcategory_name = t; break;
+        case 'tag':
+          if (Array.isArray(p.tags) && s.idx < p.tags.length) p.tags[s.idx] = t;
+          break;
+        case 'option_name':
+          if (Array.isArray(p.options) && p.options[s.oi]) p.options[s.oi].name = t;
+          break;
+        case 'option_value':
+          if (Array.isArray(p.options) && p.options[s.oi] && Array.isArray(p.options[s.oi].values) && s.vi < p.options[s.oi].values.length) {
+            p.options[s.oi].values[s.vi] = t;
+          }
+          break;
+      }
+    } catch (e) {
+      // Defensive: never let a single splice failure break the whole response.
+      console.error('[products] splice slot failed:', s.kind, e.message || e);
+    }
+  }
+}
 
 export async function handleProducts(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -30,11 +118,12 @@ export async function handleProducts(request, env, path, ctx) {
     const category = url.searchParams.get('category');
     const categoryId = url.searchParams.get('categoryId');
     const subcategoryId = url.searchParams.get('subcategoryId');
-    
+    const lang = url.searchParams.get('lang');
+
     if (productId) {
-      return getProduct(env, productId, siteId, subdomain);
+      return getProduct(env, productId, siteId, subdomain, lang);
     }
-    return getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url });
+    return getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url, lang });
   }
 
   let user = await validateAuth(request, env);
@@ -92,7 +181,7 @@ export async function handleProducts(request, env, path, ctx) {
   }
 }
 
-async function getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url }) {
+async function getProducts(env, { siteId, subdomain, category, categoryId, subcategoryId, url, lang }) {
   try {
     if (!siteId && !subdomain) {
       return errorResponse('siteId or subdomain is required to fetch products');
@@ -154,6 +243,17 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, subca
       options: product.options ? JSON.parse(product.options) : null,
     }));
 
+    if (lang && siteId) {
+      const supported = await isTargetSupported(env, siteId, lang);
+      if (supported.ok) {
+        try {
+          await translateProductsInPlace(env, siteId, parsedProducts, lang);
+        } catch (e) {
+          console.error('[products] translation failed, returning originals:', e.message || e);
+        }
+      }
+    }
+
     return cachedJsonResponse({ success: true, message: 'Success', data: parsedProducts });
   } catch (error) {
     console.error('Get products error:', error);
@@ -161,7 +261,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, subca
   }
 }
 
-async function getProduct(env, productId, siteId, subdomain) {
+async function getProduct(env, productId, siteId, subdomain, lang) {
   try {
     if (!siteId && subdomain) {
       const site = await env.DB.prepare(
@@ -231,6 +331,17 @@ async function getProduct(env, productId, siteId, subdomain) {
         attributes: v.attributes ? JSON.parse(v.attributes) : {},
       })),
     };
+
+    if (lang && product.site_id) {
+      const supported = await isTargetSupported(env, product.site_id, lang);
+      if (supported.ok) {
+        try {
+          await translateProductsInPlace(env, product.site_id, [parsedProduct], lang);
+        } catch (e) {
+          console.error('[product] translation failed, returning originals:', e.message || e);
+        }
+      }
+    }
 
     return cachedJsonResponse({ success: true, message: 'Success', data: parsedProduct });
   } catch (error) {
