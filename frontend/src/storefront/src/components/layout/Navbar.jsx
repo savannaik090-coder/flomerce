@@ -1,6 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { CartContext } from '../../context/CartContext.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
@@ -18,8 +17,6 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openSubGroups, setOpenSubGroups] = useState(new Set());
   const navigate = useNavigate();
-  const { t } = useTranslation('storefront');
-
   useEffect(() => {
     if (menuOpen) {
       document.body.style.overflow = 'hidden';
@@ -94,7 +91,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
         const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
 
         if (isSingle) {
-          const text = validMsgs.length === 1 ? validMsgs[0] : t('nav.welcomeFallback', { brandName: siteConfig?.brandName || 'Our Store' });
+          const text = validMsgs.length === 1 ? validMsgs[0] : `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
           return (
             <div className="promo-banner" style={{ justifyContent: 'center' }}>
               <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>{text}</p>
@@ -115,7 +112,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       <nav className="navbar">
         <div className={`nav-container${isCentered ? ' nav-container--logo-center' : ''}`}>
           <div className="hamburger" onClick={() => setMenuOpen(true)}>
-            <img src="/images/icons/bars-staggered (2).png" alt={t('nav.menu')} style={{ width: 25, height: 25 }} />
+            <img src="/images/icons/bars-staggered (2).png" alt=<TranslatedText text="Menu" /> style={{ width: 25, height: 25 }} />
           </div>
 
           <Link to="/" className={`brand${isCentered ? ' brand--center' : ''}`}>
@@ -137,7 +134,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             <i className="fa-solid fa-xmark meenu-close" onClick={closeMobileMenu} style={{ fontSize: 24, color: '#333', cursor: 'pointer' }}></i>
 
             <ul className="nav-list">
-              <li className="nav-item"><Link to="/" className="nav-link" onClick={closeMobileMenu}>{t('nav.home')}</Link></li>
+              <li className="nav-item"><Link to="/" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="Home" /></Link></li>
               {hasCustomNavbar && validMenus.map((menu) => {
                 const activeLinks = menu.links.filter(l => l.label && l.url);
                 if (activeLinks.length === 0) return null;
@@ -161,7 +158,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                             <li key={link.id} className={`sub-group${isExpanded ? ' sub-group-open' : ''}`}>
                               <div className="grouped-cat-header">
                                 <Link to={link.url} onClick={closeMobileMenu} className="grouped-cat-link">{link.label}</Link>
-                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label={t('nav.showSubcategories')}>
+                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label=<TranslatedText text="Show subcategories" />>
                                   <i className="fas fa-plus"></i>
                                 </button>
                               </div>
@@ -214,7 +211,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                     <li className={`nav-item cat-with-subs${openDropdown === (cat.id || cat.slug) ? ' dropdown-open' : ''}`} key={cat.id || cat.slug}>
                       <div className="nav-link-row">
                         <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}><TranslatedText text={cat.name} /></Link>
-                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label={t('nav.showSubcategories')}>
+                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label=<TranslatedText text="Show subcategories" />>
                           <i className={`fas fa-plus`}></i>
                         </button>
                       </div>
@@ -249,32 +246,32 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                   </li>
                 );
               })}
-              {showAbout && <li className="nav-item"><Link to="/about" className="nav-link" onClick={closeMobileMenu}>{t('nav.about')}</Link></li>}
-              {showBookAppointment && <li className="nav-item"><Link to="/book-appointment" className="nav-link" onClick={closeMobileMenu}>{t('nav.bookAppointment')}</Link></li>}
+              {showAbout && <li className="nav-item"><Link to="/about" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="About" /></Link></li>}
+              {showBookAppointment && <li className="nav-item"><Link to="/book-appointment" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="Book Appointment" /></Link></li>}
               {showOrderTrack && (
                 orderTrackUrl ? (
-                  <li className="nav-item"><a href={orderTrackUrl} className="nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}>{t('nav.orderTrack')}</a></li>
+                  <li className="nav-item"><a href={orderTrackUrl} className="nav-link" target="_blank" rel="noopener noreferrer" onClick={closeMobileMenu}><TranslatedText text="Order Track" /></a></li>
                 ) : (
-                  <li className="nav-item"><Link to="/order-track" className="nav-link" onClick={closeMobileMenu}>{t('nav.orderTrack')}</Link></li>
+                  <li className="nav-item"><Link to="/order-track" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="Order Track" /></Link></li>
                 )
               )}
-              {settings.blogInNavbar && settings.showBlog !== false && <li className="nav-item"><Link to="/blog" className="nav-link" onClick={closeMobileMenu}>{t('nav.blog')}</Link></li>}
-              {settings.faqInNavbar && settings.showFaq !== false && <li className="nav-item"><Link to="/faq" className="nav-link" onClick={closeMobileMenu}>{t('nav.faq')}</Link></li>}
-              {showContact && <li className="nav-item"><Link to="/contact" className="nav-link" onClick={closeMobileMenu}>{t('nav.contact')}</Link></li>}
+              {settings.blogInNavbar && settings.showBlog !== false && <li className="nav-item"><Link to="/blog" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="Blog" /></Link></li>}
+              {settings.faqInNavbar && settings.showFaq !== false && <li className="nav-item"><Link to="/faq" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="FAQ" /></Link></li>}
+              {showContact && <li className="nav-item"><Link to="/contact" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="Contact" /></Link></li>}
             </ul>
 
             <div className="mobile-account-links mobile-special">
               {showAccountIcon && (
                 <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
-                  <img src="/images/icons/user.png" alt={t('nav.account')} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> {t('nav.account')}
+                  <img src="/images/icons/user.png" alt=<TranslatedText text="Account" /> style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Account" />
                 </Link>
               )}
               <a href="#" className="mobile-account-link wishlist-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onWishlistOpen?.(); }}>
-                <img src="/images/icons/heart.png" alt={t('nav.wishlist')} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> {t('nav.wishlist')} ({wishlistCount})
+                <img src="/images/icons/heart.png" alt=<TranslatedText text="Wishlist" /> style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Wishlist" /> ({wishlistCount})
               </a>
               {showCartIcon && (
                 <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
-                  <img src="/images/icons/cart-minus.png" alt={t('nav.cart')} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> {t('nav.shoppingBag')} ({cartCount})
+                  <img src="/images/icons/cart-minus.png" alt=<TranslatedText text="Cart" /> style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Shopping Bag" /> ({cartCount})
                 </a>
               )}
             </div>
@@ -283,20 +280,20 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           <div className="nav-icons">
             <LanguageSwitcher compact />
             <a href="#" className="icon-link search-icon" onClick={(e) => { e.preventDefault(); onSearchOpen?.(); }}>
-              <img src="/images/icons/search.png" alt={t('nav.search')} style={{ width: 20, height: 20 }} />
+              <img src="/images/icons/search.png" alt=<TranslatedText text="Search" /> style={{ width: 20, height: 20 }} />
             </a>
             {showAccountIcon && (
               <Link to={isAuthenticated ? '/profile' : '/login'} className="icon-link account-icon">
-                <img src="/images/icons/user.png" alt={t('nav.account')} style={{ width: 25, height: 25 }} />
+                <img src="/images/icons/user.png" alt=<TranslatedText text="Account" /> style={{ width: 25, height: 25 }} />
               </Link>
             )}
             <a href="#" className="icon-link wishlist-icon-container wishlist-toggle" onClick={(e) => { e.preventDefault(); onWishlistOpen?.(); }}>
-              <img src="/images/icons/heart.png" alt={t('nav.wishlist')} style={{ width: 20, height: 20 }} />
+              <img src="/images/icons/heart.png" alt=<TranslatedText text="Wishlist" /> style={{ width: 20, height: 20 }} />
               <div className="wishlist-count">{wishlistCount}</div>
             </a>
             {showCartIcon && (
               <a href="#" className="icon-link cart-icon-container cart-toggle" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
-                <img src="/images/icons/cart-minus.png" alt={t('nav.cart')} style={{ width: 20, height: 20 }} />
+                <img src="/images/icons/cart-minus.png" alt=<TranslatedText text="Cart" /> style={{ width: 20, height: 20 }} />
                 <div className="cart-count">{cartCount}</div>
               </a>
             )}

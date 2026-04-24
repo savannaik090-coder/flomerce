@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import * as productService from '../../services/productService.js';
 import ProductCard from './ProductCard.jsx';
 import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
+import TranslatedText from '../TranslatedText';
 
 function shuffleArray(arr) {
   const shuffled = [...arr];
@@ -16,7 +16,6 @@ function shuffleArray(arr) {
 }
 
 export default function RelatedProducts({ currentProductId, categoryId, onWishlistToggle, isInWishlist }) {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const theme = useTheme();
   const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
@@ -53,7 +52,7 @@ export default function RelatedProducts({ currentProductId, categoryId, onWishli
 
   return (
     <section className="related-products-section">
-      <h2 className="section-title">{t('product.related.youMayAlsoLike', 'You May Also Like')}</h2>
+      <h2 className="section-title"><TranslatedText text="You May Also Like" /></h2>
       <div className="related-products-scroll">
         {products.map(product => (
           <Card

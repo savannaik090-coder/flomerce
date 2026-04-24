@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
-import { LanguageSwitcher } from '../../../shared/i18n/index.js';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { API_BASE } from '../config.js';
 import AdminSidebar from '../components/admin/AdminSidebar.jsx';
@@ -22,7 +20,6 @@ import { apiRequest } from '../services/api.js';
 import '../styles/admin.css';
 
 export default function AdminPanel() {
-  const { t } = useTranslation(['admin', 'common']);
   const { siteConfig } = useContext(SiteContext);
   const [verified, setVerified] = useState(() => {
     const token = sessionStorage.getItem('site_admin_token');
@@ -145,13 +142,13 @@ export default function AdminPanel() {
         url.searchParams.delete('token');
         window.history.replaceState({}, '', url.pathname);
       } else {
-        setLoginError(t('autoLoginInvalid'));
+        setLoginError("Auto-login token is invalid or expired. Please log in.");
         const url = new URL(window.location);
         url.searchParams.delete('token');
         window.history.replaceState({}, '', url.pathname);
       }
     } catch (err) {
-      setLoginError(t('autoLoginFailed'));
+      setLoginError("Auto-login failed. Please log in.");
       const url = new URL(window.location);
       url.searchParams.delete('token');
       window.history.replaceState({}, '', url.pathname);
@@ -196,10 +193,10 @@ export default function AdminPanel() {
           setActiveSection(perms[0]);
         }
       } else {
-        setLoginError(result.error || result.message || t('invalidCredentials'));
+        setLoginError(result.error || result.message || "Invalid email or password");
       }
     } catch (err) {
-      setLoginError(t('loginFailed'));
+      setLoginError("Login failed. Please try again.");
     } finally {
       setLoginLoading(false);
     }
@@ -234,7 +231,7 @@ export default function AdminPanel() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 48, height: 48, border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ color: '#64748b', fontSize: 15, fontWeight: 500 }}>{t('authenticating')}</p>
+          <p style={{ color: '#64748b', fontSize: 15, fontWeight: 500 }}>Authenticating...</p>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
@@ -249,13 +246,13 @@ export default function AdminPanel() {
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <i className="fas fa-lock" style={{ color: '#2563eb', fontSize: 22 }} />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>{t('staffLogin')}</h1>
-            <p style={{ color: '#64748b', fontSize: 14 }}>{t('staffLoginDesc')}</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: '#0f172a' }}>Staff Login</h1>
+            <p style={{ color: '#64748b', fontSize: 14 }}>Enter your email and password to access the admin panel.</p>
           </div>
           <form onSubmit={handleLogin}>
             <input
               type="email"
-              placeholder={t('common:email')}
+              placeholder="Email address"
               value={emailInput}
               onChange={e => { setEmailInput(e.target.value); setLoginError(''); }}
               style={{ width: '100%', padding: '12px 16px', border: `1px solid ${loginError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 12, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
@@ -263,14 +260,14 @@ export default function AdminPanel() {
             />
             <input
               type="password"
-              placeholder={t('common:password')}
+              placeholder="Password"
               value={passwordInput}
               onChange={e => { setPasswordInput(e.target.value); setLoginError(''); }}
               style={{ width: '100%', padding: '12px 16px', border: `1px solid ${loginError ? '#ef4444' : '#e2e8f0'}`, borderRadius: 8, fontSize: 15, marginBottom: 8, boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
             />
             {loginError && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12 }}>{loginError}</p>}
             <button type="submit" disabled={loginLoading} style={{ width: '100%', padding: '12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: loginLoading ? 'not-allowed' : 'pointer', marginTop: 8, fontFamily: 'inherit' }}>
-              {loginLoading ? t('loggingIn') : t('logIn')}
+              {loginLoading ? "Logging in..." : "Log In"}
             </button>
           </form>
         </div>
@@ -287,17 +284,17 @@ export default function AdminPanel() {
   const showProductForm = addingProduct || editingProduct;
 
   const sectionTitles = {
-    dashboard: t('sections.dashboard'),
-    products: showProductForm ? (editingProduct ? t('sections.editProduct') : t('sections.addProduct')) : t('sections.products'),
-    inventory: t('sections.inventory'),
-    orders: t('sections.orders'),
-    customers: t('sections.customers'),
-    revenue: t('sections.revenue'),
-    analytics: t('sections.analytics'),
-    website: t('sections.website'),
-    seo: t('sections.seo'),
-    notifications: t('sections.notifications'),
-    settings: t('sections.settings'),
+    dashboard: "Dashboard",
+    products: showProductForm ? (editingProduct ? "Edit Product" : "Add Product") : "Products",
+    inventory: "Inventory",
+    orders: "Orders",
+    customers: "Customers",
+    revenue: "Revenue",
+    analytics: "Analytics",
+    website: "Edit Website",
+    seo: "SEO",
+    notifications: "Push Notifications",
+    settings: "Settings",
   };
 
   return (
@@ -319,11 +316,8 @@ export default function AdminPanel() {
             <i className="fas fa-bars" />
           </button>
           <div className="admin-header-title">
-            <h1>{sectionTitles[activeSection] || t('panelTitle')}</h1>
-            <span className="admin-brand">{siteConfig?.brand_name || siteConfig?.brandName || t('store')}</span>
-          </div>
-          <div style={{ marginInlineStart: 'auto' }}>
-            <LanguageSwitcher compact />
+            <h1>{sectionTitles[activeSection] || "Admin Panel"}</h1>
+            <span className="admin-brand">{siteConfig?.brand_name || siteConfig?.brandName || "Store"}</span>
           </div>
         </header>
 

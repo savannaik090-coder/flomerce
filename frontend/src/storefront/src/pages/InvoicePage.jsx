@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { getApiUrl } from '../services/api.js';
 
 function formatCurrency(amount, currency = 'INR') {
@@ -37,7 +36,6 @@ function calcGST(price, qty, gstRate, storeState, customerState) {
 }
 
 export default function InvoicePage() {
-  const { t: tr } = useTranslation('storefront');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

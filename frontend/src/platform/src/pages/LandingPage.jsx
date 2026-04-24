@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import Navbar from '../components/Navbar.jsx';
 import LandingPricing from '../components/LandingPricing.jsx';
 import ContactForm from '../components/ContactForm.jsx';
@@ -32,8 +31,16 @@ function useScrollReveal() {
   }, []);
 }
 
+const FEATURE_TEXT = {
+  store: { title: 'Complete Online Store', desc: 'Launch a fully functional e-commerce store with product listings, categories, and a beautiful storefront — ready to sell in minutes.' },
+  orders: { title: 'Order Management', desc: 'Track orders from placement to delivery with status updates, customer notifications, and shipping management built in.' },
+  payments: { title: 'Secure Payments', desc: 'Accept payments via Razorpay with support for UPI, cards, net banking, and wallets. Cash on delivery also supported.' },
+  analytics: { title: 'Built-in Analytics', desc: 'Monitor your store performance with visitor tracking, page views, traffic sources, and sales insights from your admin panel.' },
+  push: { title: 'Push Notifications', desc: 'Engage customers with web push notifications for new products, price drops, and back-in-stock alerts — all automated.' },
+  seo: { title: 'Custom Domain & SEO', desc: 'Connect your own domain, optimize for search engines with built-in SEO tools, sitemaps, and structured data for Google rich results.' },
+};
+
 export default function LandingPage() {
-  const { t } = useTranslation('landing');
   const [showPwa, setShowPwa] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const videoRef = useRef(null);
@@ -97,24 +104,24 @@ export default function LandingPage() {
 
         <section className="hero">
           <div className="hero-content reveal">
-            <div className="hero-badge">{t('heroBadge')}</div>
-            <h1>{t('heroTitleLine1')}<br /><span className="hero-accent">{t('heroTitleLine2')}</span><br />{t('heroTitleLine3')}</h1>
-            <p className="hero-desc">{t('heroDesc')}</p>
+            <div className="hero-badge">Launch Your E-Commerce Store for Less Than ₹10/Day</div>
+            <h1>Build Your<br /><span className="hero-accent">Online Store</span><br />No Code Needed</h1>
+            <p className="hero-desc">Flomerce helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.</p>
             <div className="hero-buttons">
               <Link to="/signup" className="btn btn-hero-primary">
-                {t('heroCtaPrimary')}
+                Get Started Free
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </Link>
-              <a href="#features" className="btn btn-hero-ghost" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>{t('heroCtaSecondary')}</a>
+              <a href="#features" className="btn btn-hero-ghost" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }}>Learn More</a>
             </div>
           </div>
         </section>
 
         <section className="landing-section teaser-section reveal">
           <div className="section-header">
-            <span className="section-pill">{t('demoPill')}</span>
-            <h2>{t('demoTitle')}</h2>
-            <p>{t('demoSubtitle')}</p>
+            <span className="section-pill">Demo</span>
+            <h2>See Flomerce in Action</h2>
+            <p>Watch how easy it is to build and manage your online store.</p>
           </div>
           <div className="teaser-wrapper">
             <div className="teaser-browser-frame">
@@ -131,7 +138,7 @@ export default function LandingPage() {
                   <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
                 </video>
                 {!videoPlaying && (
-                  <button className="teaser-play-btn" onClick={handlePlayVideo} aria-label={t('playVideo')}>
+                  <button className="teaser-play-btn" onClick={handlePlayVideo} aria-label="Play video">
                     <svg width="52" height="52" viewBox="0 0 52 52" fill="none"><circle cx="26" cy="26" r="26" fill="rgba(0,0,0,0.45)"/><path d="M21 16l14 10-14 10V16z" fill="#fff"/></svg>
                   </button>
                 )}
@@ -142,16 +149,16 @@ export default function LandingPage() {
 
         <section id="features" className="landing-section reveal">
           <div className="section-header">
-            <span className="section-pill">{t('featuresPill')}</span>
-            <h2>{t('featuresTitle')}</h2>
-            <p>{t('featuresSubtitle')}</p>
+            <span className="section-pill">Features</span>
+            <h2>Everything You Need to Sell Online</h2>
+            <p>From store setup to order delivery, Flomerce gives you all the tools to run your online business.</p>
           </div>
           <div className="features-grid">
             {features.map((f) => (
               <div key={f.key} className="feature-card">
                 <div className="feature-icon-wrap">{f.icon}</div>
-                <h3>{t(`features.${f.key}.title`)}</h3>
-                <p>{t(`features.${f.key}.desc`)}</p>
+                <h3>{FEATURE_TEXT[f.key]?.title}</h3>
+                <p>{FEATURE_TEXT[f.key]?.desc}</p>
               </div>
             ))}
           </div>
@@ -159,9 +166,9 @@ export default function LandingPage() {
 
         <section id="pricing" className="landing-section reveal">
           <div className="section-header">
-            <span className="section-pill">{t('pricingPill')}</span>
-            <h2>{t('pricingTitle')}</h2>
-            <p>{t('pricingSubtitle')}</p>
+            <span className="section-pill">Pricing</span>
+            <h2>Simple, Transparent Pricing</h2>
+            <p>Choose a plan that fits your business. Start with a free trial, upgrade anytime.</p>
           </div>
           <LandingPricing />
         </section>
@@ -173,40 +180,40 @@ export default function LandingPage() {
         <footer className="landing-footer">
           <div className="footer-top">
             <div className="footer-brand">
-              <img src="/assets/images/flomerce-logo.png" alt={t('logoAlt')} className="footer-logo" />
-              <p>{t('footerTagline')}</p>
+              <img src="/assets/images/flomerce-logo.png" alt="Flomerce logo" className="footer-logo" />
+              <p>Empowering small businesses to sell online with ease.</p>
             </div>
             <div className="footer-links-group">
-              <h4>{t('footerCompany')}</h4>
-              <Link to="/about">{t('footerAbout')}</Link>
-              <Link to="/terms">{t('footerTerms')}</Link>
-              <Link to="/privacy-policy">{t('footerPrivacy')}</Link>
-              <Link to="/refund-policy">{t('footerRefund')}</Link>
-              <Link to="/shipping-policy">{t('footerShipping')}</Link>
+              <h4>Company</h4>
+              <Link to="/about">About Us</Link>
+              <Link to="/terms">Terms & Conditions</Link>
+              <Link to="/privacy-policy">Privacy Policy</Link>
+              <Link to="/refund-policy">Refund & Cancellation Policy</Link>
+              <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
             </div>
             <div className="footer-links-group">
-              <h4>{t('footerContact')}</h4>
+              <h4>Contact</h4>
               <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <a href="tel:+919901954610">+91 9901954610</a>
-              <span>{t('addressLine')}</span>
+              <span>Karwar, Karnataka, India — 581400</span>
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; {new Date().getFullYear()} Flomerce. {t('rightsReserved')}</p>
+            <p>&copy; {new Date().getFullYear()} Flomerce. All rights reserved.</p>
           </div>
         </footer>
       </div>
 
       <div className={`pwa-install-bar${showPwa ? ' show' : ''}`}>
         <div className="pwa-info">
-          <img src="/assets/images/flomerce-logo.png" alt={t('logoAlt')} className="pwa-logo" />
+          <img src="/assets/images/flomerce-logo.png" alt="Flomerce logo" className="pwa-logo" />
           <div className="pwa-text">
-            <h4>{t('pwaInstallTitle')}</h4>
-            <p>{t('pwaInstallDesc')}</p>
+            <h4>Install Flomerce</h4>
+            <p>Add to home screen for better experience</p>
           </div>
         </div>
         <div className="pwa-actions">
-          <button className="btn-install" onClick={handleInstall}>{t('pwaInstall')}</button>
+          <button className="btn-install" onClick={handleInstall}>Install</button>
           <button className="btn-close-pwa" onClick={() => setShowPwa(false)}>&times;</button>
         </div>
       </div>

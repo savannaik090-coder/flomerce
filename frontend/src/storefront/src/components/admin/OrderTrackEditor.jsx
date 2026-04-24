@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
-  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [showOrderTrack, setShowOrderTrack] = useState(true);
   const [orderTrackUrl, setOrderTrackUrl] = useState('');
@@ -28,7 +26,7 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
   async function handleSave(e) {
     e.preventDefault();
     if (orderTrackUrl && !orderTrackUrl.startsWith('http://') && !orderTrackUrl.startsWith('https://')) {
-      setStatus('error:' + t('orderTrackEditor.urlError'));
+      setStatus('error:' + "URL must start with http:// or https://");
       return;
     }
     setSaving(true);
@@ -49,7 +47,7 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || t('orderTrackEditor.failedToSave')));
+        setStatus('error:' + (result.error || "Failed to save"));
       }
     } catch (err) {
       setStatus('error:' + err.message);
@@ -63,19 +61,19 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
       <SectionToggle
         enabled={showOrderTrack}
         onChange={setShowOrderTrack}
-        label={t('orderTrackEditor.toggleLabel')}
-        description={t('orderTrackEditor.toggleDesc')}
+        label="Show Track Order in Footer"
+        description="Display 'Track Order' link in the footer's customer service section"
       />
 
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
-          {t('orderTrackEditor.urlLabel')}
+          Tracking URL (Optional)
         </label>
         <input
           type="text"
           value={orderTrackUrl}
           onChange={(e) => setOrderTrackUrl(e.target.value)}
-          placeholder={t('orderTrackEditor.urlPlaceholder')}
+          placeholder="https://example.com/track"
           style={{
             width: '100%',
             padding: '10px 12px',
@@ -88,7 +86,7 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
           }}
         />
         <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
-          {t('orderTrackEditor.urlHelp')}
+          If set, customers will be redirected to this URL. Otherwise, they'll see the built-in order tracking page.
         </p>
       </div>
 
@@ -99,7 +97,7 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
       )}
       {status === 'success' && (
         <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#16a34a', fontSize: 13, marginBottom: 16 }}>
-          {t('orderTrackEditor.savedSuccess')}
+          Saved successfully!
         </div>
       )}
 
@@ -118,7 +116,7 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
           opacity: saving ? 0.7 : 1,
         }}
       >
-        {saving ? t('orderTrackEditor.saving') : t('orderTrackEditor.save')}
+        {saving ? "Saving..." : "Save"}
       </button>
     </form>
   );

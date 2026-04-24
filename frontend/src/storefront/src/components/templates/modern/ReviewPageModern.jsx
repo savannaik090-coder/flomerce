@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../../context/SiteContext.jsx';
 import { apiRequest } from '../../../services/api.js';
+import TranslatedText from '../../TranslatedText';
 
 const STAR_FULL = '\u2605';
 
@@ -25,7 +25,6 @@ function StarInput({ value, onChange }) {
 }
 
 export default function ReviewPageModern() {
-  const { t } = useTranslation('storefront');
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -45,7 +44,7 @@ export default function ReviewPageModern() {
 
   useEffect(() => {
     if (!siteId || !orderId || !token) {
-      setError(t('review.errors.invalidLink', 'Invalid review link'));
+      setError("Invalid review link");
       setLoading(false);
       return;
     }
@@ -65,7 +64,7 @@ export default function ReviewPageModern() {
       setItems(data.items || []);
       setReviewedItems(data.reviewedItems || {});
     } catch (err) {
-      setError(err.message || t('review.errors.invalidExpired', 'Invalid or expired review link'));
+      setError(err.message || "Invalid or expired review link");
     } finally {
       setLoading(false);
     }
@@ -90,12 +89,12 @@ export default function ReviewPageModern() {
           customerName: formData.customerName || undefined,
         }),
       });
-      setSubmitMessage({ type: 'success', text: res.message || t('review.toasts.success', 'Review submitted!') });
+      setSubmitMessage({ type: 'success', text: res.message || "Review submitted!" });
       setReviewedItems(prev => ({ ...prev, [activeItem.productId || activeItem.product_id || activeItem.id]: true }));
       setActiveItem(null);
       setFormData({ rating: 0, title: '', content: '', customerName: '' });
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || t('review.errors.submitFail', 'Failed to submit review') });
+      setSubmitMessage({ type: 'error', text: err.message || "Failed to submit review" });
     } finally {
       setSubmitting(false);
     }
@@ -107,7 +106,7 @@ export default function ReviewPageModern() {
         <div className="mn-review-page-inner">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div className="spinner" style={{ borderTopColor: '#111' }} />
-            <p style={{ marginTop: 15, color: '#666', fontFamily: "'Inter', sans-serif" }}>{t('review.loading', 'Loading...')}</p>
+            <p style={{ marginTop: 15, color: '#666', fontFamily: "'Inter', sans-serif" }}><TranslatedText text="Loading..." /></p>
           </div>
         </div>
       </div>
@@ -120,13 +119,13 @@ export default function ReviewPageModern() {
         <div className="mn-review-page-inner">
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>&#128533;</div>
-            <h2 style={{ color: '#111', marginBottom: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>{t('review.errors.title', 'Unable to Load Review')}</h2>
+            <h2 style={{ color: '#111', marginBottom: 8, fontFamily: "'Inter', sans-serif", fontWeight: 700 }}><TranslatedText text="Unable to Load Review" /></h2>
             <p style={{ color: '#64748b', fontFamily: "'Inter', sans-serif" }}>{error}</p>
             <button
               onClick={() => navigate('/')}
               style={{ marginTop: 20, padding: '10px 24px', background: '#111', color: '#fff', border: 'none', borderRadius: 0, cursor: 'pointer', fontWeight: 600, fontFamily: "'Inter', sans-serif" }}
             >
-              {t('review.buttons.goToStore', 'Go to Store')}
+              <TranslatedText text="Go to Store" />
             </button>
           </div>
         </div>
@@ -146,12 +145,12 @@ export default function ReviewPageModern() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>&#11088;</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111', margin: '0 0 8px', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
-            {allReviewed ? t('review.header.thanks', 'Thank You!') : t('review.header.howWasOrder', 'How was your order?')}
+            {allReviewed ? "Thank You!" : "How was your order?"}
           </h1>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0, fontFamily: "'Inter', sans-serif" }}>
             {allReviewed
-              ? t('review.header.allReviewed', 'You have reviewed all items from this order.')
-              : t('review.header.selectProduct', 'Select a product below to leave a review.')}
+              ? "You have reviewed all items from this order."
+              : "Select a product below to leave a review."}
           </p>
         </div>
 
@@ -174,11 +173,11 @@ export default function ReviewPageModern() {
                   )}
                   <div className="mn-review-page-item-info">
                     <span className="mn-review-page-item-name">{item.name}</span>
-                    {reviewed && <span className="mn-review-page-item-badge">{t('review.item.reviewed', '\u2713 Reviewed')}</span>}
+                    {reviewed && <span className="mn-review-page-item-badge"><TranslatedText text="✓ Reviewed" /></span>}
                   </div>
                   {!reviewed && (
                     <button type="button" className="mn-write-review-btn" style={{ padding: '8px 16px', fontSize: 13 }}>
-                      {isActive ? t('review.buttons.close', 'Close') : t('review.buttons.review', 'Review')}
+                      {isActive ? "Close" : "Review"}
                     </button>
                   )}
                 </div>
@@ -186,42 +185,42 @@ export default function ReviewPageModern() {
                 {isActive && (
                   <form className="mn-review-form" style={{ marginTop: 16 }} onSubmit={handleSubmit}>
                     <div className="mn-review-form-field">
-                      <label>{t('review.form.rating', 'Your Rating *')}</label>
+                      <label><TranslatedText text="Your Rating *" /></label>
                       <StarInput value={formData.rating} onChange={r => setFormData(prev => ({ ...prev, rating: r }))} />
                     </div>
                     <div className="mn-review-form-field">
-                      <label>{t('review.form.name', 'Your Name')}</label>
+                      <label><TranslatedText text="Your Name" /></label>
                       <input
                         type="text"
                         value={formData.customerName}
                         onChange={e => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                        placeholder={t('review.form.namePlaceholder', 'Your name (optional)')}
+                        placeholder=<TranslatedText text="Your name (optional)" />
                         maxLength={80}
                       />
                     </div>
                     <div className="mn-review-form-field">
-                      <label>{t('review.form.title', 'Review Title')}</label>
+                      <label><TranslatedText text="Review Title" /></label>
                       <input
                         type="text"
                         value={formData.title}
                         onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder={t('review.form.titlePlaceholder', 'Summarize your experience')}
+                        placeholder=<TranslatedText text="Summarize your experience" />
                         maxLength={120}
                       />
                     </div>
                     <div className="mn-review-form-field">
-                      <label>{t('review.form.content', 'Your Review')}</label>
+                      <label><TranslatedText text="Your Review" /></label>
                       <textarea
                         value={formData.content}
                         onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                        placeholder={t('review.form.contentPlaceholder', 'Share your thoughts...')}
+                        placeholder=<TranslatedText text="Share your thoughts..." />
                         rows={3}
                         maxLength={2000}
                       />
                     </div>
                     <div className="mn-review-form-actions">
                       <button type="submit" className="mn-review-submit-btn" disabled={submitting || formData.rating === 0}>
-                        {submitting ? t('review.buttons.submitting', 'Submitting...') : t('review.buttons.submit', 'Submit Review')}
+                        {submitting ? "Submitting..." : "Submit Review"}
                       </button>
                     </div>
                   </form>

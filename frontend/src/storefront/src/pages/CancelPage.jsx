@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import * as orderService from '../services/orderService.js';
+import TranslatedText from '../components/TranslatedText';
 
 const CANCEL_REASONS = [
   'Changed my mind',
@@ -14,7 +14,6 @@ const CANCEL_REASONS = [
 ];
 
 export default function CancelPage() {
-  const { t } = useTranslation('storefront');
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -59,9 +58,9 @@ export default function CancelPage() {
         siteId: siteConfig.id,
         email: lookupEmail.trim(),
       });
-      setLookupMessage(t('cancel.lookupSuccess', 'A cancellation link has been sent to your email. Please check your inbox.'));
+      setLookupMessage("A cancellation link has been sent to your email. Please check your inbox.");
     } catch (err) {
-      setLookupMessage(err.message || t('cancel.lookupError', 'Could not find this order. Please check your order number and email.'));
+      setLookupMessage(err.message || "Could not find this order. Please check your order number and email.");
     } finally {
       setLookupLoading(false);
     }
@@ -81,7 +80,7 @@ export default function CancelPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || t('cancel.submitFail', 'Failed to submit cancellation request'));
+      setError(err.message || "Failed to submit cancellation request");
     } finally {
       setSubmitting(false);
     }
@@ -89,29 +88,29 @@ export default function CancelPage() {
 
   const statusColors = { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' };
   const statusLabels = {
-    requested: t('cancel.status.requested', 'Pending Review'),
-    approved: t('cancel.status.approved', 'Approved (Cancelled)'),
-    rejected: t('cancel.status.rejected', 'Rejected'),
+    requested: "Pending Review",
+    approved: "Approved (Cancelled)",
+    rejected: "Rejected",
   };
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '40px 16px' }}>
       <div style={{ maxWidth: 520, width: '100%', background: '#fff', borderRadius: 12, boxShadow: '0 2px 20px rgba(0,0,0,0.08)', padding: 32 }}>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, margin: '0 0 8px', color: '#1e293b' }}>{t('cancel.title', 'Cancel Order')}</h1>
+        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, margin: '0 0 8px', color: '#1e293b' }}><TranslatedText text="Cancel Order" /></h1>
 
         {mode === 'lookup' && !orderId && (
           <>
             <p style={{ color: '#64748b', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-              {t('cancel.lookupIntro', 'Enter your order number and email address to receive a cancellation link.')}
+              <TranslatedText text="Enter your order number and email address to receive a cancellation link." />
             </p>
             <form onSubmit={handleLookup}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}>{t('cancel.orderNumberLabel', 'Order Number')}</label>
-                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder={t('cancel.orderNumberPlaceholder', 'e.g. FX-123456')} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Order Number" /></label>
+                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder=<TranslatedText text="e.g. FX-123456" /> style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}>{t('cancel.emailLabel', 'Email Address')}</label>
-                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={t('cancel.emailPlaceholder', 'your@email.com')} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Email Address" /></label>
+                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder=<TranslatedText text="your@email.com" /> style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               {lookupMessage && (
                 <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupMessage.includes('sent') ? '#f0fdf4' : '#fef2f2', color: lookupMessage.includes('sent') ? '#166534' : '#991b1b', fontSize: 14 }}>
@@ -119,7 +118,7 @@ export default function CancelPage() {
                 </div>
               )}
               <button type="submit" disabled={lookupLoading} style={{ width: '100%', padding: '12px 24px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: lookupLoading ? 'not-allowed' : 'pointer', opacity: lookupLoading ? 0.7 : 1 }}>
-                {lookupLoading ? t('cancel.sending', 'Sending...') : t('cancel.sendLink', 'Send Cancellation Link')}
+                {lookupLoading ? "Sending..." : "Send Cancellation Link"}
               </button>
             </form>
           </>
@@ -128,7 +127,7 @@ export default function CancelPage() {
         {orderId && checkingStatus && (
           <div style={{ textAlign: 'center', padding: 40 }}>
             <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-            <p style={{ color: '#777' }}>{t('cancel.checkingStatus', 'Checking cancellation status...')}</p>
+            <p style={{ color: '#777' }}><TranslatedText text="Checking cancellation status..." /></p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
@@ -136,16 +135,16 @@ export default function CancelPage() {
         {orderId && !checkingStatus && existingCancel && (
           <div style={{ marginTop: 16 }}>
             <p style={{ color: '#64748b', fontSize: 14, marginBottom: 16 }}>
-              {t('cancel.orderRef', 'Order')} <strong>#{existingCancel.order_number || orderId}</strong>
+              <TranslatedText text="Order" /> <strong>#{existingCancel.order_number || orderId}</strong>
             </p>
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 20, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>{t('cancel.statusHeading', 'Cancellation Status')}</div>
+              <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}><TranslatedText text="Cancellation Status" /></div>
               <span style={{ display: 'inline-block', background: statusColors[existingCancel.status] || '#757575', color: '#fff', borderRadius: 20, padding: '6px 20px', fontSize: 15, fontWeight: 600 }}>
                 {statusLabels[existingCancel.status] || existingCancel.status}
               </span>
               {existingCancel.admin_note && (
                 <div style={{ marginTop: 16, padding: '12px 16px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, textAlign: 'start' }}>
-                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>{t('cancel.noteFromStore', 'Note from store')}</div>
+                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}><TranslatedText text="Note from store" /></div>
                   <div style={{ fontSize: 14, color: '#334155' }}>{existingCancel.admin_note}</div>
                 </div>
               )}
@@ -156,7 +155,7 @@ export default function CancelPage() {
         {orderId && !checkingStatus && !existingCancel && !submitted && (
           <div style={{ marginTop: 16 }}>
             <p style={{ color: '#64748b', fontSize: 14, marginBottom: 24 }}>
-              {t('cancel.formIntro', 'Submit a cancellation request for order')} <strong>#{orderId}</strong>
+              <TranslatedText text="Submit a cancellation request for order" /> <strong>#{orderId}</strong>
             </p>
             {error && (
               <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: '#fef2f2', color: '#991b1b', fontSize: 14 }}>
@@ -164,25 +163,25 @@ export default function CancelPage() {
               </div>
             )}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 14, color: '#334155' }}>{t('account.reasonForCancel', 'Reason for cancellation *')}</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 14, color: '#334155' }}><TranslatedText text="Reason for cancellation *" /></label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {CANCEL_REASONS.map(reason => (
                   <label key={reason} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${cancelReason === reason ? '#e53935' : '#e2e8f0'}`, background: cancelReason === reason ? '#fff5f5' : '#fff', transition: 'all 0.15s' }}>
                     <input type="radio" name="cancelReason" value={reason} checked={cancelReason === reason} onChange={() => setCancelReason(reason)} style={{ accentColor: '#e53935' }} />
-                    <span style={{ fontSize: 14, color: '#334155', fontWeight: cancelReason === reason ? 600 : 400 }}>{t(`account.cancelReasons.${reason}`, reason)}</span>
+                    <span style={{ fontSize: 14, color: '#334155', fontWeight: cancelReason === reason ? 600 : 400 }}><TranslatedText text={reason} /></span>
                   </label>
                 ))}
               </div>
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#334155' }}>
-                {t('account.additionalNotes', 'Additional notes *')}
+                <TranslatedText text="Additional notes *" />
               </label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder={t('account.cancelDetailPlaceholder', 'Please provide more details about your cancellation...')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-              {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}>{t('account.cancelDetailRequired', 'Please provide additional details before submitting.')}</p>}
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder=<TranslatedText text="Please provide more details about your cancellation..." /> style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}><TranslatedText text="Please provide additional details before submitting." /></p>}
             </div>
             <button onClick={handleSubmit} disabled={submitting || !cancelReason || !cancelDetail.trim()} style={{ width: '100%', padding: '12px 24px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
-              {submitting ? t('account.submitting', 'Submitting...') : t('cancel.submitButton', 'Submit Cancellation Request')}
+              {submitting ? "Submitting..." : "Submit Cancellation Request"}
             </button>
           </div>
         )}
@@ -190,9 +189,9 @@ export default function CancelPage() {
         {submitted && (
           <div style={{ marginTop: 16, textAlign: 'center', padding: 20 }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, margin: '0 0 8px', color: '#166534' }}>{t('cancel.successTitle', 'Cancellation Request Submitted')}</h2>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, margin: '0 0 8px', color: '#166534' }}><TranslatedText text="Cancellation Request Submitted" /></h2>
             <p style={{ color: '#64748b', fontSize: 14, lineHeight: 1.6 }}>
-              {t('cancel.successMessage', "We've received your cancellation request. You'll receive an email update once it's reviewed by the store.")}
+              <TranslatedText text="We've received your cancellation request. You'll receive an email update once it's reviewed by the store." />
             </p>
           </div>
         )}

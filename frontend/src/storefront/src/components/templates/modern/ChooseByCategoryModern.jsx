@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { API_BASE } from '../../../config.js';
 import { getDemoCategoriesDefaults } from '../../../defaults/index.js';
@@ -15,7 +14,6 @@ function resolveImg(src) {
 }
 
 export default function ChooseByCategoryModern({ categories }) {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const settings = siteConfig?.settings || {};
   const chooseConfig = settings.chooseByCategory || {};
@@ -36,8 +34,8 @@ export default function ChooseByCategoryModern({ categories }) {
   return (
     <section className="mn-choose-section">
       <div className="mn-choose-header">
-        <span className="mn-choose-label">{t('home.chooseByCategory.label', 'Collections')}</span>
-        <h2 className="mn-section-title">{t('home.chooseByCategory.title', 'Shop by Category')}</h2>
+        <span className="mn-choose-label"><TranslatedText text="Collections" /></span>
+        <h2 className="mn-section-title"><TranslatedText text="Choose by Category" /></h2>
       </div>
       <div className="mn-choose-grid">
         {renderCats.map((cat, index) => {
@@ -71,7 +69,7 @@ export default function ChooseByCategoryModern({ categories }) {
               <div className="mn-choose-info">
                 <h3 className="mn-choose-name"><TranslatedText text={cat.name} /></h3>
                 <span className="mn-choose-explore">
-                  {t('home.chooseByCategory.explore', 'Explore')}
+                  <TranslatedText text="Explore" />
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </span>
               </div>

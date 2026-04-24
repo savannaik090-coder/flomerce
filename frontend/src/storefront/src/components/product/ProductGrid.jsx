@@ -1,20 +1,19 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import ProductCard from './ProductCard.jsx';
 import ProductCardModern from '../templates/modern/ProductCardModern.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
+import TranslatedText from '../TranslatedText';
 
 export default function ProductGrid({ products, onWishlistToggle, isInWishlist }) {
-  const { t } = useTranslation('storefront');
   const theme = useTheme();
   const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
 
   if (!products || products.length === 0) {
     return (
       <div className="empty-state">
-        <h3>{t('productGrid.noProductsFound', 'No Products Found')}</h3>
-        <p>{t('productGrid.noProductsMessage', 'No products are available in this category yet.')}</p>
-        <a href="/" className="browse-btn">{t('productGrid.browseAll', 'Browse All Products')}</a>
+        <h3><TranslatedText text="No Products Found" /></h3>
+        <p><TranslatedText text="No products are available in this category yet." /></p>
+        <a href="/" className="browse-btn"><TranslatedText text="Browse All Products" /></a>
       </div>
     );
   }

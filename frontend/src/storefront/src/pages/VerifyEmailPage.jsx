@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import * as authService from '../services/authService.js';
+import TranslatedText from '../components/TranslatedText';
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation('storefront');
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('verifying');
   const [error, setError] = useState('');
@@ -16,7 +15,7 @@ export default function VerifyEmailPage() {
 
     if (!token) {
       setStatus('error');
-      setError(t('auth.verify.missingToken', 'Invalid verification link. Missing verification token.'));
+      setError("Invalid verification link. Missing verification token.");
       return;
     }
 
@@ -30,7 +29,7 @@ export default function VerifyEmailPage() {
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       setStatus('error');
-      setError(err.message || t('auth.verify.failed', 'Verification failed. The link may have expired.'));
+      setError(err.message || "Verification failed. The link may have expired.");
     }
   }
 
@@ -40,8 +39,8 @@ export default function VerifyEmailPage() {
         {status === 'verifying' && (
           <>
             <div style={{ width: 40, height: 40, border: '4px solid #f3f3f3', borderTop: '4px solid #c8a97e', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '20px auto' }} />
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}>{t('auth.verify.verifyingTitle', 'Verifying Email...')}</h2>
-            <p style={{ color: '#777' }}>{t('auth.verify.verifyingMessage', 'Please wait while we verify your email address.')}</p>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}><TranslatedText text="Verifying Email..." /></h2>
+            <p style={{ color: '#777' }}><TranslatedText text="Please wait while we verify your email address." /></p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </>
         )}
@@ -49,18 +48,18 @@ export default function VerifyEmailPage() {
         {status === 'success' && (
           <>
             <div style={{ fontSize: 48, color: '#28a745', marginBottom: 20 }}>✓</div>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}>{t('auth.verify.successTitle', 'Email Verified!')}</h2>
-            <p style={{ color: '#666', marginBottom: 20 }}>{t('auth.verify.successMessage', 'Your email has been verified successfully. You will be redirected to the login page.')}</p>
-            <Link to="/login" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 'bold' }}>{t('auth.verify.goToLogin', 'Go to Login')}</Link>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}><TranslatedText text="Email Verified!" /></h2>
+            <p style={{ color: '#666', marginBottom: 20 }}><TranslatedText text="Your email has been verified successfully. You will be redirected to the login page." /></p>
+            <Link to="/login" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 'bold' }}><TranslatedText text="Go to Login" /></Link>
           </>
         )}
 
         {status === 'error' && (
           <>
             <div style={{ fontSize: 48, color: '#dc3545', marginBottom: 20 }}>✗</div>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}>{t('auth.verify.errorTitle', 'Verification Failed')}</h2>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: '#333', marginBottom: 10 }}><TranslatedText text="Verification Failed" /></h2>
             <p style={{ color: '#666', marginBottom: 20 }}>{error}</p>
-            <Link to="/login" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 'bold' }}>{t('auth.verify.goToLogin', 'Go to Login')}</Link>
+            <Link to="/login" style={{ display: 'inline-block', backgroundColor: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 'bold' }}><TranslatedText text="Go to Login" /></Link>
           </>
         )}
       </section>

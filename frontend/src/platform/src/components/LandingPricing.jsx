@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { getAvailablePlans } from '../services/paymentService.js';
 import { SUPPORT_EMAIL } from '../config.js';
 
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
+const DURATION_LABELS = { monthly: 'Monthly', '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly' };
+const DURATION_TEXT = { monthly: 'month', '3months': '3 months', '6months': '6 months', yearly: '1 year' };
 
 export default function LandingPricing() {
-  const { t } = useTranslation('landing');
   const [duration, setDuration] = useState(null);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enterpriseConfig, setEnterpriseConfig] = useState({ enabled: false, message: '', email: '' });
 
-  const durationLabel = (key) => t(`pricing.duration.${key}`, { defaultValue: key });
-  const durationText = (key) => t(`pricing.duration.${key}Per`, { defaultValue: key });
+  const durationLabel = (key) => DURATION_LABELS[key] || key;
+  const durationText = (key) => DURATION_TEXT[key] || key;
 
   useEffect(() => {
     loadPlans();
@@ -35,7 +35,7 @@ export default function LandingPricing() {
         setDuration(sorted[0]);
       }
     } catch (e) {
-      setError(t('pricing.loadError'));
+      setError("Unable to load pricing. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export default function LandingPricing() {
     return (
       <div className="landing-pricing-loading">
         <div className="spinner" />
-        <p>{t('pricing.loading')}</p>
+        <p>Loading plans...</p>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function LandingPricing() {
   }
 
   if (planList.length === 0 && !enterpriseConfig.enabled) {
-    return <div className="landing-pricing-error">{t('pricing.noPlans')}</div>;
+    return <div className="landing-pricing-error">No plans available at the moment.</div>;
   }
 
   return (
@@ -113,19 +113,19 @@ export default function LandingPricing() {
 
       <div className="lp-plans-grid">
         <div className="lp-plan-card lp-plan-trial">
-          <div className="lp-plan-badge lp-badge-trial">{t('pricing.trialBadge')}</div>
-          <h3>{t('pricing.trialTitle')}</h3>
+          <div className="lp-plan-badge lp-badge-trial">FREE TRIAL</div>
+          <h3>7-Day Free Trial</h3>
           <div className="lp-plan-price">
             <span className="lp-price-amount">&#8377;0</span>
-            <span className="lp-price-period">{t('pricing.trialFor7Days')}</span>
+            <span className="lp-price-period">for 7 days</span>
           </div>
           <ul className="lp-plan-features">
-            <li>{t('pricing.trialFeatures.createSites')}</li>
-            <li>{t('pricing.trialFeatures.fullAccess')}</li>
-            <li>{t('pricing.trialFeatures.noCard')}</li>
-            <li>{t('pricing.trialFeatures.upgradeAnytime')}</li>
+            <li>Create up to 5 websites</li>
+            <li>Full access for 7 days</li>
+            <li>No credit card required</li>
+            <li>Upgrade anytime</li>
           </ul>
-          <Link to="/signup" className="btn lp-btn-trial">{t('pricing.startTrial')}</Link>
+          <Link to="/signup" className="btn lp-btn-trial">Start Free Trial</Link>
         </div>
 
         {planList.filter(p => p.plan_tier < 4).map(planGroup => {
@@ -135,7 +135,7 @@ export default function LandingPricing() {
 
           return (
             <div key={planGroup.name} className={`lp-plan-card${planGroup.is_popular ? ' lp-plan-popular' : ''}`}>
-              {planGroup.is_popular && <div className="lp-plan-badge lp-badge-popular">{t('pricing.popularBadge')}</div>}
+              {planGroup.is_popular && <div className="lp-plan-badge lp-badge-popular">POPULAR</div>}
               <h3>{planGroup.name}</h3>
               {planGroup.tagline && (
                 <p className="lp-plan-tagline">{planGroup.tagline}</p>
@@ -147,33 +147,33 @@ export default function LandingPricing() {
                 <span className="lp-price-amount">&#8377;{price}</span>
                 <span className="lp-price-period">/ {durationText(duration)}</span>
                 {savingsPercent > 0 && (
-                  <span className="lp-price-save">{t('pricing.saveOff', { percent: savingsPercent })}</span>
+                  <span className="lp-price-save">{`${savingsPercent}% OFF`}</span>
                 )}
               </div>
               {DURATION_MONTHS[duration] > 1 && (
-                <p className="lp-price-monthly">&#8377;{Math.round(price / DURATION_MONTHS[duration])}{t('pricing.perMonth')}</p>
+                <p className="lp-price-monthly">&#8377;{Math.round(price / DURATION_MONTHS[duration])}/month</p>
               )}
               <ul className="lp-plan-features">
                 {planGroup.features.map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
               </ul>
-              <Link to="/signup" className="btn lp-btn-subscribe">{t('pricing.getStarted')}</Link>
+              <Link to="/signup" className="btn lp-btn-subscribe">Get Started</Link>
             </div>
           );
         })}
 
         {enterpriseConfig.enabled && (
           <div className="lp-plan-card lp-plan-enterprise">
-            <div className="lp-plan-badge lp-badge-enterprise">{t('pricing.enterpriseBadge')}</div>
-            <h3>{t('pricing.enterpriseTitle')}</h3>
+            <div className="lp-plan-badge lp-badge-enterprise">ENTERPRISE</div>
+            <h3>Enterprise</h3>
             <div className="lp-plan-price">
-              <span className="lp-price-amount">{t('pricing.customPrice')}</span>
+              <span className="lp-price-amount">Custom</span>
             </div>
             <p className="lp-enterprise-desc">
-              {enterpriseConfig.message || t('pricing.enterpriseDefaultMessage')}
+              {enterpriseConfig.message || "Need a custom solution for your business? Get in touch for a tailored plan."}
             </p>
-            <a href={`mailto:${enterpriseConfig.email || SUPPORT_EMAIL}`} className="btn lp-btn-enterprise">{t('pricing.contactUs')}</a>
+            <a href={`mailto:${enterpriseConfig.email || SUPPORT_EMAIL}`} className="btn lp-btn-enterprise">Contact Us</a>
           </div>
         )}
       </div>

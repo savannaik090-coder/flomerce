@@ -1,5 +1,4 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { normalizePlan, isPlanAtLeast } from '../../utils/plan.js';
 
 export function isPlanSufficient(currentPlan, requiredPlan) {
@@ -29,15 +28,14 @@ export function isFeatureAvailable(currentPlan, feature) {
 }
 
 export default function FeatureGate({ currentPlan, requiredPlan, featureName, children }) {
-  const { t } = useTranslation('admin');
   const plan = normalizePlan(currentPlan);
   const hasPlan = isPlanSufficient(plan, requiredPlan);
 
   if (hasPlan) return children;
 
   const displayPlan = (requiredPlan || 'growth').charAt(0).toUpperCase() + (requiredPlan || 'growth').slice(1);
-  const featureLabel = featureName || t('featureGate.thisFeature');
-  const featureLower = featureName ? featureName.toLowerCase() : t('featureGate.thisFeature').toLowerCase();
+  const featureLabel = featureName || "This feature";
+  const featureLower = featureName ? featureName.toLowerCase() : "This feature".toLowerCase();
 
   return (
     <div style={{ position: 'relative', minHeight: 300 }}>
@@ -55,10 +53,10 @@ export default function FeatureGate({ currentPlan, requiredPlan, featureName, ch
             <i className="fas fa-lock" style={{ fontSize: 22, color: '#94a3b8' }} />
           </div>
           <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', color: '#1e293b' }}>
-            {t('featureGate.requires', { feature: featureLabel, plan: displayPlan })}
+            {`${featureLabel} requires ${displayPlan}`}
           </h3>
           <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
-            {t('featureGate.upgradeBody', { feature: featureLower, plan: displayPlan })}
+            {`Upgrade your plan to ${displayPlan} to unlock ${featureLower} and more.`}
           </p>
           <a
             href={`https://flomerce.com/dashboard/billing`}
@@ -72,7 +70,7 @@ export default function FeatureGate({ currentPlan, requiredPlan, featureName, ch
             }}
           >
             <i className="fas fa-arrow-up" style={{ fontSize: 12 }} />
-            {t('featureGate.upgradeButton', { plan: displayPlan })}
+            {`Upgrade to ${displayPlan}`}
           </a>
         </div>
       </div>

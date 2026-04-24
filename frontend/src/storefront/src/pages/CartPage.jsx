@@ -1,23 +1,23 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { CartContext } from '../context/CartContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../components/templates/modern/modern.css';
+import TranslatedText from '../components/TranslatedText';
 
 function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount, t }) {
   return (
     <div style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
-      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}>{t('cart.heading', 'Shopping Cart')}</h1>
+      <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}><TranslatedText text="Shopping Cart" /></h1>
 
       {items.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: 60, marginBottom: 20 }}>🛒</div>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 10, color: '#333' }}>{t('cart.empty', 'Your cart is empty')}</h2>
-          <p style={{ color: '#777', marginBottom: 24 }}>{t('cart.emptyMessage', "Looks like you haven't added anything to your cart yet.")}</p>
-          <Link to="/" style={{ display: 'inline-block', background: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}>{t('cart.continueShopping', 'Continue Shopping')}</Link>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", marginBottom: 10, color: '#333' }}><TranslatedText text="Your cart is empty" /></h2>
+          <p style={{ color: '#777', marginBottom: 24 }}><TranslatedText text="Looks like you haven't added anything to your cart yet." /></p>
+          <Link to="/" style={{ display: 'inline-block', background: '#c8a97e', color: '#fff', padding: '12px 24px', borderRadius: 4, textDecoration: 'none', fontWeight: 600 }}><TranslatedText text="Continue Shopping" /></Link>
         </div>
       ) : (
         <>
@@ -32,7 +32,7 @@ function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAm
                 <div key={pid || idx} style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: idx < items.length - 1 ? '1px solid #f0f0f0' : 'none', gap: 16 }}>
                   <Link to={`/product/${pid}`} style={{ flexShrink: 0 }}>
                     <div style={{ width: 80, height: 80, borderRadius: 6, overflow: 'hidden', background: '#f5f5f5' }}>
-                      {image ? <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}>{t('cart.noImage', 'No img')}</div>}
+                      {image ? <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}><TranslatedText text="No img" /></div>}
                     </div>
                   </Link>
                   <div style={{ flex: 1 }}>
@@ -54,13 +54,13 @@ function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAm
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, padding: '20px 0', borderTop: '2px solid #eee' }}>
-            <span style={{ fontSize: 18, fontWeight: 600, fontFamily: "'Playfair Display', serif" }}>{t('cart.subtotalLabel', 'Subtotal')}</span>
+            <span style={{ fontSize: 18, fontWeight: 600, fontFamily: "'Playfair Display', serif" }}><TranslatedText text="Subtotal" /></span>
             <span style={{ fontSize: 22, fontWeight: 700, color: '#c8a97e' }}>{formatAmount(subtotal)}</span>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16, gap: 16, flexWrap: 'wrap' }}>
-            <Link to="/" style={{ padding: '12px 24px', border: '1px solid #c8a97e', color: '#c8a97e', borderRadius: 4, textDecoration: 'none', fontWeight: 500, textAlign: 'center' }}>{t('cart.continueShopping', 'Continue Shopping')}</Link>
-            <Link to="/checkout" style={{ padding: '12px 32px', background: '#c8a97e', color: '#fff', borderRadius: 4, textDecoration: 'none', fontWeight: 600, textAlign: 'center' }}>{t('cart.proceedToCheckout', 'Proceed to Checkout')}</Link>
+            <Link to="/" style={{ padding: '12px 24px', border: '1px solid #c8a97e', color: '#c8a97e', borderRadius: 4, textDecoration: 'none', fontWeight: 500, textAlign: 'center' }}><TranslatedText text="Continue Shopping" /></Link>
+            <Link to="/checkout" style={{ padding: '12px 32px', background: '#c8a97e', color: '#fff', borderRadius: 4, textDecoration: 'none', fontWeight: 600, textAlign: 'center' }}><TranslatedText text="Proceed to Checkout" /></Link>
           </div>
         </>
       )}
@@ -71,12 +71,12 @@ function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAm
 function ModernCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount, t }) {
   return (
     <div className="mn-cart-page">
-      <h1>{t('cart.heading', 'Shopping Cart')}</h1>
+      <h1><TranslatedText text="Shopping Cart" /></h1>
       {items.length === 0 ? (
         <div className="mn-cart-empty">
-          <h2>{t('cart.empty', 'Your cart is empty')}</h2>
-          <p>{t('cart.emptyMessage', "Looks like you haven't added anything to your cart yet.")}</p>
-          <Link to="/">{t('cart.continueShopping', 'Continue Shopping')}</Link>
+          <h2><TranslatedText text="Your cart is empty" /></h2>
+          <p><TranslatedText text="Looks like you haven't added anything to your cart yet." /></p>
+          <Link to="/"><TranslatedText text="Continue Shopping" /></Link>
         </div>
       ) : (
         <>
@@ -91,7 +91,7 @@ function ModernCartPage({ items, subtotal, updateQuantity, removeItem, formatAmo
                 <div key={pid || idx} className="mn-cart-item">
                   <Link to={`/product/${pid}`}>
                     <div className="mn-cart-item-img">
-                      {image ? <img src={image} alt={name} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}>{t('cart.noImage', 'No img')}</div>}
+                      {image ? <img src={image} alt={name} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12 }}><TranslatedText text="No img" /></div>}
                     </div>
                   </Link>
                   <div className="mn-cart-item-info">
@@ -110,12 +110,12 @@ function ModernCartPage({ items, subtotal, updateQuantity, removeItem, formatAmo
             })}
           </div>
           <div className="mn-cart-footer">
-            <span className="label">{t('cart.subtotalLabel', 'Subtotal')}</span>
+            <span className="label"><TranslatedText text="Subtotal" /></span>
             <span className="total">{formatAmount(subtotal)}</span>
           </div>
           <div className="mn-cart-actions">
-            <Link to="/" className="continue">{t('cart.continueShopping', 'Continue Shopping')}</Link>
-            <Link to="/checkout" className="checkout">{t('cart.proceedToCheckout', 'Proceed to Checkout')}</Link>
+            <Link to="/" className="continue"><TranslatedText text="Continue Shopping" /></Link>
+            <Link to="/checkout" className="checkout"><TranslatedText text="Proceed to Checkout" /></Link>
           </div>
         </>
       )}
@@ -127,8 +127,6 @@ export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem, loading } = useContext(CartContext);
   const { formatAmount } = useContext(CurrencyContext);
   const { isModern } = useTheme();
-  const { t } = useTranslation('storefront');
-
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>

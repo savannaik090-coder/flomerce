@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getApiUrl } from '../../services/api.js';
 import LinkSelector from './LinkSelector.jsx';
@@ -7,7 +6,6 @@ import FeatureGate from './FeatureGate.jsx';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 export default function PushNotificationsSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [stats, setStats] = useState({ loggedIn: 0, guests: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -76,12 +74,12 @@ export default function PushNotificationsSection() {
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setError(t('pushNotificationsSection.invalidImage'));
+      setError("Please upload a JPG, PNG, WebP, or GIF image.");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError(t('pushNotificationsSection.imageTooLarge'));
+      setError("Image must be under 5MB.");
       return;
     }
 
@@ -106,10 +104,10 @@ export default function PushNotificationsSection() {
         markUploaded(resolved);
         if (oldImage) markForDeletion(oldImage);
       } else {
-        setError(result.error || result.message || t('pushNotificationsSection.uploadFailed'));
+        setError(result.error || result.message || "Failed to upload image.");
       }
     } catch (err) {
-      setError(t('pushNotificationsSection.uploadError', { error: err.message }));
+      setError(`Failed to upload image: ${err.message}`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -119,7 +117,7 @@ export default function PushNotificationsSection() {
   async function handleSend(e) {
     e.preventDefault();
     if (!form.title || !form.message) {
-      setError(t('pushNotificationsSection.titleMsgRequired'));
+      setError("Title and message are required.");
       return;
     }
     setSending(true);
@@ -145,16 +143,16 @@ export default function PushNotificationsSection() {
 
       if (data?.success) {
         const { sent, failed, total } = data.data || {};
-        const failedSuffix = failed > 0 ? t('pushNotificationsSection.failedSuffix', { failed }) : '';
-        setSuccess(t('pushNotificationsSection.sentResult', { sent, total, count: total, failedSuffix }));
+        const failedSuffix = failed > 0 ? ` (${failed} failed)` : '';
+        setSuccess(`Notification sent to ${sent} of ${total} subscribers${failedSuffix}.`);
         commit(form.imageUrl ? [form.imageUrl] : []);
         setForm({ title: '', message: '', imageUrl: '', link: '', customLink: false, buttonLabel: '', buttonLink: '', buttonCustomLink: false, target: 'all' });
         loadStats();
       } else {
-        setError(data?.message || data?.error || t('pushNotificationsSection.sendFailed'));
+        setError(data?.message || data?.error || "Failed to send notification.");
       }
     } catch (err) {
-      setError(t('pushNotificationsSection.sendError', { error: err.message }));
+      setError(`Failed to send notification: ${err.message}`);
     } finally {
       setSending(false);
     }
@@ -184,60 +182,60 @@ export default function PushNotificationsSection() {
   const isConfigured = !!siteConfig?.vapidPublicKey;
 
   const autoItems = [
-    { key: 'newProducts', icon: 'fa-box', label: t('pushNotificationsSection.autoNewProducts'), desc: t('pushNotificationsSection.autoNewProductsDesc') },
-    { key: 'priceDrops', icon: 'fa-tag', label: t('pushNotificationsSection.autoPriceDrops'), desc: t('pushNotificationsSection.autoPriceDropsDesc') },
-    { key: 'backInStock', icon: 'fa-redo', label: t('pushNotificationsSection.autoBackInStock'), desc: t('pushNotificationsSection.autoBackInStockDesc') },
-    { key: 'lowStock', icon: 'fa-exclamation-triangle', label: t('pushNotificationsSection.autoLowStock'), desc: t('pushNotificationsSection.autoLowStockDesc') },
+    { key: 'newProducts', icon: 'fa-box', label: "New Products", desc: "Notify subscribers when you add new products" },
+    { key: 'priceDrops', icon: 'fa-tag', label: "Price Drops", desc: "Alert customers when prices are reduced" },
+    { key: 'backInStock', icon: 'fa-redo', label: "Back in Stock", desc: "Notify when out-of-stock items return" },
+    { key: 'lowStock', icon: 'fa-exclamation-triangle', label: "Low Stock Alert", desc: "Alert customers when only 3 or fewer items remain" },
   ];
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>{t('pushNotificationsSection.title')}</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Push Notifications</h2>
 
       {!isConfigured && (
         <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 10, padding: '14px 18px', marginBottom: 24, color: '#92400e', fontSize: 14 }}>
           <i className="fas fa-exclamation-triangle" style={{ marginInlineEnd: 8 }} />
-          {t('pushNotificationsSection.notConfigured')}
+          Push notifications are not yet configured on this platform. Contact support to enable them.
         </div>
       )}
 
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('pushNotificationsSection.subUsers')}</span>
+            <span className="stat-title">Subscribed Users</span>
             <div className="stat-icon" style={{ background: '#eff6ff' }}>
               <i className="fas fa-user-check" style={{ color: '#2563eb' }} />
             </div>
           </div>
           <div className="stat-value">{stats.loggedIn}</div>
-          <div className="stat-change">{t('pushNotificationsSection.loggedInUsers')}</div>
+          <div className="stat-change">Logged-in users</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('pushNotificationsSection.guestTokens')}</span>
+            <span className="stat-title">Guest Tokens</span>
             <div className="stat-icon" style={{ background: '#fefce8' }}>
               <i className="fas fa-user-secret" style={{ color: '#f59e0b' }} />
             </div>
           </div>
           <div className="stat-value">{stats.guests}</div>
-          <div className="stat-change">{t('pushNotificationsSection.anonVisitors')}</div>
+          <div className="stat-change">Anonymous visitors</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('pushNotificationsSection.totalSubs')}</span>
+            <span className="stat-title">Total Subscribers</span>
             <div className="stat-icon" style={{ background: '#f0fdf4' }}>
               <i className="fas fa-bell" style={{ color: '#10b981' }} />
             </div>
           </div>
           <div className="stat-value">{stats.total}</div>
-          <div className="stat-change">{t('pushNotificationsSection.allPushSubs')}</div>
+          <div className="stat-change">All push subscribers</div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">{t('pushNotificationsSection.sendTitle')}</h3>
+            <h3 className="card-title">Send Notification</h3>
           </div>
           <div className="card-content">
             {success && (
@@ -252,15 +250,15 @@ export default function PushNotificationsSection() {
             )}
             {stats.total === 0 && !error && (
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 16px', color: '#64748b', marginBottom: 16, fontSize: 13 }}>
-                <i className="fas fa-info-circle" style={{ marginInlineEnd: 8 }} />{t('pushNotificationsSection.noSubs')}
+                <i className="fas fa-info-circle" style={{ marginInlineEnd: 8 }} />No subscribers yet. Customers will see a prompt to subscribe when they visit your store.
               </div>
             )}
             <form onSubmit={handleSend}>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.titleLabel')}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Title *</label>
                 <input
                   type="text"
-                  placeholder={t('pushNotificationsSection.titlePh')}
+                  placeholder="Notification title"
                   value={form.title}
                   onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
@@ -268,9 +266,9 @@ export default function PushNotificationsSection() {
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.messageLabel')}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Message *</label>
                 <textarea
-                  placeholder={t('pushNotificationsSection.messagePh')}
+                  placeholder="Notification message..."
                   value={form.message}
                   onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                   rows={3}
@@ -279,7 +277,7 @@ export default function PushNotificationsSection() {
                 />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.imageLabel')}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Image (optional)</label>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -291,7 +289,7 @@ export default function PushNotificationsSection() {
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     <img
                       src={form.imageUrl}
-                      alt={t('pushNotificationsSection.imageLabel')}
+                      alt="Image (optional)"
                       style={{ width: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }}
                     />
                     <button
@@ -324,15 +322,15 @@ export default function PushNotificationsSection() {
                     onMouseLeave={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
                     {uploading ? (
-                      <><i className="fas fa-spinner fa-spin" style={{ fontSize: 18 }} /><span>{t('pushNotificationsSection.uploading')}</span></>
+                      <><i className="fas fa-spinner fa-spin" style={{ fontSize: 18 }} /><span>Uploading...</span></>
                     ) : (
-                      <><i className="fas fa-cloud-upload-alt" style={{ fontSize: 18 }} /><span>{t('pushNotificationsSection.clickUpload')}</span><span style={{ fontSize: 11, color: '#94a3b8' }}>{t('pushNotificationsSection.uploadHint')}</span></>
+                      <><i className="fas fa-cloud-upload-alt" style={{ fontSize: 18 }} /><span>Click to upload image</span><span style={{ fontSize: 11, color: '#94a3b8' }}>JPG, PNG, WebP, GIF up to 5MB</span></>
                     )}
                   </button>
                 )}
               </div>
               <LinkSelector
-                label={t('pushNotificationsSection.redirectLabel')}
+                label="Redirect To (optional)"
                 value={form.link}
                 onChange={val => setForm(p => ({ ...p, link: val, customLink: false }))}
                 style={{ marginBottom: 16 }}
@@ -340,23 +338,23 @@ export default function PushNotificationsSection() {
               <div style={{ marginBottom: 16, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
                   <i className="fas fa-mouse-pointer" style={{ marginInlineEnd: 6, color: '#64748b' }} />
-                  {t('pushNotificationsSection.actionBtnLabel')}
+                  Action Button (optional)
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: form.buttonLabel ? 10 : 0 }}>
                   <input
                     type="text"
-                    placeholder={t('pushNotificationsSection.btnLabelPh')}
+                    placeholder="Button label (e.g. Shop Now)"
                     value={form.buttonLabel}
                     onChange={e => setForm(p => ({ ...p, buttonLabel: e.target.value }))}
                     style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
                   />
                   <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
-                    {t('pushNotificationsSection.btnLabelHint')}
+                    Shows a clickable button on the notification
                   </div>
                 </div>
                 {form.buttonLabel && (
                   <LinkSelector
-                    label={t('pushNotificationsSection.btnRedirectLabel')}
+                    label="Button redirects to"
                     value={form.buttonLink}
                     onChange={val => setForm(p => ({ ...p, buttonLink: val, buttonCustomLink: false }))}
                     style={{ marginBottom: 0 }}
@@ -364,15 +362,15 @@ export default function PushNotificationsSection() {
                 )}
               </div>
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('pushNotificationsSection.targetLabel')}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Target Audience</label>
                 <select
                   value={form.target}
                   onChange={e => setForm(p => ({ ...p, target: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
                 >
-                  <option value="all">{t('pushNotificationsSection.allSubs', { count: stats.total })}</option>
-                  <option value="loggedin">{t('pushNotificationsSection.loggedInOpt', { count: stats.loggedIn })}</option>
-                  <option value="guests">{t('pushNotificationsSection.guestsOpt', { count: stats.guests })}</option>
+                  <option value="all">{`All Subscribers (${stats.total})`}</option>
+                  <option value="loggedin">{`Logged-in Users (${stats.loggedIn})`}</option>
+                  <option value="guests">{`Guest Visitors (${stats.guests})`}</option>
                 </select>
               </div>
               <button
@@ -381,23 +379,23 @@ export default function PushNotificationsSection() {
                 disabled={sending || !isConfigured || uploading}
                 style={{ width: '100%' }}
               >
-                {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />{t('pushNotificationsSection.sending')}</> : <><i className="fas fa-paper-plane" style={{ marginInlineEnd: 8 }} />{t('pushNotificationsSection.sendBtn')}</>}
+                {sending ? <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 8 }} />Sending...</> : <><i className="fas fa-paper-plane" style={{ marginInlineEnd: 8 }} />Send Notification</>}
               </button>
             </form>
           </div>
         </div>
 
-        <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="pro" featureName={t('pushNotificationsSection.autoFeature')}>
+        <FeatureGate currentPlan={siteConfig?.subscriptionPlan} requiredPlan="pro" featureName="Automated Notifications">
         <div className="card">
           <div className="card-header">
             <h3 className="card-title">
-              {t('pushNotificationsSection.autoTitle')}
-              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />{t('pushNotificationsSection.saving')}</span>}
+              Automatic Notifications
+              {savingSettings && <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Saving...</span>}
             </h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-              {t('pushNotificationsSection.autoIntro')}
+              Automatically send notifications when specific events occur in your store.
             </p>
             {autoItems.map(item => (
               <div key={item.key} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid #f1f5f9' }}>

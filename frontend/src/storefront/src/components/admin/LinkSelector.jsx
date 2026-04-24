@@ -1,9 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 
 export default function LinkSelector({ label, value, onChange, showNone = true, style }) {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const categories = siteConfig?.categories || [];
   const knownValues = getKnownValues(categories);
@@ -37,20 +35,20 @@ export default function LinkSelector({ label, value, onChange, showNone = true, 
         onChange={handleChange}
         style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
       >
-        {showNone && <option value="">{t('linkSelector.none')}</option>}
-        <optgroup label={t('linkSelector.groupPages')}>
-          <option value="/">{t('linkSelector.pageHome')}</option>
-          <option value="/about">{t('linkSelector.pageAbout')}</option>
-          <option value="/contact">{t('linkSelector.pageContact')}</option>
-          <option value="/cart">{t('linkSelector.pageCart')}</option>
-          <option value="/wishlist">{t('linkSelector.pageWishlist')}</option>
-          <option value="/signup">{t('linkSelector.pageSignup')}</option>
-          <option value="/book-appointment">{t('linkSelector.pageBookAppointment')}</option>
-          <option value="/order-track">{t('linkSelector.pageOrderTrack')}</option>
-          <option value="/profile">{t('linkSelector.pageProfile')}</option>
+        {showNone && <option value="">None (no redirect)</option>}
+        <optgroup label="Pages">
+          <option value="/">Home</option>
+          <option value="/about">About Us</option>
+          <option value="/contact">Contact</option>
+          <option value="/cart">Cart</option>
+          <option value="/wishlist">Wishlist</option>
+          <option value="/signup">Sign Up</option>
+          <option value="/book-appointment">Book Appointment</option>
+          <option value="/order-track">Track Order</option>
+          <option value="/profile">My Profile</option>
         </optgroup>
         {categories.length > 0 && (
-          <optgroup label={t('linkSelector.groupCategories')}>
+          <optgroup label="Categories">
             {categories.map(cat => {
               const name = typeof cat === 'string' ? cat : cat.name || '';
               const slug = typeof cat === 'string'
@@ -61,20 +59,20 @@ export default function LinkSelector({ label, value, onChange, showNone = true, 
           </optgroup>
         )}
         {getSubcategoryOptions(categories).length > 0 && (
-          <optgroup label={t('linkSelector.groupSubcategories')}>
+          <optgroup label="Subcategories">
             {getSubcategoryOptions(categories).map(sub => (
               <option key={`sub-${sub.value}`} value={sub.value}>{sub.label}</option>
             ))}
           </optgroup>
         )}
-        <optgroup label={t('linkSelector.groupOther')}>
-          <option value="__custom__">{t('linkSelector.customUrl')}</option>
+        <optgroup label="Other">
+          <option value="__custom__">Custom URL...</option>
         </optgroup>
       </select>
       {customMode && (
         <input
           type="text"
-          placeholder={t('linkSelector.customPlaceholder')}
+          placeholder="https://... or /page-path"
           value={value}
           onChange={e => onChange(e.target.value)}
           style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', marginTop: 8 }}

@@ -1,14 +1,13 @@
 import React, { useState, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import '../styles/faq.css';
+import TranslatedText from '../components/TranslatedText';
 
 export default function FaqPage() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const [openIndex, setOpenIndex] = useState(null);
-  useSEO({ title: t('faq.seoTitle', 'FAQ'), pageType: 'faq' });
+  useSEO({ title: "FAQ", pageType: 'faq' });
 
   let settings = siteConfig?.settings || {};
   if (typeof settings === 'string') {
@@ -22,8 +21,8 @@ export default function FaqPage() {
   if (!showFaq) {
     return (
       <div className="faq-page" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h2>{t('faq.unavailableTitle', 'This page is currently unavailable')}</h2>
-        <p style={{ color: '#64748b', marginTop: 12 }}>{t('faq.unavailableMessage', 'Please check back later.')}</p>
+        <h2><TranslatedText text="This page is currently unavailable" /></h2>
+        <p style={{ color: '#64748b', marginTop: 12 }}><TranslatedText text="Please check back later." /></p>
       </div>
     );
   }
@@ -52,14 +51,14 @@ export default function FaqPage() {
       )}
 
       <div className="faq-header">
-        <h1>{t('faq.title', 'Frequently Asked Questions')}</h1>
-        <p>{t('faq.subtitle', 'Find answers to common questions about {{brandName}}.', { brandName })}</p>
+        <h1><TranslatedText text="Frequently Asked Questions" /></h1>
+        <p><TranslatedText text="Find answers to common questions about" /> {brandName}.</p>
       </div>
 
       {faqItems.length === 0 ? (
         <div className="faq-empty">
           <i className="fas fa-question-circle"></i>
-          <p>{t('faq.empty', 'No frequently asked questions yet.')}</p>
+          <p><TranslatedText text="No frequently asked questions yet." /></p>
         </div>
       ) : (
         <div className="faq-list">

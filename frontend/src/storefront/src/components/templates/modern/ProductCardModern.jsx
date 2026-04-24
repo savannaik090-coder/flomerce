@@ -1,6 +1,5 @@
 import React, { useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { PanelContext } from '../../../context/PanelContext.jsx';
 import { useWishlist } from '../../../hooks/useWishlist.js';
 import { useCurrency } from '../../../hooks/useCurrency.js';
@@ -9,7 +8,6 @@ import TranslatedText from '../../TranslatedText.jsx';
 import './modern.css';
 
 export default function ProductCardModern({ product, variant = 'grid', onWishlistToggle, isInWishlist: isInWishlistProp, isDemo = false }) {
-  const { t } = useTranslation('storefront');
   const wishlist = useWishlist();
   const { openWishlist } = useContext(PanelContext);
   const { formatAmount } = useCurrency();
@@ -60,15 +58,15 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
             </div>
           )}
           {product.stock !== undefined && product.stock <= 0 && (
-            <div className="mn-product-oos">{t('product.card.outOfStock', 'Out of Stock')}</div>
+            <div className="mn-product-oos"><TranslatedText text="Out of Stock" /></div>
           )}
           <div className="mn-product-hover-overlay">
-            <span className="mn-quick-view">{t('product.card.quickView', 'Quick View')}</span>
+            <span className="mn-quick-view"><TranslatedText text="Quick View" /></span>
           </div>
           <button
             className={`mn-wishlist-btn${inWishlist ? ' mn-wishlist-active' : ''}`}
             onClick={toggleWishlist}
-            aria-label={inWishlist ? t('product.card.removeFromWishlist', 'Remove from wishlist') : t('product.card.addToWishlist', 'Add to wishlist')}
+            aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill={inWishlist ? '#e53e3e' : 'none'} stroke={inWishlist ? '#e53e3e' : 'currentColor'} strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import '../../styles/choose-by-category.css';
 import { API_BASE } from '../../config.js';
@@ -15,7 +14,6 @@ function resolveImg(src) {
 }
 
 export default function ChooseByCategory({ categories }) {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
 
   const settings = siteConfig?.settings || {};
@@ -38,7 +36,7 @@ export default function ChooseByCategory({ categories }) {
     <section className="choose-by-category">
       <div className="choose-by-category-container">
         <div className="choose-by-category-header">
-          <h2 className="choose-by-category-title">{t('home.chooseByCategory.title', 'Choose by Category')}</h2>
+          <h2 className="choose-by-category-title"><TranslatedText text="Choose by Category" /></h2>
           <hr className="choose-by-category-divider" />
         </div>
         <div className="choose-by-category-grid">

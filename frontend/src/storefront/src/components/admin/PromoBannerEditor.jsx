@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
   const [saving, setSaving] = useState(false);
@@ -72,7 +70,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || t('promoBannerEditor.unknownError')));
+        setStatus('error:' + (result.error || "Unknown error"));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -92,9 +90,9 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
   const placeholders = [
-    t('promoBannerEditor.placeholder1'),
-    t('promoBannerEditor.placeholder2'),
-    t('promoBannerEditor.placeholder3'),
+    "e.g. Free shipping on orders above ₹999",
+    "e.g. New arrivals every Monday",
+    "e.g. Use code SAVE10 for 10% off",
   ];
 
   return (
@@ -104,21 +102,21 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         <SectionToggle
           enabled={sectionVisible}
           onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
-          label={t('promoBannerEditor.toggleLabel')}
-          description={t('promoBannerEditor.toggleDesc')}
+          label="Show Promo Banner"
+          description="Display the rotating promotional banner at the top of every page"
         />
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('promoBannerEditor.messagesTitle')}</h3>
+            <h3 className="card-title">Banner Messages</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              {t('promoBannerEditor.messagesIntro')}
+              Add up to 3 promotional messages that rotate every 4 seconds at the top of every page.
             </p>
             {[0, 1, 2].map(index => (
               <div key={index} style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                  {index === 0 ? t('promoBannerEditor.messageLabel', { num: index + 1 }) : t('promoBannerEditor.messageLabelOptional', { num: index + 1 })}
+                  {index === 0 ? `Message ${index + 1}` : `Message ${index + 1} (optional)`}
                 </label>
                 <input
                   type="text"
@@ -146,7 +144,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? t('promoBannerEditor.savedSuccess') : t('promoBannerEditor.failedToSave', { error: status.replace('error:', '') })}
+            {status === 'success' ? "Promo banner saved successfully!" : `Failed to save: ${status.replace('error:', '')}`}
           </div>
         )}
         <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import './SEOSection.css';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
@@ -27,7 +26,6 @@ function CharCounter({ value, max }) {
 }
 
 function ImageUploadField({ label, hint, value, onChange, siteId, markUploaded, markForDeletion }) {
-  const { t } = useTranslation('admin');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const imgSrc = value ? (value.startsWith('/') ? `${API_BASE}${value}` : value) : null;
@@ -38,11 +36,11 @@ function ImageUploadField({ label, hint, value, onChange, siteId, markUploaded, 
 
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setError(t('seoSection.errImageType'));
+      setError("Use JPG, PNG, WebP, or GIF.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError(t('seoSection.errImageSize'));
+      setError("Image must be under 5MB.");
       return;
     }
 
@@ -65,10 +63,10 @@ function ImageUploadField({ label, hint, value, onChange, siteId, markUploaded, 
         markUploaded?.(urls[0]);
         if (oldValue) markForDeletion?.(oldValue);
       } else {
-        setError(result.error || t('seoSection.uploadFailed'));
+        setError(result.error || "Upload failed");
       }
     } catch {
-      setError(t('seoSection.uploadFailed'));
+      setError("Upload failed");
     }
     setUploading(false);
     e.target.value = '';
@@ -87,7 +85,7 @@ function ImageUploadField({ label, hint, value, onChange, siteId, markUploaded, 
         <div style={{ flex: 1 }}>
           <label className="btn btn-outline" style={{ fontSize: 13, padding: '8px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: uploading ? 0.6 : 1 }}>
             <i className={`fas ${uploading ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
-            {uploading ? t('seoSection.uploading') : value ? t('seoSection.changeImage') : t('seoSection.uploadImage')}
+            {uploading ? "Uploading..." : value ? "Change Image" : "Upload Image"}
             <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
           </label>
           {error && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{error}</div>}
@@ -99,14 +97,13 @@ function ImageUploadField({ label, hint, value, onChange, siteId, markUploaded, 
 }
 
 function SearchPreview({ title, description, url }) {
-  const { t } = useTranslation('admin');
-  const displayTitle = title || t('seoSection.previewDefaultTitle');
-  const displayDesc = description || t('seoSection.previewDefaultDesc');
+  const displayTitle = title || "Page Title";
+  const displayDesc = description || "Meta description will appear here.";
   const displayUrl = url || window.location.origin;
 
   return (
     <div className="seo-preview">
-      <div className="seo-preview-label">{t('seoSection.googlePreview')}</div>
+      <div className="seo-preview-label">Google Search Preview</div>
       <div className="seo-preview-title">{displayTitle}</div>
       <div className="seo-preview-url">{displayUrl}</div>
       <div className="seo-preview-desc">{displayDesc}</div>
@@ -115,18 +112,15 @@ function SearchPreview({ title, description, url }) {
 }
 
 function getDefaultSEOTitle(brandName, t) {
-  return t('seoSection.defaultTitleTpl', { brand: brandName || t('seoSection.defaultBrand') });
+  return `${brandName || "Your Store"} - Online Store`;
 }
 
-function getDefaultSEODescription(brandName, category, t) {
-  const safeBrand = brandName || t('seoSection.defaultBrand');
-  const key = `seoSection.categoryDesc.${category}`;
-  const fallback = t('seoSection.categoryDesc.general', { brand: safeBrand });
-  return t(key, { brand: safeBrand, defaultValue: fallback });
+function getDefaultSEODescription(brandName, category) {
+  const safeBrand = brandName || "Your Store";
+  return `Shop online at ${safeBrand}. Explore our curated collection with secure checkout, easy returns & fast delivery.`;
 }
 
 function SiteSEOTab({ siteConfig }) {
-  const { t } = useTranslation('admin');
   const siteId = siteConfig?.id;
   const storeUrl = getStoreUrl(siteConfig);
 
@@ -147,9 +141,9 @@ function SiteSEOTab({ siteConfig }) {
   const [faviconUploading, setFaviconUploading] = useState(false);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
-  const brandName = apiBrandName || siteConfig?.brandName || siteConfig?.brand_name || t('seoSection.defaultBrand');
+  const brandName = apiBrandName || siteConfig?.brandName || siteConfig?.brand_name || "Your Store";
   const defaultTitle = getDefaultSEOTitle(brandName, t);
-  const defaultDescription = getDefaultSEODescription(brandName, siteCategory, t);
+  const defaultDescription = getDefaultSEODescription(brandName, siteCategory);
 
   useEffect(() => {
     if (!siteId) return;
@@ -177,12 +171,12 @@ function SiteSEOTab({ siteConfig }) {
 
     const allowed = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml', 'image/webp', 'image/jpeg', 'image/gif'];
     if (!allowed.includes(file.type)) {
-      setMsg({ type: 'error', text: t('seoSection.errFaviconType') });
+      setMsg({ type: 'error', text: "Invalid file type. Use PNG, ICO, SVG, or WebP." });
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setMsg({ type: 'error', text: t('seoSection.errFaviconSize') });
+      setMsg({ type: 'error', text: "Favicon must be under 2MB." });
       return;
     }
 
@@ -204,13 +198,13 @@ function SiteSEOTab({ siteConfig }) {
         setForm(prev => ({ ...prev, favicon_url: urls[0] }));
         markUploaded(urls[0]);
         if (oldFavicon) markForDeletion(oldFavicon);
-        setMsg({ type: 'success', text: t('seoSection.faviconUploaded') });
+        setMsg({ type: 'success', text: "Favicon uploaded! Click \"Save SEO Settings\" to apply." });
         setTimeout(() => setMsg(null), 4000);
       } else {
-        setMsg({ type: 'error', text: result.error || t('seoSection.uploadFailed') });
+        setMsg({ type: 'error', text: result.error || "Upload failed" });
       }
     } catch {
-      setMsg({ type: 'error', text: t('seoSection.errFaviconUpload') });
+      setMsg({ type: 'error', text: "Failed to upload favicon" });
     }
     setFaviconUploading(false);
     e.target.value = '';
@@ -228,13 +222,13 @@ function SiteSEOTab({ siteConfig }) {
       });
       const result = await res.json();
       if (result.success) {
-        setMsg({ type: 'success', text: t('seoSection.savedSeo') });
+        setMsg({ type: 'success', text: "SEO settings saved successfully!" });
         commit(form.favicon_url ? [form.favicon_url] : []);
       } else {
-        setMsg({ type: 'error', text: result.error || t('seoSection.failedSave') });
+        setMsg({ type: 'error', text: result.error || "Failed to save" });
       }
     } catch {
-      setMsg({ type: 'error', text: t('seoSection.errSaveSeo') });
+      setMsg({ type: 'error', text: "Failed to save SEO settings" });
     }
     setSaving(false);
   }
@@ -258,16 +252,16 @@ function SiteSEOTab({ siteConfig }) {
       />
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title">{t('seoSection.faviconCard')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Favicon</h3></div>
         <div className="card-content">
           <div className="seo-field">
-            <label>{t('seoSection.siteFavicon')}</label>
+            <label>Site Favicon</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {form.favicon_url ? (
                 <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 8, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', flexShrink: 0 }}>
                   <img
                     src={form.favicon_url.startsWith('/') ? `${API_BASE}${form.favicon_url}` : form.favicon_url}
-                    alt={t('seoSection.faviconAlt')}
+                    alt="Favicon"
                     style={{ maxWidth: 32, maxHeight: 32, objectFit: 'contain' }}
                   />
                   <button
@@ -289,7 +283,7 @@ function SiteSEOTab({ siteConfig }) {
                   style={{ fontSize: 13, padding: '8px 16px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, opacity: faviconUploading ? 0.6 : 1 }}
                 >
                   <i className={`fas ${faviconUploading ? 'fa-spinner fa-spin' : 'fa-upload'}`} />
-                  {faviconUploading ? t('seoSection.uploading') : form.favicon_url ? t('seoSection.changeFavicon') : t('seoSection.uploadFavicon')}
+                  {faviconUploading ? "Uploading..." : form.favicon_url ? "Change Favicon" : "Upload Favicon"}
                   <input
                     type="file"
                     accept=".png,.ico,.svg,.webp,.jpg,.jpeg"
@@ -300,17 +294,17 @@ function SiteSEOTab({ siteConfig }) {
                 </label>
               </div>
             </div>
-            <div className="seo-hint">{t('seoSection.faviconHint')}</div>
+            <div className="seo-hint">Recommended: 32x32 or 64x64 PNG. This icon appears in browser tabs and bookmarks.</div>
           </div>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title">{t('seoSection.siteWideCard')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Site-Wide SEO Defaults</h3></div>
         <div className="card-content">
 
           <div className="seo-field">
-            <label>{t('seoSection.siteTitle')}</label>
+            <label>Site Title</label>
             <input
               type="text"
               value={form.seo_title || defaultTitle}
@@ -318,11 +312,11 @@ function SiteSEOTab({ siteConfig }) {
               maxLength={70}
             />
             <CharCounter value={form.seo_title || defaultTitle} max={60} />
-            <div className="seo-hint">{t('seoSection.siteTitleHint')}</div>
+            <div className="seo-hint">Recommended: 50-60 characters. Shown in Google results and browser tab.</div>
           </div>
 
           <div className="seo-field">
-            <label>{t('seoSection.metaDescription')}</label>
+            <label>Meta Description</label>
             <textarea
               value={form.seo_description || defaultDescription}
               onChange={e => setForm(prev => ({ ...prev, seo_description: e.target.value === defaultDescription ? '' : e.target.value }))}
@@ -330,49 +324,49 @@ function SiteSEOTab({ siteConfig }) {
               rows={3}
             />
             <CharCounter value={form.seo_description || defaultDescription} max={160} />
-            <div className="seo-hint">{t('seoSection.metaDescHint')}</div>
+            <div className="seo-hint">Recommended: 120-160 characters. Affects click-through rate from Google.</div>
           </div>
 
           <div className="seo-field">
-            <label>{t('seoSection.metaKeywords')}</label>
+            <label>Meta Keywords</label>
             <input
               type="text"
               value={form.seo_keywords}
               onChange={set('seo_keywords')}
-              placeholder={t('seoSection.siteKeywordsPlaceholder', { brand: brandName.toLowerCase() })}
+              placeholder={`e.g. ${brandName.toLowerCase()}, online store, shop online`}
               maxLength={200}
             />
-            <div className="seo-hint">{t('seoSection.siteKeywordsHint')}</div>
+            <div className="seo-hint">Comma-separated keywords for your store. Helps some search engines and social platforms understand your content.</div>
           </div>
 
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title">{t('seoSection.advancedCard')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Advanced Settings</h3></div>
         <div className="card-content">
 
           <div className="seo-field">
-            <label>{t('seoSection.indexing')}</label>
+            <label>Search Engine Indexing</label>
             <select value={form.seo_robots} onChange={set('seo_robots')}>
-              <option value="index, follow">{t('seoSection.robotsAllow')}</option>
-              <option value="noindex, follow">{t('seoSection.robotsNoindex')}</option>
-              <option value="index, nofollow">{t('seoSection.robotsIndexNoFollow')}</option>
-              <option value="noindex, nofollow">{t('seoSection.robotsBlockAll')}</option>
+              <option value="index, follow">Allow indexing (recommended)</option>
+              <option value="noindex, follow">Hide from search engines (noindex)</option>
+              <option value="index, nofollow">Index but don't follow links</option>
+              <option value="noindex, nofollow">Block all crawlers</option>
             </select>
-            <div className="seo-hint">{t('seoSection.indexingHint')}</div>
+            <div className="seo-hint">Controls whether Google can find and index your store.</div>
           </div>
 
           <div className="seo-field">
-            <label>{t('seoSection.googleVerification')}</label>
+            <label>Google Verification Code</label>
             <input
               type="text"
               value={form.google_verification}
               onChange={set('google_verification')}
-              placeholder={t('seoSection.googleVerificationPlaceholder')}
+              placeholder="Paste your Google Search Console verification code here"
             />
             <div className="seo-hint">
-              {t('seoSection.googleVerificationHint')}
+              Get this from Google Search Console → Verify ownership → HTML tag method. Paste only the content value (not the full tag).
             </div>
           </div>
 
@@ -380,10 +374,10 @@ function SiteSEOTab({ siteConfig }) {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title">{t('seoSection.sitemapCard')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Sitemap & Robots</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-            {t('seoSection.sitemapDesc')}
+            These files are generated automatically. Submit your sitemap URL to Google Search Console so Google can discover all your pages.
           </p>
 
           <div className="seo-sitemap-box">
@@ -394,7 +388,7 @@ function SiteSEOTab({ siteConfig }) {
               style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
               onClick={() => copyToClipboard(`${storeUrl}/sitemap.xml`)}
             >
-              {t('seoSection.copyUrl')}
+              Copy URL
             </button>
           </div>
 
@@ -406,7 +400,7 @@ function SiteSEOTab({ siteConfig }) {
               style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap', borderColor: '#bfdbfe', color: '#1e40af' }}
               onClick={() => copyToClipboard(`${storeUrl}/robots.txt`)}
             >
-              {t('seoSection.copyUrl')}
+              Copy URL
             </button>
           </div>
         </div>
@@ -415,16 +409,15 @@ function SiteSEOTab({ siteConfig }) {
       {msg && <div className={`seo-msg ${msg.type}`}>{msg.text}</div>}
 
       <button type="submit" className="btn btn-primary" disabled={saving} style={{ marginTop: 8 }}>
-        {saving ? t('seoSection.saving') : t('seoSection.saveSeoSettings')}
+        {saving ? "Saving..." : "Save SEO Settings"}
       </button>
     </form>
   );
 }
 
 function CategoriesSEOTab({ siteConfig }) {
-  const { t } = useTranslation('admin');
   const siteId = siteConfig?.id;
-  const brandName = siteConfig?.brandName || siteConfig?.brand_name || t('seoSection.fallbackStore');
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || "Store";
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -453,7 +446,7 @@ function CategoriesSEOTab({ siteConfig }) {
   }
 
   function getAutoDesc(cat) {
-    return cat.description || t('seoSection.browseCollection', { name: cat.name });
+    return cat.description || `Browse our ${cat.name} collection.`;
   }
 
   function startEdit(cat) {
@@ -492,13 +485,13 @@ function CategoriesSEOTab({ siteConfig }) {
         setCategories(nextCategories);
         setEditingId(null);
         commit(nextCategories.map(c => c.seo_og_image).filter(Boolean));
-        setMsg({ type: 'success', text: t('seoSection.savedCategory') });
+        setMsg({ type: 'success', text: "Category SEO saved!" });
         setTimeout(() => setMsg(null), 3000);
       } else {
-        setMsg({ type: 'error', text: result.error || t('seoSection.failedSave') });
+        setMsg({ type: 'error', text: result.error || "Failed to save" });
       }
     } catch {
-      setMsg({ type: 'error', text: t('seoSection.failedSave') });
+      setMsg({ type: 'error', text: "Failed to save" });
     }
     setSaving(false);
   }
@@ -516,7 +509,7 @@ function CategoriesSEOTab({ siteConfig }) {
       <div className="card">
         <div className="card-content" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
           <i className="fas fa-folder-open" style={{ fontSize: 32, marginBottom: 12, display: 'block' }} />
-          {t('seoSection.noCategoriesFound')}
+          No categories found. Add categories from the Products section first.
         </div>
       </div>
     );
@@ -525,7 +518,7 @@ function CategoriesSEOTab({ siteConfig }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-        {t('seoSection.categoriesIntro')}
+        Customize SEO for each category page. Fields are auto-filled from your category data — edit to override.
       </p>
 
       {msg && <div className={`seo-msg ${msg.type}`} style={{ marginBottom: 12 }}>{msg.text}</div>}
@@ -550,14 +543,14 @@ function CategoriesSEOTab({ siteConfig }) {
                     <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
                       <span>/category/{cat.slug}</span>
                       <span style={{ color: '#64748b', fontStyle: 'italic' }} title={cat.seo_title || autoTitle}>
-                        {cat.seo_title ? t('seoSection.custom') : t('seoSection.auto')}: {(cat.seo_title || autoTitle).substring(0, 35)}{(cat.seo_title || autoTitle).length > 35 ? '...' : ''}
+                        {cat.seo_title ? "Custom" : "Auto"}: {(cat.seo_title || autoTitle).substring(0, 35)}{(cat.seo_title || autoTitle).length > 35 ? '...' : ''}
                       </span>
                     </div>
                   </div>
                 </div>
                 {editingId !== cat.id && (
                   <button className="btn btn-outline btn-sm" onClick={() => startEdit(cat)} style={{ flexShrink: 0 }}>
-                    <i className="fas fa-pen" /> {t('seoSection.editSeo')}
+                    <i className="fas fa-pen" /> Edit SEO
                   </button>
                 )}
               </div>
@@ -570,7 +563,7 @@ function CategoriesSEOTab({ siteConfig }) {
                     url={`${getStoreUrl(siteConfig)}/category/${cat.slug}`}
                   />
                   <div className="seo-field">
-                    <label>{t('seoSection.seoTitle')}</label>
+                    <label>SEO Title</label>
                     <input
                       type="text"
                       value={editForm.seo_title}
@@ -580,7 +573,7 @@ function CategoriesSEOTab({ siteConfig }) {
                     <CharCounter value={editForm.seo_title} max={60} />
                   </div>
                   <div className="seo-field">
-                    <label>{t('seoSection.metaDescription')}</label>
+                    <label>Meta Description</label>
                     <textarea
                       value={editForm.seo_description}
                       onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
@@ -590,19 +583,19 @@ function CategoriesSEOTab({ siteConfig }) {
                     <CharCounter value={editForm.seo_description} max={160} />
                   </div>
                   <div className="seo-field">
-                    <label>{t('seoSection.metaKeywords')}</label>
+                    <label>Meta Keywords</label>
                     <input
                       type="text"
                       value={editForm.seo_keywords}
                       onChange={e => setEditForm(p => ({ ...p, seo_keywords: e.target.value }))}
-                      placeholder={t('seoSection.categoryKeywordsPlaceholder', { name: cat.name.toLowerCase(), brand: brandName.toLowerCase() })}
+                      placeholder={`e.g. ${cat.name.toLowerCase()}, ${brandName.toLowerCase()}, shop ${cat.name.toLowerCase()}`}
                       maxLength={200}
                     />
-                    <div className="seo-hint">{t('seoSection.categoryKeywordsHint')}</div>
+                    <div className="seo-hint">Comma-separated keywords for this category.</div>
                   </div>
                   <ImageUploadField
-                    label={t('seoSection.ogImageLabel')}
-                    hint={t('seoSection.ogImageHintCategory')}
+                    label="OG Image (for social sharing)"
+                    hint="This image appears when the category is shared on WhatsApp, Facebook, Twitter, etc. Recommended: 1200x630px."
                     value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
@@ -616,14 +609,14 @@ function CategoriesSEOTab({ siteConfig }) {
                       onClick={() => handleSave(cat.id)}
                       disabled={saving}
                     >
-                      {saving ? t('seoSection.saving') : t('seoSection.save')}
+                      {saving ? "Saving..." : "Save"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-outline btn-sm"
                       onClick={() => setEditingId(null)}
                     >
-                      {t('seoSection.cancel')}
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -637,9 +630,8 @@ function CategoriesSEOTab({ siteConfig }) {
 }
 
 function ProductsSEOTab({ siteConfig }) {
-  const { t } = useTranslation('admin');
   const siteId = siteConfig?.id;
-  const brandName = siteConfig?.brandName || siteConfig?.brand_name || t('seoSection.fallbackStore');
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || "Store";
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -708,13 +700,13 @@ function ProductsSEOTab({ siteConfig }) {
         setProducts(nextProducts);
         setEditingId(null);
         commit(nextProducts.map(p => p.seo_og_image).filter(Boolean));
-        setMsg({ type: 'success', text: t('seoSection.savedProduct') });
+        setMsg({ type: 'success', text: "Product SEO saved!" });
         setTimeout(() => setMsg(null), 3000);
       } else {
-        setMsg({ type: 'error', text: result.error || t('seoSection.failedSave') });
+        setMsg({ type: 'error', text: result.error || "Failed to save" });
       }
     } catch {
-      setMsg({ type: 'error', text: t('seoSection.failedSave') });
+      setMsg({ type: 'error', text: "Failed to save" });
     }
     setSaving(false);
   }
@@ -736,7 +728,7 @@ function ProductsSEOTab({ siteConfig }) {
       <div className="card">
         <div className="card-content" style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
           <i className="fas fa-box-open" style={{ fontSize: 32, marginBottom: 12, display: 'block' }} />
-          {t('seoSection.noProductsFound')}
+          No products found. Add products from the Products section first.
         </div>
       </div>
     );
@@ -745,7 +737,7 @@ function ProductsSEOTab({ siteConfig }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-        {t('seoSection.productsIntro')}
+        SEO fields are pre-filled from your product data. Edit to customize how each product appears in Google and social media.
       </p>
 
       <div className="seo-field" style={{ marginBottom: 16 }}>
@@ -753,7 +745,7 @@ function ProductsSEOTab({ siteConfig }) {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder={t('seoSection.searchProducts')}
+          placeholder="Search products..."
         />
       </div>
 
@@ -779,14 +771,14 @@ function ProductsSEOTab({ siteConfig }) {
                     <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
                       <span>/product/{product.slug}</span>
                       <span style={{ color: '#64748b', fontStyle: 'italic' }} title={product.seo_title || autoTitle}>
-                        {product.seo_title ? t('seoSection.custom') : t('seoSection.auto')}: {(product.seo_title || autoTitle).substring(0, 35)}{(product.seo_title || autoTitle).length > 35 ? '...' : ''}
+                        {product.seo_title ? "Custom" : "Auto"}: {(product.seo_title || autoTitle).substring(0, 35)}{(product.seo_title || autoTitle).length > 35 ? '...' : ''}
                       </span>
                     </div>
                   </div>
                 </div>
                 {editingId !== product.id && (
                   <button className="btn btn-outline btn-sm" onClick={() => startEdit(product)} style={{ flexShrink: 0 }}>
-                    <i className="fas fa-pen" /> {t('seoSection.editSeo')}
+                    <i className="fas fa-pen" /> Edit SEO
                   </button>
                 )}
               </div>
@@ -799,7 +791,7 @@ function ProductsSEOTab({ siteConfig }) {
                     url={`${getStoreUrl(siteConfig)}/product/${product.slug}`}
                   />
                   <div className="seo-field">
-                    <label>{t('seoSection.seoTitle')}</label>
+                    <label>SEO Title</label>
                     <input
                       type="text"
                       value={editForm.seo_title}
@@ -809,7 +801,7 @@ function ProductsSEOTab({ siteConfig }) {
                     <CharCounter value={editForm.seo_title} max={60} />
                   </div>
                   <div className="seo-field">
-                    <label>{t('seoSection.metaDescription')}</label>
+                    <label>Meta Description</label>
                     <textarea
                       value={editForm.seo_description}
                       onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
@@ -819,19 +811,19 @@ function ProductsSEOTab({ siteConfig }) {
                     <CharCounter value={editForm.seo_description} max={160} />
                   </div>
                   <div className="seo-field">
-                    <label>{t('seoSection.metaKeywords')}</label>
+                    <label>Meta Keywords</label>
                     <input
                       type="text"
                       value={editForm.seo_keywords}
                       onChange={e => setEditForm(p => ({ ...p, seo_keywords: e.target.value }))}
-                      placeholder={t('seoSection.productKeywordsPlaceholder', { name: product.name.toLowerCase(), brand: brandName.toLowerCase() })}
+                      placeholder={`e.g. ${product.name.toLowerCase()}, buy ${product.name.toLowerCase()}, ${brandName.toLowerCase()}`}
                       maxLength={200}
                     />
-                    <div className="seo-hint">{t('seoSection.productKeywordsHint')}</div>
+                    <div className="seo-hint">Comma-separated keywords for this product.</div>
                   </div>
                   <ImageUploadField
-                    label={t('seoSection.ogImageLabel')}
-                    hint={t('seoSection.ogImageHintProduct')}
+                    label="OG Image (for social sharing)"
+                    hint="This image appears when the product is shared on WhatsApp, Facebook, Twitter, etc. Recommended: 1200x630px."
                     value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
@@ -845,14 +837,14 @@ function ProductsSEOTab({ siteConfig }) {
                       onClick={() => handleSave(product.id)}
                       disabled={saving}
                     >
-                      {saving ? t('seoSection.saving') : t('seoSection.save')}
+                      {saving ? "Saving..." : "Save"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-outline btn-sm"
                       onClick={() => setEditingId(null)}
                     >
-                      {t('seoSection.cancel')}
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -863,16 +855,15 @@ function ProductsSEOTab({ siteConfig }) {
       })}
 
       {filtered.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#94a3b8', padding: 24 }}>{t('seoSection.noSearchMatch')}</div>
+        <div style={{ textAlign: 'center', color: '#94a3b8', padding: 24 }}>No products match your search.</div>
       )}
     </div>
   );
 }
 
 function PagesSEOTab({ siteConfig }) {
-  const { t } = useTranslation('admin');
   const siteId = siteConfig?.id;
-  const brandName = siteConfig?.brandName || siteConfig?.brand_name || t('seoSection.fallbackStore');
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || "Store";
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
@@ -882,11 +873,11 @@ function PagesSEOTab({ siteConfig }) {
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteId);
 
   const PAGE_LABELS = {
-    home: { label: t('seoSection.pageLabels.home'), icon: 'fa-home', path: '/' },
-    about: { label: t('seoSection.pageLabels.about'), icon: 'fa-info-circle', path: '/about' },
-    contact: { label: t('seoSection.pageLabels.contact'), icon: 'fa-envelope', path: '/contact' },
-    privacy: { label: t('seoSection.pageLabels.privacy'), icon: 'fa-shield-alt', path: '/privacy-policy' },
-    terms: { label: t('seoSection.pageLabels.terms'), icon: 'fa-file-contract', path: '/terms' },
+    home: { label: "Homepage", icon: 'fa-home', path: '/' },
+    about: { label: "About Us", icon: 'fa-info-circle', path: '/about' },
+    contact: { label: "Contact Us", icon: 'fa-envelope', path: '/contact' },
+    privacy: { label: "Privacy Policy", icon: 'fa-shield-alt', path: '/privacy-policy' },
+    terms: { label: "Terms & Conditions", icon: 'fa-file-contract', path: '/terms' },
   };
 
   useEffect(() => {
@@ -910,9 +901,7 @@ function PagesSEOTab({ siteConfig }) {
   }
 
   function getAutoDesc(pageType) {
-    const key = `seoSection.pageDefaultDesc.${pageType}`;
-    const fallback = '';
-    return t(key, { brand: brandName, defaultValue: fallback });
+    return '';
   }
 
   function startEdit(page) {
@@ -950,13 +939,13 @@ function PagesSEOTab({ siteConfig }) {
         setPages(nextPages);
         setEditingId(null);
         commit(nextPages.map(p => p.seo_og_image).filter(Boolean));
-        setMsg({ type: 'success', text: t('seoSection.savedPage') });
+        setMsg({ type: 'success', text: "Page SEO saved!" });
         setTimeout(() => setMsg(null), 3000);
       } else {
-        setMsg({ type: 'error', text: result.error || t('seoSection.failedSave') });
+        setMsg({ type: 'error', text: result.error || "Failed to save" });
       }
     } catch {
-      setMsg({ type: 'error', text: t('seoSection.failedSave') });
+      setMsg({ type: 'error', text: "Failed to save" });
     }
     setSaving(false);
   }
@@ -966,7 +955,7 @@ function PagesSEOTab({ siteConfig }) {
   return (
     <div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-        {t('seoSection.pagesIntro')}
+        Set custom SEO title and description for each static page. Fields are pre-filled with auto-generated defaults — edit to override.
       </p>
 
       {msg && <div className={`seo-msg ${msg.type}`} style={{ marginBottom: 12 }}>{msg.text}</div>}
@@ -986,13 +975,13 @@ function PagesSEOTab({ siteConfig }) {
                   <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
                     <span>{meta.path}</span>
                     <span style={{ color: '#64748b', fontStyle: 'italic' }} title={page.seo_title || autoTitle}>
-                      {page.seo_title ? t('seoSection.custom') : t('seoSection.auto')}: {(page.seo_title || autoTitle).substring(0, 35)}{(page.seo_title || autoTitle).length > 35 ? '...' : ''}
+                      {page.seo_title ? "Custom" : "Auto"}: {(page.seo_title || autoTitle).substring(0, 35)}{(page.seo_title || autoTitle).length > 35 ? '...' : ''}
                     </span>
                   </div>
                 </div>
                 {editingId !== page.page_type && (
                   <button className="btn btn-outline btn-sm" onClick={() => startEdit(page)}>
-                    <i className="fas fa-pen" /> {t('seoSection.editSeo')}
+                    <i className="fas fa-pen" /> Edit SEO
                   </button>
                 )}
               </div>
@@ -1000,7 +989,7 @@ function PagesSEOTab({ siteConfig }) {
               {editingId === page.page_type && (
                 <div>
                   <div className="seo-field">
-                    <label>{t('seoSection.seoTitle')}</label>
+                    <label>SEO Title</label>
                     <input
                       type="text"
                       value={editForm.seo_title}
@@ -1010,7 +999,7 @@ function PagesSEOTab({ siteConfig }) {
                     <CharCounter value={editForm.seo_title} max={60} />
                   </div>
                   <div className="seo-field">
-                    <label>{t('seoSection.metaDescription')}</label>
+                    <label>Meta Description</label>
                     <textarea
                       value={editForm.seo_description}
                       onChange={e => setEditForm(p => ({ ...p, seo_description: e.target.value }))}
@@ -1020,19 +1009,19 @@ function PagesSEOTab({ siteConfig }) {
                     <CharCounter value={editForm.seo_description} max={160} />
                   </div>
                   <div className="seo-field">
-                    <label>{t('seoSection.metaKeywords')}</label>
+                    <label>Meta Keywords</label>
                     <input
                       type="text"
                       value={editForm.seo_keywords}
                       onChange={e => setEditForm(p => ({ ...p, seo_keywords: e.target.value }))}
-                      placeholder={t('seoSection.pageKeywordsPlaceholder', { label: meta.label.toLowerCase(), brand: brandName.toLowerCase() })}
+                      placeholder={`e.g. ${meta.label.toLowerCase()}, ${brandName.toLowerCase()}`}
                       maxLength={200}
                     />
-                    <div className="seo-hint">{t('seoSection.pageKeywordsHint')}</div>
+                    <div className="seo-hint">Comma-separated keywords for this page.</div>
                   </div>
                   <ImageUploadField
-                    label={t('seoSection.ogImageLabel')}
-                    hint={t('seoSection.ogImageHintGeneric')}
+                    label="OG Image (for social sharing)"
+                    hint="Upload an image for social sharing (1200x630px recommended)."
                     value={editForm.seo_og_image}
                     onChange={url => setEditForm(p => ({ ...p, seo_og_image: url }))}
                     siteId={siteId}
@@ -1046,14 +1035,14 @@ function PagesSEOTab({ siteConfig }) {
                       onClick={() => handleSave(page.page_type)}
                       disabled={saving}
                     >
-                      {saving ? t('seoSection.saving') : t('seoSection.save')}
+                      {saving ? "Saving..." : "Save"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-outline btn-sm"
                       onClick={() => setEditingId(null)}
                     >
-                      {t('seoSection.cancel')}
+                      Cancel
                     </button>
                   </div>
                 </div>
@@ -1067,35 +1056,33 @@ function PagesSEOTab({ siteConfig }) {
 }
 
 function SocialPreview({ type, title, description, image, url, siteName }) {
-  const { t } = useTranslation('admin');
   if (type === 'twitter') {
     return (
       <div className="seo-preview" style={{ borderInlineStart: '3px solid #1da1f2' }}>
-        <div className="seo-preview-label" style={{ color: '#1da1f2' }}>{t('seoSection.twitterPreview')}</div>
+        <div className="seo-preview-label" style={{ color: '#1da1f2' }}>Twitter Card Preview</div>
         {image && <div style={{ background: '#f1f5f9', borderRadius: 8, height: 120, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <img src={image} alt="" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
         </div>}
-        <div style={{ fontSize: 14, fontWeight: 600 }}>{title || t('seoSection.previewDefaultTitle')}</div>
-        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{description || t('seoSection.previewSocialDesc')}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{url || t('seoSection.previewDefaultUrl')}</div>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>{title || "Page Title"}</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{description || "Description will appear here."}</div>
+        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{url || "yoursite.com"}</div>
       </div>
     );
   }
   return (
     <div className="seo-preview" style={{ borderInlineStart: '3px solid #1877f2' }}>
-      <div className="seo-preview-label" style={{ color: '#1877f2' }}>{t('seoSection.facebookPreview')}</div>
+      <div className="seo-preview-label" style={{ color: '#1877f2' }}>Facebook / Open Graph Preview</div>
       {image && <div style={{ background: '#f1f5f9', borderRadius: 8, height: 120, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
         <img src={image} alt="" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'cover' }} onError={e => e.target.style.display = 'none'} />
       </div>}
-      <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>{siteName || t('seoSection.previewDefaultSite')}</div>
-      <div style={{ fontSize: 14, fontWeight: 600 }}>{title || t('seoSection.previewDefaultTitle')}</div>
-      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{description || t('seoSection.previewSocialDesc')}</div>
+      <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>{siteName || "Your Site"}</div>
+      <div style={{ fontSize: 14, fontWeight: 600 }}>{title || "Page Title"}</div>
+      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{description || "Description will appear here."}</div>
     </div>
   );
 }
 
 function SocialMediaTab({ siteConfig }) {
-  const { t } = useTranslation('admin');
   const siteId = siteConfig?.id;
   const [form, setForm] = useState({
     og_title: '',
@@ -1157,19 +1144,19 @@ function SocialMediaTab({ siteConfig }) {
       });
       const result = await res.json();
       if (result.success) {
-        setMsg({ type: 'success', text: t('seoSection.savedSocial') });
+        setMsg({ type: 'success', text: "Social media tags saved!" });
         commit([form.og_image, form.twitter_image].filter(Boolean));
       } else {
-        setMsg({ type: 'error', text: result.error || t('seoSection.failedSave') });
+        setMsg({ type: 'error', text: result.error || "Failed to save" });
       }
     } catch {
-      setMsg({ type: 'error', text: t('seoSection.errSaveSocial') });
+      setMsg({ type: 'error', text: "Failed to save social media tags" });
     }
     setSaving(false);
     if (msg?.type === 'success') setTimeout(() => setMsg(null), 4000);
   }
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>{t('seoSection.loadingSocial')}</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Loading social media settings...</div>;
 
   const ogTitle = form.og_title || defaults.title;
   const ogDesc = form.og_description || defaults.description;
@@ -1182,36 +1169,36 @@ function SocialMediaTab({ siteConfig }) {
   return (
     <form onSubmit={handleSave}>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-        {t('seoSection.socialIntro')}
+        Control how your site appears when shared on Facebook, WhatsApp, Twitter/X, and other platforms. If left empty, values from your Site SEO settings are used as defaults.
       </p>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title"><i className="fab fa-facebook" style={{ marginInlineEnd: 8, color: '#1877f2' }} />{t('seoSection.openGraphTags')}</h3></div>
+        <div className="card-header"><h3 className="card-title"><i className="fab fa-facebook" style={{ marginInlineEnd: 8, color: '#1877f2' }} />Open Graph Tags</h3></div>
         <div className="card-content">
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 320px' }}>
               <div className="seo-field">
-                <label>{t('seoSection.ogTitle')}</label>
-                <input type="text" value={form.og_title} onChange={set('og_title')} placeholder={defaults.title || t('seoSection.ogTitlePlaceholder')} maxLength={70} />
-                <div className="seo-hint">{t('seoSection.ogTitleHint')}</div>
+                <label>OG Title</label>
+                <input type="text" value={form.og_title} onChange={set('og_title')} placeholder={defaults.title || "Site title"} maxLength={70} />
+                <div className="seo-hint">Leave empty to use your site SEO title.</div>
               </div>
               <div className="seo-field">
-                <label>{t('seoSection.ogDescription')}</label>
-                <textarea value={form.og_description} onChange={set('og_description')} placeholder={defaults.description || t('seoSection.ogDescPlaceholder')} rows={2} maxLength={200} />
-                <div className="seo-hint">{t('seoSection.ogDescHint')}</div>
+                <label>OG Description</label>
+                <textarea value={form.og_description} onChange={set('og_description')} placeholder={defaults.description || "Site description"} rows={2} maxLength={200} />
+                <div className="seo-hint">Leave empty to use your site meta description.</div>
               </div>
               <div className="seo-field">
-                <label>{t('seoSection.ogType')}</label>
+                <label>OG Type</label>
                 <select value={form.og_type} onChange={set('og_type')}>
                   <option value="website">website</option>
                   <option value="article">article</option>
                   <option value="product">product</option>
                 </select>
-                <div className="seo-hint">{t('seoSection.ogTypeHint')}</div>
+                <div className="seo-hint">Default type for your homepage. Product pages automatically use "product".</div>
               </div>
               <ImageUploadField
-                label={t('seoSection.ogImageLabel')}
-                hint={t('seoSection.ogImageHintHome')}
+                label="OG Image (for social sharing)"
+                hint="Appears when your site is shared on Facebook, WhatsApp, etc. (1200x630px recommended)"
                 value={form.og_image}
                 onChange={url => setForm(prev => ({ ...prev, og_image: url }))}
                 siteId={siteId}
@@ -1227,34 +1214,34 @@ function SocialMediaTab({ siteConfig }) {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-header"><h3 className="card-title"><i className="fab fa-twitter" style={{ marginInlineEnd: 8, color: '#1da1f2' }} />{t('seoSection.twitterTags')}</h3></div>
+        <div className="card-header"><h3 className="card-title"><i className="fab fa-twitter" style={{ marginInlineEnd: 8, color: '#1da1f2' }} />Twitter Card Tags</h3></div>
         <div className="card-content">
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 320px' }}>
               <div className="seo-field">
-                <label>{t('seoSection.cardType')}</label>
+                <label>Card Type</label>
                 <select value={form.twitter_card} onChange={set('twitter_card')}>
-                  <option value="summary_large_image">{t('seoSection.cardLarge')}</option>
-                  <option value="summary">{t('seoSection.cardSummary')}</option>
+                  <option value="summary_large_image">Large Image (recommended)</option>
+                  <option value="summary">Summary</option>
                 </select>
               </div>
               <div className="seo-field">
-                <label>{t('seoSection.twitterTitle')}</label>
-                <input type="text" value={form.twitter_title} onChange={set('twitter_title')} placeholder={form.og_title || defaults.title || t('seoSection.sameAsOgTitle')} maxLength={70} />
-                <div className="seo-hint">{t('seoSection.twitterTitleHint')}</div>
+                <label>Twitter Title</label>
+                <input type="text" value={form.twitter_title} onChange={set('twitter_title')} placeholder={form.og_title || defaults.title || "Same as OG title"} maxLength={70} />
+                <div className="seo-hint">Leave empty to use OG title.</div>
               </div>
               <div className="seo-field">
-                <label>{t('seoSection.twitterDescription')}</label>
-                <textarea value={form.twitter_description} onChange={set('twitter_description')} placeholder={form.og_description || defaults.description || t('seoSection.sameAsOgDesc')} rows={2} maxLength={200} />
+                <label>Twitter Description</label>
+                <textarea value={form.twitter_description} onChange={set('twitter_description')} placeholder={form.og_description || defaults.description || "Same as OG description"} rows={2} maxLength={200} />
               </div>
               <div className="seo-field">
-                <label>{t('seoSection.twitterHandle')}</label>
+                <label>Twitter @handle</label>
                 <input type="text" value={form.twitter_site} onChange={set('twitter_site')} placeholder="@yourbrand" maxLength={50} />
-                <div className="seo-hint">{t('seoSection.twitterHandleHint')}</div>
+                <div className="seo-hint">Your Twitter/X handle (e.g. @flomerce_in)</div>
               </div>
               <ImageUploadField
-                label={t('seoSection.twitterImage')}
-                hint={t('seoSection.twitterImageHint')}
+                label="Twitter Image"
+                hint="Leave empty to use OG image."
                 value={form.twitter_image}
                 onChange={url => setForm(prev => ({ ...prev, twitter_image: url }))}
                 siteId={siteId}
@@ -1272,15 +1259,14 @@ function SocialMediaTab({ siteConfig }) {
       {msg && <div className={`seo-msg ${msg.type}`}>{msg.text}</div>}
 
       <button type="submit" className="btn btn-primary" disabled={saving} style={{ marginTop: 8 }}>
-        {saving ? t('seoSection.saving') : t('seoSection.saveSocial')}
+        {saving ? "Saving..." : "Save Social Media Tags"}
       </button>
     </form>
   );
 }
 
 function SEOOverviewTab({ siteConfig }) {
-  const { t } = useTranslation('admin');
-  const brandName = siteConfig?.brandName || siteConfig?.brand_name || t('seoSection.defaultBrand');
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || "Your Store";
   const logoUrl = siteConfig?.logoUrl || siteConfig?.logo_url || null;
   const email = siteConfig?.email || null;
   const phone = siteConfig?.phone || null;
@@ -1296,85 +1282,85 @@ function SEOOverviewTab({ siteConfig }) {
     }
   } catch {}
 
-  const NOT_SET = t('seoSection.notSet');
-  const SET = t('seoSection.set');
+  const NOT_SET = "Not set";
+  const SET = "Set";
 
   const autoManaged = [
-    { tag: t('seoSection.tags.viewport'), detail: '<meta name="viewport" content="width=device-width, initial-scale=1.0">', icon: 'fa-mobile-alt' },
-    { tag: t('seoSection.tags.charset'), detail: '<meta charset="UTF-8">', icon: 'fa-font' },
-    { tag: t('seoSection.tags.canonical'), detail: t('seoSection.tags.canonicalDetail', { url: `${storeUrl}/product/your-product` }), icon: 'fa-link' },
-    { tag: t('seoSection.tags.themeColor'), detail: t('seoSection.tags.themeColorDetail', { color: primaryColor }), icon: 'fa-palette' },
+    { tag: "Viewport", detail: '<meta name="viewport" content="width=device-width, initial-scale="1.0"">', icon: 'fa-mobile-alt' },
+    { tag: "Charset", detail: '<meta charset="UTF-8">', icon: 'fa-font' },
+    { tag: "Canonical URL", detail: `Auto-set for every page (e.g. ${`${storeUrl}/product/your-product`})`, icon: 'fa-link' },
+    { tag: "Theme Color", detail: `<meta name="theme-color" content="${primaryColor}"> — colors the mobile browser bar`, icon: 'fa-palette' },
   ];
 
   const schemaItems = [
     {
-      tag: t('seoSection.schema.organization'),
+      tag: "Organization Schema",
       icon: 'fa-building',
       values: [
-        { label: t('seoSection.schema.name'), value: brandName },
-        { label: t('seoSection.schema.logo'), value: logoUrl ? SET : t('seoSection.schema.notSetLogo') },
-        { label: t('seoSection.schema.email'), value: email || NOT_SET },
-        { label: t('seoSection.schema.phone'), value: phone || NOT_SET },
-        { label: t('seoSection.schema.socialLinks'), value: socialLinks.length > 0 ? t('seoSection.schema.socialLinked', { count: socialLinks.length }) : t('seoSection.schema.noneSocial') },
+        { label: "Name", value: brandName },
+        { label: "Logo", value: logoUrl ? SET : "Not set — add a logo in Store Settings" },
+        { label: "Email", value: email || NOT_SET },
+        { label: "Phone", value: phone || NOT_SET },
+        { label: "Social Links", value: socialLinks.length > 0 ? `${socialLinks.length} linked` : "None — add in Store Settings" },
       ],
-      editHint: t('seoSection.schema.editStoreSettings'),
+      editHint: "Edit in Store Settings",
     },
     {
-      tag: t('seoSection.schema.website'),
+      tag: "WebSite Schema",
       icon: 'fa-globe',
       values: [
-        { label: t('seoSection.schema.siteName'), value: brandName },
-        { label: t('seoSection.schema.url'), value: storeUrl },
-        { label: t('seoSection.schema.searchAction'), value: `${storeUrl}/search?q={query}` },
+        { label: "Site Name", value: brandName },
+        { label: "URL", value: storeUrl },
+        { label: "Search Action", value: `${storeUrl}/search?q={query}` },
       ],
     },
     {
-      tag: t('seoSection.schema.product'),
+      tag: "Product Schema",
       icon: 'fa-box',
       values: [
-        { label: t('seoSection.schema.includes'), value: t('seoSection.schema.productIncludes') },
-        { label: t('seoSection.schema.reviews'), value: t('seoSection.schema.reviewsValue') },
-        { label: t('seoSection.schema.shipping'), value: t('seoSection.schema.shippingValue') },
-        { label: t('seoSection.schema.returns'), value: t('seoSection.schema.returnsValue') },
+        { label: "Includes", value: "Name, price, currency, availability, images, SKU, barcode" },
+        { label: "Reviews", value: "AggregateRating + individual reviews (when available)" },
+        { label: "Shipping", value: "Delivery time, handling time, destination country" },
+        { label: "Returns", value: "7-day return window, free returns" },
       ],
-      editHint: t('seoSection.schema.editProductDetails'),
+      editHint: "Data comes from your product details",
     },
     {
-      tag: t('seoSection.schema.breadcrumb'),
+      tag: "BreadcrumbList Schema",
       icon: 'fa-sitemap',
       values: [
-        { label: t('seoSection.schema.example'), value: t('seoSection.schema.breadcrumbExample') },
+        { label: "Example", value: "Home > Category > Product Name" },
       ],
     },
     {
-      tag: t('seoSection.schema.category'),
+      tag: "Category Schema (ItemList)",
       icon: 'fa-folder-open',
       values: [
-        { label: t('seoSection.schema.includes'), value: t('seoSection.schema.categoryIncludes') },
+        { label: "Includes", value: "Category name, product list with URLs" },
       ],
     },
     {
-      tag: t('seoSection.schema.article'),
+      tag: "Article Schema",
       icon: 'fa-newspaper',
       values: [
-        { label: t('seoSection.schema.includes'), value: t('seoSection.schema.articleIncludes') },
+        { label: "Includes", value: "Headline, excerpt, author, published date, modified date" },
       ],
-      editHint: t('seoSection.schema.editBlogPosts'),
+      editHint: "Data comes from your blog posts",
     },
   ];
 
   const editableItems = [
-    { item: t('seoSection.editable.siteTitleDesc'), where: t('seoSection.editable.siteSeoTab'), icon: 'fa-heading' },
-    { item: t('seoSection.editable.metaKeywords'), where: t('seoSection.editable.allTabs'), icon: 'fa-tags' },
-    { item: t('seoSection.editable.robots'), where: t('seoSection.editable.advancedSettings'), icon: 'fa-robot' },
-    { item: t('seoSection.editable.author'), where: t('seoSection.editable.autoFromBrand'), icon: 'fa-user', value: brandName },
-    { item: t('seoSection.editable.ogTags'), where: t('seoSection.editable.socialTab'), icon: 'fa-share-alt' },
-    { item: t('seoSection.editable.ogType'), where: t('seoSection.editable.socialTabAuto'), icon: 'fa-share-nodes' },
-    { item: t('seoSection.editable.ogLocale'), where: t('seoSection.editable.localeEnUs'), icon: 'fa-language', value: 'en_US' },
-    { item: t('seoSection.editable.twitterCard'), where: t('seoSection.editable.socialTab'), icon: 'fa-hashtag' },
-    { item: t('seoSection.editable.googleVerification'), where: t('seoSection.editable.advancedSettings'), icon: 'fa-check-double' },
-    { item: t('seoSection.editable.perPageSeo'), where: t('seoSection.editable.perPageTabs'), icon: 'fa-file-alt' },
-    { item: t('seoSection.editable.ogImagePer'), where: t('seoSection.editable.ogImagePerWhere'), icon: 'fa-image' },
+    { item: "Site Title & Description", where: "Site SEO tab", icon: 'fa-heading' },
+    { item: "Meta Keywords", where: "Site SEO, Products, Categories, Pages tabs", icon: 'fa-tags' },
+    { item: "Robots (index/noindex)", where: "Site SEO tab > Advanced Settings", icon: 'fa-robot' },
+    { item: "Author", where: "Auto-set from your brand name", icon: 'fa-user', value: brandName },
+    { item: "OG Title, Description, Image", where: "Social Media tab", icon: 'fa-share-alt' },
+    { item: "OG Type", where: "Social Media tab (auto \"product\" on product pages)", icon: 'fa-share-nodes' },
+    { item: "OG Locale", where: "Currently set to en_US", icon: 'fa-language', value: 'en_US' },
+    { item: "Twitter Card, Title, Image", where: "Social Media tab", icon: 'fa-hashtag' },
+    { item: "Google Verification", where: "Site SEO tab > Advanced Settings", icon: 'fa-check-double' },
+    { item: "Per-Page SEO", where: "Products, Categories, Pages tabs", icon: 'fa-file-alt' },
+    { item: "OG Image per Product/Category", where: "Products & Categories tabs (auto-uses product image if not set)", icon: 'fa-image' },
   ];
 
   return (
@@ -1382,10 +1368,10 @@ function SEOOverviewTab({ siteConfig }) {
       <div className="seo-overview-section">
         <div className="seo-overview-header">
           <i className="fas fa-check-circle" style={{ color: '#22c55e', marginInlineEnd: 8 }} />
-          {t('seoSection.autoManagedHeader')}
+          Auto-Managed Tags
         </div>
         <p className="seo-overview-desc">
-          {t('seoSection.autoManagedDesc')}
+          These tags are set automatically for every page. No action needed.
         </p>
         <div className="seo-overview-grid">
           {autoManaged.map(item => (
@@ -1403,10 +1389,10 @@ function SEOOverviewTab({ siteConfig }) {
       <div className="seo-overview-section" style={{ marginTop: 24 }}>
         <div className="seo-overview-header">
           <i className="fas fa-code" style={{ color: '#8b5cf6', marginInlineEnd: 8 }} />
-          {t('seoSection.structuredDataHeader')}
+          Structured Data (JSON-LD Schemas)
         </div>
         <p className="seo-overview-desc">
-          {t('seoSection.structuredDataDesc')}
+          Rich data that helps Google understand your store. Generated from your store information — verify the values below are correct.
         </p>
         <div className="seo-overview-grid">
           {schemaItems.map(item => (
@@ -1434,10 +1420,10 @@ function SEOOverviewTab({ siteConfig }) {
       <div className="seo-overview-section" style={{ marginTop: 24 }}>
         <div className="seo-overview-header">
           <i className="fas fa-pen" style={{ color: '#3b82f6', marginInlineEnd: 8 }} />
-          {t('seoSection.customizableHeader')}
+          Customizable by You
         </div>
         <p className="seo-overview-desc">
-          {t('seoSection.customizableDesc')}
+          These fields can be customized using the other tabs. Smart defaults are used automatically if left empty.
         </p>
         <div className="seo-overview-grid">
           {editableItems.map(item => (
@@ -1448,7 +1434,7 @@ function SEOOverviewTab({ siteConfig }) {
               </div>
               <div className="seo-overview-item-detail">
                 {item.value ? (
-                  <span>{t('seoSection.editable.currentLabel')} <strong>{item.value}</strong> — {item.where}</span>
+                  <span>Current: <strong>{item.value}</strong> — {item.where}</span>
                 ) : (
                   item.where
                 )}
@@ -1462,17 +1448,16 @@ function SEOOverviewTab({ siteConfig }) {
 }
 
 export default function SEOSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [activeTab, setActiveTab] = useState('overview');
 
   const TABS = [
-    { id: 'overview', label: t('seoSection.tabs.overview'), icon: 'fa-info-circle' },
-    { id: 'site', label: t('seoSection.tabs.site'), icon: 'fa-globe' },
-    { id: 'social', label: t('seoSection.tabs.social'), icon: 'fa-share-alt' },
-    { id: 'pages', label: t('seoSection.tabs.pages'), icon: 'fa-file-alt' },
-    { id: 'categories', label: t('seoSection.tabs.categories'), icon: 'fa-folder' },
-    { id: 'products', label: t('seoSection.tabs.products'), icon: 'fa-box' },
+    { id: 'overview', label: "Overview", icon: 'fa-info-circle' },
+    { id: 'site', label: "Site SEO", icon: 'fa-globe' },
+    { id: 'social', label: "Social Media", icon: 'fa-share-alt' },
+    { id: 'pages', label: "Pages", icon: 'fa-file-alt' },
+    { id: 'categories', label: "Categories", icon: 'fa-folder' },
+    { id: 'products', label: "Products", icon: 'fa-box' },
   ];
 
   return (

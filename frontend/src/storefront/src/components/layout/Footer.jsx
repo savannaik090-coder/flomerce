@@ -1,6 +1,5 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { PLATFORM_URL } from '../../config.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
@@ -9,7 +8,6 @@ import TranslatedText from '../TranslatedText.jsx';
 export default function Footer() {
   const { siteConfig } = useContext(SiteContext);
   const [openSections, setOpenSections] = useState({});
-  const { t } = useTranslation('storefront');
   const categories = siteConfig?.categories || [];
 
   let settings = siteConfig?.settings || {};
@@ -41,26 +39,26 @@ export default function Footer() {
       <div className="container">
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('info')}>
-            <span className="footer-title">{t('footer.info')}</span>
+            <span className="footer-title"><TranslatedText text="Info" /></span>
             <i className={`fas fa-chevron-down`} style={openSections.info ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.info ? ' show' : ''}`}>
             <ul>
-              <li><Link to="/about">{t('footer.aboutUs')}</Link></li>
-              <li><Link to="/contact">{t('footer.contactUs')}</Link></li>
-              <li><Link to="/terms#section-4">{t('footer.shippingPolicy')}</Link></li>
-              <li><Link to="/terms#section-5">{t('footer.returnsExchanges')}</Link></li>
-              {settings.showBlog !== false && <li><Link to="/blog">{t('nav.blog')}</Link></li>}
-              {settings.showFaq !== false && <li><Link to="/faq">{t('nav.faq')}</Link></li>}
-              <li><Link to="/terms">{t('footer.termsConditions')}</Link></li>
-              <li><Link to="/privacy-policy">{t('footer.privacyPolicy')}</Link></li>
+              <li><Link to="/about"><TranslatedText text="About Us" /></Link></li>
+              <li><Link to="/contact"><TranslatedText text="Contact Us" /></Link></li>
+              <li><Link to="/terms#section-4"><TranslatedText text="Shipping Policy" /></Link></li>
+              <li><Link to="/terms#section-5"><TranslatedText text="Returns & Exchanges" /></Link></li>
+              {settings.showBlog !== false && <li><Link to="/blog"><TranslatedText text="Blog" /></Link></li>}
+              {settings.showFaq !== false && <li><Link to="/faq"><TranslatedText text="FAQ" /></Link></li>}
+              <li><Link to="/terms"><TranslatedText text="Terms and Conditions" /></Link></li>
+              <li><Link to="/privacy-policy"><TranslatedText text="Privacy Policy" /></Link></li>
             </ul>
           </div>
         </div>
 
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('categories')}>
-            <span className="footer-title">{t('footer.categories')}</span>
+            <span className="footer-title"><TranslatedText text="Categories" /></span>
             <i className={`fas fa-chevron-down`} style={openSections.categories ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.categories ? ' show' : ''}`}>
@@ -128,7 +126,7 @@ export default function Footer() {
 
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('collection')}>
-            <span className="footer-title">{t('footer.collection')}</span>
+            <span className="footer-title"><TranslatedText text="Collection" /></span>
             <i className={`fas fa-chevron-down`} style={openSections.collection ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.collection ? ' show' : ''}`}>
@@ -144,14 +142,14 @@ export default function Footer() {
 
         <div className="footer-section">
           <button className="footer-toggle" onClick={() => toggleSection('help')}>
-            <span className="footer-title">{t('footer.needHelp')}</span>
+            <span className="footer-title"><TranslatedText text="Need Help?" /></span>
             <i className={`fas fa-chevron-down`} style={openSections.help ? { transform: 'rotate(180deg)' } : {}}></i>
           </button>
           <div className={`footer-content${openSections.help ? ' show' : ''}`}>
             <ul>
-              <li><Link to="/order-track">{t('footer.trackManageOrder')}</Link></li>
-              {cancellationEnabled && <li><Link to="/order-help">{t('footer.cancellation')}</Link></li>}
-              {returnsEnabled && <li><Link to="/order-help">{t('footer.returnRefund')}</Link></li>}
+              <li><Link to="/order-track"><TranslatedText text="Track / Manage Order" /></Link></li>
+              {cancellationEnabled && <li><Link to="/order-help"><TranslatedText text="Cancellation" /></Link></li>}
+              {returnsEnabled && <li><Link to="/order-help"><TranslatedText text="Return / Refund" /></Link></li>}
             </ul>
           </div>
         </div>
@@ -159,7 +157,7 @@ export default function Footer() {
         {customLinks.length > 0 && (
           <div className="footer-section">
             <button className="footer-toggle" onClick={() => toggleSection('benefits')}>
-              <span className="footer-title">{t('footer.exclusiveBenefits')}</span>
+              <span className="footer-title"><TranslatedText text="Exclusive benefits" /></span>
               <i className={`fas fa-chevron-down`} style={openSections.benefits ? { transform: 'rotate(180deg)' } : {}}></i>
             </button>
             <div className={`footer-content${openSections.benefits ? ' show' : ''}`}>
@@ -180,7 +178,7 @@ export default function Footer() {
 
         {hasSocialLinks && (
           <div className="footer-social-section">
-            <h3 className="social-section-title">{t('footer.followSocial')}</h3>
+            <h3 className="social-section-title"><TranslatedText text="Follow us on social media" /></h3>
             <div className="social-icons-container">
               {socialLinks.instagram && (
                 <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
@@ -208,7 +206,7 @@ export default function Footer() {
 
         {showAppBanner && (showAppStore || showPlayStore) && (
           <div className="footer-app-section">
-            <h3 className="app-section-title">{t('footer.downloadApp')}</h3>
+            <h3 className="app-section-title"><TranslatedText text="Download Our App" /></h3>
             <div className="app-buttons-container">
               {showAppStore && (
                 <a href={appBanner.appStoreUrl || '#'} target="_blank" rel="noopener noreferrer" className="app-store-button">
@@ -227,11 +225,11 @@ export default function Footer() {
         <div className="footer-bottom">
           <div className="footer-info">
             <div className="copyright">
-              <p>{t('footer.copyright', { year: new Date().getFullYear(), brandName: siteConfig?.brandName || 'Store' })}{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> {t('footer.poweredBy')} <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer" className="powered-by-link">Flomerce</a></>}</p>
+              <p>{`© ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. All rights reserved.`}{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer" className="powered-by-link">Flomerce</a></>}</p>
             </div>
             <div className="footer-links">
-              <Link to="/terms">{t('footer.termsConditions')}</Link>
-              <Link to="/privacy-policy">{t('footer.privacyPolicy')}</Link>
+              <Link to="/terms"><TranslatedText text="Terms and Conditions" /></Link>
+              <Link to="/privacy-policy"><TranslatedText text="Privacy Policy" /></Link>
             </div>
             <div className="footer-payment-icons">
               <span><i className="fab fa-cc-amex"></i></span>

@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
-import i18n, { hasExplicitLanguagePreference } from '../../../shared/i18n/init.js';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
 
 export const SiteContext = createContext(null);
@@ -179,19 +178,13 @@ export function SiteProvider({ children }) {
         })(),
       };
 
-      // English-default policy (set in shared/i18n/init.js): the storefront
-      // intentionally does NOT auto-switch a first-time shopper into the
-      // merchant's content_language. Every visitor — Indian, foreign,
-      // returning, brand-new — boots in English and only changes language
-      // when they explicitly pick another option from the LanguageSwitcher.
-      // The merchant's content_language is still used elsewhere (SEO, admin
-      // labels, server-side product translation), but it no longer drives
-      // the shopper UI on first paint. This block is kept as a documented
-      // no-op so the policy decision is visible at the call site instead of
-      // looking like an accidental omission. To restore the old behavior,
-      // re-enable the i18n.changeLanguage(config.contentLanguage) call here
-      // and the per-host localStorage seed in shared/i18n/init.js together.
-      void hasExplicitLanguagePreference; // keep import alive across refactors
+      // English-default policy: the storefront intentionally does NOT
+      // auto-switch a first-time shopper into the merchant's content_language.
+      // Every visitor boots in English and only changes language when they
+      // explicitly pick another option from the LanguageSwitcher (System B).
+      // The merchant's content_language is still used elsewhere (SEO, server-
+      // side product translation), but it no longer drives the shopper UI on
+      // first paint.
 
       config.seo = {
         seo_title: data.seo_title || null,

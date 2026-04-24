@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import '../components/templates/modern/modern.css';
+import TranslatedText from '../components/TranslatedText';
 
 function useContactForm(siteConfig) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -208,8 +208,8 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
       <section className="contact-hero">
         <div className="container">
           <div className="contact-hero-content">
-            <h1>{t('contact.title', 'Contact Us')}</h1>
-            <p>{t('contact.heroSubtitle', "Reach out to us for any inquiries. We'd love to hear from you.")}</p>
+            <h1><TranslatedText text="Contact Us" /></h1>
+            <p><TranslatedText text="Reach out to us for any inquiries. We'd love to hear from you." /></p>
           </div>
         </div>
       </section>
@@ -217,8 +217,8 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
       <section className="contact-section">
         <div className="contact-container">
           <div className="contact-info">
-            <h2>{t('contact.getInTouch', 'Get in Touch')}</h2>
-            <p>{t('contact.getInTouchSubtitle', "Have questions about our collections? We're here to help you discover what you're looking for.")}</p>
+            <h2><TranslatedText text="Get in Touch" /></h2>
+            <p><TranslatedText text="Have questions about our collections? We're here to help you discover what you're looking for." /></p>
             <ul className="contact-details">
               {address && <li><i className="fas fa-map-marker-alt"></i><span>{address}</span></li>}
               {phone && <li><i className="fas fa-phone"></i><a href={`tel:${phone}`}>{phone}</a></li>}
@@ -227,7 +227,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
             </ul>
             {(socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube) && (
               <div className="social-links-section">
-                <h3>{t('contact.followUs', 'Follow Us')}</h3>
+                <h3><TranslatedText text="Follow Us" /></h3>
                 <div className="social-icons-row">
                   {socialLinks.facebook && <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer"><i className="fab fa-facebook-f"></i></a>}
                   {socialLinks.instagram && <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer"><i className="fab fa-instagram"></i></a>}
@@ -239,30 +239,30 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
           </div>
 
           <div className="form-container">
-            <h2>{t('contact.sendMessage', 'Send Us a Message')}</h2>
-            {status === 'success' && <div className="contact-status-msg success"><i className="fas fa-check-circle"></i> {t('contact.success', 'Your message has been sent successfully!')}</div>}
-            {status === 'error' && <div className="contact-status-msg error"><i className="fas fa-exclamation-circle"></i> {t('contact.error', 'Something went wrong. Please try again.')}</div>}
+            <h2><TranslatedText text="Send Us a Message" /></h2>
+            {status === 'success' && <div className="contact-status-msg success"><i className="fas fa-check-circle"></i> <TranslatedText text="Your message has been sent successfully!" /></div>}
+            {status === 'error' && <div className="contact-status-msg error"><i className="fas fa-exclamation-circle"></i> <TranslatedText text="Something went wrong. Please try again." /></div>}
             <form onSubmit={handleSubmit}>
               <div className="form-row">
-                <div className="form-group"><label>{t('contact.fullName', 'Full Name *')}</label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
-                <div className="form-group"><label>{t('contact.emailAddress', 'Email Address *')}</label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
+                <div className="form-group"><label><TranslatedText text="Full Name *" /></label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
+                <div className="form-group"><label><TranslatedText text="Email Address *" /></label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
               </div>
               <div className="form-row">
-                <div className="form-group"><label>{t('contact.phoneNumber', 'Phone Number')}</label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
-                <div className="form-group"><label>{t('contact.subject', 'Subject *')}</label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
+                <div className="form-group"><label><TranslatedText text="Phone Number" /></label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
+                <div className="form-group"><label><TranslatedText text="Subject *" /></label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="form-group"><label>{t('contact.message', 'Message *')}</label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={t('contact.messagePlaceholder', 'How can we help you?')} /></div>
-              <button type="submit" className="contact-submit-btn" disabled={submitting}>{submitting ? t('contact.sending', 'Sending...') : t('contact.send', 'Send Message')}</button>
+              <div className="form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder=<TranslatedText text="How can we help you?" /> /></div>
+              <button type="submit" className="contact-submit-btn" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</button>
             </form>
           </div>
         </div>
       </section>
 
       <section className="working-hours">
-        <h2>{t('contact.workingHours', 'Working Hours')}</h2>
+        <h2><TranslatedText text="Working Hours" /></h2>
         <div className="hours-grid">
-          <div className="hours-item"><h3>{t('contact.weekdays', 'Monday - Saturday')}</h3><p>{t('contact.weekdaysHours', '10:00 AM - 7:00 PM')}</p></div>
-          <div className="hours-item"><h3>{t('contact.sunday', 'Sunday')}</h3><p>{t('contact.sundayHours', '11:00 AM - 6:00 PM')}</p></div>
+          <div className="hours-item"><h3><TranslatedText text="Monday - Saturday" /></h3><p><TranslatedText text="10:00 AM - 7:00 PM" /></p></div>
+          <div className="hours-item"><h3><TranslatedText text="Sunday" /></h3><p><TranslatedText text="11:00 AM - 6:00 PM" /></p></div>
         </div>
       </section>
     </div>
@@ -273,15 +273,15 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
   return (
     <div>
       <section className="mn-contact-hero">
-        <h1>{t('contact.title', 'Contact Us')}</h1>
-        <p>{t('contact.heroSubtitle', "Reach out to us for any inquiries. We'd love to hear from you.")}</p>
+        <h1><TranslatedText text="Contact Us" /></h1>
+        <p><TranslatedText text="Reach out to us for any inquiries. We'd love to hear from you." /></p>
       </section>
 
       <section className="mn-contact-section">
         <div className="mn-contact-container">
           <div className="mn-contact-info">
-            <h2>{t('contact.getInTouch', 'Get in Touch')}</h2>
-            <p>{t('contact.getInTouchSubtitle', "Have questions about our collections? We're here to help you discover what you're looking for.")}</p>
+            <h2><TranslatedText text="Get in Touch" /></h2>
+            <p><TranslatedText text="Have questions about our collections? We're here to help you discover what you're looking for." /></p>
             <ul className="mn-contact-details">
               {address && <li><i className="fas fa-map-marker-alt"></i><span>{address}</span></li>}
               {phone && <li><i className="fas fa-phone"></i><a href={`tel:${phone}`}>{phone}</a></li>}
@@ -290,7 +290,7 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
             </ul>
             {(socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube) && (
               <div className="mn-contact-social">
-                <h3>{t('contact.followUs', 'Follow Us')}</h3>
+                <h3><TranslatedText text="Follow Us" /></h3>
                 <div className="mn-contact-social-icons">
                   {socialLinks.facebook && <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer"><i className="fab fa-facebook-f"></i></a>}
                   {socialLinks.instagram && <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer"><i className="fab fa-instagram"></i></a>}
@@ -302,30 +302,30 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
           </div>
 
           <div className="mn-contact-form">
-            <h2>{t('contact.sendMessage', 'Send Us a Message')}</h2>
-            {status === 'success' && <div className="mn-contact-status success"><i className="fas fa-check-circle"></i> {t('contact.success', 'Your message has been sent successfully!')}</div>}
-            {status === 'error' && <div className="mn-contact-status error"><i className="fas fa-exclamation-circle"></i> {t('contact.error', 'Something went wrong. Please try again.')}</div>}
+            <h2><TranslatedText text="Send Us a Message" /></h2>
+            {status === 'success' && <div className="mn-contact-status success"><i className="fas fa-check-circle"></i> <TranslatedText text="Your message has been sent successfully!" /></div>}
+            {status === 'error' && <div className="mn-contact-status error"><i className="fas fa-exclamation-circle"></i> <TranslatedText text="Something went wrong. Please try again." /></div>}
             <form onSubmit={handleSubmit}>
               <div className="mn-form-row">
-                <div className="mn-form-group"><label>{t('contact.fullName', 'Full Name *')}</label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
-                <div className="mn-form-group"><label>{t('contact.emailAddress', 'Email Address *')}</label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
+                <div className="mn-form-group"><label><TranslatedText text="Full Name *" /></label><input type="text" name="name" value={form.name} onChange={handleChange} required /></div>
+                <div className="mn-form-group"><label><TranslatedText text="Email Address *" /></label><input type="email" name="email" value={form.email} onChange={handleChange} required /></div>
               </div>
               <div className="mn-form-row">
-                <div className="mn-form-group"><label>{t('contact.phoneNumber', 'Phone Number')}</label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
-                <div className="mn-form-group"><label>{t('contact.subject', 'Subject *')}</label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
+                <div className="mn-form-group"><label><TranslatedText text="Phone Number" /></label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
+                <div className="mn-form-group"><label><TranslatedText text="Subject *" /></label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="mn-form-group"><label>{t('contact.message', 'Message *')}</label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={t('contact.messagePlaceholder', 'How can we help you?')} /></div>
-              <button type="submit" className="mn-contact-submit" disabled={submitting}>{submitting ? t('contact.sending', 'Sending...') : t('contact.send', 'Send Message')}</button>
+              <div className="mn-form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder=<TranslatedText text="How can we help you?" /> /></div>
+              <button type="submit" className="mn-contact-submit" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</button>
             </form>
           </div>
         </div>
       </section>
 
       <section className="mn-working-hours">
-        <h2>{t('contact.workingHours', 'Working Hours')}</h2>
+        <h2><TranslatedText text="Working Hours" /></h2>
         <div className="mn-hours-grid">
-          <div className="mn-hours-item"><h3>{t('contact.weekdays', 'Monday - Saturday')}</h3><p>{t('contact.weekdaysHours', '10:00 AM - 7:00 PM')}</p></div>
-          <div className="mn-hours-item"><h3>{t('contact.sunday', 'Sunday')}</h3><p>{t('contact.sundayHours', '11:00 AM - 6:00 PM')}</p></div>
+          <div className="mn-hours-item"><h3><TranslatedText text="Monday - Saturday" /></h3><p><TranslatedText text="10:00 AM - 7:00 PM" /></p></div>
+          <div className="mn-hours-item"><h3><TranslatedText text="Sunday" /></h3><p><TranslatedText text="11:00 AM - 6:00 PM" /></p></div>
         </div>
       </section>
     </div>
@@ -333,10 +333,9 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
 }
 
 export default function ContactPage() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const { isModern } = useTheme();
-  useSEO({ title: t('contact.pageTitle', 'Contact Us'), pageType: 'contact' });
+  useSEO({ title: "Contact Us", pageType: 'contact' });
   const brandName = siteConfig?.brandName || 'Our Store';
   const phone = siteConfig?.phone || '';
   const email = siteConfig?.email || '';

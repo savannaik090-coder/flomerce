@@ -1,23 +1,22 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { API_BASE } from '../../config.js';
 import FeatureGate from './FeatureGate.jsx';
 
 const TRANSLATOR_REGIONS = [
-  { code: 'global', labelKey: 'regionGlobal' },
-  { code: 'eastus', labelKey: 'regionEastUs' },
-  { code: 'eastus2', labelKey: 'regionEastUs2' },
-  { code: 'westus', labelKey: 'regionWestUs' },
-  { code: 'westus2', labelKey: 'regionWestUs2' },
-  { code: 'westeurope', labelKey: 'regionWestEurope' },
-  { code: 'northeurope', labelKey: 'regionNorthEurope' },
-  { code: 'centralindia', labelKey: 'regionCentralIndia' },
-  { code: 'southeastasia', labelKey: 'regionSoutheastAsia' },
-  { code: 'japaneast', labelKey: 'regionJapanEast' },
-  { code: 'australiaeast', labelKey: 'regionAustraliaEast' },
-  { code: 'brazilsouth', labelKey: 'regionBrazilSouth' },
-  { code: 'uaenorth', labelKey: 'regionUaeNorth' },
+  { code: 'global', label: 'Global (no region)' },
+  { code: 'eastus', label: 'East US' },
+  { code: 'eastus2', label: 'East US 2' },
+  { code: 'westus', label: 'West US' },
+  { code: 'westus2', label: 'West US 2' },
+  { code: 'westeurope', label: 'West Europe' },
+  { code: 'northeurope', label: 'North Europe' },
+  { code: 'centralindia', label: 'Central India' },
+  { code: 'southeastasia', label: 'Southeast Asia' },
+  { code: 'japaneast', label: 'Japan East' },
+  { code: 'australiaeast', label: 'Australia East' },
+  { code: 'brazilsouth', label: 'Brazil South' },
+  { code: 'uaenorth', label: 'UAE North' },
 ];
 
 const AVAILABLE_LANGUAGES = [
@@ -84,7 +83,6 @@ function CollapsibleHeader({ open, onToggle, title }) {
 }
 
 export default function ShopperLanguageSection({ open, onToggle }) {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const siteId = siteConfig?.id;
 
@@ -130,7 +128,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
           setUsage(d.usage || null);
         }
       } catch (e) {
-        if (!cancelled) setMessage({ type: 'error', text: t('shopperLanguageSection.errorLoad') });
+        if (!cancelled) setMessage({ type: 'error', text: "Failed to load translator settings." });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -157,12 +155,12 @@ export default function ShopperLanguageSection({ open, onToggle }) {
       const result = await res.json();
       const probe = result?.data || result;
       if (probe?.ok) {
-        setTestResult({ ok: true, text: t('shopperLanguageSection.testSuccess', { translation: probe.translation || '' }) });
+        setTestResult({ ok: true, text: `Microsoft accepted the key. Sample translation: "${probe.translation || ''}"` });
       } else {
-        setTestResult({ ok: false, text: probe?.error || result?.error || t('shopperLanguageSection.testFailed') });
+        setTestResult({ ok: false, text: probe?.error || result?.error || "Test failed." });
       }
     } catch (e) {
-      setTestResult({ ok: false, text: e.message || t('shopperLanguageSection.networkError') });
+      setTestResult({ ok: false, text: e.message || "Network error." });
     } finally {
       setTesting(false);
     }
@@ -181,7 +179,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
       });
       const result = await res.json();
       if (res.ok && result?.success) {
-        setMessage({ type: 'success', text: t('shopperLanguageSection.savedSuccess') });
+        setMessage({ type: 'success', text: "Translator settings saved." });
         setApiKey('');
         const refresh = await fetch(`${API_BASE}/api/sites/${siteId}/translator-settings`, { headers: authHeaders() });
         const refreshed = (await refresh.json())?.data;
@@ -192,17 +190,17 @@ export default function ShopperLanguageSection({ open, onToggle }) {
           setUsage(refreshed.usage || null);
         }
       } else {
-        setMessage({ type: 'error', text: result?.error || t('shopperLanguageSection.errorSave') });
+        setMessage({ type: 'error', text: result?.error || "Failed to save." });
       }
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || t('shopperLanguageSection.networkError') });
+      setMessage({ type: 'error', text: e.message || "Network error." });
     } finally {
       setSaving(false);
     }
   }
 
   async function handlePurgeCache() {
-    if (!window.confirm(t('shopperLanguageSection.confirmPurge'))) return;
+    if (!window.confirm("Clear all cached shopper translations for this site?\n\nEvery translated word will be re-fetched from Microsoft on the next shopper visit. This uses your translator quota. Use only after fixing a bad translation or rotating your key.")) return;
     setPurging(true);
     setMessage(null);
     try {
@@ -220,19 +218,19 @@ export default function ShopperLanguageSection({ open, onToggle }) {
             if (k && k.startsWith('flomerce_xlt_')) sessionStorage.removeItem(k);
           }
         } catch (e) { /* ignore storage errors */ }
-        setMessage({ type: 'success', text: t('shopperLanguageSection.purgeSuccess', { count }) });
+        setMessage({ type: 'success', text: `Translation cache cleared. ${count} cached entries removed.` });
       } else {
-        setMessage({ type: 'error', text: result?.error || t('shopperLanguageSection.errorPurge') });
+        setMessage({ type: 'error', text: result?.error || "Failed to clear cache." });
       }
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || t('shopperLanguageSection.networkError') });
+      setMessage({ type: 'error', text: e.message || "Network error." });
     } finally {
       setPurging(false);
     }
   }
 
   async function handleRemove() {
-    if (!window.confirm(t('shopperLanguageSection.confirmRemove'))) return;
+    if (!window.confirm("Remove the saved Microsoft Translator key? Shopper translation will be turned off until you paste a new key.")) return;
     setRemoving(true);
     setMessage(null);
     try {
@@ -246,12 +244,12 @@ export default function ShopperLanguageSection({ open, onToggle }) {
         setKeyMasked('');
         setEnabled(false);
         setApiKey('');
-        setMessage({ type: 'success', text: t('shopperLanguageSection.removeSuccess') });
+        setMessage({ type: 'success', text: "Translator key removed." });
       } else {
-        setMessage({ type: 'error', text: result?.error || t('shopperLanguageSection.errorRemove') });
+        setMessage({ type: 'error', text: result?.error || "Failed to remove key." });
       }
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || t('shopperLanguageSection.networkError') });
+      setMessage({ type: 'error', text: e.message || "Network error." });
     } finally {
       setRemoving(false);
     }
@@ -261,38 +259,38 @@ export default function ShopperLanguageSection({ open, onToggle }) {
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>
-      <CollapsibleHeader open={open} onToggle={onToggle} title={t('shopperLanguageSection.title')} />
+      <CollapsibleHeader open={open} onToggle={onToggle} title="Shopper Language Switcher" />
       {open && (
         <div className="card-content">
-          <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName={t('shopperLanguageSection.title')}>
+          <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Shopper Language Switcher">
             {loading ? (
-              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{t('shopperLanguageSection.loading')}</div>
+              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>Loading…</div>
             ) : (
               <div>
                 <p style={{ marginTop: 0, color: '#475569', fontSize: 14, lineHeight: 1.5 }}>
-                  {t('shopperLanguageSection.intro')}
+                  Let shoppers translate your storefront content into other languages on demand using your own Microsoft Translator key. Microsoft bills you directly — Flomerce never charges you for translation. The first 2 million characters per month are free on Microsoft's free tier.
                 </p>
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#1e293b' }}>
-                    {t('shopperLanguageSection.apiKeyLabel')}
+                    Microsoft Translator API Key
                   </label>
                   <input
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={hasKey ? keyMasked : t('shopperLanguageSection.apiKeyPlaceholder')}
+                    placeholder={hasKey ? keyMasked : "Paste your Microsoft Translator subscription key"}
                     autoComplete="off"
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
                   />
                   <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                    {t('shopperLanguageSection.apiKeyHint')} {hasKey ? t('shopperLanguageSection.apiKeyHintHasKey') : ''}
+                    {"Get this from Azure Portal > Translator resource > Keys and Endpoint."} {hasKey ? "A key is currently saved (shown masked above). Leave blank to keep it." : ''}
                   </p>
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#1e293b' }}>
-                    {t('shopperLanguageSection.regionLabel')}
+                    Translator Region
                   </label>
                   <select
                     value={region}
@@ -300,11 +298,11 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                     style={{ width: '100%', maxWidth: 320, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}
                   >
                     {TRANSLATOR_REGIONS.map((r) => (
-                      <option key={r.code} value={r.code}>{t(`shopperLanguageSection.${r.labelKey}`)} ({r.code})</option>
+                      <option key={r.code} value={r.code}>{r.label} ({r.code})</option>
                     ))}
                   </select>
                   <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                    {t('shopperLanguageSection.regionHint')}
+                    Must match the region of your Azure Translator resource. Use "global" for region-less keys.
                   </p>
                 </div>
 
@@ -315,17 +313,17 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                     disabled={testing}
                     style={{ padding: '10px 18px', border: '1px solid #4f46e5', background: '#fff', color: '#4f46e5', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: testing ? 'not-allowed' : 'pointer', opacity: testing ? 0.6 : 1 }}
                   >
-                    {testing ? t('shopperLanguageSection.testing') : t('shopperLanguageSection.testConnection')}
+                    {testing ? "Testing…" : "Test connection"}
                   </button>
                   {hasKey && (
                     <button
                       type="button"
                       onClick={handlePurgeCache}
                       disabled={purging}
-                      title={t('shopperLanguageSection.purgeTitle')}
+                      title="Wipe all cached translations for this site so they are re-fetched fresh from Microsoft on the next shopper visit."
                       style={{ padding: '10px 18px', border: '1px solid #f59e0b', background: '#fff', color: '#b45309', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: purging ? 'not-allowed' : 'pointer', opacity: purging ? 0.6 : 1 }}
                     >
-                      {purging ? t('shopperLanguageSection.clearing') : t('shopperLanguageSection.clearCache')}
+                      {purging ? "Clearing…" : "Clear translation cache"}
                     </button>
                   )}
                   {hasKey && (
@@ -335,7 +333,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                       disabled={removing}
                       style={{ padding: '10px 18px', border: '1px solid #ef4444', background: '#fff', color: '#ef4444', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: removing ? 'not-allowed' : 'pointer', opacity: removing ? 0.6 : 1 }}
                     >
-                      {removing ? t('shopperLanguageSection.removing') : t('shopperLanguageSection.removeKey')}
+                      {removing ? "Removing…" : "Remove key"}
                     </button>
                   )}
                 </div>
@@ -348,10 +346,10 @@ export default function ShopperLanguageSection({ open, onToggle }) {
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#1e293b' }}>
-                    {t('shopperLanguageSection.languagesLabel')}
+                    Languages to offer shoppers
                   </label>
                   <p style={{ fontSize: 12, color: '#64748b', marginTop: 0, marginBottom: 8 }}>
-                    {t('shopperLanguageSection.languagesHint')}
+                    Pick which languages shoppers can switch to. English is always available.
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 6, maxHeight: 280, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, padding: 10 }}>
                     {AVAILABLE_LANGUAGES.map((lang) => {
@@ -372,11 +370,11 @@ export default function ShopperLanguageSection({ open, onToggle }) {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: enabled ? '#f0fdf4' : '#f8fafc', opacity: enableToggleDisabled ? 0.7 : 1 }}>
                   <div>
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{t('shopperLanguageSection.enableToggle')}</div>
+                    <div style={{ fontWeight: 600, color: '#1e293b' }}>Enable shopper language switcher</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
                       {enableToggleDisabled
-                        ? t('shopperLanguageSection.enableHintDisabled')
-                        : t('shopperLanguageSection.enableHintEnabled')}
+                        ? "Save a translator key first to enable this."
+                        : "When on, shoppers see a language switcher in the storefront header."}
                     </div>
                   </div>
                   <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: enableToggleDisabled ? 'not-allowed' : 'pointer' }}>
@@ -395,25 +393,15 @@ export default function ShopperLanguageSection({ open, onToggle }) {
 
                 {usage && (
                   <div style={{ padding: '12px 14px', borderRadius: 8, marginBottom: 16, fontSize: 13, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#334155' }}>
-                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#1e293b' }}>{t('shopperLanguageSection.usageTitle')}</div>
+                    <div style={{ fontWeight: 600, marginBottom: 4, color: '#1e293b' }}>Usage</div>
                     <div>
-                      <Trans
-                        i18nKey="shopperLanguageSection.usageMonth"
-                        ns="admin"
-                        values={{ chars: Number(usage.monthChars || 0).toLocaleString(), monthSuffix: usage.month ? ` (${usage.month})` : '' }}
-                        components={{ b: <strong /> }}
-                      />
+                      This month: <strong>{Number(usage.monthChars || 0).toLocaleString()}</strong> characters translated{usage.month ? ` (${usage.month})` : ''}.
                     </div>
                     <div style={{ marginTop: 2 }}>
-                      <Trans
-                        i18nKey="shopperLanguageSection.usageToday"
-                        ns="admin"
-                        values={{ chars: Number(usage.dayChars || 0).toLocaleString(), capSuffix: usage.dailyCap ? t('shopperLanguageSection.usageTodayCapSuffix', { cap: Number(usage.dailyCap).toLocaleString() }) : '' }}
-                        components={{ b: <strong /> }}
-                      />
+                      Today: <strong>{Number(usage.dayChars || 0).toLocaleString()}</strong> characters{usage.dailyCap ? ` of the ${Number(usage.dailyCap).toLocaleString()}-character daily safety cap` : ''}.
                     </div>
                     <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>
-                      {t('shopperLanguageSection.usageBilling')}
+                      Microsoft bills you directly. Their free tier covers the first 2,000,000 characters per month.
                     </div>
                   </div>
                 )}
@@ -430,7 +418,7 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                   disabled={saving}
                   style={{ padding: '12px 24px', border: 'none', background: '#4f46e5', color: '#fff', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}
                 >
-                  {saving ? t('shopperLanguageSection.saving') : t('shopperLanguageSection.saveSettings')}
+                  {saving ? "Saving…" : "Save translator settings"}
                 </button>
               </div>
             )}

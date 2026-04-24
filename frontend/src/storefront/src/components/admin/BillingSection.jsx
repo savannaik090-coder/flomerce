@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 
@@ -27,7 +26,6 @@ function fmtDate(iso) {
 }
 
 export default function BillingSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [invoices, setInvoices] = useState([]);
   const [quota, setQuota] = useState(null);
@@ -47,10 +45,10 @@ export default function BillingSection() {
           setInvoices(res.data.invoices || []);
           setQuota(res.data.quota || null);
         } else {
-          setError(res.error || t('billingSection.failedLoad'));
+          setError(res.error || "Failed to load invoices");
         }
       } catch (e) {
-        if (!cancelled) setError(e.message || t('billingSection.failedLoad'));
+        if (!cancelled) setError(e.message || "Failed to load invoices");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -61,9 +59,9 @@ export default function BillingSection() {
   if (siteConfig?.subscriptionPlan !== 'enterprise') {
     return (
       <div style={emptyStyle}>
-        <h2 style={{ margin: '0 0 8px' }}>{t('billingSection.title')}</h2>
+        <h2 style={{ margin: '0 0 8px' }}>Billing</h2>
         <p style={{ margin: 0, color: '#64748b' }}>
-          {t('billingSection.notEnterprise')}
+          Overage billing is available on the Enterprise plan. Your current plan has fixed pricing — no usage invoices to show here.
         </p>
       </div>
     );
@@ -76,28 +74,28 @@ export default function BillingSection() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ margin: '0 0 4px', color: '#0f172a' }}>{t('billingSection.heading')}</h2>
+        <h2 style={{ margin: '0 0 4px', color: '#0f172a' }}>Billing & overage invoices</h2>
         <p style={{ margin: 0, color: '#64748b' }}>
-          {t('billingSection.intro')}
+          Monthly invoices for storage above your enterprise plan's included quota. Invoices are emailed to your owner email on the 1st of each month.
         </p>
       </div>
 
       {loading ? (
-        <div style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>{t('billingSection.loading')}</div>
+        <div style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>Loading invoices…</div>
       ) : error ? (
         <div style={{ padding: 16, background: '#fee2e2', color: '#991b1b', borderRadius: 8 }}>{error}</div>
       ) : (
         <>
-          {quota && <QuotaBlock quota={quota} t={t} />}
-          <Group title={t('billingSection.groupUnpaid')} tone="warning" empty={t('billingSection.emptyUnpaid')}>
-            {unpaid.map(inv => <InvoiceRow key={inv.id} inv={inv} t={t} />)}
+          {quota && <QuotaBlock quota={quota} />}
+          <Group title="Unpaid" tone="warning" empty="No unpaid invoices. You're all caught up.">
+            {unpaid.map(inv => <InvoiceRow key={inv.id} inv={inv} />)}
           </Group>
-          <Group title={t('billingSection.groupPaid')} empty={t('billingSection.emptyPaid')}>
-            {paid.map(inv => <InvoiceRow key={inv.id} inv={inv} t={t} />)}
+          <Group title="Paid" empty="No paid invoices yet.">
+            {paid.map(inv => <InvoiceRow key={inv.id} inv={inv} />)}
           </Group>
           {skipped.length > 0 && (
-            <Group title={t('billingSection.groupNoCharge')} empty="">
-              {skipped.map(inv => <InvoiceRow key={inv.id} inv={inv} muted t={t} />)}
+            <Group title="No-charge months" empty="">
+              {skipped.map(inv => <InvoiceRow key={inv.id} inv={inv} muted />)}
             </Group>
           )}
         </>
@@ -123,36 +121,34 @@ function QuotaBlock({ quota, t }) {
   return (
     <section style={{ marginBottom: 28, padding: 16, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>{t('billingSection.yourPlan')}</h3>
+        <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>Your enterprise plan</h3>
         <div style={{ fontSize: 13, color: '#64748b' }}>
-          {t('billingSection.projectedMonth')}&nbsp;
+          Projected this month:&nbsp;
           <strong style={{ color: projected > 0 ? '#b45309' : '#166534' }}>{fmtINR(projected)}</strong>
         </div>
       </div>
 
       <Meter
-        label={t('billingSection.dbLabel')}
+        label="Database (D1)"
         used={quota.d1UsedBytes}
         limit={quota.d1LimitBytes}
         pct={d1Pct}
         custom={quota.d1OverrideActive}
-        rate={t('billingSection.overQuotaRate', { price: fmtINR(quota.rates?.d1PerGB || 0) })}
-        customLabel={t('billingSection.customLabel')}
-      />
+        rate={`${fmtINR(quota.rates?.d1PerGB || 0)}/GB over quota`}
+        customLabel="custom"/>
       <div style={{ height: 12 }} />
       <Meter
-        label={t('billingSection.fileLabel')}
+        label="File storage (R2)"
         used={quota.r2UsedBytes}
         limit={quota.r2LimitBytes}
         pct={r2Pct}
         custom={quota.r2OverrideActive}
-        rate={t('billingSection.overQuotaRate', { price: fmtINR(quota.rates?.r2PerGB || 0) })}
-        customLabel={t('billingSection.customLabel')}
-      />
+        rate={`${fmtINR(quota.rates?.r2PerGB || 0)}/GB over quota`}
+        customLabel="custom"/>
 
       {(quota.d1OverrideActive || quota.r2OverrideActive) && (
         <div style={{ marginTop: 12, fontSize: 12, color: '#2563eb' }}>
-          {t('billingSection.customQuotaNote')}
+          A custom quota is in effect on your account.
         </div>
       )}
     </section>
@@ -212,14 +208,14 @@ function InvoiceRow({ inv, muted, t }) {
         <div style={{ fontWeight: 600, color: '#0f172a' }}>{fmtMonth(inv.yearMonth)}</div>
         <div style={{ fontSize: 13, color: '#64748b' }}>
           {inv.invoiceNumber || '—'}
-          {!isPaid && hasAmount && inv.dueDate && <> · {t('billingSection.due', { date: fmtDate(inv.dueDate) })}</>}
-          {isPaid && inv.paidAt && <> · {t('billingSection.paidOn', { date: fmtDate(inv.paidAt) })}{inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}</>}
+          {!isPaid && hasAmount && inv.dueDate && <> · {`Due ${fmtDate(inv.dueDate)}`}</>}
+          {isPaid && inv.paidAt && <> · {`Paid ${fmtDate(inv.paidAt)}`}{inv.paymentMethod ? ` · ${inv.paymentMethod}` : ''}</>}
         </div>
       </div>
       <div style={{ textAlign: 'end' }}>
         <div style={{ fontWeight: 700, color: '#0f172a' }}>{fmtINR(inv.totalCostINR)}</div>
         <div style={{ fontSize: 12 }}>
-          {isPaid ? <span style={pillPaid}>{t('billingSection.statusPaid')}</span> : hasAmount ? <span style={pillUnpaid}>{t('billingSection.statusUnpaid')}</span> : <span style={pillNone}>{t('billingSection.statusNoCharge')}</span>}
+          {isPaid ? <span style={pillPaid}>Paid</span> : hasAmount ? <span style={pillUnpaid}>Unpaid</span> : <span style={pillNone}>No charge</span>}
         </div>
       </div>
     </div>

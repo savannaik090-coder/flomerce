@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getProducts } from '../../services/productService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
@@ -8,7 +7,6 @@ import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -57,11 +55,11 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
         serverValuesRef.current = JSON.stringify({ selectedProductIds: idsVal });
         setTimeout(() => { hasLoadedRef.current = true; }, 0);
       } else {
-        setStatus('error:' + t('trendingNowEditor.loadFailed'));
+        setStatus('error:' + "Failed to load trending products. Please refresh the page.");
       }
     } catch (e) {
       console.error('Failed to load trending now settings:', e);
-      setStatus('error:' + t('trendingNowEditor.loadFailed'));
+      setStatus('error:' + "Failed to load trending products. Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -114,7 +112,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || t('trendingNowEditor.unknownError')));
+        setStatus('error:' + (result.error || "Unknown error"));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -142,19 +140,19 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
         <SectionToggle
           enabled={sectionVisible}
           onChange={() => onToggleVisibility?.()}
-          label={t('trendingNowEditor.toggleLabel')}
-          description={t('trendingNowEditor.toggleDesc')}
+          label="Show Trending Now"
+          description="Display a horizontal scrollable row of selected products"
         />
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('trendingNowEditor.selectedTitle', { count: selectedProducts.length })}</h3>
+            <h3 className="card-title">{`Selected Products (${selectedProducts.length}/12)`}</h3>
           </div>
           <div className="card-content">
             {selectedProducts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
                 <i className="fas fa-hand-pointer" style={{ fontSize: 24, marginBottom: 8, display: 'block' }} />
-                <p style={{ fontSize: 13, margin: 0 }}>{t('trendingNowEditor.emptySelected')}</p>
+                <p style={{ fontSize: 13, margin: 0 }}>No products selected yet. Add products from below.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -185,7 +183,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
                         type="button"
                         onClick={() => moveProduct(index, -1)}
                         disabled={index === 0}
-                        title={t('trendingNowEditor.moveUp')}
+                        title="Move up"
                         style={{
                           background: 'none', border: '1px solid #e2e8f0', borderRadius: 4,
                           padding: '4px 6px', cursor: index === 0 ? 'default' : 'pointer',
@@ -198,7 +196,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
                         type="button"
                         onClick={() => moveProduct(index, 1)}
                         disabled={index === selectedProducts.length - 1}
-                        title={t('trendingNowEditor.moveDown')}
+                        title="Move down"
                         style={{
                           background: 'none', border: '1px solid #e2e8f0', borderRadius: 4,
                           padding: '4px 6px', cursor: index === selectedProducts.length - 1 ? 'default' : 'pointer',
@@ -210,7 +208,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
                       <button
                         type="button"
                         onClick={() => removeProduct(product.id)}
-                        title={t('trendingNowEditor.remove')}
+                        title="Remove"
                         style={{
                           background: 'none', border: '1px solid #fecaca', borderRadius: 4,
                           padding: '4px 6px', cursor: 'pointer', fontSize: 11, color: '#dc2626',
@@ -228,7 +226,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('trendingNowEditor.addProductsTitle')}</h3>
+            <h3 className="card-title">Add Products</h3>
           </div>
           <div className="card-content">
             <div style={{ position: 'relative', marginBottom: 12 }}>
@@ -237,7 +235,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder={t('trendingNowEditor.searchPh')}
+                placeholder="Search products..."
                 style={{
                   width: '100%', padding: '10px 12px 10px 34px',
                   border: '1px solid #e2e8f0', borderRadius: 6,
@@ -248,7 +246,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
             <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
               {filteredProducts.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px 16px', color: '#94a3b8', fontSize: 13 }}>
-                  {allProducts.length === 0 ? t('trendingNowEditor.noProducts') : t('trendingNowEditor.noMatch')}
+                  {allProducts.length === 0 ? "No products in your store yet" : "No matching products found"}
                 </div>
               ) : (
                 filteredProducts.map(product => (
@@ -285,7 +283,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
               )}
             </div>
             {selectedProductIds.length >= 12 && (
-              <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 8 }}>{t('trendingNowEditor.maxReached')}</p>
+              <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 8 }}>Maximum 12 products reached</p>
             )}
           </div>
         </div>
@@ -298,7 +296,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? t('trendingNowEditor.savedSuccess') : status.replace('error:', '')}
+            {status === 'success' ? "Trending Now section saved successfully!" : status.replace('error:', '')}
           </div>
         )}
 

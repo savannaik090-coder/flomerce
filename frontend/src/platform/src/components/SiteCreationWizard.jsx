@@ -1,57 +1,65 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { createSite, checkSubdomain } from '../services/siteService.js';
 import { PLATFORM_DOMAIN } from '../config.js';
-import { PRESHIPPED } from '../../../shared/i18n/init.js';
 
-// Native labels for the content-language picker. Mirrors the platform
-// language switcher so the wizard offers the same locales out of the box.
-// Native-script labels for every code in the new active PRESHIPPED set
-// (India bucket ∪ Foreign bucket = 17 languages). Keep in sync with
-// shared/i18n/init.js INDIA_LANGUAGES + FOREIGN_LANGUAGES so the merchant
-// content-language picker never falls back to a raw locale code.
-const CONTENT_LANGUAGE_LABELS = {
-  en: 'English',
-  hi: 'हिन्दी',
-  ta: 'தமிழ்',
-  te: 'తెలుగు',
-  ml: 'മലയാളം',
-  kn: 'ಕನ್ನಡ',
-  mr: 'मराठी',
-  bn: 'বাংলা',
-  gu: 'ગુજરાતી',
-  es: 'Español',
-  fr: 'Français',
-  de: 'Deutsch',
-  it: 'Italiano',
-  nl: 'Nederlands',
-  pt: 'Português',
-  ja: '日本語',
-  ko: '한국어',
-  'zh-CN': '简体中文',
+// English-only seed data. The storefront translates on demand at runtime via
+// the per-merchant Microsoft Translator integration, so we ship one canonical
+// English copy and let System B do the rest.
+const SEO_TITLE_TEMPLATES = {
+  jewellery: '{brand} - Jewellery Store Online',
+  clothing: '{brand} - Fashion & Clothing Store',
+  beauty: '{brand} - Beauty & Cosmetics Store',
+  general: '{brand} - Shop Online',
 };
 
-// SEO + category seed data are now sourced from the wizard i18n catalog so
-// merchants in non-English locales land on localized defaults. We resolve
-// the templates through i18next at call time (see generateSEODefaults below
-// and the DEFAULT_CATEGORIES helper inside the component).
-function generateSEODefaults(t, category, brandName, fallbackName) {
-  const cat = category || 'general';
+const SEO_DESCRIPTION_TEMPLATES = {
+  jewellery: 'Shop exquisite jewellery at {brand}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.',
+  clothing: 'Discover the latest fashion at {brand}. Shop clothing, accessories & more with easy returns & fast shipping.',
+  beauty: 'Shop premium beauty & cosmetics at {brand}. Skincare, makeup & more with secure checkout & fast delivery.',
+  general: 'Shop online at {brand}. Explore our curated collection with secure checkout, easy returns & fast delivery.',
+};
+
+const DEFAULT_CATEGORIES_BY_TYPE = {
+  jewellery: [
+    { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },
+    { name: 'Jewellery Collection', subtitle: 'Exquisite pieces for every occasion' },
+    { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+  ],
+  clothing: [
+    { name: 'New Arrivals', subtitle: 'Discover our latest fashion trends' },
+    { name: 'Clothing Collection', subtitle: 'Stylish wear for every occasion' },
+    { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+  ],
+  beauty: [
+    { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
+    { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
+    { name: 'Makeup', subtitle: 'Premium makeup for every look' },
+  ],
+  general: [
+    { name: 'New Arrivals', subtitle: 'Check out what just landed' },
+    { name: 'Our Collection', subtitle: 'Browse our complete product range' },
+    { name: 'Featured Products', subtitle: 'Handpicked favourites just for you' },
+  ],
+};
+
+function fillTemplate(tpl, brand) {
+  return tpl.replace(/\{brand\}/g, brand);
+}
+
+function generateSEODefaults(category, brandName, fallbackName) {
+  const cat = category && SEO_TITLE_TEMPLATES[category] ? category : 'general';
   const name = brandName || fallbackName || 'Your Store';
-  const titleKey = `seoTitleTemplates.${cat}`;
-  const descKey = `seoDescriptionTemplates.${cat}`;
-  // i18next falls back to defaultValue when the key (or its locale file)
-  // isn't loaded — this also guards against an unknown business category.
-  const title = t(titleKey, {
-    brand: name,
-    defaultValue: t(`seoTitleTemplates.general`, { brand: name, defaultValue: `${name} - Shop Online` }),
-  });
-  const description = t(descKey, {
-    brand: name,
-    defaultValue: t(`seoDescriptionTemplates.general`, { brand: name, defaultValue: '' }),
-  });
-  return { title, description };
+  return {
+    title: fillTemplate(SEO_TITLE_TEMPLATES[cat], name),
+    description: fillTemplate(SEO_DESCRIPTION_TEMPLATES[cat], name),
+  };
+}
+
+function getDefaultCategories(catId) {
+  return (DEFAULT_CATEGORIES_BY_TYPE[catId] || DEFAULT_CATEGORIES_BY_TYPE.general).map(
+    (c) => ({ name: c.name, subtitle: c.subtitle })
+  );
 }
 
 const WIZARD_STORAGE_KEY = 'flomerce_wizard_draft';
@@ -72,47 +80,12 @@ export function clearWizardDraft() {
 }
 
 export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, isTrialActive }) {
-  const { t, i18n } = useTranslation(['wizard', 'auth', 'landing']);
-
-  // `t` resolves in the merchant's admin UI language. For wizard *content*
-  // previews (SEO defaults, default category names) we want them rendered in
-  // the merchant's selected `content_language` so the preview matches what
-  // the backend will persist. We derive a language-scoped translator below
-  // from `getFixedT` once the bundle for that language is loaded; falls back
-  // to the UI `t` if i18next hasn't loaded the bundle yet.
-
-  // Default the content language to the user's current admin UI language so a
-  // Hindi-speaking merchant defaults to Hindi without an extra click. Falls back
-  // to English when the active locale isn't one we ship a picker option for.
-  const defaultContentLanguage = (() => {
-    const current = (i18n.language || 'en').split('-')[0] === 'zh' ? 'zh-CN' : (i18n.language || 'en');
-    return PRESHIPPED.includes(current) ? current : 'en';
-  })();
-
   const BUSINESS_CATEGORIES = [
-    { id: 'jewellery', name: t('categories.jewellery'), icon: '💎' },
-    { id: 'clothing', name: t('categories.clothing'), icon: '👗' },
-    { id: 'beauty', name: t('categories.beauty'), icon: '💄' },
-    { id: 'general', name: t('categories.general'), icon: '🛍️' },
+    { id: 'jewellery', name: 'Jewellery', icon: '💎' },
+    { id: 'clothing', name: 'Clothing / Fashion', icon: '👗' },
+    { id: 'beauty', name: 'Beauty / Cosmetics', icon: '💄' },
+    { id: 'general', name: 'General / Other', icon: '🛍️' },
   ];
-
-  // Read the localized starter categories for a business category from the
-  // wizard i18n catalog. Falls through to jewellery (then to an empty list)
-  // when the locale file hasn't loaded the section yet.
-  const getDefaultCategories = (catId, translator = wizardT) => {
-    const tryCat = (id) => {
-      const obj = translator(`defaultCategories.${id}`, { returnObjects: true, defaultValue: null });
-      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-        return Object.values(obj)
-          .filter((c) => c && typeof c === 'object' && c.name)
-          .map((c) => ({ name: c.name, subtitle: c.subtitle || '' }));
-      }
-      return null;
-    };
-    // Fallback order mirrors backend getLocalizedWizardSeed:
-    //   selected category -> general -> jewellery -> [].
-    return tryCat(catId) || tryCat('general') || tryCat('jewellery') || [];
-  };
 
   const draft = useRef(loadWizardDraft()).current;
   const [step, setStep] = useState(draft?.step || 1);
@@ -139,25 +112,6 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   // makes a Hindi merchant land on Hindi categories even if the wizard's UI
   // language was English.
   const [categoriesTouched, setCategoriesTouched] = useState(draft?.categoriesTouched || false);
-  const [contentLanguage, setContentLanguage] = useState(
-    draft?.contentLanguage && PRESHIPPED.includes(draft.contentLanguage)
-      ? draft.contentLanguage
-      : defaultContentLanguage
-  );
-  // Bumped whenever i18next finishes lazy-loading a content-language bundle.
-  // Used as a memo dependency so wizardT re-resolves into the now-loaded
-  // catalog (otherwise getFixedT would keep returning EN fallbacks).
-  const [bundleTick, setBundleTick] = useState(0);
-
-  // Language-scoped translator for wizard *content* previews. Bound to the
-  // selected `contentLanguage` so that, e.g., a Hindi-targeting merchant on
-  // an English admin UI sees Hindi category names and Hindi SEO defaults
-  // (matching what the backend will actually persist).
-  const wizardT = useMemo(
-    () => i18n.getFixedT(contentLanguage, 'wizard'),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [contentLanguage, bundleTick]
-  );
 
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
@@ -166,12 +120,12 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     if (debounceRef.current) clearTimeout(debounceRef.current);
     latestCheckRef.current = value;
     if (!value || value.length < 3) {
-      setSubdomainStatus(value ? { available: false, reason: t('domainMinLength') } : null);
+      setSubdomainStatus(value ? { available: false, reason: "Must be at least 3 characters" } : null);
       setCheckingSubdomain(false);
       return;
     }
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(value)) {
-      setSubdomainStatus({ available: false, reason: t('domainCharRule') });
+      setSubdomainStatus({ available: false, reason: "Only lowercase letters, numbers, and hyphens (not at start/end)" });
       setCheckingSubdomain(false);
       return;
     }
@@ -185,7 +139,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         }
       } catch {
         if (latestCheckRef.current === value) {
-          setSubdomainStatus({ available: false, reason: t('domainCheckFailed') });
+          setSubdomainStatus({ available: false, reason: "Unable to verify. Try again." });
         }
       } finally {
         if (latestCheckRef.current === value) {
@@ -193,7 +147,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         }
       }
     }, 500);
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
@@ -207,9 +161,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     saveWizardDraft({
       step, businessCategory, selectedTemplate, selectedTheme,
       subdomain, brandName, categories, seoTitle, seoDescription, seoTouched,
-      categoriesTouched, contentLanguage,
+      categoriesTouched,
     });
-  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, categoriesTouched, contentLanguage]);
+  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, categoriesTouched]);
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
@@ -218,33 +172,6 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       setCategories(defaults);
     }
   };
-
-  // Refresh the un-touched category preview when the merchant flips the
-  // content-language picker so they see Hindi previews after picking Hindi.
-  // (Backend still owns persistence — see buildFormData.)
-  useEffect(() => {
-    if (categoriesTouched || !businessCategory) return;
-    const defaults = getDefaultCategories(businessCategory);
-    if (defaults.length > 0) setCategories(defaults);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contentLanguage, businessCategory]);
-
-  // Lazy-load the i18n bundle for the chosen content language so previews
-  // render in the merchant's selected language even if their admin UI is
-  // currently in English. When the load resolves we bump bundleTick so the
-  // memoised wizardT re-evaluates into the freshly-loaded catalog. Failure
-  // is silent — preview falls back to English in that case.
-  useEffect(() => {
-    if (!contentLanguage) return;
-    let cancelled = false;
-    try {
-      const p = i18n.loadLanguages?.(contentLanguage);
-      Promise.resolve(p).then(() => {
-        if (!cancelled) setBundleTick((n) => n + 1);
-      }).catch(() => {});
-    } catch {}
-    return () => { cancelled = true; };
-  }, [contentLanguage, i18n]);
 
   const addCategory = () => {
     setCategoriesTouched(true);
@@ -277,7 +204,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     // backend in the merchant's selected content language.
     const validCategories = categories.filter(c => c.name.trim());
     if (categoriesTouched && validCategories.length === 0) {
-      setError(t('needAtLeastOne'));
+      setError("Add at least one category");
       return null;
     }
     let logoBase64 = null;
@@ -326,7 +253,6 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       templateId: selectedTemplate,
       theme: selectedTheme,
       category: businessCategory,
-      content_language: contentLanguage,
       logo: logoBase64,
       favicon: faviconBase64,
       seoTitle: finalSeoTitle,
@@ -354,10 +280,10 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
         onCreated(result.data || result.site || result);
         onClose();
       } else {
-        setError(result.message || result.error || t('createSiteFailed'));
+        setError(result.message || result.error || "Failed to create site");
       }
     } catch (err) {
-      setError(err.message || t('createSiteFailed'));
+      setError(err.message || "Failed to create site");
     } finally {
       setCreating(false);
     }
@@ -368,9 +294,9 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       <div className="modal-content">
         {step === 1 && (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>{t('step1Title')}</h2>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Select Business Category</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              {t('step1Subtitle')}
+              What type of products will you sell?
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
               {BUSINESS_CATEGORIES.map(cat => (
@@ -387,24 +313,24 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                     style={{ fontSize: '0.75rem', width: '100%' }}
                     onClick={(e) => { e.stopPropagation(); handleBusinessCategorySelect(cat.id); }}
                   >
-                    {businessCategory === cat.id ? t('selected') : t('select')}
+                    {businessCategory === cat.id ? "Selected" : "Select"}
                   </button>
                 </div>
               ))}
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button className="btn btn-outline" onClick={onClose} style={{ flex: 1 }}>{t('cancel')}</button>
-              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!businessCategory} style={{ flex: 1 }}>{t('next')}</button>
+              <button className="btn btn-outline" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
+              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!businessCategory} style={{ flex: 1 }}>Next</button>
             </div>
           </div>
         )}
 
         {step === 2 && (
           <div>
-            <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>{t('step2Title')}</h2>
+            <h2 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Website Details</h2>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>{t('chooseDesign')}</label>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem' }}>Choose a Design</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div
                   className={`template-option site-card${selectedTheme === 'classic' ? ' selected' : ''}`}
@@ -414,10 +340,10 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   <div style={{ background: '#f8f5f0', borderRadius: '4px', padding: '24px 16px', textAlign: 'center', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '1.5rem', fontFamily: 'Georgia, serif', fontWeight: 400, color: '#5a3f2a' }}>Aa</span>
                     <div style={{ width: '40px', height: '2px', background: '#d4af37' }}></div>
-                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>{t('themeClassicSwatch')}</span>
+                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>Serif + Gold</span>
                   </div>
-                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>{t('themeClassic')}</p>
-                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>{t('themeClassicDesc')}</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Classic</p>
+                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>Elegant, traditional look</p>
                 </div>
                 <div
                   className={`template-option site-card${selectedTheme === 'modern' ? ' selected' : ''}`}
@@ -427,20 +353,20 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   <div style={{ background: '#fff', borderRadius: '4px', padding: '24px 16px', textAlign: 'center', minHeight: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', border: '1px solid #eee' }}>
                     <span style={{ fontSize: '1.5rem', fontFamily: 'Inter, Helvetica, sans-serif', fontWeight: 800, color: '#111' }}>Aa</span>
                     <div style={{ width: '40px', height: '2px', background: '#111' }}></div>
-                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>{t('themeModernSwatch')}</span>
+                    <span style={{ fontSize: '0.65rem', color: '#888', letterSpacing: '1px', textTransform: 'uppercase' }}>Sans-serif + Bold</span>
                   </div>
-                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>{t('themeModern')}</p>
-                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>{t('themeModernDesc')}</p>
+                  <p style={{ fontWeight: 600, fontSize: '0.8rem', textAlign: 'center', margin: '0.5rem 0 0' }}>Modern</p>
+                  <p style={{ fontSize: '0.7rem', color: '#888', textAlign: 'center', margin: '0.25rem 0 0' }}>Clean, minimal look</p>
                 </div>
               </div>
             </div>
 
             <div className="form-group">
-              <label>{t('domainName')}</label>
+              <label>Domain Name</label>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  placeholder={t('domainPlaceholder')}
+                  placeholder="my-awesome-shop"
                   value={subdomain}
                   onChange={(e) => {
                     const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -458,27 +384,27 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                     {subdomain && `${subdomain}.${PLATFORM_DOMAIN}`}
                   </span>
                   {checkingSubdomain && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t('checking')}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Checking...</span>
                   )}
                   {!checkingSubdomain && subdomainStatus && (
                     <span style={{ fontSize: '0.75rem', color: subdomainStatus.available ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                      {subdomainStatus.available ? t('available') : subdomainStatus.reason}
+                      {subdomainStatus.available ? "Available" : subdomainStatus.reason}
                     </span>
                   )}
                 </div>
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label>{t('brandName')}</label>
+              <label>Brand Name</label>
               <input
                 type="text"
-                placeholder={t('brandPlaceholder')}
+                placeholder="My Awesome Shop"
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
               />
             </div>
             <div className="form-group">
-              <label>{t('logoOptional')}</label>
+              <label>Logo (Optional)</label>
               <input
                 type="file"
                 accept="image/*"
@@ -486,56 +412,36 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 style={{ padding: '0.5rem', border: '1px dashed var(--border)' }}
               />
             </div>
-            <div className="form-group">
-              <label>{t('contentLanguagePrompt')}</label>
-              <select
-                value={contentLanguage}
-                onChange={(e) => setContentLanguage(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: 4, background: '#fff' }}
-              >
-                {PRESHIPPED.map((lng) => (
-                  <option key={lng} value={lng}>{CONTENT_LANGUAGE_LABELS[lng] || lng}</option>
-                ))}
-              </select>
-              {contentLanguage !== 'en' && (
-                <p
-                  role="alert"
-                  style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, fontSize: '0.75rem', color: '#92400e' }}
-                >
-                  {t('contentLanguageWarning', { language: CONTENT_LANGUAGE_LABELS[contentLanguage] || contentLanguage })}
-                </p>
-              )}
-            </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>{t('back')}</button>
+              <button className="btn btn-outline" onClick={() => setStep(1)} style={{ flex: 1 }}>Back</button>
               <button className="btn btn-primary" onClick={() => {
                 if (!seoTouched) {
-                  const defaults = generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback"));
+                  const defaults = generateSEODefaults(businessCategory, brandName, "Your Store");
                   setSeoTitle(defaults.title);
                   setSeoDescription(defaults.description);
                 }
                 setStep(3);
-              }} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>{t('nextSeo')}</button>
+              }} disabled={!subdomain || !brandName || !selectedTemplate || checkingSubdomain || !subdomainStatus?.available} style={{ flex: 1 }}>Next: SEO</button>
             </div>
           </div>
         )}
 
         {step === 3 && (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>{t('step3Title')}</h2>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>SEO & Branding</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              {t('step3Subtitle')}
+              Help your store get discovered on Google. You can always change these later from the admin panel.
             </p>
             <div className="form-group">
-              <label style={{ fontWeight: 600 }}>{t('faviconOptional')}</label>
+              <label style={{ fontWeight: 600 }}>Favicon (Optional)</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-                {t('faviconHelp')}
+                Small icon shown in browser tabs. Recommended: 32×32 or 64×64 px.
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 {faviconPreview && (
                   <img
                     src={faviconPreview}
-                    alt={t('faviconAlt')}
+                    alt="Favicon preview"
                     style={{ width: '32px', height: '32px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px' }}
                   />
                 )}
@@ -545,7 +451,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   onChange={(e) => {
                     const file = e.target.files[0] || null;
                     if (file && file.size > 2 * 1024 * 1024) {
-                      setError(t('faviconTooLarge'));
+                      setError("Favicon must be under 2 MB");
                       return;
                     }
                     if (faviconPreview) URL.revokeObjectURL(faviconPreview);
@@ -558,29 +464,29 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label style={{ fontWeight: 600 }}>{t('siteTitle')}</label>
+              <label style={{ fontWeight: 600 }}>Site Title</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-                {t('siteTitleHelp')}
+                Appears in search results and browser tabs.
               </p>
               <input
                 type="text"
-                placeholder={generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).title}
+                placeholder={generateSEODefaults(businessCategory, brandName, "Your Store").title}
                 value={seoTitle}
                 onChange={(e) => { setSeoTitle(e.target.value); setSeoTouched(true); }}
                 maxLength={70}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('siteTitleHint')}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recommended: 50–60 characters</span>
                 <span style={{ fontSize: '0.7rem', color: (seoTitle || '').length > 60 ? '#dc2626' : 'var(--text-muted)' }}>{(seoTitle || '').length}/70</span>
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label style={{ fontWeight: 600 }}>{t('metaDescription')}</label>
+              <label style={{ fontWeight: 600 }}>Meta Description</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-                {t('metaDescriptionHelp')}
+                A short summary shown below your title in search results.
               </p>
               <textarea
-                placeholder={generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).description}
+                placeholder={generateSEODefaults(businessCategory, brandName, "Your Store").description}
                 value={seoDescription}
                 onChange={(e) => { setSeoDescription(e.target.value); setSeoTouched(true); }}
                 maxLength={160}
@@ -588,37 +494,37 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                 style={{ width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t('metaDescriptionHint')}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Recommended: 120–160 characters</span>
                 <span style={{ fontSize: '0.7rem', color: (seoDescription || '').length > 155 ? '#dc2626' : 'var(--text-muted)' }}>{(seoDescription || '').length}/160</span>
               </div>
             </div>
             {(seoTitle || seoDescription) && (
               <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('googlePreview')}</p>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Google Search Preview</p>
                 <div style={{ fontSize: '1rem', color: '#1a0dab', fontWeight: 500, marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {seoTitle || generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).title}
+                  {seoTitle || generateSEODefaults(businessCategory, brandName, "Your Store").title}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#006621', marginBottom: '0.25rem' }}>
                   {subdomain}.{PLATFORM_DOMAIN}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: '#545454', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {seoDescription || generateSEODefaults(wizardT, businessCategory, brandName, t("yourStoreFallback")).description}
+                  {seoDescription || generateSEODefaults(businessCategory, brandName, "Your Store").description}
                 </div>
               </div>
             )}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>{t('back')}</button>
-              <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>{t('skip')}</button>
-              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>{t('nextCategories')}</button>
+              <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>Skip</button>
+              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>Next: Categories</button>
             </div>
           </div>
         )}
 
         {step === 4 && (
           <div>
-            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>{t('step4Title')}</h2>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Product Categories</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              {t('step4Subtitle')}
+              These categories will appear on your homepage and navigation. You can rename them or add more.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem', maxHeight: '40vh', overflowY: 'auto', padding: '0.5rem' }}>
               {categories.map((cat, i) => (
@@ -626,14 +532,14 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     <input
                       type="text"
-                      placeholder={t('categoryName')}
+                      placeholder="Category Name"
                       value={cat.name}
                       onChange={(e) => updateCategoryName(i, e.target.value)}
                       style={{ width: '100%', boxSizing: 'border-box' }}
                     />
                     <input
                       type="text"
-                      placeholder={t('subtitleOptionalPlaceholder')}
+                      placeholder="Subtitle (optional)"
                       value={cat.subtitle}
                       onChange={(e) => updateCategorySubtitle(i, e.target.value)}
                       style={{ width: '100%', boxSizing: 'border-box', fontSize: '0.85rem', color: '#666' }}
@@ -651,19 +557,19 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               ))}
             </div>
             <button className="btn btn-outline" onClick={addCategory} style={{ width: '100%', marginBottom: '1.5rem', borderStyle: 'dashed' }}>
-              {t('addAnotherCategory')}
+              + Add Another Category
             </button>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', margin: '1rem 0' }}>
               <input type="checkbox" id="wizard-agree-terms" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '0.2rem', width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }} />
               <label htmlFor="wizard-agree-terms" style={{ fontSize: '0.8125rem', color: '#64748b', lineHeight: 1.5, cursor: 'pointer' }}>
-                {t('auth:agreeTerms')} <Link to="/terms" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>{t('landing:footerTerms')}</Link>, <Link to="/privacy-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>{t('landing:footerPrivacy')}</Link>, {t('auth:agreeTermsAnd')} <Link to="/refund-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>{t('landing:footerRefund')}</Link>.
+                I agree to the <Link to="/terms" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Terms & Conditions</Link>, <Link to="/privacy-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>Refund & Cancellation Policy</Link>.
               </label>
             </div>
             {error && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>{t('back')}</button>
+              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
               <button className="btn btn-primary" onClick={handleCreate} disabled={creating || !agreedTerms} style={{ flex: 1 }}>
-                {creating ? t('creating') : t('createWebsite')}
+                {creating ? "Creating..." : "Create Website"}
               </button>
             </div>
           </div>

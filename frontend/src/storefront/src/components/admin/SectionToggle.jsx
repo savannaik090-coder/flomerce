@@ -1,6 +1,4 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-
 const toggleContainerStyle = {
   display: 'flex',
   alignItems: 'center',
@@ -50,18 +48,17 @@ const knobStyle = (enabled) => ({
 });
 
 export default function SectionToggle({ enabled, onChange, label, description }) {
-  const { t } = useTranslation('admin');
   return (
     <div style={toggleContainerStyle}>
       <div>
-        <div style={toggleLabelStyle}>{label || t('sectionToggle.defaultLabel')}</div>
+        <div style={toggleLabelStyle}>{label || "Show this section"}</div>
         {description && <div style={toggleDescStyle}>{description}</div>}
       </div>
       <button
         type="button"
         style={switchStyle(enabled)}
         onClick={() => onChange(!enabled)}
-        aria-label={enabled ? t('sectionToggle.ariaDisable') : t('sectionToggle.ariaEnable')}
+        aria-label={enabled ? "Disable section" : "Enable section"}
       >
         <div style={knobStyle(enabled)} />
       </button>

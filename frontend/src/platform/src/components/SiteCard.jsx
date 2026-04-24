@@ -1,11 +1,9 @@
-import { useTranslation } from 'react-i18next';
 import { PLATFORM_DOMAIN } from '../config.js';
 import { getSubscriptionBadge, formatScheduledChange, renderBadgeText } from '../utils/subscriptionStatus.js';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
 export default function SiteCard({ site, onManage, subscriptionInfo }) {
-  const { t } = useTranslation('dashboard');
   const siteName = site.brand_name || site.brandName || site.subdomain;
   const siteUrl = `https://${site.subdomain}.${PLATFORM_DOMAIN}`;
   const createdAt = site.created_at ? utcDate(site.created_at).toLocaleDateString() : '';
@@ -16,14 +14,14 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
 
   const isEnterprise = sub.plan === 'enterprise';
   const badge = getSubscriptionBadge(sub);
-  const badgeText = renderBadgeText(badge, t);
-  const scheduledNote = formatScheduledChange(sub, t);
+  const badgeText = renderBadgeText(badge);
+  const scheduledNote = formatScheduledChange(sub);
 
   const renewLabel = sub.isCancelled
-    ? t('siteCard.ends')
+    ? "Ends"
     : sub.plan === 'trial'
-      ? t('siteCard.trialEnds')
-      : t('siteCard.renews');
+      ? "Trial ends"
+      : "Renews";
 
   return (
     <div className="site-card">
@@ -50,9 +48,9 @@ export default function SiteCard({ site, onManage, subscriptionInfo }) {
         </p>
       )}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem' }}>{t('siteCard.visit')}</a>
+        <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ flex: 1, fontSize: '0.75rem' }}>Visit Site</a>
         <button className="btn btn-outline" onClick={onManage} style={{ flex: 1, fontSize: '0.75rem' }}>
-          {t('siteCard.manage')}
+          Manage
         </button>
       </div>
     </div>

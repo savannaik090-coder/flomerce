@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import CategoriesSection from './CategoriesSection.jsx';
 import WatchBuySection from './WatchBuySection.jsx';
@@ -95,7 +94,6 @@ function getViewport() {
 }
 
 export default function VisualCustomizer({ currentPlan, onBack }) {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const confirm = useConfirm();
   const [activeSection, setActiveSection] = useState(null);
@@ -402,10 +400,10 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     if (next === activeSection) return;
     if (isEditorDirty()) {
       const ok = await confirm({
-        title: t('visualCustomizer.discard.title'),
-        message: t('visualCustomizer.unsavedPrompt'),
+        title: "Discard unsaved changes?",
+        message: "You have unsaved changes in this section. Discard them?",
         variant: 'danger',
-        confirmText: t('visualCustomizer.discard.confirm'),
+        confirmText: "Discard",
       });
       if (!ok) return;
     }
@@ -447,7 +445,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       case 'store-locations': return <StoreLocationsEditor {...props} />;
       case 'book-appointment': {
         const locked = !isFeatureAvailable(currentPlan, 'appointmentBooking');
-        if (locked) return <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName={t('visualCustomizer.appointmentBookingFeature')}><BookAppointmentEditor {...props} /></FeatureGate>;
+        if (locked) return <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Appointment Booking"><BookAppointmentEditor {...props} /></FeatureGate>;
         return <BookAppointmentEditor {...props} />;
       }
       case 'contact-us': return <ContactEditor {...props} />;
@@ -466,11 +464,11 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
 
   function getSectionLabel(id) {
     const hp = homepageSections.find(s => s.id === id);
-    if (hp) return t(`visualCustomizer.sectionLabel.${id}`, hp.label);
+    if (hp) return hp.label;
     const pg = PAGE_SECTIONS.find(s => s.id === id);
-    if (pg) return t(`visualCustomizer.sectionLabel.${id}`, pg.label);
+    if (pg) return pg.label;
     const st = SETTINGS_SECTIONS.find(s => s.id === id);
-    if (st) return t(`visualCustomizer.sectionLabel.${id}`, st.label);
+    if (st) return st.label;
     return id;
   }
 
@@ -486,9 +484,9 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   padding: 3, gap: 2,
                 }}>
                   {[
-                    { id: 'sections', label: t('visualCustomizer.tabs.sections'), icon: 'fa-layer-group' },
-                    { id: 'pages', label: t('visualCustomizer.tabs.pages'), icon: 'fa-file-alt' },
-                    { id: 'settings', label: t('visualCustomizer.tabs.settings'), icon: 'fa-cog' },
+                    { id: 'sections', label: "Sections", icon: 'fa-layer-group' },
+                    { id: 'pages', label: "Pages", icon: 'fa-file-alt' },
+                    { id: 'settings', label: "Settings", icon: 'fa-cog' },
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -515,7 +513,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
               {sidebarTab === 'sections' && (
                 <div style={{ padding: '8px 12px' }}>
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
-                    {t('visualCustomizer.sectionsHint')}
+                    Click a section to edit it. Toggle visibility with the eye icon.
                   </p>
                   {homepageSections.map((section) => {
                     const isVisible = section.fixed || sectionVisibility[section.id] !== false;
@@ -561,7 +559,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                             fontSize: 13, fontWeight: 500,
                             color: isLocked ? '#94a3b8' : '#334155',
                           }}>
-                            {t(`visualCustomizer.sectionLabel.${section.id}`, section.label)}
+                            {section.label}
                           </span>
                           {isLocked && <PlanBadge plan={getRequiredPlan(gatedFeature)} small />}
                         </div>
@@ -573,7 +571,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                               e.stopPropagation();
                               toggleSectionVisibility(section.id, section.showKey);
                             }}
-                            title={isVisible ? t('visualCustomizer.hideSection') : t('visualCustomizer.showSection')}
+                            title={isVisible ? "Hide section" : "Show section"}
                             style={{
                               background: 'none', border: 'none', cursor: 'pointer',
                               padding: '4px 6px', borderRadius: 4, flexShrink: 0,
@@ -607,7 +605,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
               {sidebarTab === 'pages' && (
                 <div style={{ padding: '8px 12px' }}>
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
-                    {t('visualCustomizer.pagesHint')}
+                    Edit your store's standalone pages.
                   </p>
                   {PAGE_SECTIONS.map(page => {
                     const gatedFeature = GATED_TABS[page.id];
@@ -639,7 +637,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                           fontSize: 13, fontWeight: 500,
                           color: isLocked ? '#94a3b8' : '#334155', flex: 1,
                         }}>
-                          {t(`visualCustomizer.sectionLabel.${page.id}`, page.label)}
+                          {page.label}
                         </span>
                         {isLocked && <PlanBadge plan={getRequiredPlan(gatedFeature)} small />}
                         {!isLocked && (
@@ -654,7 +652,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
               {sidebarTab === 'settings' && (
                 <div style={{ padding: '8px 12px' }}>
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
-                    {t('visualCustomizer.settingsHint')}
+                    Checkout, policies, and legal pages.
                   </p>
                   {SETTINGS_SECTIONS.map(section => (
                     <button
@@ -678,7 +676,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                         <i className={`fas ${section.icon}`} style={{ fontSize: 11, color: '#64748b' }} />
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 500, color: '#334155', flex: 1 }}>
-                        {t(`visualCustomizer.sectionLabel.${section.id}`, section.label)}
+                        {section.label}
                       </span>
                       <i className="fas fa-chevron-right" style={{ fontSize: 10, color: '#cbd5e1' }} />
                     </button>
@@ -707,7 +705,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           }}
         >
           <i className="fas fa-chevron-left" style={{ fontSize: 9 }} />
-          {t('visualCustomizer.back')}
+          Back
         </button>
         <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
           {getSectionLabel(activeSection)}
@@ -771,7 +769,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 border: 'none', display: 'block',
                 transition: 'width 0.2s ease',
               }}
-              title={t('visualCustomizer.preview.title')}
+              title="Store Preview"
             />
           </div>
         ) : (
@@ -780,8 +778,8 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             justifyContent: 'center', color: '#94a3b8',
           }}>
             <i className="fas fa-globe" style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }} />
-            <p style={{ fontSize: 15, fontWeight: 500 }}>{t('visualCustomizer.preview.unavailable')}</p>
-            <p style={{ fontSize: 13, marginTop: 4 }}>{t('visualCustomizer.preview.noUrl')}</p>
+            <p style={{ fontSize: 15, fontWeight: 500 }}>Preview not available</p>
+            <p style={{ fontSize: 13, marginTop: 4 }}>Store URL could not be determined</p>
           </div>
         )}
       </div>
@@ -799,7 +797,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         <button
           type="button"
           onClick={onBack}
-          aria-label={t('visualCustomizer.topBar.backToAdmin')}
+          aria-label="Back to admin"
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: isMobile ? '6px 10px' : '6px 12px',
@@ -809,7 +807,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           }}
         >
           <i className="fas fa-arrow-left" style={{ fontSize: 11 }} />
-          {!isMobile && t('visualCustomizer.topBar.adminLabel')}
+          {!isMobile && "Admin"}
         </button>
         {!isMobile && <div style={{ width: 1, height: 24, background: '#e2e8f0' }} />}
         <span style={{
@@ -817,7 +815,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           <i className="fas fa-palette" style={{ marginInlineEnd: 8, color: '#2563eb', fontSize: 14 }} />
-          {isMobile ? t('visualCustomizer.topBar.titleShort') : t('visualCustomizer.topBar.titleFull')}
+          {isMobile ? "Edit" : "Visual Customizer"}
         </span>
       </div>
 
@@ -825,11 +823,11 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         {savingVisibility && !isMobile && (
           <span style={{ fontSize: 12, color: '#64748b' }}>
             <i className="fas fa-circle-notch fa-spin" style={{ marginInlineEnd: 4, fontSize: 10 }} />
-            {t('visualCustomizer.topBar.saving')}
+            Saving...
           </span>
         )}
         {savingVisibility && isMobile && (
-          <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 12, color: '#64748b' }} title={t('visualCustomizer.topBar.savingTitle')} />
+          <i className="fas fa-circle-notch fa-spin" style={{ fontSize: 12, color: '#64748b' }} title="Saving" />
         )}
         {/* Device toggle: meaningful on desktop/tablet (where we can fake a phone frame); hidden on mobile */}
         {!isMobile && (
@@ -847,7 +845,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 fontFamily: 'inherit', fontWeight: 500,
                 transition: 'all 0.15s ease',
               }}
-              title={t('visualCustomizer.topBar.desktopPreview')}
+              title="Desktop preview"
             >
               <i className="fas fa-desktop" />
             </button>
@@ -861,7 +859,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 fontFamily: 'inherit', fontWeight: 500,
                 transition: 'all 0.15s ease',
               }}
-              title={t('visualCustomizer.topBar.mobilePreview')}
+              title="Mobile preview"
             >
               <i className="fas fa-mobile-alt" />
             </button>
@@ -870,8 +868,8 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         <button
           type="button"
           onClick={refreshPreview}
-          title={t('visualCustomizer.topBar.refreshPreview')}
-          aria-label={t('visualCustomizer.topBar.refreshPreview')}
+          title="Refresh preview"
+          aria-label="Refresh preview"
           style={{
             padding: isMobile ? '6px 8px' : '6px 10px',
             background: '#f1f5f9', border: '1px solid #e2e8f0',
@@ -892,7 +890,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             }}
           >
             <i className="fas fa-external-link-alt" style={{ fontSize: 10 }} />
-            {t('visualCustomizer.topBar.visitStore')}
+            Visit Store
           </a>
         )}
       </div>
@@ -973,7 +971,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         <div
           role={sheetOpen ? 'dialog' : undefined}
           aria-modal={sheetOpen ? 'true' : undefined}
-          aria-label={activeSection ? t('visualCustomizer.sheet.editAria', { label: getSectionLabel(activeSection) }) : t('visualCustomizer.sheet.chooseSectionAria')}
+          aria-label={activeSection ? `Edit ${getSectionLabel(activeSection)}` : "Choose a section to edit"}
           aria-hidden={sheetOpen ? undefined : 'true'}
           style={{
             position: 'absolute', left: 0, right: 0, bottom: 0,
@@ -1010,7 +1008,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 <button
                   type="button"
                   onClick={() => setSheetExpanded(e => !e)}
-                  aria-label={sheetExpanded ? t('visualCustomizer.sheet.collapse') : t('visualCustomizer.sheet.expand')}
+                  aria-label={sheetExpanded ? "Collapse editor" : "Expand editor"}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     padding: '6px 10px', borderRadius: 6, color: '#94a3b8',
@@ -1022,7 +1020,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 {/* Centered draggable handle — drag up/down to resize, tap to toggle half/full */}
                 <div
                   role="slider"
-                  aria-label={t('visualCustomizer.sheet.resize')}
+                  aria-label="Resize editor sheet"
                   aria-valuemin={20}
                   aria-valuemax={80}
                   aria-valuenow={Math.round(baseSheetHeight)}
@@ -1050,7 +1048,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                     setSheetOpen(false);
                     setSheetExpanded(false);
                   }}
-                  aria-label={t('visualCustomizer.sheet.minimize')}
+                  aria-label="Minimize editor"
                   style={{
                     background: '#f1f5f9', border: 'none', borderRadius: '50%',
                     width: 32, height: 32, cursor: 'pointer', color: '#64748b',
@@ -1099,7 +1097,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
           }}
         >
           <i className="fas fa-pen" style={{ fontSize: 13 }} />
-          {activeSection ? t('visualCustomizer.editFab.editSection', { label: getSectionLabel(activeSection) }) : t('visualCustomizer.editFab.editWebsite')}
+          {activeSection ? `Edit ${getSectionLabel(activeSection)}` : "Edit Website"}
         </button>
       )}
     </div>

@@ -9,9 +9,9 @@ import { API_BASE } from '../config.js';
  * keyed by ${siteId}:${target}:${textHash}, and gracefully falls back
  * to the original on cache miss until the proxy responds.
  *
- * Source-of-truth language: the SiteContext + i18n hold the active
- * language. We re-read i18n.language on every render via the language
- * state below, so language changes trigger re-renders of all consumers.
+ * Source-of-truth language: localStorage `flomerce_lang`. The
+ * LanguageSwitcher writes it and dispatches a `flomerce_lang_change`
+ * event so this provider re-renders with the new target language.
  */
 
 export const ShopperTranslationContext = createContext(null);
@@ -21,9 +21,6 @@ function storageKey(siteId, target, hash) {
   return `${STORAGE_PREFIX}${siteId}:${target}:${hash}`;
 }
 
-// Cheap, non-cryptographic hash. Microsoft Translator cache rows use a real
-// SHA-256 server-side; the client hash is only a localStorage key, so we
-// don't need crypto-grade collision resistance.
 function clientHash(s) {
   let h = 5381;
   const str = String(s ?? '');
@@ -42,6 +39,15 @@ function writeSessionCache(siteId, target, hash, value) {
   catch (e) { /* quota — ignore */ }
 }
 
+function readStoredLanguage(fallback) {
+  try {
+    if (typeof window === 'undefined') return fallback;
+    return window.localStorage?.getItem('flomerce_lang') || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 export function ShopperTranslationProvider({ children }) {
   const { siteConfig } = useContext(SiteContext) || {};
   const siteId = siteConfig?.id || null;
@@ -57,36 +63,25 @@ export function ShopperTranslationProvider({ children }) {
     return [];
   }, [siteConfig?.translatorLanguages, siteConfig?.translator_languages]);
 
-  // Track i18n language. We import lazily so this provider doesn't drag the
-  // i18n init code into route bundles that don't already use it.
-  const [language, setLanguage] = useState(() => {
-    try { return (typeof window !== 'undefined' && window.localStorage?.getItem('flomerce_lang')) || contentLanguage; }
-    catch (e) { return contentLanguage; }
-  });
+  const [language, setLanguage] = useState(() => readStoredLanguage(contentLanguage));
+
   useEffect(() => {
-    let mounted = true;
-    let i18nRef = null;
-    let onChange = null;
-    (async () => {
-      try {
-        const mod = await import('../../../shared/i18n/init.js');
-        if (!mounted) return;
-        i18nRef = mod.default;
-        setLanguage(i18nRef.language || contentLanguage);
-        onChange = (lng) => setLanguage(lng);
-        i18nRef.on('languageChanged', onChange);
-      } catch (e) { /* ignore */ }
-    })();
+    if (typeof window === 'undefined') return undefined;
+    const onLangChange = (e) => {
+      const next = e?.detail?.language || readStoredLanguage(contentLanguage);
+      setLanguage(next);
+    };
+    const onStorage = (e) => {
+      if (e.key === 'flomerce_lang') setLanguage(e.newValue || contentLanguage);
+    };
+    window.addEventListener('flomerce_lang_change', onLangChange);
+    window.addEventListener('storage', onStorage);
     return () => {
-      mounted = false;
-      try { if (i18nRef && onChange) i18nRef.off('languageChanged', onChange); } catch (e) {}
+      window.removeEventListener('flomerce_lang_change', onLangChange);
+      window.removeEventListener('storage', onStorage);
     };
   }, [contentLanguage]);
 
-  // The active *target* language for shopper-facing translation. If the
-  // shopper picked the merchant's content language (or a language not in
-  // the merchant's allow-list, or translation is off), target = null which
-  // means "show originals."
   const target = useMemo(() => {
     if (!enabled) return null;
     if (!language || language === contentLanguage) return null;
@@ -94,17 +89,11 @@ export function ShopperTranslationProvider({ children }) {
     return language;
   }, [enabled, language, contentLanguage, allowedLanguages]);
 
-  // In-memory translation map for *this* render cycle's target. Persists
-  // across renders so we don't re-fetch what we already know.
-  const cacheRef = useRef(new Map()); // hash -> translated string
-  const pendingRef = useRef(new Map()); // hash -> { text, resolvers: [] }
+  const cacheRef = useRef(new Map());
+  const pendingRef = useRef(new Map());
   const flushTimerRef = useRef(null);
   const [, forceTick] = useState(0);
 
-  // Reset in-memory cache whenever target changes (we still keep the
-  // sessionStorage layer; this just ensures stale-target lookups don't
-  // accidentally return previous-language strings). Also cancel any
-  // pending flush — its results would belong to the previous target.
   useEffect(() => {
     cacheRef.current = new Map();
     pendingRef.current = new Map();
@@ -115,8 +104,6 @@ export function ShopperTranslationProvider({ children }) {
     forceTick((n) => n + 1);
   }, [target, siteId]);
 
-  // Cancel any pending flush on unmount to avoid setState-after-unmount
-  // warnings if the provider is torn down mid-batch.
   useEffect(() => () => {
     if (flushTimerRef.current) {
       clearTimeout(flushTimerRef.current);
@@ -129,7 +116,6 @@ export function ShopperTranslationProvider({ children }) {
     if (!siteId || !target) return;
     const pending = pendingRef.current;
     if (pending.size === 0) return;
-    // Snapshot and clear so re-entrant calls during fetch start a new batch.
     const batch = Array.from(pending.entries());
     pendingRef.current = new Map();
 
@@ -150,12 +136,9 @@ export function ShopperTranslationProvider({ children }) {
           writeSessionCache(siteId, target, hash, xlated);
         }
       } else {
-        // Bad response shape — fall back to originals so consumers don't loop.
         for (const [hash, entry] of batch) cacheRef.current.set(hash, entry.text);
       }
     } catch (e) {
-      // Network error — cache originals to break the retry loop for this
-      // session. Reload will retry.
       for (const [hash, entry] of batch) cacheRef.current.set(hash, entry.text);
     }
     forceTick((n) => n + 1);
@@ -163,18 +146,9 @@ export function ShopperTranslationProvider({ children }) {
 
   const scheduleFlush = useCallback(() => {
     if (flushTimerRef.current) return;
-    // 30ms is short enough to feel instant on the first paint but long
-    // enough to coalesce dozens of <TranslatedText> mounts on a single
-    // page render into one POST.
     flushTimerRef.current = setTimeout(flush, 30);
   }, [flush]);
 
-  /**
-   * Synchronous lookup used by <TranslatedText>. Returns the translated
-   * string if known, otherwise queues a fetch and returns the original
-   * (so the page renders immediately, then re-renders when the batch
-   * resolves).
-   */
   const translate = useCallback((text) => {
     if (text == null || text === '') return text;
     if (!target) return text;

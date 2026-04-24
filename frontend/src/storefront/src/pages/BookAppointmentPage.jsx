@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import { isPlanAtLeast } from '../utils/plan.js';
+import TranslatedText from '../components/TranslatedText';
 
 const TIME_SLOTS = [
   '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM',
@@ -12,11 +12,10 @@ const TIME_SLOTS = [
 ];
 
 export default function BookAppointmentPage() {
-  const { t } = useTranslation('storefront');
   const PURPOSES = [
-    { value: '', label: t('appointment.purposes.select', 'Select purpose') },
-    { value: 'consultation', label: t('appointment.purposes.consultation', 'General Consultation') },
-    { value: 'other', label: t('appointment.purposes.other', 'Other') },
+    { value: '', label: "Select purpose" },
+    { value: 'consultation', label: "General Consultation" },
+    { value: 'other', label: "Other" },
   ];
   const { siteConfig } = useSiteConfig();
   const [appointmentType, setAppointmentType] = useState('');
@@ -46,8 +45,8 @@ export default function BookAppointmentPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!appointmentType) { setStatus({ type: 'error', msg: t('appointment.errors.selectType', 'Please select an appointment type.') }); return; }
-    if (!selectedTime) { setStatus({ type: 'error', msg: t('appointment.errors.selectTime', 'Please select a time slot.') }); return; }
+    if (!appointmentType) { setStatus({ type: 'error', msg: "Please select an appointment type." }); return; }
+    if (!selectedTime) { setStatus({ type: 'error', msg: "Please select a time slot." }); return; }
     setSubmitting(true);
     setStatus(null);
     try {
@@ -69,15 +68,15 @@ export default function BookAppointmentPage() {
       });
       const result = await response.json();
       if (response.ok && result.success) {
-        setStatus({ type: 'success', msg: t('appointment.success', "Your appointment has been booked successfully! We'll send you a confirmation shortly.") });
+        setStatus({ type: 'success', msg: "Your appointment has been booked successfully! We'll send you a confirmation shortly." });
         setForm({ fullName: '', email: '', phone: '', appointmentDate: '', purpose: '', notes: '' });
         setAppointmentType('');
         setSelectedTime('');
       } else {
-        setStatus({ type: 'error', msg: result.error || t('appointment.errors.generic', 'Something went wrong. Please try again.') });
+        setStatus({ type: 'error', msg: result.error || "Something went wrong. Please try again." });
       }
     } catch {
-      setStatus({ type: 'error', msg: t('appointment.errors.generic', 'Something went wrong. Please try again.') });
+      setStatus({ type: 'error', msg: "Something went wrong. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -155,8 +154,8 @@ export default function BookAppointmentPage() {
 
       <div className="appointment-container">
         <div className="appointment-header">
-          <h1>{t('appointment.title', 'Book Your Appointment')}</h1>
-          <p>{t('appointment.subtitle', 'Schedule a personalized consultation with our experts')}</p>
+          <h1><TranslatedText text="Book Your Appointment" /></h1>
+          <p><TranslatedText text="Schedule a personalized consultation with our experts" /></p>
         </div>
 
         {status && (
@@ -168,51 +167,51 @@ export default function BookAppointmentPage() {
 
         <form className="appointment-form" onSubmit={handleSubmit}>
           <div className="form-section">
-            <h3>{t('appointment.type.heading', 'Appointment Type')}</h3>
+            <h3><TranslatedText text="Appointment Type" /></h3>
             <div className="appointment-type">
               <div
                 className={`type-option ${appointmentType === 'in-store' ? 'selected' : ''}`}
                 onClick={() => setAppointmentType('in-store')}
               >
                 <i className="fas fa-store"></i>
-                <strong>{t('appointment.type.inStore', 'In-Store Visit')}</strong>
-                <div className="type-desc">{t('appointment.type.inStoreDesc', 'Visit our showroom')}</div>
+                <strong><TranslatedText text="In-Store Visit" /></strong>
+                <div className="type-desc"><TranslatedText text="Visit our showroom" /></div>
               </div>
               <div
                 className={`type-option ${appointmentType === 'virtual' ? 'selected' : ''}`}
                 onClick={() => setAppointmentType('virtual')}
               >
                 <i className="fas fa-video"></i>
-                <strong>{t('appointment.type.virtual', 'Virtual Consultation')}</strong>
-                <div className="type-desc">{t('appointment.type.virtualDesc', 'Video call consultation')}</div>
+                <strong><TranslatedText text="Virtual Consultation" /></strong>
+                <div className="type-desc"><TranslatedText text="Video call consultation" /></div>
               </div>
             </div>
           </div>
 
           <div className="form-section">
-            <h3>{t('appointment.personal.heading', 'Personal Information')}</h3>
+            <h3><TranslatedText text="Personal Information" /></h3>
             <div className="appt-form-group">
-              <label>{t('appointment.form.fullName', 'Full Name *')}</label>
+              <label><TranslatedText text="Full Name *" /></label>
               <input type="text" name="fullName" value={form.fullName} onChange={handleChange} required />
             </div>
             <div className="appt-form-group">
-              <label>{t('appointment.form.email', 'Email Address *')}</label>
+              <label><TranslatedText text="Email Address *" /></label>
               <input type="email" name="email" value={form.email} onChange={handleChange} required />
             </div>
             <div className="appt-form-group">
-              <label>{t('appointment.form.phone', 'Phone Number *')}</label>
+              <label><TranslatedText text="Phone Number *" /></label>
               <PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" />
             </div>
           </div>
 
           <div className="form-section">
-            <h3>{t('appointment.dateTime.heading', 'Select Date & Time')}</h3>
+            <h3><TranslatedText text="Select Date & Time" /></h3>
             <div className="appt-form-group">
-              <label>{t('appointment.form.date', 'Preferred Date *')}</label>
+              <label><TranslatedText text="Preferred Date *" /></label>
               <input type="date" name="appointmentDate" value={form.appointmentDate} onChange={handleChange} min={getMinDate()} required />
             </div>
             <div className="appt-form-group">
-              <label>{t('appointment.form.time', 'Preferred Time Slot *')}</label>
+              <label><TranslatedText text="Preferred Time Slot *" /></label>
               <div className="time-slots">
                 {TIME_SLOTS.map((slot) => (
                   <div
@@ -228,9 +227,9 @@ export default function BookAppointmentPage() {
           </div>
 
           <div className="form-section">
-            <h3>{t('appointment.details.heading', 'Additional Details')}</h3>
+            <h3><TranslatedText text="Additional Details" /></h3>
             <div className="appt-form-group">
-              <label>{t('appointment.form.purpose', 'Purpose of Visit')}</label>
+              <label><TranslatedText text="Purpose of Visit" /></label>
               <select name="purpose" value={form.purpose} onChange={handleChange}>
                 {PURPOSES.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -238,13 +237,13 @@ export default function BookAppointmentPage() {
               </select>
             </div>
             <div className="appt-form-group">
-              <label>{t('appointment.form.notes', 'Additional Notes')}</label>
-              <textarea name="notes" value={form.notes} onChange={handleChange} placeholder={t('appointment.form.notesPlaceholder', 'Any specific requirements or questions...')} />
+              <label><TranslatedText text="Additional Notes" /></label>
+              <textarea name="notes" value={form.notes} onChange={handleChange} placeholder=<TranslatedText text="Any specific requirements or questions..." /> />
             </div>
           </div>
 
           <button type="submit" className="appt-submit-btn" disabled={submitting}>
-            {submitting ? t('appointment.buttons.booking', 'Booking...') : t('appointment.buttons.book', 'Book Appointment')}
+            {submitting ? "Booking..." : "Book Appointment"}
           </button>
         </form>
       </div>

@@ -1,11 +1,10 @@
 import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
+import TranslatedText from '../TranslatedText';
 
 export default function StoreLocations() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const scrollRef = useRef(null);
 
@@ -23,10 +22,10 @@ export default function StoreLocations() {
     : [
         {
           name: siteConfig?.brandName
-            ? t('home.storeLocations.brandShowroom', '{{brand}} Showroom', { brand: siteConfig.brandName })
-            : t('home.storeLocations.ourShowroom', 'Our Showroom'),
+            ? `${siteConfig.brandName} Showroom`
+            : "Our Showroom",
           address: address || '',
-          hours: t('home.storeLocations.defaultHours', 'Monday to Saturday 11:00 am - 08:00 pm'),
+          hours: "Monday to Saturday 11:00 am - 08:00 pm",
           phone: phone || '',
           mapLink: '',
           image: '',
@@ -49,13 +48,13 @@ export default function StoreLocations() {
     <section className="store-locations-section">
       <div className="store-locations-container">
         <div className="store-locations-header">
-          <h2>{t('home.storeLocations.title', 'Come Visit Us at Our Store')}</h2>
-          <p>{t('home.storeLocations.subtitle', 'Experience our exquisite collection in person')}</p>
+          <h2><TranslatedText text="Come Visit Us at Our Store" /></h2>
+          <p><TranslatedText text="Experience our exquisite collection in person" /></p>
         </div>
 
         <div className="stores-grid-wrapper">
           {defaultStore.length > 1 && (
-            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev} aria-label={t('home.storeLocations.scrollLeft', 'Scroll left')}>
+            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev} aria-label=<TranslatedText text="Scroll left" />>
               <i className="fas fa-chevron-left"></i>
             </button>
           )}
@@ -92,18 +91,18 @@ export default function StoreLocations() {
                   )}
                   {store.mapLink && (
                     <a href={store.mapLink} target="_blank" rel="noopener noreferrer">
-                      <i className="fas fa-map-marker-alt"></i> {t('home.storeLocations.viewOnMap', 'View on Map')}
+                      <i className="fas fa-map-marker-alt"></i> <TranslatedText text="View on Map" />
                     </a>
                   )}
                 </div>
                 <div className="store-actions">
                   {appointmentBookingAllowed && (
                     <Link to="/book-appointment" className="book-appointment-btn">
-                      {t('home.storeLocations.bookAppointment', 'BOOK APPOINTMENT')}
+                      <TranslatedText text="BOOK APPOINTMENT" />
                     </Link>
                   )}
                   {store.phone && (
-                    <a href={`tel:${store.phone}`} className="call-btn" aria-label={t('home.storeLocations.callStore', 'Call store')}>
+                    <a href={`tel:${store.phone}`} className="call-btn" aria-label=<TranslatedText text="Call store" />>
                       <i className="fas fa-phone"></i>
                     </a>
                   )}
@@ -113,7 +112,7 @@ export default function StoreLocations() {
           ))}
           </div>
           {defaultStore.length > 1 && (
-            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext} aria-label={t('home.storeLocations.scrollRight', 'Scroll right')}>
+            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext} aria-label=<TranslatedText text="Scroll right" />>
               <i className="fas fa-chevron-right"></i>
             </button>
           )}

@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 
 export default function FAQSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -49,10 +47,10 @@ export default function FAQSection() {
         }),
       });
       await refetchSite();
-      setMessage(t('faqSection.savedSuccess'));
+      setMessage("FAQ saved successfully!");
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setMessage(t('faqSection.saveFailed', { error: err.message || t('faqSection.unknownError') }));
+      setMessage(`Failed to save: ${err.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
@@ -144,14 +142,14 @@ export default function FAQSection() {
     padding: '16px 20px', marginBottom: 12,
   };
 
-  const failedKeyword = t('faqSection.failedKeyword');
+  const failedKeyword = "Failed";
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>{t('faqSection.title')}</h2>
-          <p style={{ fontSize: 14, color: '#64748b', margin: '4px 0 0' }}>{t('faqSection.intro')}</p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>FAQ Management</h2>
+          <p style={{ fontSize: 14, color: '#64748b', margin: '4px 0 0' }}>Add frequently asked questions for your customers.</p>
         </div>
         {message && (
           <span style={{ fontSize: 13, color: message.includes(failedKeyword) ? '#dc2626' : '#16a34a', fontWeight: 500 }}>{message}</span>
@@ -161,8 +159,8 @@ export default function FAQSection() {
       <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <p style={{ fontWeight: 600, color: '#0f172a', margin: 0, fontSize: 15 }}>{t('faqSection.showFaqLabel')}</p>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{t('faqSection.showFaqDesc')}</p>
+            <p style={{ fontWeight: 600, color: '#0f172a', margin: 0, fontSize: 15 }}>Show FAQ Page</p>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Enable the /faq page on your storefront</p>
           </div>
           <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
             <input type="checkbox" checked={showFaq} onChange={e => handleToggleShowFaq(e.target.checked)}
@@ -182,8 +180,8 @@ export default function FAQSection() {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <p style={{ fontWeight: 600, color: '#0f172a', margin: 0, fontSize: 15 }}>{t('faqSection.inNavbarLabel')}</p>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{t('faqSection.inNavbarDesc')}</p>
+            <p style={{ fontWeight: 600, color: '#0f172a', margin: 0, fontSize: 15 }}>Show in Navbar</p>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Add an FAQ link in the storefront navigation bar</p>
           </div>
           <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
             <input type="checkbox" checked={faqInNavbar} onChange={e => handleToggleFaqInNavbar(e.target.checked)}
@@ -204,37 +202,37 @@ export default function FAQSection() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-          {t('faqSection.questionsTitle', { count: faqItems.length })}
+          {`Questions (${faqItems.length})`}
         </h3>
         {!showAddForm && (
           <button style={btnPrimary} onClick={() => setShowAddForm(true)}>
-            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }}></i> {t('faqSection.addQuestion')}
+            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }}></i> Add Question
           </button>
         )}
       </div>
 
       {showAddForm && (
         <div style={{ ...cardStyle, borderColor: '#2563eb', borderWidth: 2, marginBottom: 20 }}>
-          <p style={{ fontWeight: 600, color: '#0f172a', margin: '0 0 12px', fontSize: 15 }}>{t('faqSection.newQuestion')}</p>
+          <p style={{ fontWeight: 600, color: '#0f172a', margin: '0 0 12px', fontSize: 15 }}>New Question</p>
           <input
             type="text"
-            placeholder={t('faqSection.questionPh')}
+            placeholder="Enter the question..."
             value={newQuestion}
             onChange={e => setNewQuestion(e.target.value)}
             style={{ ...inputStyle, marginBottom: 10 }}
             autoFocus
           />
           <textarea
-            placeholder={t('faqSection.answerPh')}
+            placeholder="Enter the answer..."
             value={newAnswer}
             onChange={e => setNewAnswer(e.target.value)}
             style={textareaStyle}
           />
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button style={btnPrimary} onClick={handleAddItem} disabled={saving || !newQuestion.trim() || !newAnswer.trim()}>
-              {saving ? t('faqSection.saving') : t('faqSection.add')}
+              {saving ? "Saving..." : "Add"}
             </button>
-            <button style={btnOutline} onClick={() => { setShowAddForm(false); setNewQuestion(''); setNewAnswer(''); }}>{t('faqSection.cancel')}</button>
+            <button style={btnOutline} onClick={() => { setShowAddForm(false); setNewQuestion(''); setNewAnswer(''); }}>Cancel</button>
           </div>
         </div>
       )}
@@ -242,7 +240,7 @@ export default function FAQSection() {
       {faqItems.length === 0 && !showAddForm && (
         <div style={{ ...cardStyle, textAlign: 'center', padding: '40px 20px' }}>
           <i className="fas fa-question-circle" style={{ fontSize: 36, color: '#cbd5e1', marginBottom: 12 }}></i>
-          <p style={{ color: '#64748b', fontSize: 15, margin: 0 }}>{t('faqSection.emptyState')}</p>
+          <p style={{ color: '#64748b', fontSize: 15, margin: 0 }}>No FAQ items yet. Click "Add Question" to get started.</p>
         </div>
       )}
 
@@ -264,9 +262,9 @@ export default function FAQSection() {
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <button style={btnPrimary} onClick={handleSaveEdit} disabled={saving || !editQuestion.trim() || !editAnswer.trim()}>
-                  {saving ? t('faqSection.saving') : t('faqSection.save')}
+                  {saving ? "Saving..." : "Save"}
                 </button>
-                <button style={btnOutline} onClick={handleCancelEdit}>{t('faqSection.cancel')}</button>
+                <button style={btnOutline} onClick={handleCancelEdit}>Cancel</button>
               </div>
             </>
           ) : (
@@ -274,7 +272,7 @@ export default function FAQSection() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontWeight: 600, color: '#0f172a', margin: '0 0 4px', fontSize: 15 }}>
-                    <span style={{ color: '#94a3b8', marginInlineEnd: 8 }}>{t('faqSection.qPrefix', { num: index + 1 })}</span>
+                    <span style={{ color: '#94a3b8', marginInlineEnd: 8 }}>{`Q${index + 1}.`}</span>
                     {item.question}
                   </p>
                   <p style={{ color: '#475569', fontSize: 14, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{item.answer}</p>
@@ -284,7 +282,7 @@ export default function FAQSection() {
                     onClick={() => handleMoveUp(index)}
                     disabled={index === 0}
                     style={{ ...btnOutline, padding: '4px 8px', fontSize: 12, opacity: index === 0 ? 0.4 : 1 }}
-                    title={t('faqSection.moveUp')}
+                    title="Move up"
                   >
                     <i className="fas fa-arrow-up"></i>
                   </button>
@@ -292,7 +290,7 @@ export default function FAQSection() {
                     onClick={() => handleMoveDown(index)}
                     disabled={index === faqItems.length - 1}
                     style={{ ...btnOutline, padding: '4px 8px', fontSize: 12, opacity: index === faqItems.length - 1 ? 0.4 : 1 }}
-                    title={t('faqSection.moveDown')}
+                    title="Move down"
                   >
                     <i className="fas fa-arrow-down"></i>
                   </button>
@@ -300,10 +298,10 @@ export default function FAQSection() {
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
                 <button style={{ ...btnOutline, fontSize: 13, padding: '6px 14px' }} onClick={() => handleStartEdit(item)}>
-                  <i className="fas fa-edit" style={{ marginInlineEnd: 4 }}></i> {t('faqSection.edit')}
+                  <i className="fas fa-edit" style={{ marginInlineEnd: 4 }}></i> Edit
                 </button>
                 <button style={btnDanger} onClick={() => handleDeleteItem(item.id)}>
-                  <i className="fas fa-trash" style={{ marginInlineEnd: 4 }}></i> {t('faqSection.delete')}
+                  <i className="fas fa-trash" style={{ marginInlineEnd: 4 }}></i> Delete
                 </button>
               </div>
             </>

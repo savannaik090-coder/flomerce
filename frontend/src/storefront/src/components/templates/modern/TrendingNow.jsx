@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { useCurrency } from '../../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import * as productService from '../../../services/productService.js';
 import { getTrendingProductsDefaults } from '../../../defaults/index.js';
 import './modern.css';
+import TranslatedText from '../../TranslatedText';
 
 export default function TrendingNow() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const { formatAmount } = useCurrency();
   const [products, setProducts] = useState([]);
@@ -65,14 +64,14 @@ export default function TrendingNow() {
     <section className="mn-trending-section">
       <div className="mn-trending-header">
         <div className="mn-trending-header-left">
-          <h2 className="mn-section-title">{t('home.trending.title', 'Trending Now')}</h2>
-          <p className="mn-section-subtitle">{t('home.trending.subtitle', 'Our most popular picks')}</p>
+          <h2 className="mn-section-title"><TranslatedText text="Trending Now" /></h2>
+          <p className="mn-section-subtitle"><TranslatedText text="Our most popular picks" /></p>
         </div>
         <div className="mn-trending-nav">
-          <button className="mn-trending-arrow" onClick={() => scroll('left')} aria-label={t('home.trending.scrollLeft', 'Scroll left')}>
+          <button className="mn-trending-arrow" onClick={() => scroll('left')} aria-label=<TranslatedText text="Scroll left" />>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
-          <button className="mn-trending-arrow" onClick={() => scroll('right')} aria-label={t('home.trending.scrollRight', 'Scroll right')}>
+          <button className="mn-trending-arrow" onClick={() => scroll('right')} aria-label=<TranslatedText text="Scroll right" />>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -81,7 +80,7 @@ export default function TrendingNow() {
       {loading ? (
         <div className="mn-category-loader">
           <div className="product-loader-spinner"></div>
-          <p>{t('home.trending.loading', 'Loading trending products...')}</p>
+          <p><TranslatedText text="Loading trending products..." /></p>
         </div>
       ) : (
         <div className="mn-trending-track" ref={scrollRef}>

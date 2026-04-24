@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { CartContext } from '../../context/CartContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { useTheme } from '../../context/ThemeContext.jsx';
+import TranslatedText from '../TranslatedText';
 
 function getItemImage(item) {
   return item.product_image || item.image_url || item.thumbnail || (item.images && item.images[0]) || '';
@@ -19,10 +19,9 @@ function getItemName(item) {
 }
 
 function SelectedOptionsDisplay({ selectedOptions }) {
-  const { t } = useTranslation('storefront');
   if (!selectedOptions) return null;
   const parts = [];
-  if (selectedOptions.color) parts.push(`${t('cart.color')}: ${selectedOptions.color}`);
+  if (selectedOptions.color) parts.push(`$<TranslatedText text="Color" />: ${selectedOptions.color}`);
   if (selectedOptions.customOptions) {
     for (const [label, value] of Object.entries(selectedOptions.customOptions)) {
       parts.push(`${label}: ${value}`);
@@ -46,7 +45,6 @@ export default function CartPanel({ isOpen, onClose }) {
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
   const { isModern } = useTheme();
-  const { t } = useTranslation('storefront');
   const themeClass = isModern ? 'modern-theme' : '';
 
   return (
@@ -54,13 +52,13 @@ export default function CartPanel({ isOpen, onClose }) {
       <div className={`cart-panel-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`cart-panel${isOpen ? ' active' : ''}`}>
         <div className="cart-panel-header">
-          <h3>{t('cart.title')}</h3>
+          <h3><TranslatedText text="Your Shopping Bag" /></h3>
           <button className="close-cart-btn" onClick={onClose}>&times;</button>
         </div>
 
         <div className="cart-items">
           {items.length === 0 ? (
-            <div className="empty-cart-message">{t('cart.empty')}</div>
+            <div className="empty-cart-message"><TranslatedText text="Your cart is empty" /></div>
           ) : (
             items.map((item, idx) => {
               const itemId = item.productId || item.product_id || item.id;
@@ -95,11 +93,11 @@ export default function CartPanel({ isOpen, onClose }) {
 
         <div className="cart-panel-footer">
           <div className="cart-panel-subtotal">
-            <span>{t('cart.subtotal')}</span>
+            <span><TranslatedText text="Subtotal:" /></span>
             <span className="subtotal-amount">{formatAmount(subtotal)}</span>
           </div>
           <div className="cart-panel-buttons">
-            <button className="view-cart-btn" onClick={onClose}>{t('cart.continueShopping')}</button>
+            <button className="view-cart-btn" onClick={onClose}><TranslatedText text="Continue Shopping" /></button>
             <a
               href="#"
               className="checkout-btn"
@@ -109,7 +107,7 @@ export default function CartPanel({ isOpen, onClose }) {
                 navigate('/checkout');
               }}
             >
-              {t('cart.checkout')}
+              <TranslatedText text="Checkout" />
             </a>
           </div>
         </div>

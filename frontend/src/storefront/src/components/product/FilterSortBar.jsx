@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-
+import TranslatedText from '../TranslatedText';
 export default function FilterSortBar({ onSort, onFilter, currentSort, currentFilters, subcategories = [] }) {
-  const { t } = useTranslation('storefront');
   const SORT_OPTIONS = [
-    { value: 'price-low-high', label: t('filter.sort.priceLowHigh', 'Price: Low to High') },
-    { value: 'price-high-low', label: t('filter.sort.priceHighLow', 'Price: High to Low') },
-    { value: 'newest', label: t('filter.sort.newest', 'Newest') },
+    { value: 'price-low-high', label: "Price: Low to High" },
+    { value: 'price-high-low', label: "Price: High to Low" },
+    { value: 'newest', label: "Newest" },
   ];
 
   const [sortOpen, setSortOpen] = useState(false);
@@ -70,14 +68,14 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
     <>
       <div className="shop-filter-header">
         <div className="filter-option" onClick={() => setFilterOpen(true)}>
-          {t('filter.filter', 'FILTER')}{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          <TranslatedText text="FILTER" />{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
         </div>
         <div
           className={`sort-option${sortOpen ? ' active' : ''}`}
           onClick={() => setSortOpen(!sortOpen)}
           ref={sortRef}
         >
-          <span>{t('filter.sortBy', 'SORT BY')}</span>
+          <span><TranslatedText text="SORT BY" /></span>
           <span className="chevron">▼</span>
           <div className={`sort-dropdown${sortOpen ? ' active' : ''}`}>
             {SORT_OPTIONS.map(opt => (
@@ -97,18 +95,18 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
         <div className="filter-modal-overlay" onClick={() => setFilterOpen(false)}>
           <div className="filter-modal-content" onClick={e => e.stopPropagation()}>
             <div className="filter-modal-header">
-              <h2>{t('filter.filterProducts', 'Filter Products')}</h2>
+              <h2><TranslatedText text="Filter Products" /></h2>
               <button className="close-filter-modal" onClick={() => setFilterOpen(false)}>×</button>
             </div>
             <div className="filter-modal-body">
               <div className="filter-section">
-                <h3>{t('filter.sortByHeading', 'Sort By')}</h3>
+                <h3><TranslatedText text="Sort By" /></h3>
                 <div className="filter-options">
                   <label className="filter-option-label">
-                    <input type="radio" name="filter-sort" value="featured" checked={tempSort === 'featured'} onChange={() => setTempSort('featured')} /> {t('filter.featured', 'Featured')}
+                    <input type="radio" name="filter-sort" value="featured" checked={tempSort === 'featured'} onChange={() => setTempSort('featured')} /> <TranslatedText text="Featured" />
                   </label>
                   <label className="filter-option-label">
-                    <input type="radio" name="filter-sort" value="newest" checked={tempSort === 'newest'} onChange={() => setTempSort('newest')} /> {t('filter.newest', 'Newest')}
+                    <input type="radio" name="filter-sort" value="newest" checked={tempSort === 'newest'} onChange={() => setTempSort('newest')} /> <TranslatedText text="Newest" />
                   </label>
                 </div>
               </div>
@@ -126,7 +124,7 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
                           value=""
                           checked={tempSubcategory === '' || !values.some(v => v.id === tempSubcategory)}
                           onChange={() => setTempSubcategory('')}
-                        /> {t('filter.all', 'All')}
+                        /> <TranslatedText text="All" />
                       </label>
                       {values.map(val => (
                         <label key={val.id} className="filter-option-label">
@@ -144,17 +142,17 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
                 );
               })}
               <div className="filter-section">
-                <h3>{t('filter.availability', 'Availability')}</h3>
+                <h3><TranslatedText text="Availability" /></h3>
                 <div className="filter-options">
                   <label className="filter-option-label">
-                    <input type="checkbox" checked={tempInStock} onChange={(e) => setTempInStock(e.target.checked)} /> {t('filter.inStock', 'In Stock')}
+                    <input type="checkbox" checked={tempInStock} onChange={(e) => setTempInStock(e.target.checked)} /> <TranslatedText text="In Stock" />
                   </label>
                 </div>
               </div>
             </div>
             <div className="filter-modal-footer">
-              <button className="apply-filter-btn" onClick={handleApplyFilter}>{t('filter.applyFilters', 'Apply Filters')}</button>
-              <button className="clear-filter-btn" onClick={handleClearFilter}>{t('filter.clearAll', 'Clear All')}</button>
+              <button className="apply-filter-btn" onClick={handleApplyFilter}><TranslatedText text="Apply Filters" /></button>
+              <button className="clear-filter-btn" onClick={handleClearFilter}><TranslatedText text="Clear All" /></button>
             </div>
           </div>
         </div>

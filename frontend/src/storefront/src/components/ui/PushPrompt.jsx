@@ -1,8 +1,6 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-
+import TranslatedText from '../TranslatedText';
 export default function PushPrompt({ onAllow, onDismiss }) {
-  const { t } = useTranslation('storefront');
   return (
     <div style={{
       position: 'fixed',
@@ -29,8 +27,8 @@ export default function PushPrompt({ onAllow, onDismiss }) {
         <i className="fas fa-bell" style={{ fontSize: 18 }} />
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{t('push.title', 'Stay Updated')}</div>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{t('push.body', 'Get notified about new products and offers')}</div>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}><TranslatedText text="Stay Updated" /></div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}><TranslatedText text="Get notified about new products and offers" /></div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
         <button
@@ -40,7 +38,7 @@ export default function PushPrompt({ onAllow, onDismiss }) {
             padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
           }}
         >
-          {t('push.allow', 'Allow')}
+          <TranslatedText text="Allow" />
         </button>
         <button
           onClick={onDismiss}
@@ -49,7 +47,7 @@ export default function PushPrompt({ onAllow, onDismiss }) {
             borderRadius: 8, padding: '7px 14px', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap',
           }}
         >
-          {t('push.dismiss', 'No thanks')}
+          <TranslatedText text="No thanks" />
         </button>
       </div>
       <style>{`@keyframes slideUp { from { opacity:0; transform: translateX(-50%) translateY(20px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }`}</style>

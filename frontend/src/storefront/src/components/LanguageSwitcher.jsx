@@ -1,12 +1,11 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { SiteContext } from '../context/SiteContext.jsx';
 
 /**
- * Storefront-only shopper language switcher (System B). Distinct from the
- * shared admin-side LanguageSwitcher, which only flips System A chrome.
- * This one drives the shopper translation runtime by changing i18n's
- * active language; the ShopperTranslationProvider observes that change
- * and translates merchant content on the fly.
+ * Storefront-only shopper language switcher (System B). Writes the chosen
+ * language to localStorage `flomerce_lang` and dispatches a
+ * `flomerce_lang_change` window event so the ShopperTranslationProvider
+ * re-renders with the new target language.
  *
  * Hidden when the merchant has not enabled System B for their site.
  */
@@ -58,6 +57,15 @@ const LANGUAGE_LABELS = {
 
 function labelFor(code) { return LANGUAGE_LABELS[code] || code; }
 
+function readStoredLanguage(fallback) {
+  try {
+    if (typeof window === 'undefined') return fallback;
+    return window.localStorage?.getItem('flomerce_lang') || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 export default function LanguageSwitcher({ compact = false }) {
   const { siteConfig } = useContext(SiteContext) || {};
   const enabled = !!(siteConfig?.translatorEnabled || siteConfig?.translator_enabled);
@@ -73,7 +81,6 @@ export default function LanguageSwitcher({ compact = false }) {
     return [];
   }, [siteConfig?.translatorLanguages, siteConfig?.translator_languages]);
 
-  // Build options: merchant content language first, then allow-list.
   const options = useMemo(() => {
     const set = new Set();
     const list = [];
@@ -83,28 +90,22 @@ export default function LanguageSwitcher({ compact = false }) {
     return list;
   }, [contentLanguage, allowed]);
 
-  const [language, setLanguage] = useState(() => {
-    try { return (typeof window !== 'undefined' && window.localStorage?.getItem('flomerce_lang')) || contentLanguage; }
-    catch (e) { return contentLanguage; }
-  });
-  const i18nRef = useRef(null);
+  const [language, setLanguage] = useState(() => readStoredLanguage(contentLanguage));
 
   useEffect(() => {
-    let mounted = true;
-    let onChange = null;
-    (async () => {
-      try {
-        const mod = await import('../../../shared/i18n/init.js');
-        if (!mounted) return;
-        i18nRef.current = mod.default;
-        setLanguage(mod.default.language || contentLanguage);
-        onChange = (lng) => setLanguage(lng);
-        mod.default.on('languageChanged', onChange);
-      } catch (e) {}
-    })();
+    if (typeof window === 'undefined') return undefined;
+    const onLangChange = (e) => {
+      const next = e?.detail?.language || readStoredLanguage(contentLanguage);
+      setLanguage(next);
+    };
+    const onStorage = (e) => {
+      if (e.key === 'flomerce_lang') setLanguage(e.newValue || contentLanguage);
+    };
+    window.addEventListener('flomerce_lang_change', onLangChange);
+    window.addEventListener('storage', onStorage);
     return () => {
-      mounted = false;
-      try { if (i18nRef.current && onChange) i18nRef.current.off('languageChanged', onChange); } catch (e) {}
+      window.removeEventListener('flomerce_lang_change', onLangChange);
+      window.removeEventListener('storage', onStorage);
     };
   }, [contentLanguage]);
 
@@ -114,10 +115,10 @@ export default function LanguageSwitcher({ compact = false }) {
     const next = e.target.value;
     setLanguage(next);
     try { window.localStorage?.setItem('flomerce_lang', next); } catch (err) {}
-    // Persist explicit-choice marker so we don't auto-override with the
-    // merchant's content_language on next boot (see shared/i18n/init.js).
     try { window.localStorage?.setItem('flomerce_lang_explicit', '1'); } catch (err) {}
-    try { if (i18nRef.current) i18nRef.current.changeLanguage(next); } catch (err) {}
+    try {
+      window.dispatchEvent(new CustomEvent('flomerce_lang_change', { detail: { language: next } }));
+    } catch (err) {}
   };
 
   const baseStyle = compact

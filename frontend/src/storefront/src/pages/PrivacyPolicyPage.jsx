@@ -1,14 +1,12 @@
 import React, { useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import { getPrivacyDefaults } from '../defaults/index.js';
 import TranslatedText from '../components/TranslatedText.jsx';
 
 export default function PrivacyPolicyPage() {
-  const { t, i18n } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
-  useSEO({ title: t('privacy.pageTitle', 'Privacy Policy'), pageType: 'privacy' });
+  useSEO({ title: "Privacy Policy", pageType: 'privacy' });
   const brand = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';
@@ -30,8 +28,8 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div style={{ maxWidth: 800, margin: '40px auto 80px', padding: '0 20px', fontFamily: 'inherit' }}>
-      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>{t('privacy.pageTitle', 'Privacy Policy')}</h1>
-      <p style={{ color: '#64748b', marginBottom: 40 }}>{t('privacy.lastUpdated', { date: new Date().toLocaleDateString(i18n.language || 'en-IN', { year: 'numeric', month: 'long', day: 'numeric' }), defaultValue: 'Last updated: {{date}}' })}</p>
+      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Privacy Policy</h1>
+      <p style={{ color: '#64748b', marginBottom: 40 }}>{`Last updated: ${new Date().toLocaleDateString(i18n.language || 'en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}`}</p>
 
       <div style={{ lineHeight: 1.8, color: '#374151' }}>
         <p style={{ marginBottom: 24 }}><TranslatedText text={intro} /></p>

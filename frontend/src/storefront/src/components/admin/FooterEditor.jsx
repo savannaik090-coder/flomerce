@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
@@ -7,7 +6,6 @@ import { API_BASE } from '../../config.js';
 import FeatureGate, { isFeatureAvailable } from './FeatureGate.jsx';
 
 export default function FooterEditor({ onSaved, onPreviewUpdate }) {
-  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -153,7 +151,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         if (onSaved) onSaved();
         if (refetchSite) refetchSite();
       } else {
-        setStatus('error:' + (result.error || t('footerEditor.unknownError')));
+        setStatus('error:' + (result.error || "Unknown error"));
       }
     } catch (err) {
       setStatus('error:' + err.message);
@@ -172,33 +170,33 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={function () { handleSave(); }} />
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">{t('footerEditor.socialTitle')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Social Media Links</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
-            {t('footerEditor.socialIntro')}
+            Add your social media profile URLs. These will appear as icons in the footer.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-instagram" style={{ marginInlineEnd: 6, color: '#E1306C' }} />{t('footerEditor.instagram')}
+                <i className="fab fa-instagram" style={{ marginInlineEnd: 6, color: '#E1306C' }} />Instagram
               </label>
               <input type="text" value={instagram} onChange={function (ev) { setInstagram(ev.target.value); }} placeholder="https://instagram.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-facebook-f" style={{ marginInlineEnd: 6, color: '#1877F2' }} />{t('footerEditor.facebook')}
+                <i className="fab fa-facebook-f" style={{ marginInlineEnd: 6, color: '#1877F2' }} />Facebook
               </label>
               <input type="text" value={facebook} onChange={function (ev) { setFacebook(ev.target.value); }} placeholder="https://facebook.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-twitter" style={{ marginInlineEnd: 6, color: '#1DA1F2' }} />{t('footerEditor.twitter')}
+                <i className="fab fa-twitter" style={{ marginInlineEnd: 6, color: '#1DA1F2' }} />Twitter
               </label>
               <input type="text" value={twitter} onChange={function (ev) { setTwitter(ev.target.value); }} placeholder="https://twitter.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fab fa-youtube" style={{ marginInlineEnd: 6, color: '#FF0000' }} />{t('footerEditor.youtube')}
+                <i className="fab fa-youtube" style={{ marginInlineEnd: 6, color: '#FF0000' }} />YouTube
               </label>
               <input type="text" value={youtube} onChange={function (ev) { setYoutube(ev.target.value); }} placeholder="https://youtube.com/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
@@ -207,16 +205,16 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">{t('footerEditor.appBannerTitle')}</h3></div>
+        <div className="card-header"><h3 className="card-title">App Download Banner</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
-            {t('footerEditor.appBannerIntro')}
+            Show a "Download Our App" section in the footer with App Store and Google Play buttons.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showAppBanner ? 20 : 0 }}>
             <div>
-              <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>{t('footerEditor.showAppBannerLabel')}</label>
-              <span style={{ fontSize: 12, color: '#94a3b8' }}>{t('footerEditor.showAppBannerDesc')}</span>
+              <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show App Banner</label>
+              <span style={{ fontSize: 12, color: '#94a3b8' }}>Display app download buttons in the footer</span>
             </div>
             <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
               <input type="checkbox" checked={showAppBanner} onChange={function () { setShowAppBanner(!showAppBanner); }} style={{ opacity: 0, width: 0, height: 0 }} />
@@ -232,8 +230,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <i className="fab fa-apple" style={{ fontSize: 18, color: '#000' }} />
                   <div>
-                    <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>{t('footerEditor.appStoreLabel')}</label>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{t('footerEditor.appStoreDesc')}</span>
+                    <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>App Store</label>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Apple App Store button</span>
                   </div>
                 </div>
                 <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
@@ -245,8 +243,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
               </div>
               {showAppStore && (
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('footerEditor.appStoreUrlLabel')}</label>
-                  <input type="text" value={appStoreUrl} onChange={function (ev) { setAppStoreUrl(ev.target.value); }} placeholder={t('footerEditor.appStoreUrlPh')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>App Store URL</label>
+                  <input type="text" value={appStoreUrl} onChange={function (ev) { setAppStoreUrl(ev.target.value); }} placeholder="https://apps.apple.com/app/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
               )}
 
@@ -254,8 +252,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <i className="fab fa-google-play" style={{ fontSize: 18, color: '#34a853' }} />
                   <div>
-                    <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>{t('footerEditor.playStoreLabel')}</label>
-                    <span style={{ fontSize: 12, color: '#94a3b8' }}>{t('footerEditor.playStoreDesc')}</span>
+                    <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Google Play</label>
+                    <span style={{ fontSize: 12, color: '#94a3b8' }}>Google Play Store button</span>
                   </div>
                 </div>
                 <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
@@ -267,8 +265,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
               </div>
               {showPlayStore && (
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('footerEditor.playStoreUrlLabel')}</label>
-                  <input type="text" value={playStoreUrl} onChange={function (ev) { setPlayStoreUrl(ev.target.value); }} placeholder={t('footerEditor.playStoreUrlPh')} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Google Play URL</label>
+                  <input type="text" value={playStoreUrl} onChange={function (ev) { setPlayStoreUrl(ev.target.value); }} placeholder="https://play.google.com/store/apps/..." style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
               )}
             </div>
@@ -277,13 +275,13 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">{t('footerEditor.brandingTitle')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Branding</h3></div>
         <div className="card-content">
-          <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName={t('footerEditor.removeBrandingFeature')}>
+          <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Remove Flomerce Branding">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>{t('footerEditor.hideBrandingLabel')}</label>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>{t('footerEditor.hideBrandingDesc')}</span>
+                <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Hide "Powered by Flomerce"</label>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>Remove the platform branding from your storefront footer.</span>
               </div>
               <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
                 <input type="checkbox" checked={hideBranding} onChange={function () { setHideBranding(!hideBranding); }} style={{ opacity: 0, width: 0, height: 0 }} />
@@ -297,18 +295,18 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-header"><h3 className="card-title">{t('footerEditor.bottomNavTitle')}</h3></div>
+        <div className="card-header"><h3 className="card-title">Bottom Navigation Bar</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
-            {t('footerEditor.bottomNavIntro')}
+            Configure the mobile bottom navigation bar that appears on your store.
           </p>
 
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-              <i className="fi fi-rs-shop" style={{ marginInlineEnd: 6 }} />{t('footerEditor.shopRedirectLabel')}
+              <i className="fi fi-rs-shop" style={{ marginInlineEnd: 6 }} />Shop Icon Redirects To
             </label>
             <select value={shopRedirect} onChange={function (ev) { setShopRedirect(ev.target.value); }} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}>
-              <option value="">{t('footerEditor.selectCategory')}</option>
+              <option value="">Select a category</option>
               {shopRedirectOptions.map(function (opt) { return <option key={opt.value} value={opt.value}>{opt.label}</option>; })}
             </select>
           </div>
@@ -324,7 +322,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
           color: status === 'success' ? '#166534' : '#dc2626',
           marginBottom: 16, fontSize: 14,
         }}>
-          {status === 'success' ? t('footerEditor.savedSuccess') : t('footerEditor.saveFailed', { error: status.replace('error:', '') })}
+          {status === 'success' ? "Footer settings saved successfully!" : `Failed to save: ${status.replace('error:', '')}`}
         </div>
       )}
 

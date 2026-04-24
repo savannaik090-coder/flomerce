@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
 import { getAvailablePlans, createSubscription, verifySubscriptionPayment, startFreeTrial } from '../services/paymentService.js';
 import { ENTERPRISE_EMAIL } from '../config.js';
 import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
 
 const DURATION_KEYS = ['monthly', '3months', '6months', 'yearly'];
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
+const DURATION_LABEL = { monthly: 'Monthly', '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly' };
+const DURATION_TEXT = { monthly: 'month', '3months': '3 months', '6months': '6 months', yearly: '1 year' };
 
 function PaymentProcessingOverlay({ state, message, onDone }) {
-  const { t } = useTranslation('plans');
   if (!state) return null;
 
   return (
@@ -32,10 +32,10 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
               borderRadius: '50%', animation: 'ppSpin 0.8s linear infinite',
             }} />
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
-              {state === 'verifying' ? t('overlay.verifyingTitle') : t('overlay.creatingSiteTitle')}
+              {state === 'verifying' ? "Verifying Payment" : "Setting Up Your Store"}
             </h3>
             <p style={{ fontSize: '0.9rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-              {state === 'verifying' ? t('overlay.verifyingBody') : t('overlay.creatingSiteBody')}
+              {state === 'verifying' ? "Please wait while we confirm your payment..." : "Creating your website and activating your plan..."}
             </p>
           </>
         )}
@@ -53,10 +53,10 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
               </svg>
             </div>
             <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
-              {t('overlay.successTitle')}
+              Payment Successful!
             </h3>
             <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
-              {message || t('overlay.successDefault')}
+              {message || "Your plan has been activated. You can now start building your store."}
             </p>
             <button
               onClick={onDone}
@@ -70,7 +70,7 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
               onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
               onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
             >
-              {t('overlay.goToDashboard')}
+              Go to Dashboard
             </button>
           </>
         )}
@@ -89,10 +89,10 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
               </svg>
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
-              {t('overlay.errorTitle')}
+              Something Went Wrong
             </h3>
             <p style={{ fontSize: '0.9rem', color: '#64748b', margin: '0 0 24px', lineHeight: 1.6 }}>
-              {message || t('overlay.errorDefault')}
+              {message || "Payment verification failed. Please contact support if you were charged."}
             </p>
             <button
               onClick={onDone}
@@ -103,7 +103,7 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
                 cursor: 'pointer', fontFamily: 'inherit',
               }}
             >
-              {t('overlay.close')}
+              Close
             </button>
           </>
         )}
@@ -121,7 +121,6 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
 
 export default function PlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const confirm = useConfirm();
-  const { t } = useTranslation('plans');
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -150,7 +149,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         setDuration(sorted[0]);
       }
     } catch (e) {
-      setError(t('loadFailed'));
+      setError("Failed to load plans");
     } finally {
       setLoading(false);
     }
@@ -212,12 +211,12 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
   const handleUpgrade = async (planGroup) => {
     const selectedPlan = planGroup.plans[duration];
     if (!selectedPlan) {
-      setPostPayment({ state: 'error', message: t('errors.notAvailableForCycle') });
+      setPostPayment({ state: 'error', message: "This plan is not available for the selected billing cycle." });
       return;
     }
 
     if (!razorpayKeyId) {
-      setPostPayment({ state: 'error', message: t('errors.paymentNotConfigured') });
+      setPostPayment({ state: 'error', message: "Payment is not configured. Please contact the administrator." });
       return;
     }
 
@@ -227,7 +226,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       const res = await createSubscription(selectedPlan.id, siteId);
 
       if (!res.subscriptionId) {
-        setPostPayment({ state: 'error', message: res.error || t('errors.createSubscriptionFailed') });
+        setPostPayment({ state: 'error', message: res.error || "Failed to create subscription. Please try again." });
         return;
       }
 
@@ -235,7 +234,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         key: razorpayKeyId,
         subscription_id: res.subscriptionId,
         name: 'Flomerce',
-        description: t('checkoutDescription', { plan: res.planName, cycle: DURATION_KEYS.includes(res.billingCycle) ? t(`duration.${res.billingCycle}`) : res.billingCycle }),
+        description: `${res.planName} - ${DURATION_LABEL[res.billingCycle] || res.billingCycle}`,
         handler: async function (response) {
           setPostPayment({ state: 'verifying', message: '' });
           try {
@@ -251,13 +250,13 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                   await onCreateSite();
                 } catch (siteErr) {
                   console.error('Site creation after payment failed:', siteErr);
-                  setPostPayment({ state: 'success', message: t('overlay.successPaymentBackup') });
+                  setPostPayment({ state: 'success', message: "Your payment was successful and your plan is active! Your website will be created when you return to the dashboard." });
                   return;
                 }
               }
-              setPostPayment({ state: 'success', message: t('overlay.successActivated') });
+              setPostPayment({ state: 'success', message: "Your plan has been activated successfully. You can now start building your store!" });
             } else {
-              setPostPayment({ state: 'error', message: t('errors.verifyFailed') });
+              setPostPayment({ state: 'error', message: "Payment verification failed. If you were charged, please contact support." });
             }
           } catch (verifyErr) {
             if (verifyErr?.message?.includes('already activated') || verifyErr?.message?.includes('will activate shortly')) {
@@ -265,9 +264,9 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 setPostPayment({ state: 'creating-site', message: '' });
                 try { await onCreateSite(); } catch (e) { console.error('Site creation after payment failed:', e); }
               }
-              setPostPayment({ state: 'success', message: t('overlay.successActivatedShort') });
+              setPostPayment({ state: 'success', message: "Your plan has been activated successfully!" });
             } else {
-              setPostPayment({ state: 'error', message: t('errors.verifyFailed') });
+              setPostPayment({ state: 'error', message: "Payment verification failed. If you were charged, please contact support." });
             }
           }
         },
@@ -292,7 +291,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
         rzp.open();
       }
     } catch (e) {
-      setPostPayment({ state: 'error', message: e.message || t('errors.processFailed') });
+      setPostPayment({ state: 'error', message: e.message || "Failed to process payment. Please try again." });
     } finally {
       setUpgrading(null);
     }
@@ -308,12 +307,12 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
           setPostPayment({ state: 'creating-site', message: '' });
           await onCreateSite();
         }
-        setPostPayment({ state: 'success', message: t('trial.started') });
+        setPostPayment({ state: 'success', message: "Your 7-day free trial has started! Enjoy full access to all features." });
       } else {
-        setPostPayment({ state: 'error', message: data.error || t('trial.startFailed') });
+        setPostPayment({ state: 'error', message: data.error || "Failed to start trial. Please try again." });
       }
     } catch (e) {
-      setPostPayment({ state: 'error', message: e.message || t('trial.startFailed') });
+      setPostPayment({ state: 'error', message: e.message || "Failed to start trial. Please try again." });
     } finally {
       setUpgrading(null);
     }
@@ -321,10 +320,10 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
 
   const getButtonText = (planGroup) => {
     const planNameLower = planGroup.name.toLowerCase();
-    if (isActive && planNameLower === currentPlanLower) return t('buttons.currentPlan');
-    if (!isActive || planGroup.plan_tier > currentPlanTier) return planGroup.plan_tier > currentPlanTier && isActive ? t('buttons.upgrade') : t('buttons.subscribe');
-    if (planGroup.plan_tier < currentPlanTier) return t('buttons.downgrade');
-    return t('buttons.subscribe');
+    if (isActive && planNameLower === currentPlanLower) return "Current Plan";
+    if (!isActive || planGroup.plan_tier > currentPlanTier) return planGroup.plan_tier > currentPlanTier && isActive ? "Upgrade" : "Subscribe";
+    if (planGroup.plan_tier < currentPlanTier) return "Downgrade";
+    return "Subscribe";
   };
 
   const isButtonDisabled = (planGroup) => {
@@ -353,12 +352,12 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
     const inner = loading
       ? <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>
           <div style={{ width: '36px', height: '36px', border: '3px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-          {t('loading')}
+          Loading plans...
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       : error
         ? <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#dc2626' }}>{error}</div>
-        : <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>{t('noPlans')}</div>;
+        : <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>No plans available at the moment.</div>;
 
     if (isOverlay) {
       return (
@@ -380,16 +379,16 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
       {isOverlay && (
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            {hideTrial ? t('headings.chooseForWebsite') : isFirstTime ? t('headings.chooseToStart') : isExpired ? t('headings.planExpired') : t('headings.startTrial')}
+            {hideTrial ? "Choose a Plan for Your Website" : isFirstTime ? "Choose a Plan to Get Started" : isExpired ? "Your Plan Has Expired" : "Start Your Free Trial"}
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
             {hideTrial
-              ? t('subheadings.subscribeToActivate')
+              ? "Subscribe to a plan to create and activate your website."
               : isFirstTime
-                ? t('subheadings.trialOrSubscribe')
+                ? "Start with a free trial or subscribe to a plan to create and manage your websites."
                 : isExpired
-                  ? t('subheadings.expiredHelp')
-                  : t('subheadings.trialPitch')}
+                  ? "Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access."
+                  : "Start a 7-day free trial to create up to 5 websites. No credit card required."}
           </p>
         </div>
       )}
@@ -405,21 +404,17 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
             <polyline points="12 6 12 12 16 14" />
           </svg>
           <div style={{ fontSize: '0.875rem', color: '#78350f', lineHeight: 1.5 }}>
-            <strong style={{ fontWeight: 700 }}>{t('scheduledChange.label')}</strong>{' '}
+            <strong style={{ fontWeight: 700 }}>Scheduled plan change:</strong>{' '}
             {scheduledStartAt ? (
-              <Trans
-                i18nKey="scheduledChange.willSwitchOn"
-                ns="plans"
-                values={{ plan: scheduledPlan, date: new Date(scheduledStartAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) }}
-                components={{ 1: <strong /> }}
-              />
+              <>
+                Your subscription will switch to <strong>{scheduledPlan}</strong> on{' '}
+                <strong>{new Date(scheduledStartAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+                . Your current plan stays active until then. To cancel this change, please contact support.
+              </>
             ) : (
-              <Trans
-                i18nKey="scheduledChange.willSwitchAtPeriodEnd"
-                ns="plans"
-                values={{ plan: scheduledPlan }}
-                components={{ 1: <strong /> }}
-              />
+              <>
+                Your subscription will switch to <strong>{scheduledPlan}</strong> at the end of your current billing period. Your current plan stays active until then. To cancel this change, please contact support.
+              </>
             )}
           </div>
         </div>
@@ -433,7 +428,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               className={`dur-btn${duration === key ? ' active' : ''}`}
               onClick={() => setDuration(key)}
             >
-              {DURATION_KEYS.includes(key) ? t(`duration.${key}`) : key}
+              {DURATION_LABEL[key] || key}
             </button>
           ))}
         </div>
@@ -446,17 +441,17 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
               background: '#10b981', color: 'white', padding: '2px 12px', borderRadius: '12px',
               fontSize: '0.75rem', fontWeight: 700
-            }}>{t('trial.badge')}</span>
-            <h3 style={{ marginBottom: '0.5rem' }}>{t('trial.title')}</h3>
+            }}>FREE TRIAL</span>
+            <h3 style={{ marginBottom: '0.5rem' }}>7-Day Free Trial</h3>
             <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
               ₹0
-              <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> {t('trial.priceLabel')}</span>
+              <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> for 7 days</span>
             </p>
             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'start', fontSize: '0.875rem', color: '#64748b' }}>
-              <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature1')}</li>
-              <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature2')}</li>
-              <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature3')}</li>
-              <li style={{ marginBottom: '0.5rem' }}>✓ {t('trial.feature4')}</li>
+              <li style={{ marginBottom: '0.5rem' }}>✓ Create up to 5 websites</li>
+              <li style={{ marginBottom: '0.5rem' }}>✓ Full access for 7 days</li>
+              <li style={{ marginBottom: '0.5rem' }}>✓ No credit card required</li>
+              <li style={{ marginBottom: '0.5rem' }}>✓ Upgrade anytime during trial</li>
             </ul>
             <button
               className="btn btn-primary"
@@ -464,7 +459,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               disabled={upgrading !== null}
               onClick={handleStartTrial}
             >
-              {upgrading === 'trial' ? t('trial.starting') : t('trial.startBtn')}
+              {upgrading === 'trial' ? "Starting..." : "Start Free Trial"}
             </button>
           </div>
         )}
@@ -476,7 +471,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
 
           return (
             <div key={planGroup.name} className="site-card plan-card" style={{ position: 'relative', ...(planGroup.is_popular ? { borderColor: 'var(--accent)' } : {}) }}>
-              {planGroup.is_popular && <span className="popular-badge">{t('popular')}</span>}
+              {planGroup.is_popular && <span className="popular-badge">POPULAR</span>}
               <h3 style={{ marginBottom: planGroup.tagline ? '0.25rem' : '0.5rem' }}>{planGroup.name}</h3>
               {planGroup.tagline && (
                 <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem', fontWeight: 500 }}>{planGroup.tagline}</p>
@@ -489,16 +484,16 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 ) : null}
                 <p style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>
                   ₹{price}
-                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}> / {DURATION_KEYS.includes(duration) ? t(`durationText.${duration}`) : duration}</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}> / {DURATION_TEXT[duration] || duration}</span>
                   {savingsPercent > 0 && (
                     <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', marginInlineStart: '0.5rem', fontWeight: 700 }}>
-                      {t('savePercent', { percent: savingsPercent })}
+                      {`${savingsPercent}% OFF`}
                     </span>
                   )}
                 </p>
                 {DURATION_MONTHS[duration] > 1 && (
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', fontWeight: 500 }}>
-                    ({t('perMonth', { price: Math.round(price / DURATION_MONTHS[duration]) })})
+                    ({`₹${Math.round(price / DURATION_MONTHS[duration])}/month`})
                   </p>
                 )}
               </div>
@@ -513,11 +508,11 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                 disabled={isButtonDisabled(planGroup) || upgrading !== null}
                 onClick={async () => {
                   if (isScheduledPlanChange(planGroup)) {
-                    const actionLabel = isDowngrade(planGroup) ? t('scheduleConfirm.actionDowngrade') : t('scheduleConfirm.actionSwitch');
+                    const actionLabel = isDowngrade(planGroup) ? "downgrade" : "switch";
                     const ok = await confirm({
-                      title: t('scheduleConfirm.title', { action: actionLabel }),
-                      message: t('scheduleConfirm.message', { action: actionLabel, plan: planGroup.name }),
-                      confirmText: t('scheduleConfirm.confirmText', { action: actionLabel }),
+                      title: `Schedule ${actionLabel}?`,
+                      message: `Schedule a ${actionLabel} to ${planGroup.name}? Your current plan keeps running until the end of your billing period, then ${planGroup.name} starts automatically. You won't be charged twice.`,
+                      confirmText: `Schedule ${actionLabel}`,
                     });
                     if (ok) handleUpgrade(planGroup);
                   } else {
@@ -525,11 +520,11 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
                   }
                 }}
               >
-                {upgrading === planGroup.plans[duration]?.id ? t('buttons.processing') : getButtonText(planGroup)}
+                {upgrading === planGroup.plans[duration]?.id ? "Processing..." : getButtonText(planGroup)}
               </button>
               {isScheduledPlanChange(planGroup) && !scheduledPlan && (
                 <p style={{ fontSize: '0.7rem', color: '#92400e', marginTop: '0.5rem', textAlign: 'center' }}>
-                  {t('scheduledHelpText')}
+                  Takes effect at the end of your current billing period. Your current plan keeps running until then.
                 </p>
               )}
             </div>
@@ -542,14 +537,14 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
               background: '#6366f1', color: 'white', padding: '2px 12px', borderRadius: '12px',
               fontSize: '0.75rem', fontWeight: 700
-            }}>{t('enterprise.badge')}</span>
+            }}>ENTERPRISE</span>
             <div>
-              <h3 style={{ marginBottom: '0.5rem' }}>{t('enterprise.title')}</h3>
+              <h3 style={{ marginBottom: '0.5rem' }}>Enterprise</h3>
               <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>
-                {t('enterprise.price')}
+                Custom
               </p>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                {enterpriseConfig.message || t('enterprise.defaultMessage')}
+                {enterpriseConfig.message || "Need a custom solution for your business? Get in touch with our team for a tailored enterprise plan."}
               </p>
             </div>
             <a
@@ -557,7 +552,7 @@ export default function PlanSelector({ siteId: initialSiteId, currentPlan, curre
               className="btn btn-primary"
               style={{ width: '100%', textAlign: 'center', textDecoration: 'none', background: '#6366f1', borderColor: '#6366f1' }}
             >
-              {t('enterprise.contact')}
+              Contact Us
             </a>
           </div>
         )}

@@ -1,9 +1,7 @@
 import React, { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { setEditorDirty } from '../../admin/editorDirtyStore.js';
 
 export default function SaveBar({ saving, hasChanges, onSave, topBar = false }) {
-  const { t } = useTranslation('admin');
   useEffect(() => {
     setEditorDirty(hasChanges);
   }, [hasChanges]);
@@ -20,7 +18,7 @@ export default function SaveBar({ saving, hasChanges, onSave, topBar = false }) 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <i className="fas fa-info-circle" />
-          <span style={{ fontSize: 14, fontWeight: 500 }}>{t('saveBar.unsavedChanges')}</span>
+          <span style={{ fontSize: 14, fontWeight: 500 }}>You have unsaved changes</span>
         </div>
         <button
           type="button"
@@ -31,7 +29,7 @@ export default function SaveBar({ saving, hasChanges, onSave, topBar = false }) 
             border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
             cursor: 'pointer', opacity: saving ? 0.7 : 1,
           }}
-        >{saving ? t('saveBar.saving') : t('saveBar.save')}</button>
+        >{saving ? "Saving..." : "Save Changes"}</button>
       </div>
     );
   }
@@ -52,7 +50,7 @@ export default function SaveBar({ saving, hasChanges, onSave, topBar = false }) 
           boxShadow: hasChanges ? '0 4px 12px rgba(59,130,246,0.3)' : 'none',
           transition: 'all 0.3s ease',
         }}
-      >{saving ? t('saveBar.saving') : hasChanges ? t('saveBar.saveAll') : t('saveBar.allSaved')}</button>
+      >{saving ? "Saving..." : hasChanges ? "Save All Changes" : "All Changes Saved"}</button>
     </div>
   );
 }

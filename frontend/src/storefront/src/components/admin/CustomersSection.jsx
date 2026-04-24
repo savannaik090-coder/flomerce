@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getOrders } from '../../services/orderService.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { parseAsUTC, formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 
 export default function CustomersSection() {
-  const { t } = useTranslation(['customers', 'common']);
   const { siteConfig } = useContext(SiteContext);
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,7 +27,7 @@ export default function CustomersSection() {
         if (!customerMap[email]) {
           customerMap[email] = {
             email,
-            name: order.customer_name || order.name || t('guest'),
+            name: order.customer_name || order.name || "Guest",
             phone: order.phone || order.customer_phone || '',
             orderCount: 0,
             totalSpent: 0,
@@ -65,7 +63,7 @@ export default function CustomersSection() {
       <div className="search-bar">
         <input
           type="text"
-          placeholder={t('searchPlaceholder')}
+          placeholder="Search customers by name or email..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
@@ -74,25 +72,25 @@ export default function CustomersSection() {
       {filtered.length === 0 ? (
         <div className="empty-state">
           <i className="fas fa-users" />
-          <h3>{t('noneFound')}</h3>
-          <p>{t('derivedFromOrders')}</p>
+          <h3>No customers found</h3>
+          <p>Customer data is derived from orders. Once you have orders, customers will appear here.</p>
         </div>
       ) : (
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">{t('title')} ({filtered.length})</h3>
+            <h3 className="card-title">Customers ({filtered.length})</h3>
           </div>
           <div className="card-content" style={{ padding: 0 }}>
             <div className="table-container">
               <table>
                 <thead>
                   <tr>
-                    <th style={{ minWidth: 140 }}>{t('common:name')}</th>
-                    <th style={{ minWidth: 200 }}>{t('common:email')}</th>
-                    <th style={{ minWidth: 130 }}>{t('phone')}</th>
-                    <th style={{ minWidth: 80 }}>{t('orders')}</th>
-                    <th style={{ minWidth: 110 }}>{t('totalSpent')}</th>
-                    <th style={{ minWidth: 110 }}>{t('lastOrder')}</th>
+                    <th style={{ minWidth: 140 }}>Name</th>
+                    <th style={{ minWidth: 200 }}>Email address</th>
+                    <th style={{ minWidth: 130 }}>Phone</th>
+                    <th style={{ minWidth: 80 }}>Orders</th>
+                    <th style={{ minWidth: 110 }}>Total Spent</th>
+                    <th style={{ minWidth: 110 }}>Last Order</th>
                   </tr>
                 </thead>
                 <tbody>

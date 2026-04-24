@@ -4,8 +4,6 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { signup as signupService, resendVerification, googleAuth } from '../services/authService.js';
 import '../styles/landing.css';
 import { useToast } from '../../../shared/ui/Toast.jsx';
-import { useTranslation } from 'react-i18next';
-
 export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,8 +18,6 @@ export default function SignupPage() {
   const { isAuthenticated, login, loading } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { t } = useTranslation(['auth', 'common', 'landing']);
-
   useEffect(() => {
     if (!loading && isAuthenticated) {
       navigate('/dashboard', { replace: true });
@@ -64,7 +60,7 @@ export default function SignupPage() {
 
   async function handleGoogleResponse(response) {
     if (!agreedTermsRef.current) {
-      setError(t('termsAgreementRequired'));
+      setError("Please agree to the Terms & Conditions, Privacy Policy, and Refund Policy before signing up.");
       return;
     }
     try {
@@ -74,7 +70,7 @@ export default function SignupPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || t('googleFailed'));
+      setError(err.message || "Google sign-in failed");
     }
   }
 
@@ -83,12 +79,12 @@ export default function SignupPage() {
     setError('');
 
     if (password.length < 8) {
-      setError(t('passwordMin'));
+      setError("Password must be at least 8 characters.");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError(t('passwordsNoMatch'));
+      setError("Passwords do not match.");
       return;
     }
 
@@ -99,10 +95,10 @@ export default function SignupPage() {
         setRegisteredEmail(email);
         setShowSuccess(true);
       } else {
-        throw new Error(result.error || t('signupFailed'));
+        throw new Error(result.error || "Signup failed");
       }
     } catch (err) {
-      setError(err.message || t('signupFailed'));
+      setError(err.message || "Signup failed");
     } finally {
       setSubmitting(false);
     }
@@ -111,9 +107,9 @@ export default function SignupPage() {
   async function handleResend() {
     try {
       await resendVerification(registeredEmail);
-      toast.success(t('verifyEmailResent'));
+      toast.success("Verification email resent!");
     } catch (err) {
-      toast.error(err.message || t('resendFailed'));
+      toast.error(err.message || "Failed to resend");
     }
   }
 
@@ -122,37 +118,37 @@ export default function SignupPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>{t('signupTitle')}</h2>
-        <p>{t('signupSubtitle')}</p>
+        <h2>Create an account</h2>
+        <p>Start your 60-second website journey today.</p>
 
         {!showSuccess ? (
           <>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>{t('fullName')}</label>
+                <label>Full Name</label>
                 <input
                   type="text"
-                  placeholder={t("common:namePlaceholder")}
+                  placeholder="John Doe"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="form-group">
-                <label>{t('common:email')}</label>
+                <label>Email address</label>
                 <input
                   type="email"
-                  placeholder={t("common:emailPlaceholder")}
+                  placeholder="name@company.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="form-group">
-                <label>{t('common:password')}</label>
+                <label>Password</label>
                 <input
                   type="password"
-                  placeholder={t("common:passwordPlaceholder")}
+                  placeholder="••••••••"
                   required
                   minLength={8}
                   value={password}
@@ -160,10 +156,10 @@ export default function SignupPage() {
                 />
               </div>
               <div className="form-group">
-                <label>{t('confirmPassword')}</label>
+                <label>Confirm Password</label>
                 <input
                   type="password"
-                  placeholder={t("common:passwordPlaceholder")}
+                  placeholder="••••••••"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -172,26 +168,26 @@ export default function SignupPage() {
               <div className="terms-agree-group">
                 <input type="checkbox" id="agree-terms" required checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} />
                 <label htmlFor="agree-terms">
-                  {t('agreeTerms')} <Link to="/terms" target="_blank">{t('landing:footerTerms')}</Link>, <Link to="/privacy-policy" target="_blank">{t('landing:footerPrivacy')}</Link>, {t('agreeTermsAnd')} <Link to="/refund-policy" target="_blank">{t('landing:footerRefund')}</Link>.
+                  I agree to the <Link to="/terms" target="_blank">Terms & Conditions</Link>, <Link to="/privacy-policy" target="_blank">Privacy Policy</Link>, and <Link to="/refund-policy" target="_blank">Refund & Cancellation Policy</Link>.
                 </label>
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-                {submitting ? t('creatingAccount') : t('createAccountBtn')}
+                {submitting ? "Creating Account..." : "Create account"}
               </button>
               <div id="google-signin-btn" className="google-btn-wrapper"></div>
               {error && <div className="error-msg">{error}</div>}
             </form>
             <p className="auth-footer">
-              {t('alreadyHaveAccount')} <Link to="/login">{t('signIn')}</Link>
+              Already have an account? <Link to="/login">Sign in</Link>
             </p>
           </>
         ) : (
           <div className="success-box">
-            <h3>{t('verificationRequired')}</h3>
-            <p>{t('verificationDesc')}</p>
-            <button className="btn btn-outline" onClick={handleResend}>{t('resendEmail')}</button>
+            <h3>Verification Required</h3>
+            <p>Please check your email to verify your account. If you didn't receive it, check your spam folder.</p>
+            <button className="btn btn-outline" onClick={handleResend}>Resend Email</button>
             <p className="auth-footer" style={{ marginTop: '1rem' }}>
-              <Link to="/login">{t('backToLogin')}</Link>
+              <Link to="/login">Back to Login</Link>
             </p>
           </div>
         )}

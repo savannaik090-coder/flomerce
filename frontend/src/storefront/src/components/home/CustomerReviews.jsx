@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { getDefaultReviews } from '../../defaults/index.js';
+import TranslatedText from '../TranslatedText';
 
 export default function CustomerReviews() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const scrollRef = useRef(null);
   const [modalImage, setModalImage] = useState(null);
@@ -18,8 +17,8 @@ export default function CustomerReviews() {
     ? settings.reviews
     : getDefaultReviews(siteConfig?.category);
 
-  const sectionTitle = settings.reviewsSectionTitle || t('home.reviews.defaultTitle', 'What Our Customers Say');
-  const sectionSubtitle = settings.reviewsSectionSubtitle || t('home.reviews.defaultSubtitle', 'Real reviews from our happy customers');
+  const sectionTitle = settings.reviewsSectionTitle || "What Our Customers Say";
+  const sectionSubtitle = settings.reviewsSectionSubtitle || "Real reviews from our happy customers";
   const phone = siteConfig?.phone || '';
 
   const scroll = (direction) => {
@@ -30,7 +29,7 @@ export default function CustomerReviews() {
   };
 
   const openWhatsApp = () => {
-    const msg = encodeURIComponent(t('home.reviews.whatsappMessage', 'Hi! I would like to share my review.'));
+    const msg = encodeURIComponent("Hi! I would like to share my review.");
     window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
   };
 
@@ -58,7 +57,7 @@ export default function CustomerReviews() {
                     className="review-image"
                     onClick={() => setModalImage(resolveImageUrl(review.image))}
                   >
-                    <img src={resolveImageUrl(review.image)} alt={t('home.reviews.imageAlt', 'Customer Review {{index}}', { index: i + 1 })} />
+                    <img src={resolveImageUrl(review.image)} alt={`Customer Review ${i + 1}`} />
                   </div>
                 )}
                 <div className="review-content">
@@ -91,7 +90,7 @@ export default function CustomerReviews() {
         {phone && (
           <div className="reviews-cta">
             <button className="chat-now-btn" onClick={openWhatsApp}>
-              {t('home.reviews.shareButton', 'SHARE YOUR REVIEW')}
+              <TranslatedText text="SHARE YOUR REVIEW" />
             </button>
           </div>
         )}
@@ -110,7 +109,7 @@ export default function CustomerReviews() {
             &times;
           </span>
           <div className="image-modal-content">
-            <img src={modalImage} alt={t('home.reviews.fullSizeAlt', 'Full Size Review')} />
+            <img src={modalImage} alt=<TranslatedText text="Full Size Review" /> />
           </div>
         </div>
       )}

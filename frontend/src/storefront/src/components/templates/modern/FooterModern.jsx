@@ -1,6 +1,5 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../../context/SiteContext.jsx';
 import { PLATFORM_URL } from '../../../config.js';
 import { isPlanAtLeast } from '../../../utils/plan.js';
@@ -8,7 +7,6 @@ import TranslatedText from '../../TranslatedText.jsx';
 import './modern.css';
 
 export default function FooterModern() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const [openSections, setOpenSections] = useState({});
   const categories = siteConfig?.categories || [];
@@ -59,22 +57,22 @@ export default function FooterModern() {
             {hasSocialLinks && (
               <div className="mn-footer-social">
                 {socialLinks.instagram && (
-                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label={t('footer.social.instagram', 'Instagram')}>
+                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="Instagram" />>
                     <i className="fab fa-instagram"></i>
                   </a>
                 )}
                 {socialLinks.facebook && (
-                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label={t('footer.social.facebook', 'Facebook')}>
+                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="Facebook" />>
                     <i className="fab fa-facebook-f"></i>
                   </a>
                 )}
                 {socialLinks.twitter && (
-                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" aria-label={t('footer.social.twitter', 'Twitter')}>
+                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="Twitter" />>
                     <i className="fab fa-twitter"></i>
                   </a>
                 )}
                 {socialLinks.youtube && (
-                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label={t('footer.social.youtube', 'YouTube')}>
+                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="YouTube" />>
                     <i className="fab fa-youtube"></i>
                   </a>
                 )}
@@ -84,22 +82,22 @@ export default function FooterModern() {
 
           <div className="mn-footer-col">
             <h4 className="mn-footer-col-title mn-footer-col-toggle" onClick={() => toggleSection('info')}>
-              {t('footer.information', 'Information')}
+              <TranslatedText text="Information" />
               <svg className={`mn-footer-chevron${openSections.info ? ' mn-footer-chevron-open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </h4>
             <ul className={`mn-footer-links${openSections.info ? ' mn-footer-links-open' : ''}`}>
-              <li><Link to="/about">{t('footer.aboutUs', 'About Us')}</Link></li>
-              <li><Link to="/contact">{t('footer.contactUs', 'Contact Us')}</Link></li>
-              <li><Link to="/terms#section-4">{t('footer.shippingPolicy', 'Shipping Policy')}</Link></li>
-              <li><Link to="/terms#section-5">{t('footer.returnsExchanges', 'Returns & Exchanges')}</Link></li>
-              {settings.showBlog !== false && <li><Link to="/blog">{t('nav.blog', 'Blog')}</Link></li>}
-              {settings.showFaq !== false && <li><Link to="/faq">{t('nav.faq', 'FAQ')}</Link></li>}
+              <li><Link to="/about"><TranslatedText text="About Us" /></Link></li>
+              <li><Link to="/contact"><TranslatedText text="Contact Us" /></Link></li>
+              <li><Link to="/terms#section-4"><TranslatedText text="Shipping Policy" /></Link></li>
+              <li><Link to="/terms#section-5"><TranslatedText text="Returns & Exchanges" /></Link></li>
+              {settings.showBlog !== false && <li><Link to="/blog"><TranslatedText text="Blog" /></Link></li>}
+              {settings.showFaq !== false && <li><Link to="/faq"><TranslatedText text="FAQ" /></Link></li>}
             </ul>
           </div>
 
           <div className="mn-footer-col">
             <h4 className="mn-footer-col-title mn-footer-col-toggle" onClick={() => toggleSection('categories')}>
-              {t('footer.categories', 'Categories')}
+              <TranslatedText text="Categories" />
               <svg className={`mn-footer-chevron${openSections.categories ? ' mn-footer-chevron-open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </h4>
             <ul className={`mn-footer-links${openSections.categories ? ' mn-footer-links-open' : ''}`}>
@@ -111,15 +109,15 @@ export default function FooterModern() {
 
           <div className="mn-footer-col">
             <h4 className="mn-footer-col-title mn-footer-col-toggle" onClick={() => toggleSection('help')}>
-              {t('footer.needHelp', 'Need Help?')}
+              <TranslatedText text="Need Help?" />
               <svg className={`mn-footer-chevron${openSections.help ? ' mn-footer-chevron-open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </h4>
             <ul className={`mn-footer-links${openSections.help ? ' mn-footer-links-open' : ''}`}>
-              <li><Link to="/order-track">{t('footer.trackManageOrder', 'Track / Manage Order')}</Link></li>
-              {cancellationEnabled && <li><Link to="/order-help">{t('footer.cancellation', 'Cancellation')}</Link></li>}
-              {returnsEnabled && <li><Link to="/order-help">{t('footer.returnRefund', 'Return / Refund')}</Link></li>}
-              <li><Link to="/terms">{t('footer.termsConditions', 'Terms and Conditions')}</Link></li>
-              <li><Link to="/privacy-policy">{t('footer.privacyPolicy', 'Privacy Policy')}</Link></li>
+              <li><Link to="/order-track"><TranslatedText text="Track / Manage Order" /></Link></li>
+              {cancellationEnabled && <li><Link to="/order-help"><TranslatedText text="Cancellation" /></Link></li>}
+              {returnsEnabled && <li><Link to="/order-help"><TranslatedText text="Return / Refund" /></Link></li>}
+              <li><Link to="/terms"><TranslatedText text="Terms and Conditions" /></Link></li>
+              <li><Link to="/privacy-policy"><TranslatedText text="Privacy Policy" /></Link></li>
             </ul>
           </div>
         </div>
@@ -140,16 +138,16 @@ export default function FooterModern() {
 
         {showAppBanner && (showAppStore || showPlayStore) && (
           <div className="mn-footer-app">
-            <span className="mn-footer-app-label">{t('footer.downloadApp', 'Download Our App')}</span>
+            <span className="mn-footer-app-label"><TranslatedText text="Download Our App" /></span>
             <div className="mn-footer-app-buttons">
               {showAppStore && (
                 <a href={appBanner.appStoreUrl || '#'} target="_blank" rel="noopener noreferrer">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt={t('footer.appStoreAlt', 'App Store')} style={{ height: 36 }} />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt=<TranslatedText text="App Store" /> style={{ height: 36 }} />
                 </a>
               )}
               {showPlayStore && (
                 <a href={appBanner.playStoreUrl || '#'} target="_blank" rel="noopener noreferrer">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt={t('footer.googlePlayAlt', 'Google Play')} style={{ height: 36 }} />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt=<TranslatedText text="Google Play" /> style={{ height: 36 }} />
                 </a>
               )}
             </div>
@@ -158,7 +156,7 @@ export default function FooterModern() {
       </div>
 
       <div className="mn-footer-bottom">
-        <p>{t('footer.copyright', '\u00a9 {{year}} {{brandName}}. All rights reserved.', { year: new Date().getFullYear(), brandName: siteConfig?.brandName || 'Store' })}{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> {t('footer.poweredBy', 'Powered by')} <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Flomerce</a></>}</p>
+        <p>{`\u00a9 ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. `}<TranslatedText text="All rights reserved." />{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Flomerce</a></>}</p>
         <div className="mn-footer-payment">
           <span><i className="fab fa-cc-visa"></i></span>
           <span><i className="fab fa-cc-mastercard"></i></span>

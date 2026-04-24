@@ -1,5 +1,4 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { useSEO } from '../hooks/useSEO.js';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -10,10 +9,9 @@ import '../styles/about.css';
 import { getAboutPageWithBrand } from '../defaults/index.js';
 
 export default function AboutPage() {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useSiteConfig();
   const { isModern } = useTheme();
-  useSEO({ title: t('about.pageTitle', 'About Us'), pageType: 'about' });
+  useSEO({ title: "About Us", pageType: 'about' });
   const brandName = siteConfig?.brandName || siteConfig?.name || 'Our Store';
   const category = siteConfig?.category || '';
 
@@ -25,8 +23,8 @@ export default function AboutPage() {
   if (settings.showAboutUs === false) {
     return (
       <div className="about-page" style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <h2>{t('about.unavailableTitle', 'This page is currently unavailable')}</h2>
-        <p style={{ color: '#64748b', marginTop: 12 }}>{t('about.unavailableMessage', 'Please check back later.')}</p>
+        <h2><TranslatedText text="This page is currently unavailable" /></h2>
+        <p style={{ color: '#64748b', marginTop: 12 }}><TranslatedText text="Please check back later." /></p>
       </div>
     );
   }
@@ -61,8 +59,8 @@ export default function AboutPage() {
       <section className="about-hero">
         <div className="about-hero-overlay" />
         <div className="about-hero-inner">
-          <span className="about-hero-label">{t('about.heroLabel', 'Our Story')}</span>
-          <h1>{t('about.heroTitle', { brandName, defaultValue: 'About {{brandName}}' })}</h1>
+          <span className="about-hero-label"><TranslatedText text="Our Story" /></span>
+          <h1>{`About ${brandName}`}</h1>
           <p><TranslatedText text={heroSubtitle} /></p>
           <div className="about-hero-divider" />
         </div>

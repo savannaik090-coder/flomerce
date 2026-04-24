@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { PanelContext } from '../context/PanelContext.jsx';
@@ -55,7 +54,6 @@ function PolicyItem({ label, value }) {
 }
 
 export default function ProductDetailPage() {
-  const { t } = useTranslation('storefront');
   const { id } = useParams();
   const navigate = useNavigate();
   const { siteConfig } = useContext(SiteContext);
@@ -85,7 +83,7 @@ export default function ProductDetailPage() {
         const result = await productService.getProductById(id, siteConfig?.id);
         const prod = result.data || result.product || result;
         if (!prod || !prod.id) {
-          setError(t('product.notFound', 'Product not found'));
+          setError("Product not found");
           return;
         }
 
@@ -111,7 +109,7 @@ export default function ProductDetailPage() {
         setProduct(prod);
       } catch (err) {
         console.error('Failed to load product:', err);
-        setError(t('product.loadFailed', 'Failed to load product'));
+        setError("Failed to load product");
       } finally {
         setLoading(false);
       }
@@ -166,7 +164,7 @@ export default function ProductDetailPage() {
   function validateOptions() {
     if (!hasAnyOptions) return true;
     const missing = [];
-    if (hasColors && !selectedColor) missing.push(t('product.color', 'Color'));
+    if (hasColors && !selectedColor) missing.push("Color");
     if (hasCustomOptions) {
       for (const opt of productOptions.customOptions) {
         if (!selectedCustomOptions[opt.label]) missing.push(opt.label);
@@ -178,7 +176,7 @@ export default function ProductDetailPage() {
       }
     }
     if (missing.length > 0) {
-      setOptionError(t('product.pleaseSelect', 'Please select: {{options}}', { options: missing.join(', ') }));
+      setOptionError(`Please select: ${missing.join(', ')}`);
       return false;
     }
     setOptionError(null);
@@ -214,7 +212,7 @@ export default function ProductDetailPage() {
       <div className="product-detail-loading">
         <div style={{ textAlign: 'center' }}>
           <div className="spinner" />
-          <p style={{ marginTop: 15, color: '#666' }}>{t('product.loadingDetails', 'Loading product details...')}</p>
+          <p style={{ marginTop: 15, color: '#666' }}><TranslatedText text="Loading product details..." /></p>
         </div>
       </div>
     );
@@ -223,9 +221,9 @@ export default function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="product-not-found">
-        <h2>{t('product.notFoundTitle', 'Product Not Found')}</h2>
-        <p>{t('product.notFoundMessage', "Sorry, we couldn't find the product you're looking for.")}</p>
-        <a href="/" className="back-btn">{t('product.returnHome', 'Return to Homepage')}</a>
+        <h2><TranslatedText text="Product Not Found" /></h2>
+        <p><TranslatedText text="Sorry, we couldn't find the product you're looking for." /></p>
+        <a href="/" className="back-btn"><TranslatedText text="Return to Homepage" /></a>
       </div>
     );
   }
@@ -259,18 +257,18 @@ export default function ProductDetailPage() {
 
             <div className="product-meta">
               <div className="meta-item">
-                <span className="meta-label">{t('product.availability', 'Availability:')}</span>
+                <span className="meta-label"><TranslatedText text="Availability:" /></span>
                 <span className={`meta-value ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
-                  {isOutOfStock ? t('product.outOfStockMark', 'Out of Stock \u2717') : t('product.inStockMark', 'In Stock \u2713')}
+                  {isOutOfStock ? "Out of Stock ✗" : "In Stock ✓"}
                 </span>
               </div>
               <div className="meta-item">
-                <span className="meta-label">{t('product.sku', 'SKU:')}</span>
+                <span className="meta-label"><TranslatedText text="SKU:" /></span>
                 <span className="meta-value">{product.sku || product.id}</span>
               </div>
               {categoryName && (
                 <div className="meta-item">
-                  <span className="meta-label">{t('product.category', 'Category:')}</span>
+                  <span className="meta-label"><TranslatedText text="Category:" /></span>
                   <span className="meta-value">{categoryName}</span>
                 </div>
               )}
@@ -278,7 +276,7 @@ export default function ProductDetailPage() {
 
             {hasColors && (
               <div className="product-option-section">
-                <label className="product-option-label">{t('product.color', 'Color')}</label>
+                <label className="product-option-label"><TranslatedText text="Color" /></label>
                 <div className="product-color-swatches">
                   {productOptions.colors.map(c => (
                     <button
@@ -343,7 +341,7 @@ export default function ProductDetailPage() {
 
             {product.description && (
               <div className="product-description-section product-description-inline">
-                <h3>{t('product.descriptionHeading', 'Product Description')}</h3>
+                <h3><TranslatedText text="Product Description" /></h3>
                 <p><TranslatedText text={product.description} /></p>
               </div>
             )}
@@ -354,43 +352,43 @@ export default function ProductDetailPage() {
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
               >
-                {isOutOfStock ? t('product.outOfStockButton', 'OUT OF STOCK') : t('product.addToCart', 'ADD TO CART')}
+                {isOutOfStock ? "OUT OF STOCK" : "ADD TO CART"}
               </button>
               <button
                 className="buy-now-btn"
                 onClick={handleBuyNow}
                 disabled={isOutOfStock}
               >
-                {t('product.buyNow', 'BUY NOW')}
+                <TranslatedText text="BUY NOW" />
               </button>
               <button
                 className={`add-to-wishlist-btn${productInWishlist ? ' active' : ''}`}
                 onClick={handleWishlistToggle}
               >
                 <i className="fas fa-heart" />
-                {productInWishlist ? t('product.removeFromWishlist', 'REMOVE FROM WISHLIST') : t('product.addToWishlist', 'ADD TO WISHLIST')}
+                {productInWishlist ? "REMOVE FROM WISHLIST" : "ADD TO WISHLIST"}
               </button>
             </div>
 
             {siteConfig?.settings?.showProductPolicies !== false && (
             <div className="product-policies-accordions">
-              <PolicyAccordion title={t('product.policies.shippingTitle', 'Shipping & Delivery Details')} icon="fa-truck">
-                <PolicyItem label={t('product.policies.regions', 'Regions')} value={pol('shippingRegions')} />
-                <PolicyItem label={t('product.policies.shippingCharges', 'Shipping Charges')} value={pol('shippingCharges')} />
-                <PolicyItem label={t('product.policies.deliveryTime', 'Delivery Time')} value={pol('shippingDeliveryTime')} />
-                <PolicyItem label={t('product.policies.tracking', 'Tracking')} value={pol('shippingTracking')} />
+              <PolicyAccordion title=<TranslatedText text="Shipping & Delivery Details" /> icon="fa-truck">
+                <PolicyItem label=<TranslatedText text="Regions" /> value={pol('shippingRegions')} />
+                <PolicyItem label=<TranslatedText text="Shipping Charges" /> value={pol('shippingCharges')} />
+                <PolicyItem label=<TranslatedText text="Delivery Time" /> value={pol('shippingDeliveryTime')} />
+                <PolicyItem label=<TranslatedText text="Tracking" /> value={pol('shippingTracking')} />
               </PolicyAccordion>
 
-              <PolicyAccordion title={t('product.policies.returnTitle', 'Return & Exchange')} icon="fa-exchange-alt">
-                <PolicyItem label={t('product.policies.policy', 'Policy')} value={pol('returnPolicy')} />
-                <PolicyItem label={t('product.policies.replacements', 'Replacements')} value={pol('returnReplacements')} />
-                <PolicyItem label={t('product.policies.mandatory', 'Mandatory Requirement')} value={pol('returnMandatory')} />
+              <PolicyAccordion title=<TranslatedText text="Return & Exchange" /> icon="fa-exchange-alt">
+                <PolicyItem label=<TranslatedText text="Policy" /> value={pol('returnPolicy')} />
+                <PolicyItem label=<TranslatedText text="Replacements" /> value={pol('returnReplacements')} />
+                <PolicyItem label=<TranslatedText text="Mandatory Requirement" /> value={pol('returnMandatory')} />
               </PolicyAccordion>
 
-              <PolicyAccordion title={t('product.policies.careTitle', 'Care Guide')} icon="fa-hand-holding-heart">
-                <PolicyItem label={t('product.policies.cleaning', 'Cleaning')} value={pol('careGuideCleaning')} />
-                <PolicyItem label={t('product.policies.washing', 'Washing')} value={pol('careGuideWashing')} />
-                <PolicyItem label={t('product.policies.maintenance', 'Maintenance')} value={pol('careGuideMaintenance')} />
+              <PolicyAccordion title=<TranslatedText text="Care Guide" /> icon="fa-hand-holding-heart">
+                <PolicyItem label=<TranslatedText text="Cleaning" /> value={pol('careGuideCleaning')} />
+                <PolicyItem label=<TranslatedText text="Washing" /> value={pol('careGuideWashing')} />
+                <PolicyItem label=<TranslatedText text="Maintenance" /> value={pol('careGuideMaintenance')} />
               </PolicyAccordion>
             </div>
             )}

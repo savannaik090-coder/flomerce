@@ -1,5 +1,4 @@
 import React, { useContext, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
@@ -7,9 +6,8 @@ import { getTermsDefaults } from '../defaults/index.js';
 import TranslatedText from '../components/TranslatedText.jsx';
 
 export default function TermsPage() {
-  const { t, i18n } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
-  useSEO({ title: t('terms.pageTitle', 'Terms & Conditions'), pageType: 'terms' });
+  useSEO({ title: "Terms & Conditions", pageType: 'terms' });
   const brand = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';
@@ -42,8 +40,8 @@ export default function TermsPage() {
 
   return (
     <div style={{ maxWidth: 800, margin: '40px auto 80px', padding: '0 20px', fontFamily: 'inherit' }}>
-      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>{t('terms.pageTitle', 'Terms & Conditions')}</h1>
-      <p style={{ color: '#64748b', marginBottom: 40 }}>{t('terms.lastUpdated', { date: new Date().toLocaleDateString(i18n.language || 'en-IN', { year: 'numeric', month: 'long', day: 'numeric' }), defaultValue: 'Last updated: {{date}}' })}</p>
+      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Terms & Conditions</h1>
+      <p style={{ color: '#64748b', marginBottom: 40 }}>{`Last updated: ${new Date().toLocaleDateString(i18n.language || 'en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}`}</p>
 
       <div style={{ lineHeight: 1.8, color: '#374151' }}>
         <p style={{ marginBottom: 24 }}><TranslatedText text={intro} /></p>

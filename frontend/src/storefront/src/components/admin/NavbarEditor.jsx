@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation, Trans } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
@@ -24,7 +23,6 @@ function flattenCategories(categories, prefix = '') {
 }
 
 export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
-  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -107,10 +105,10 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       if (!menu.name || !menu.name.trim()) continue;
       for (const link of menu.links) {
         if (link.type === 'custom' && (!link.label.trim() || !link.url.trim())) {
-          return t('navbarEditor.validateCustomLink');
+          return "Please fill in both label and URL for all custom links, or remove empty ones.";
         }
         if (link.url && !link.url.startsWith('/') && !link.url.startsWith('http://') && !link.url.startsWith('https://')) {
-          return t('navbarEditor.validateInvalidUrl', { url: link.url });
+          return `Invalid URL "${link.url}". URLs must start with / or http:// or https://.`;
         }
       }
     }
@@ -122,11 +120,11 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
     if (!allowed.includes(file.type)) {
-      setStatus('error:' + t('navbarEditor.errorInvalidImage'));
+      setStatus('error:' + "Please upload a valid image file (JPG, PNG, WebP, GIF, or SVG)");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setStatus('error:' + t('navbarEditor.errorImageSize'));
+      setStatus('error:' + "Image must be less than 10MB");
       return;
     }
     const oldLogo = logoUrl;
@@ -150,10 +148,10 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         pendingMedia.markUploaded(newUrl);
         if (oldLogo) pendingMedia.markForDeletion(oldLogo);
       } else {
-        setStatus('error:' + (result.error || t('navbarEditor.errorUploadFailed')));
+        setStatus('error:' + (result.error || "Failed to upload logo"));
       }
     } catch (err) {
-      setStatus('error:' + t('navbarEditor.errorUploadFailedWith', { error: err.message }));
+      setStatus('error:' + `Failed to upload logo: ${err.message}`);
     } finally {
       setUploadingLogo(false);
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -203,7 +201,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || t('navbarEditor.errorUnknown')));
+        setStatus('error:' + (result.error || "Unknown error"));
       }
     } catch (e) {
       setStatus('error:' + e.message);
@@ -227,8 +225,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   function removeMenu(menuId) {
     setConfirmModal({
-      title: t('navbarEditor.deleteMenuTitle'),
-      message: t('navbarEditor.deleteMenuMessage'),
+      title: "Delete Menu Group",
+      message: "Delete this menu group? All links inside it will be removed.",
       danger: true,
       onConfirm: () => {
         setNavbarMenus(prev => prev.filter(m => m.id !== menuId));
@@ -353,11 +351,11 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('navbarEditor.storeLogo')}</h3>
+            <h3 className="card-title">Store Logo</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              {t('navbarEditor.logoDescription')}
+              Upload a logo to display in the navbar instead of your brand name. For best results, use a transparent PNG or SVG.
             </p>
             <input
               ref={logoInputRef}
@@ -371,13 +369,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 <div style={{ flex: '0 0 auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50, maxWidth: 200 }}>
                   <img
                     src={logoUrl}
-                    alt={t('navbarEditor.logoAlt')}
+                    alt="Store logo"
                     style={{ maxHeight: 48, maxWidth: 180, objectFit: 'contain' }}
                     onError={e => { e.target.style.display = 'none'; }}
                   />
                 </div>
                 <div style={{ flex: 1, fontSize: 13, color: '#475569' }}>
-                  {t('navbarEditor.logoActive')}
+                  Logo is active. It will display in the navbar instead of your brand name.
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
@@ -387,9 +385,9 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                     style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#334155', fontWeight: 500, fontSize: 12, cursor: uploadingLogo ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: uploadingLogo ? 0.7 : 1 }}
                   >
                     {uploadingLogo ? (
-                      <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 5, fontSize: 10 }} />{t('navbarEditor.replacing')}</>
+                      <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 5, fontSize: 10 }} />Replacing...</>
                     ) : (
-                      <><i className="fas fa-sync-alt" style={{ marginInlineEnd: 5, fontSize: 10 }} />{t('navbarEditor.replace')}</>
+                      <><i className="fas fa-sync-alt" style={{ marginInlineEnd: 5, fontSize: 10 }} />Replace</>
                     )}
                   </button>
                   <button
@@ -398,7 +396,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                     style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#ef4444', fontWeight: 500, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     <i className="fas fa-trash" style={{ marginInlineEnd: 5, fontSize: 10 }} />
-                    {t('navbarEditor.remove')}
+                    Remove
                   </button>
                 </div>
               </div>
@@ -420,13 +418,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 {uploadingLogo ? (
                   <>
                     <div className="spinner" style={{ margin: '0 auto 12px' }} />
-                    <p style={{ fontSize: 13, margin: 0 }}>{t('navbarEditor.uploadingLogo')}</p>
+                    <p style={{ fontSize: 13, margin: 0 }}>Uploading logo...</p>
                   </>
                 ) : (
                   <>
                     <i className="fas fa-image" style={{ fontSize: 28, marginBottom: 10, display: 'block' }} />
-                    <p style={{ fontSize: 14, margin: '0 0 4px 0', fontWeight: 500 }}>{t('navbarEditor.clickToUpload')}</p>
-                    <p style={{ fontSize: 12, margin: 0 }}>{t('navbarEditor.uploadHint')}</p>
+                    <p style={{ fontSize: 14, margin: '0 0 4px 0', fontWeight: 500 }}>Click to upload a logo</p>
+                    <p style={{ fontSize: 12, margin: 0 }}>PNG, SVG, JPG, WebP, or GIF (max 10MB). Currently showing your brand name as text.</p>
                   </>
                 )}
               </div>
@@ -437,15 +435,15 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         {logoUrl && (
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-header">
-              <h3 className="card-title">{t('navbarEditor.logoSettings')}</h3>
+              <h3 className="card-title">Logo Settings</h3>
             </div>
             <div className="card-content">
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#334155', marginBottom: 8 }}>
-                  {t('navbarEditor.logoSize')}
+                  Logo Size
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{t('navbarEditor.small')}</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>Small</span>
                   <div style={{ flex: 1, position: 'relative' }}>
                     <input
                       type="range"
@@ -457,7 +455,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                       style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
                     />
                   </div>
-                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>{t('navbarEditor.large')}</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>Large</span>
                   <div style={{
                     background: '#f1f5f9',
                     borderRadius: 6,
@@ -473,7 +471,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 </div>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 6, marginBottom: 0 }}>
                   <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
-                  {t('navbarEditor.logoSizeHint')}
+                  Controls the logo width. If your logo has transparent space around it, try cropping it before uploading for best results.
                 </p>
                 <div style={{
                   marginTop: 12,
@@ -488,7 +486,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 }}>
                   <img
                     src={logoUrl}
-                    alt={t('navbarEditor.sizePreviewAlt')}
+                    alt="Size preview"
                     style={{ width: logoSize, height: 'auto', maxWidth: '100%', objectFit: 'contain' }}
                     onError={e => { e.target.style.display = 'none'; }}
                   />
@@ -497,12 +495,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
               <div>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#334155', marginBottom: 8 }}>
-                  {t('navbarEditor.logoPosition')}
+                  Logo Position
                 </label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {[
-                    { value: 'left', label: t('navbarEditor.left'), icon: 'fa-align-left' },
-                    { value: 'center', label: t('navbarEditor.center'), icon: 'fa-align-center' },
+                    { value: 'left', label: "Left", icon: 'fa-align-left' },
+                    { value: 'center', label: "Center", icon: 'fa-align-center' },
                   ].map(opt => (
                     <button
                       key={opt.value}
@@ -534,8 +532,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, marginBottom: 0 }}>
                   <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
                   {logoPosition === 'center'
-                    ? t('navbarEditor.positionCenterHint')
-                    : t('navbarEditor.positionLeftHint')}
+                    ? "Logo will be centered in the navbar. On mobile, it stays in its default position."
+                    : "Logo will appear on the left side of the navbar (default)."}
                 </p>
               </div>
             </div>
@@ -544,15 +542,15 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('navbarEditor.navbarIcons')}</h3>
+            <h3 className="card-title">Navbar Icons</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              {t('navbarEditor.iconsDescription')}
+              Choose which icons to show in the navbar. Search and Wishlist icons are always visible.
             </p>
             {[
-              { label: t('navbarEditor.accountIconLabel'), desc: t('navbarEditor.accountIconDesc'), value: showAccountIcon, setter: setShowAccountIcon, icon: 'fa-user' },
-              { label: t('navbarEditor.cartIconLabel'), desc: t('navbarEditor.cartIconDesc'), value: showCartIcon, setter: setShowCartIcon, icon: 'fa-shopping-bag' },
+              { label: "Account Icon", desc: "User/profile icon for login and account access", value: showAccountIcon, setter: setShowAccountIcon, icon: 'fa-user' },
+              { label: "Cart Icon", desc: "Shopping bag icon with item count badge", value: showCartIcon, setter: setShowCartIcon, icon: 'fa-shopping-bag' },
             ].map((item, i) => (
               <div
                 key={i}
@@ -608,7 +606,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 className="card-title">{t('navbarEditor.menuGroups')}</h3>
+            <h3 className="card-title">Navbar Menu Groups</h3>
             <button
               type="button"
               onClick={addMenu}
@@ -628,12 +626,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               }}
             >
               <i className="fas fa-plus" style={{ fontSize: 11 }} />
-              {t('navbarEditor.addMenuGroup')}
+              Add Menu Group
             </button>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              {t('navbarEditor.menuGroupsDescription')}
+              Create named menu groups for your store's navigation bar. Each group shows as a link in the navbar, and clicking it opens a dropdown with the links you add below. Groups without any links will show as a direct link (no dropdown).
             </p>
 
             {navbarMenus.length === 0 && (
@@ -645,8 +643,8 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 borderRadius: 8,
               }}>
                 <i className="fas fa-bars" style={{ fontSize: 32, marginBottom: 12, display: 'block' }} />
-                <p style={{ fontSize: 14, margin: 0 }}>{t('navbarEditor.noMenusYet')}</p>
-                <p style={{ fontSize: 12, margin: '8px 0 0 0' }}>{t('navbarEditor.noMenusHint')}</p>
+                <p style={{ fontSize: 14, margin: 0 }}>No menu groups yet. Click "Add Menu Group" to get started.</p>
+                <p style={{ fontSize: 12, margin: '8px 0 0 0' }}>When no menu groups are defined, the navbar will show your categories directly.</p>
               </div>
             )}
 
@@ -707,7 +705,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditName(menu.id); } }}
                           onClick={(e) => e.stopPropagation()}
                           autoFocus
-                          placeholder={t('navbarEditor.enterMenuName')}
+                          placeholder="Enter menu group name..."
                           style={{
                             padding: '4px 8px',
                             border: '1px solid #2563eb',
@@ -723,7 +721,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontWeight: 600, fontSize: 14, color: menu.name ? '#1e293b' : '#94a3b8' }}>
-                            {menu.name || t('navbarEditor.untitledGroup')}
+                            {menu.name || "Untitled Group"}
                           </span>
                           <button
                             type="button"
@@ -733,7 +731,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                             <i className="fas fa-pen" />
                           </button>
                           <span style={{ fontSize: 12, color: '#94a3b8' }}>
-                            ({menu.links.length} {menu.links.length === 1 ? t('navbarEditor.linkSingular') : t('navbarEditor.linkPlural')})
+                            ({menu.links.length} {menu.links.length === 1 ? "link" : "links"})
                           </span>
                         </div>
                       )}
@@ -751,7 +749,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                         color: '#ef4444',
                         fontSize: 12,
                       }}
-                      title={t('navbarEditor.deleteMenuTooltip')}
+                      title="Delete menu group"
                     >
                       <i className="fas fa-trash" />
                     </button>
@@ -762,7 +760,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                       {menu.links.length > 0 && (
                         <div style={{ marginTop: 12 }}>
                           <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            {t('navbarEditor.dropdownLinks')}
+                            Dropdown Links
                           </label>
                           {menu.links.map((link, linkIndex) => (
                             <div
@@ -803,7 +801,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                                     type="text"
                                     value={link.label}
                                     onChange={(e) => updateLink(menu.id, link.id, 'label', e.target.value)}
-                                    placeholder={t('navbarEditor.linkLabelPlaceholder')}
+                                    placeholder="Link label"
                                     style={{
                                       flex: '1 1 120px',
                                       padding: '6px 8px',
@@ -817,7 +815,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                                     type="text"
                                     value={link.url}
                                     onChange={(e) => updateLink(menu.id, link.id, 'url', e.target.value)}
-                                    placeholder={t('navbarEditor.urlPlaceholder')}
+                                    placeholder="/page-url or https://..."
                                     style={{
                                       flex: '1 1 180px',
                                       padding: '6px 8px',
@@ -848,7 +846,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                                   fontSize: 12,
                                   flexShrink: 0,
                                 }}
-                                title={t('navbarEditor.removeLinkTooltip')}
+                                title="Remove link"
                               >
                                 <i className="fas fa-times" />
                               </button>
@@ -859,7 +857,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
                       <div style={{ marginTop: 14 }}>
                         <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          {t('navbarEditor.addLinks')}
+                          Add Links
                         </label>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
                           <select
@@ -880,14 +878,14 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                               cursor: 'pointer',
                             }}
                           >
-                            <option value="">{t('navbarEditor.addCategoryLink')}</option>
+                            <option value="">+ Add a category link...</option>
                             {flatCats.map(cat => {
                               const alreadyInThisGroup = menu.links.some(l => l.categorySlug === cat.slug);
                               const usedInGroup = navbarMenus.find(m => m.id !== menu.id && m.links.some(l => l.categorySlug === cat.slug));
                               const usedLabel = alreadyInThisGroup
-                                ? t('navbarEditor.alreadyAdded')
+                                ? "(already added)"
                                 : usedInGroup
-                                  ? t('navbarEditor.usedIn', { group: usedInGroup.name || t('navbarEditor.untitledGroup') })
+                                  ? `(used in "${usedInGroup.name || "Untitled Group"}")`
                                   : '';
                               return (
                                 <option key={cat.id} value={cat.slug} disabled={alreadyInThisGroup}>
@@ -917,7 +915,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                             }}
                           >
                             <i className="fas fa-link" style={{ fontSize: 11 }} />
-                            {t('navbarEditor.customLink')}
+                            Custom Link
                           </button>
                         </div>
                       </div>
@@ -931,22 +929,22 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('navbarEditor.howItWorks')}</h3>
+            <h3 className="card-title">How It Works</h3>
           </div>
           <div className="card-content">
             <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>
               <p style={{ marginBottom: 10 }}>
-                <Trans ns="admin" i18nKey="navbarEditor.howItWorksIntro" components={{ strong: <strong /> }} />
+                <strong>Menu Groups</strong> appear as top-level items in your navbar. Each group can have a dropdown of links.
               </p>
               <ul style={{ paddingInlineStart: 20, margin: '0 0 10px 0' }}>
-                <li><Trans ns="admin" i18nKey="navbarEditor.howItWorksMultiple" components={{ strong: <strong /> }} /></li>
-                <li><Trans ns="admin" i18nKey="navbarEditor.howItWorksOne" components={{ strong: <strong /> }} /></li>
-                <li><Trans ns="admin" i18nKey="navbarEditor.howItWorksNone" components={{ strong: <strong /> }} /></li>
-                <li><Trans ns="admin" i18nKey="navbarEditor.howItWorksUnassigned" components={{ strong: <strong /> }} /></li>
+                <li>A group with <strong>multiple links</strong> shows a dropdown when hovered/clicked</li>
+                <li>A group with <strong>one link</strong> navigates directly to that link</li>
+                <li>A group with <strong>no links</strong> will not appear in the navbar</li>
+                <li><strong>Categories not assigned</strong> to any group will still appear as individual links in the navbar (just like before)</li>
               </ul>
               <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>
                 <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
-                {t('navbarEditor.howItWorksFooter')}
+                Static links like Home, About, Contact etc. will always appear in the navbar. A category can only belong to one group — it will be marked if already used elsewhere.
               </p>
             </div>
           </div>
@@ -962,7 +960,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
             marginBottom: 16,
             fontSize: 14,
           }}>
-            {status === 'success' ? t('navbarEditor.savedSuccess') : status.replace('error:', t('navbarEditor.failedToSavePrefix'))}
+            {status === 'success' ? "Navbar configuration saved successfully!" : status.replace('error:', "Failed to save: ")}
           </div>
         )}
 

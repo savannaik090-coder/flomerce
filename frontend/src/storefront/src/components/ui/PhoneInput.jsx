@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { COUNTRIES, COUNTRY_FLAGS, getDialCode } from '../../utils/countryStates.js';
+import TranslatedText from '../TranslatedText';
 
 const sortedCountries = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -14,7 +14,6 @@ function extractLocalNumber(fullValue, dial) {
 }
 
 export default function PhoneInput({ value, onChange, countryCode, error, style }) {
-  const { t } = useTranslation('storefront');
   const [selectedCC, setSelectedCC] = useState(countryCode || 'IN');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -96,7 +95,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
           type="tel"
           value={localNumber}
           onChange={handlePhoneChange}
-          placeholder={t('phoneInput.placeholder', 'Phone number')}
+          placeholder=<TranslatedText text="Phone number" />
           style={{
             flex: 1, padding: '10px 12px', border: 'none', outline: 'none',
             fontSize: 14, minWidth: 0, boxSizing: 'border-box',
@@ -117,7 +116,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={t('phoneInput.searchCountry', 'Search country...')}
+              placeholder=<TranslatedText text="Search country..." />
               style={{
                 width: '100%', padding: '8px 10px', border: '1px solid #ddd',
                 borderRadius: 4, fontSize: 13, boxSizing: 'border-box', outline: 'none',
@@ -143,7 +142,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
               </div>
             ))}
             {filtered.length === 0 && (
-              <div style={{ padding: '12px', color: '#999', textAlign: 'center', fontSize: 13 }}>{t('phoneInput.noCountries', 'No countries found')}</div>
+              <div style={{ padding: '12px', color: '#999', textAlign: 'center', fontSize: 13 }}><TranslatedText text="No countries found" /></div>
             )}
           </div>
         </div>

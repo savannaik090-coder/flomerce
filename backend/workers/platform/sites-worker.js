@@ -6,7 +6,76 @@ import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
-import { SUPPORTED_LOCALES, getLocalizedWizardSeed, ensureLocaleCached } from './i18n-worker.js';
+// English-only wizard seed (System A removed). The platform UI is English; the
+// storefront uses on-demand translation (System B) at render time.
+const SUPPORTED_LOCALES = new Set([
+  'en', 'hi', 'es', 'zh-CN', 'ar',
+  'fr', 'de', 'pt', 'pt-BR', 'it', 'ja', 'ko', 'ru', 'tr', 'pl', 'nl', 'sv',
+  'th', 'vi', 'id', 'ms', 'fil', 'bn', 'ta', 'te', 'mr', 'gu', 'kn', 'ml',
+  'pa', 'ur', 'fa', 'he', 'el', 'cs', 'da', 'fi', 'no', 'ro', 'hu', 'uk',
+  'zh-TW', 'en-GB',
+]);
+
+const EN_SEO_TITLE_TEMPLATES = {
+  jewellery: '{{brand}} - Jewellery Store Online',
+  clothing: '{{brand}} - Fashion & Clothing Store',
+  beauty: '{{brand}} - Beauty & Cosmetics Store',
+  general: '{{brand}} - Shop Online',
+};
+const EN_SEO_DESCRIPTION_TEMPLATES = {
+  jewellery: 'Shop exquisite jewellery at {{brand}}. Explore rings, necklaces, earrings, bracelets & more. Secure payments & nationwide delivery.',
+  clothing: 'Discover the latest fashion at {{brand}}. Shop clothing, accessories & more with easy returns & fast shipping.',
+  beauty: 'Shop premium beauty & cosmetics at {{brand}}. Skincare, makeup & more with secure checkout & fast delivery.',
+  general: 'Shop online at {{brand}}. Explore our curated collection with secure checkout, easy returns & fast delivery.',
+};
+const EN_DEFAULT_CATEGORIES = {
+  jewellery: {
+    c1: { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },
+    c2: { name: 'Jewellery Collection', subtitle: 'Exquisite pieces for every occasion' },
+    c3: { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+  },
+  clothing: {
+    c1: { name: 'New Arrivals', subtitle: 'Discover our latest fashion trends' },
+    c2: { name: 'Clothing Collection', subtitle: 'Stylish wear for every occasion' },
+    c3: { name: 'Featured Collection', subtitle: 'Handpicked favourites just for you' },
+  },
+  beauty: {
+    c1: { name: 'New Arrivals', subtitle: 'Discover our latest beauty essentials' },
+    c2: { name: 'Skincare', subtitle: 'Nourish and glow with our skincare range' },
+    c3: { name: 'Makeup', subtitle: 'Premium makeup for every look' },
+  },
+  general: {
+    c1: { name: 'New Arrivals', subtitle: 'Check out what just landed' },
+    c2: { name: 'Our Collection', subtitle: 'Browse our complete product range' },
+    c3: { name: 'Featured Products', subtitle: 'Handpicked favourites just for you' },
+  },
+};
+
+function slugifyName(s) {
+  return String(s || '').toLowerCase().trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function getEnglishWizardSeed() {
+  const sub = (tpl, brand) => String(tpl || '').replace(/\{\{\s*brand\s*\}\}/g, brand);
+  return {
+    seoTitle: (cat, brand) => sub(EN_SEO_TITLE_TEMPLATES[cat] || EN_SEO_TITLE_TEMPLATES.general, brand),
+    seoDescription: (cat, brand) => sub(EN_SEO_DESCRIPTION_TEMPLATES[cat] || EN_SEO_DESCRIPTION_TEMPLATES.general, brand),
+    defaultCategories: (cat) => {
+      const enCats = EN_DEFAULT_CATEGORIES[cat] || EN_DEFAULT_CATEGORIES.general;
+      return Object.keys(enCats).map((key) => {
+        const enEntry = enCats[key] || {};
+        return {
+          name: enEntry.name || '',
+          subtitle: enEntry.subtitle || null,
+          slug: slugifyName(enEntry.name || key),
+        };
+      });
+    },
+  };
+}
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
 import { getSiteTranslatorUsage } from '../storefront/translate-worker.js';
 
@@ -524,12 +593,10 @@ async function createSite(request, env, user) {
     // Resolve localized SEO + category seed data from the cached wizard
     // catalog for the merchant's chosen content language. Falls back per
     // field to the bundled English source so unfilled locales still work.
-    // Pre-warm the locale R2 cache so the wizard seed is actually localized
-    // for first-time non-English site creation. ensureLocaleCached is bounded
-    // (rate-limited, supported-allowlist only) and silently no-ops on
-    // failure — getLocalizedWizardSeed will then fall back to English.
-    await ensureLocaleCached(env, contentLanguage);
-    const wizardSeed = await getLocalizedWizardSeed(env, contentLanguage);
+    // English-only wizard seed (System A removed). Storefront chrome is
+    // translated at render time via System B (<TranslatedText>) when the
+    // shopper picks a language.
+    const wizardSeed = getEnglishWizardSeed();
     const safeBrand = sanitizeInput(brandName);
     const finalSeoTitle = seoTitle || wizardSeed.seoTitle(category, safeBrand);
     const finalSeoDescription = seoDescription || wizardSeed.seoDescription(category, safeBrand);

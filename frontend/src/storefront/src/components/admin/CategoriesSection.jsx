@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
 import { API_BASE } from '../../config.js';
@@ -56,7 +55,6 @@ function SectionCard({ title, subtitle, icon, children, defaultOpen = true }) {
 }
 
 export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
-  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const toast = useToast();
   const [categories, setCategories] = useState([]);
@@ -225,8 +223,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   function handleDeleteCategory(categoryId) {
     setConfirmModal({
-      title: t('categories.modal.deleteCategoryTitle'),
-      message: t('categories.modal.deleteCategoryMsg'),
+      title: "Delete Category",
+      message: "Delete this category? Products in this category will not be deleted.",
       danger: true,
       onConfirm: () => {
         const isPending = pendingNewCats.find(c => c.tempId === categoryId);
@@ -310,8 +308,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         }
         await loadCategories();
         if (onSaved) onSaved();
-      } else { toast.error(t('categories.toast.imageUploadFailed')); }
-    } catch (e) { toast.error(t('categories.toast.uploadImageError', { error: e.message })); }
+      } else { toast.error("Image upload failed"); }
+    } catch (e) { toast.error(`Failed to upload image: ${e.message}`); }
     finally { setUploadingImage(null); }
   }
 
@@ -327,7 +325,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       }
       await loadCategories();
       if (onSaved) onSaved();
-    } catch (e) { toast.error(t('categories.toast.removeImageError', { error: e.message })); }
+    } catch (e) { toast.error(`Failed to remove image: ${e.message}`); }
   }
 
   function handleAddSubcategory(categoryId) {
@@ -371,8 +369,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   function handleDeleteSubItem(itemId) {
     setConfirmModal({
-      title: t('categories.modal.deleteItemTitle'),
-      message: t('categories.modal.deleteItemMsg'),
+      title: "Delete Item",
+      message: "Delete this item?",
       danger: true,
       onConfirm: () => {
         const isPendingAdd = pendingSubAdds.find(s => s.tempId === itemId);
@@ -465,8 +463,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         setChooseChanged(true);
         markUploaded(newUrl);
         if (oldImage) markForDeletion(oldImage);
-      } else { toast.error(t('categories.toast.imageUploadFailed')); }
-    } catch (e) { toast.error(t('categories.toast.uploadError', { error: e.message })); }
+      } else { toast.error("Image upload failed"); }
+    } catch (e) { toast.error(`Failed to upload: ${e.message}`); }
     finally { setChooseUploadingId(null); }
   }
 
@@ -673,7 +671,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
-          toast.error(t('categories.toast.saveError', { error: result.error || t('categories.toast.unknownError') }));
+          toast.error(`Failed to save: ${result.error || "Unknown error"}`);
           setSaving(false);
           return;
         }
@@ -702,7 +700,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       await loadCategories();
       if (refetchSite) await refetchSite();
       if (onSaved) onSaved();
-    } catch (e) { toast.error(t('categories.toast.saveError', { error: e.message })); }
+    } catch (e) { toast.error(`Failed to save: ${e.message}`); }
     finally { setSaving(false); }
   }
 
@@ -724,7 +722,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <i className="fas fa-info-circle" />
-            <span style={{ fontSize: 14, fontWeight: 500 }}>{t('categories.unsavedChanges')}</span>
+            <span style={{ fontSize: 14, fontWeight: 500 }}>You have unsaved changes</span>
           </div>
           <button
             onClick={handleSaveAllSettings}
@@ -734,7 +732,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600,
               cursor: 'pointer', opacity: saving ? 0.7 : 1,
             }}
-          >{saving ? t('categories.saving') : t('categories.saveChanges')}</button>
+          >{saving ? "Saving..." : "Save Changes"}</button>
         </div>
       )}
 
@@ -750,7 +748,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           }}
         >
           <i className="fas fa-folder" style={{ marginInlineEnd: 6, fontSize: 12 }} />
-          {t('categories.tab.categories')}
+          Your Categories
         </button>
         <button
           onClick={() => setActiveView('homepage')}
@@ -763,7 +761,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           }}
         >
           <i className="fas fa-home" style={{ marginInlineEnd: 6, fontSize: 12 }} />
-          {t('categories.tab.homepage')}
+          Homepage Layout
         </button>
       </div>
 
@@ -772,30 +770,30 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <i className="fas fa-lightbulb" style={{ color: '#3b82f6', marginTop: 2, flexShrink: 0 }} />
             <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.5 }}>
-              <strong>{t('categories.intro.categoriesStrong')}</strong>{t('categories.intro.categoriesText')}
+              <strong>Categories</strong> help customers browse your products. Create main categories (like "Necklaces" or "Rings"), then add subcategories inside them for finer organization (like "Gold", "Silver"). Click on any category to manage its subcategories.
             </div>
           </div>
 
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 20, marginBottom: 20 }}>
             <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
               <i className="fas fa-plus-circle" style={{ marginInlineEnd: 8, color: '#3b82f6', fontSize: 14 }} />
-              {t('categories.newCategoryTitle')}
+              Create New Category
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input
-                type="text" placeholder={t('categories.newCategoryNamePlaceholder')}
+                type="text" placeholder="Category name (e.g. Necklaces, Rings, Sarees)"
                 value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                 style={{ padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
               />
               <input
-                type="text" placeholder={t('categories.shortDescPlaceholder')}
+                type="text" placeholder="Short description (optional)"
                 value={newCategorySubtitle} onChange={(e) => setNewCategorySubtitle(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                 style={{ padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }}
               />
               <button className="btn btn-primary" onClick={handleAddCategory} disabled={!newCategoryName.trim()} style={{ alignSelf: 'flex-start', opacity: !newCategoryName.trim() ? 0.6 : 1 }}>
-                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('categories.addCategoryBtn')}
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Category
               </button>
             </div>
           </div>
@@ -804,7 +802,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             <div style={{ marginBottom: 16 }}>
               <input
                 type="text"
-                placeholder={t('categories.searchPlaceholder')}
+                placeholder="Search categories..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', background: '#f8fafc' }}
@@ -815,8 +813,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
               <i className="fas fa-folder-open" style={{ fontSize: 40, marginBottom: 12, display: 'block' }} />
-              <h3 style={{ margin: '0 0 8px', color: '#64748b' }}>{searchTerm ? t('categories.emptyMatchSearch') : t('categories.emptyNoCategories')}</h3>
-              <p style={{ margin: 0, fontSize: 14 }}>{t('categories.emptyDesc')}</p>
+              <h3 style={{ margin: '0 0 8px', color: '#64748b' }}>{searchTerm ? "No categories match your search" : "No categories yet"}</h3>
+              <p style={{ margin: 0, fontSize: 14 }}>Create your first category above to organize your products.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -835,7 +833,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                   <div key={cat.id} style={{ background: '#fff', border: isPending ? '2px dashed #3b82f6' : '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
                     {isPending && (
                       <div style={{ background: '#eff6ff', padding: '6px 16px', fontSize: 12, color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <i className="fas fa-clock" /> {t('categories.pendingNotSaved')}
+                        <i className="fas fa-clock" /> Not saved yet — click "Save Changes" to create
                       </div>
                     )}
 
@@ -844,20 +842,20 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                         {isPending ? (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: 60, border: '2px dashed #e2e8f0', borderRadius: 8, color: '#cbd5e1', fontSize: 11 }}>
                             <i className="fas fa-image" style={{ fontSize: 14, marginBottom: 2 }} />
-                            <span>{t('categories.imageSaveFirst')}</span>
+                            <span>Save first</span>
                           </div>
                         ) : cat.image_url ? (
                           <div style={{ position: 'relative' }}>
                             <img src={resolveImageUrl(cat.image_url)} alt={cat.name} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
                             <button onClick={() => handleRemoveImage(cat.id)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
                             <label style={{ display: 'block', textAlign: 'center', marginTop: 3, fontSize: 10, color: uploadingImage === cat.id ? '#94a3b8' : '#3b82f6', cursor: uploadingImage === cat.id ? 'default' : 'pointer' }}>
-                              {uploadingImage === cat.id ? '...' : t('categories.imageChange')}
+                              {uploadingImage === cat.id ? '...' : "Change"}
                               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }} disabled={uploadingImage === cat.id} />
                             </label>
                           </div>
                         ) : (
                           <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: 60, border: '2px dashed #e2e8f0', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', fontSize: 11 }}>
-                            {uploadingImage === cat.id ? <span style={{ fontSize: 10 }}>...</span> : <><i className="fas fa-image" style={{ fontSize: 14, marginBottom: 2 }} /><span>{t('categories.imagePlaceholder')}</span></>}
+                            {uploadingImage === cat.id ? <span style={{ fontSize: 10 }}>...</span> : <><i className="fas fa-image" style={{ fontSize: 14, marginBottom: 2 }} /><span>Image</span></>}
                             <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }} disabled={uploadingImage === cat.id} />
                           </label>
                         )}
@@ -866,11 +864,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {editingCategory === cat.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <input type="text" value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)} placeholder={t('categories.editNamePlaceholder')} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
-                            <input type="text" value={editCategorySubtitle} onChange={(e) => setEditCategorySubtitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)} placeholder={t('categories.shortDescPlaceholder')} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }} />
+                            <input type="text" value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)} placeholder="Category name" style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
+                            <input type="text" value={editCategorySubtitle} onChange={(e) => setEditCategorySubtitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleUpdateCategory(cat.id)} placeholder="Short description (optional)" style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b' }} />
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateCategory(cat.id)}>{t('categories.save')}</button>
-                              <button className="btn btn-outline btn-sm" onClick={() => setEditingCategory(null)}>{t('categories.cancel')}</button>
+                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateCategory(cat.id)}>Save</button>
+                              <button className="btn btn-outline btn-sm" onClick={() => setEditingCategory(null)}>Cancel</button>
                             </div>
                           </div>
                         ) : (
@@ -879,7 +877,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                               <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>{cat.name}</span>
                               {subCount > 0 && (
                                 <span style={{ fontSize: 11, background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>
-                                  {t('categories.subcatCount', { count: subCount })}
+                                  {(subCount === 1 ? `${subCount} subcategory` : `${subCount} subcategories`)}
                                 </span>
                               )}
                             </div>
@@ -890,15 +888,15 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('categories.homepage')}</div>
+                          <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Homepage</div>
                           <Toggle checked={getShowOnHome(cat)} onChange={() => handleToggleHomepage(cat.id, getShowOnHome(cat))} size="small" />
                         </div>
                         {editingCategory !== cat.id && (
                           <div style={{ display: 'flex', gap: 3 }}>
-                            <button onClick={() => { setEditingCategory(cat.id); setEditCategoryName(cat.name); setEditCategorySubtitle(cat.subtitle || ''); }} title={t('categories.edit')} style={{ padding: '5px 7px', background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
+                            <button onClick={() => { setEditingCategory(cat.id); setEditCategoryName(cat.name); setEditCategorySubtitle(cat.subtitle || ''); }} title="Edit" style={{ padding: '5px 7px', background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', color: '#64748b', fontSize: 12 }}>
                               <i className="fas fa-edit" />
                             </button>
-                            <button onClick={() => handleDeleteCategory(cat.id)} title={t('categories.delete')} style={{ padding: '5px 7px', background: 'none', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>
+                            <button onClick={() => handleDeleteCategory(cat.id)} title="Delete" style={{ padding: '5px 7px', background: 'none', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer', color: '#ef4444', fontSize: 12 }}>
                               <i className="fas fa-trash" />
                             </button>
                           </div>
@@ -920,14 +918,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                         >
                           <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} style={{ fontSize: 10, color: '#94a3b8', width: 14, textAlign: 'center' }} />
                           <i className="fas fa-sitemap" style={{ fontSize: 11, color: '#3b82f6' }} />
-                          <span>{t('categories.subcategoriesSection')}</span>
+                          <span>Subcategories</span>
                           {subCount > 0 && <span style={{ color: '#94a3b8', fontSize: 12 }}>({subCount})</span>}
                         </button>
 
                         {isExpanded && (
                           <div style={{ padding: '12px 16px 16px', background: '#fafbfc' }}>
                             {allDirectItems.length === 0 && (
-                              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 12px' }}>{t('categories.noSubcategories')}</p>
+                              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 12px' }}>No subcategories yet. Add one below.</p>
                             )}
 
                             {allDirectItems.map(child => {
@@ -947,16 +945,16 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                                     {editingSubItem === child.id ? (
                                       <>
                                         <input type="text" value={editSubItemName} onChange={e => setEditSubItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubItem(child.id); if (e.key === 'Escape') setEditingSubItem(null); }} style={{ padding: '2px 6px', border: '1px solid #bae6fd', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', width: 120, boxSizing: 'border-box' }} autoFocus />
-                                        <button onClick={() => handleSaveEditSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: 13, padding: 0 }} title={t('categories.save')}>✓</button>
-                                        <button onClick={() => setEditingSubItem(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: 0 }} title={t('categories.cancel')}>✕</button>
+                                        <button onClick={() => handleSaveEditSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: 13, padding: 0 }} title="Save">✓</button>
+                                        <button onClick={() => setEditingSubItem(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 13, padding: 0 }} title="Cancel">✕</button>
                                       </>
                                     ) : (
                                       <>
                                         <span>{displayChildName}</span>
                                         {isPendingChild && <i className="fas fa-clock" style={{ fontSize: 10, color: '#f59e0b' }} />}
                                         {(pendingSubEdits[child.id]) && <i className="fas fa-pen" style={{ fontSize: 9, color: '#3b82f6' }} />}
-                                        <button onClick={() => handleStartEditSubItem({ ...child, name: displayChildName })} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }} title={t('categories.edit')}><i className="fas fa-edit" /></button>
-                                        <button onClick={() => handleDeleteSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title={t('categories.remove')}>x</button>
+                                        <button onClick={() => handleStartEditSubItem({ ...child, name: displayChildName })} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }} title="Edit"><i className="fas fa-edit" /></button>
+                                        <button onClick={() => handleDeleteSubItem(child.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
                                       </>
                                     )}
                                   </div>
@@ -969,21 +967,21 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                                     {editingSubItem === child.id ? (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <input type="text" value={editSubItemName} onChange={e => setEditSubItemName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubItem(child.id); if (e.key === 'Escape') setEditingSubItem(null); }} style={{ padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', width: 160, boxSizing: 'border-box' }} autoFocus />
-                                        <button onClick={() => handleSaveEditSubItem(child.id)} style={{ padding: '4px 8px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>{t('categories.save')}</button>
-                                        <button onClick={() => setEditingSubItem(null)} style={{ padding: '4px 8px', background: 'none', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>{t('categories.cancel')}</button>
+                                        <button onClick={() => handleSaveEditSubItem(child.id)} style={{ padding: '4px 8px', background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Save</button>
+                                        <button onClick={() => setEditingSubItem(null)} style={{ padding: '4px 8px', background: 'none', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
                                       </div>
                                     ) : (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <i className="fas fa-folder-open" style={{ fontSize: 11, color: '#3b82f6' }} />
                                         <span style={{ fontWeight: 600, fontSize: 14, color: '#334155' }}>{displayChildName}</span>
                                         <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>({allValues.length})</span>
-                                        {isPendingChild && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>{t('categories.unsaved')}</span>}
-                                        {(pendingSubEdits[child.id]) && <span style={{ fontSize: 10, color: '#3b82f6', fontWeight: 600 }}>{t('categories.edited')}</span>}
+                                        {isPendingChild && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>unsaved</span>}
+                                        {(pendingSubEdits[child.id]) && <span style={{ fontSize: 10, color: '#3b82f6', fontWeight: 600 }}>edited</span>}
                                       </div>
                                     )}
                                     <div style={{ display: 'flex', gap: 4 }}>
                                       {editingSubItem !== child.id && <button onClick={() => handleStartEditSubItem({ ...child, name: displayChildName })} style={{ padding: '4px 7px', background: 'none', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}><i className="fas fa-edit" /></button>}
-                                      <button onClick={() => { setAddingValueTo(addingValueTo === child.id ? null : child.id); setNewValueName(''); }} style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>{t('categories.addBtn')}</button>
+                                      <button onClick={() => { setAddingValueTo(addingValueTo === child.id ? null : child.id); setNewValueName(''); }} style={{ padding: '4px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>+ Add</button>
                                       <button onClick={() => handleDeleteSubItem(child.id)} style={{ padding: '4px 7px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}><i className="fas fa-trash" /></button>
                                     </div>
                                   </div>
@@ -1001,8 +999,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                                             <span>{val.name}</span>
                                             {val._isPending && <i className="fas fa-clock" style={{ fontSize: 10, color: '#f59e0b' }} />}
                                             {(pendingSubEdits[val.id]) && <i className="fas fa-pen" style={{ fontSize: 9, color: '#3b82f6' }} />}
-                                            <button onClick={() => handleStartEditSubItem(val)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }} title={t('categories.edit')}><i className="fas fa-edit" /></button>
-                                            <button onClick={() => handleDeleteSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title={t('categories.remove')}>x</button>
+                                            <button onClick={() => handleStartEditSubItem(val)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }} title="Edit"><i className="fas fa-edit" /></button>
+                                            <button onClick={() => handleDeleteSubItem(val.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }} title="Remove">x</button>
                                           </>
                                         )}
                                       </div>
@@ -1010,8 +1008,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                                   </div>
                                   {addingValueTo === child.id && (
                                     <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                                      <input type="text" value={newValueName} onChange={e => setNewValueName(e.target.value)} placeholder={t('categories.addItemPlaceholder', { name: displayChildName })} onKeyDown={e => { if (e.key === 'Enter') handleAddValue(child.id); }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
-                                      <button onClick={() => handleAddValue(child.id)} disabled={!newValueName.trim()} style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', opacity: !newValueName.trim() ? 0.5 : 1 }}>{t('categories.add')}</button>
+                                      <input type="text" value={newValueName} onChange={e => setNewValueName(e.target.value)} placeholder={`Add item to ${displayChildName}...`} onKeyDown={e => { if (e.key === 'Enter') handleAddValue(child.id); }} style={{ flex: 1, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
+                                      <button onClick={() => handleAddValue(child.id)} disabled={!newValueName.trim()} style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', opacity: !newValueName.trim() ? 0.5 : 1 }}>Add</button>
                                     </div>
                                   )}
                                 </div>
@@ -1021,19 +1019,19 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                             <div style={{ marginTop: 10, background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', padding: 12 }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 8 }}>
                                 <i className="fas fa-plus" style={{ marginInlineEnd: 6, fontSize: 10, color: '#3b82f6' }} />
-                                {t('categories.addSubcategory')}
+                                Add Subcategory
                               </div>
                               <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                                <input type="text" value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder={t('categories.subNamePlaceholder')} onKeyDown={e => { if (e.key === 'Enter') handleAddSubcategory(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                                <input type="text" value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Subcategory name (e.g. Gold, Silver, Diamond)" onKeyDown={e => { if (e.key === 'Enter') handleAddSubcategory(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                               </div>
                               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                <input type="text" value={newSubGroupName} onChange={e => setNewSubGroupName(e.target.value)} placeholder={t('categories.groupNamePlaceholder')} onKeyDown={e => { if (e.key === 'Enter') handleAddSubcategory(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px dashed #cbd5e1', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-                                <button onClick={() => handleAddSubcategory(cat.id)} disabled={!newSubName.trim()} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600, opacity: !newSubName.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>{t('categories.add')}</button>
+                                <input type="text" value={newSubGroupName} onChange={e => setNewSubGroupName(e.target.value)} placeholder="Group name (optional — e.g. Material, Color)" onKeyDown={e => { if (e.key === 'Enter') handleAddSubcategory(cat.id); }} style={{ flex: 1, padding: '8px 10px', border: '1px dashed #cbd5e1', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                                <button onClick={() => handleAddSubcategory(cat.id)} disabled={!newSubName.trim()} style={{ padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontWeight: 600, opacity: !newSubName.trim() ? 0.5 : 1, whiteSpace: 'nowrap' }}>Add</button>
                               </div>
                               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, lineHeight: 1.4 }}>
-                                <strong>{t('categories.groupHint.withoutLabel')}</strong>{t('categories.groupHint.withoutText')}
+                                <strong>Without group:</strong> adds directly under this category.
                                 <br />
-                                <strong>{t('categories.groupHint.withLabel')}</strong>{t('categories.groupHint.withText')}
+                                <strong>With group:</strong> groups similar subcategories together (e.g. group "Material" with items Gold, Silver, Platinum).
                               </div>
                             </div>
                           </div>
@@ -1053,23 +1051,23 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <i className="fas fa-lightbulb" style={{ color: '#3b82f6', marginTop: 2, flexShrink: 0 }} />
             <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.5 }}>
-              {t('categories.intro.homepage')}
+              Control how your categories appear on the store's homepage. You can show product sections for each category, add featured subcategory sections, enable circular browse icons, and reorder everything.
             </div>
           </div>
 
           <SectionCard
-            title={t('categories.browseCircles.title')}
-            subtitle={t('categories.browseCircles.subtitle')}
+            title="Browse by Category Circles"
+            subtitle="Circular icons on homepage for quick browsing"
             icon="fa-th"
             defaultOpen={true}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 16 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{t('categories.enableSection')}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Enable this section</span>
               <Toggle checked={chooseEnabled} onChange={handleChooseToggle} />
             </div>
             <div style={{ opacity: chooseEnabled ? 1 : 0.4, pointerEvents: chooseEnabled ? 'auto' : 'none', transition: 'opacity 0.3s' }}>
               {categories.length === 0 ? (
-                <p style={{ color: '#94a3b8', fontSize: 13 }}>{t('categories.browseCircles.empty')}</p>
+                <p style={{ color: '#94a3b8', fontSize: 13 }}>Create categories first, then come back here to set up browse circles.</p>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
                   {categories.map(cat => {
@@ -1084,13 +1082,13 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                               <img src={resolveImageUrl(browseImg)} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                               <button onClick={() => handleChooseImageRemove(cat.id)} style={{ position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
                               <label style={{ position: 'absolute', bottom: 4, right: 4, background: 'rgba(255,255,255,0.9)', borderRadius: 4, padding: '2px 6px', fontSize: 10, color: chooseUploadingId === cat.id ? '#94a3b8' : '#3b82f6', cursor: chooseUploadingId === cat.id ? 'default' : 'pointer' }}>
-                                {chooseUploadingId === cat.id ? '...' : t('categories.imageChange')}
+                                {chooseUploadingId === cat.id ? '...' : "Change"}
                                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleChooseImageUpload(cat.id, e.target.files[0]); }} disabled={chooseUploadingId === cat.id} />
                               </label>
                             </>
                           ) : (
                             <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', cursor: 'pointer', color: '#94a3b8', fontSize: 11 }}>
-                              {chooseUploadingId === cat.id ? <span>...</span> : <><i className="fas fa-image" style={{ fontSize: 18, marginBottom: 4 }} /><span>{t('categories.addImage')}</span></>}
+                              {chooseUploadingId === cat.id ? <span>...</span> : <><i className="fas fa-image" style={{ fontSize: 18, marginBottom: 4 }} /><span>Add Image</span></>}
                               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleChooseImageUpload(cat.id, e.target.files[0]); }} disabled={chooseUploadingId === cat.id} />
                             </label>
                           )}
@@ -1108,14 +1106,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           </SectionCard>
 
           <SectionCard
-            title={t('categories.featured.title')}
-            subtitle={t('categories.featured.subtitle')}
+            title="Featured Subcategory Sections"
+            subtitle="Highlight specific subcategories on the homepage"
             icon="fa-star"
             defaultOpen={true}
           >
             <div style={{ marginTop: 12 }}>
               <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px', lineHeight: 1.5 }}>
-                {t('categories.featured.intro')}
+                Add product sections that show items from a specific subcategory. For example, show only "Gold Necklaces" or "Cotton Sarees" as a featured section on your homepage.
               </p>
 
               {subcatSections.length > 0 && (
@@ -1127,7 +1125,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                         {section.subtitle && <div style={{ color: '#64748b', fontSize: 12, marginTop: 1 }}>{section.subtitle}</div>}
                         <div style={{ color: '#94a3b8', fontSize: 11, marginTop: 3 }}>
                           <i className="fas fa-filter" style={{ marginInlineEnd: 4, fontSize: 9 }} />
-                          {section.subcategoryLabel || t('categories.featured.selectedSubcat')}
+                          {section.subcategoryLabel || "Selected subcategory"}
                         </div>
                       </div>
                       <button onClick={() => handleRemoveSubcatSection(section.id)} style={{ padding: '5px 8px', background: 'none', color: '#ef4444', border: '1px solid #fecaca', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}><i className="fas fa-trash" /></button>
@@ -1139,13 +1137,13 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14 }}>
                 <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 10, color: '#475569' }}>
                   <i className="fas fa-plus" style={{ marginInlineEnd: 6, fontSize: 10, color: '#3b82f6' }} />
-                  {t('categories.featured.addNew')}
+                  Add New Featured Section
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <input type="text" placeholder={t('categories.featured.titlePlaceholder')} value={newSectionName} onChange={e => setNewSectionName(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }} />
-                  <input type="text" placeholder={t('categories.shortDescPlaceholder')} value={newSectionSubtitle} onChange={e => setNewSectionSubtitle(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b', background: '#fff' }} />
+                  <input type="text" placeholder="Section title (e.g. Trending Gold Necklaces)" value={newSectionName} onChange={e => setNewSectionName(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff' }} />
+                  <input type="text" placeholder="Short description (optional)" value={newSectionSubtitle} onChange={e => setNewSectionSubtitle(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b', background: '#fff' }} />
                   <select value={newSectionSubcatId} onChange={e => setNewSectionSubcatId(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}>
-                    <option value="">{t('categories.featured.chooseProducts')}</option>
+                    <option value="">Choose which products to show...</option>
                     {categories.map(cat => {
                       const groups = cat.children || [];
                       if (groups.length === 0) return null;
@@ -1161,7 +1159,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                     })}
                   </select>
                   <button className="btn btn-primary" onClick={handleAddSubcatSection} disabled={!newSectionName.trim() || !newSectionSubcatId} style={{ alignSelf: 'flex-start', opacity: (!newSectionName.trim() || !newSectionSubcatId) ? 0.5 : 1, fontSize: 13 }}>
-                    <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('categories.featured.addBtn')}
+                    <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Section
                   </button>
                 </div>
               </div>
@@ -1170,14 +1168,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
           {unifiedSections.length > 0 && (
             <SectionCard
-              title={t('categories.order.title')}
-              subtitle={t('categories.order.subtitle')}
+              title="Section Display Order"
+              subtitle="Drag sections up or down to change their homepage order"
               icon="fa-sort"
               defaultOpen={true}
             >
               <div style={{ marginTop: 12 }}>
                 <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>
-                  {t('categories.order.intro')}
+                  Arrange the order in which product sections appear on your homepage. The first section shows right after the hero banner.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {unifiedSections.map((item, idx) => (
@@ -1192,7 +1190,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                         {item.label && <div style={{ color: '#94a3b8', fontSize: 11 }}>{item.label}</div>}
                       </div>
                       <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, background: item.type === 'category' ? '#dbeafe' : '#fae8ff', color: item.type === 'category' ? '#2563eb' : '#a21caf', flexShrink: 0 }}>
-                        {item.type === 'category' ? t('categories.type.category') : t('categories.type.featured')}
+                        {item.type === 'category' ? "Category" : "Featured"}
                       </span>
                     </div>
                   ))}
@@ -1217,7 +1215,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             boxShadow: hasUnsavedChanges ? '0 4px 12px rgba(59,130,246,0.3)' : 'none',
             transition: 'all 0.3s ease',
           }}
-        >{saving ? t('categories.saving') : hasUnsavedChanges ? t('categories.saveAllChanges') : t('categories.allChangesSaved')}</button>
+        >{saving ? "Saving..." : hasUnsavedChanges ? "Save All Changes" : "All Changes Saved"}</button>
       </div>
     </div>
     <ConfirmModal open={!!confirmModal} title={confirmModal?.title} message={confirmModal?.message} danger={confirmModal?.danger} confirmText={confirmModal?.confirmText} onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }} onCancel={() => setConfirmModal(null)} />

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { formatPrice } from '../../utils/priceFormatter.js';
@@ -35,8 +34,8 @@ const STATUS_COLORS = {
   cancellation_requested: '#fbbf24',
 };
 
-function MiniBarChart({ data, currency, t }) {
-  if (!data || data.length === 0) return <div style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 40 }}>{t('revenueSection.noPeriodData')}</div>;
+function MiniBarChart({ data, currency }) {
+  if (!data || data.length === 0) return <div style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 40 }}>No data for this period</div>;
   const maxRevenue = Math.max(...data.map(d => d.revenue || 0), 1);
   const barWidth = Math.max(Math.min(Math.floor((100 / data.length) - 1), 40), 4);
 
@@ -48,7 +47,7 @@ function MiniBarChart({ data, currency, t }) {
           const label = d.day ? d.day.slice(5) : '';
           return (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: `0 0 ${barWidth}px` }}>
-              <div title={`${label}: ${formatPrice(d.revenue, currency)} (${t('revenueSection.ordersCount', { count: d.orders })})`}
+              <div title={`${label}: ${formatPrice(d.revenue, currency)} (${`${d.orders} orders`})`}
                 style={{ width: barWidth, height: h, background: 'linear-gradient(180deg, #3b82f6, #1d4ed8)', borderRadius: '3px 3px 0 0', cursor: 'pointer', transition: 'height 0.3s' }} />
               {data.length <= 31 && <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4, transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>{label}</div>}
             </div>
@@ -76,7 +75,6 @@ function StatusBar({ breakdown, total }) {
 }
 
 export default function RevenueSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [range, setRange] = useState('month');
   const [customFrom, setCustomFrom] = useState('');
@@ -85,11 +83,11 @@ export default function RevenueSection() {
   const [loading, setLoading] = useState(true);
 
   const RANGE_OPTIONS = [
-    { key: 'today', label: t('revenueSection.rangeToday') },
-    { key: 'week', label: t('revenueSection.rangeWeek') },
-    { key: 'month', label: t('revenueSection.rangeMonth') },
-    { key: 'all', label: t('revenueSection.rangeAll') },
-    { key: 'custom', label: t('revenueSection.rangeCustom') },
+    { key: 'today', label: "Today" },
+    { key: 'week', label: "This Week" },
+    { key: 'month', label: "This Month" },
+    { key: 'all', label: "All Time" },
+    { key: 'custom', label: "Custom" },
   ];
 
   const gstEnabled = siteConfig?.settings?.gstEnabled === true;
@@ -122,17 +120,15 @@ export default function RevenueSection() {
   }
 
   function statusLabel(status) {
-    const key = `revenueSection.status.${status || 'unknown'}`;
-    const fallback = (status || 'unknown').replace(/_/g, ' ');
-    return t(key, { defaultValue: fallback });
+    return (status || 'unknown').replace(/_/g, ' ');
   }
 
   function paymentMethodLabel(pm) {
     const raw = (pm || '').toLowerCase();
-    if (raw === 'razorpay') return t('revenueSection.payment.razorpay');
-    if (raw === 'cod') return t('revenueSection.payment.cod');
-    if (raw === 'stripe') return t('revenueSection.payment.stripe');
-    return pm || t('revenueSection.payment.unknown');
+    if (raw === 'razorpay') return "Razorpay";
+    if (raw === 'cod') return "Cash on Delivery";
+    if (raw === 'stripe') return "Stripe";
+    return pm || "Unknown";
   }
 
   const cardStyle = { background: '#fff', borderRadius: 10, padding: 20, border: '1px solid #e2e8f0' };
@@ -151,7 +147,7 @@ export default function RevenueSection() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
               style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit' }} />
-            <span style={{ color: '#94a3b8' }}>{t('revenueSection.dateTo')}</span>
+            <span style={{ color: '#94a3b8' }}>to</span>
             <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
               style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 13, fontFamily: 'inherit' }} />
           </div>
@@ -161,47 +157,47 @@ export default function RevenueSection() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
           <div className="spinner" style={{ margin: '0 auto 12px' }} />
-          <div>{t('revenueSection.loading')}</div>
+          <div>Loading analytics...</div>
         </div>
       ) : !data ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>{t('revenueSection.noData')}</div>
+        <div style={{ textAlign: 'center', padding: 60, color: '#94a3b8' }}>No data available</div>
       ) : (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
             <div style={statCardStyle}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('revenueSection.totalRevenue')}</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Revenue</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.summary.totalRevenue, currency)}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('revenueSection.paidOrders', { count: data.summary.revenueOrders })}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{`${data.summary.revenueOrders} paid orders`}</div>
             </div>
             <div style={statCardStyle}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('revenueSection.totalOrders')}</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Orders</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{data.summary.totalOrders}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('revenueSection.allStatuses')}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>all statuses</div>
             </div>
             <div style={statCardStyle}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('revenueSection.avgOrderValue')}</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Avg Order Value</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.summary.avgOrderValue, currency)}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('revenueSection.perPaidOrder')}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>per paid order</div>
             </div>
             {gstEnabled && (
               <div style={statCardStyle}>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('revenueSection.gstCollected')}</div>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>GST Collected</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.gstBreakdown.total, currency)}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{t('revenueSection.totalTax')}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>total tax</div>
               </div>
             )}
           </div>
 
           <div style={{ ...cardStyle, marginBottom: 20 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{t('revenueSection.revenueTrend')}</h3>
-            <MiniBarChart data={data.dailyRevenue} currency={currency} t={t} />
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Revenue Trend</h3>
+            <MiniBarChart data={data.dailyRevenue} currency={currency} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={cardStyle}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{t('revenueSection.paymentMethods')}</h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Payment Methods</h3>
               {data.paymentMethodSplit.length === 0 ? (
-                <div style={{ color: '#94a3b8', fontSize: 13 }}>{t('revenueSection.noDataShort')}</div>
+                <div style={{ color: '#94a3b8', fontSize: 13 }}>No data</div>
               ) : (
                 <div>
                   {data.paymentMethodSplit.map((pm, i) => {
@@ -212,7 +208,7 @@ export default function RevenueSection() {
                       <div key={i} style={{ marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13 }}>
                           <span style={{ fontWeight: 600, color: '#334155' }}>{label}</span>
-                          <span style={{ color: '#64748b' }}>{formatPrice(pm.revenue || 0, currency)} ({t('revenueSection.ordersCount', { count: pm.order_count })})</span>
+                          <span style={{ color: '#64748b' }}>{formatPrice(pm.revenue || 0, currency)} ({`${pm.order_count} orders`})</span>
                         </div>
                         <div style={{ height: 8, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: i === 0 ? '#3b82f6' : '#22c55e', borderRadius: 4, transition: 'width 0.3s' }} />
@@ -225,7 +221,7 @@ export default function RevenueSection() {
             </div>
 
             <div style={cardStyle}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{t('revenueSection.orderStatus')}</h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Order Status</h3>
               <StatusBar breakdown={data.statusBreakdown} total={data.summary.totalOrders} />
               {data.statusBreakdown.map((s, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < data.statusBreakdown.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
@@ -240,18 +236,18 @@ export default function RevenueSection() {
           </div>
 
           <div style={{ ...cardStyle, marginBottom: 20 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{t('revenueSection.topProducts')}</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Top Selling Products</h3>
             {data.topProducts.length === 0 ? (
-              <div style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 20 }}>{t('revenueSection.noProductData')}</div>
+              <div style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 20 }}>No product data</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ textAlign: 'start', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>#</th>
-                      <th style={{ textAlign: 'start', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>{t('revenueSection.product')}</th>
-                      <th style={{ textAlign: 'end', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>{t('revenueSection.qtySold')}</th>
-                      <th style={{ textAlign: 'end', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>{t('revenueSection.revenue')}</th>
+                      <th style={{ textAlign: 'start', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Product</th>
+                      <th style={{ textAlign: 'end', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Qty Sold</th>
+                      <th style={{ textAlign: 'end', padding: '8px 12px', color: '#64748b', fontWeight: 600 }}>Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -276,23 +272,23 @@ export default function RevenueSection() {
 
           {gstEnabled && data.gstBreakdown.total > 0 && (
             <div style={{ ...cardStyle, marginBottom: 20 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{t('revenueSection.gstBreakdown')}</h3>
+              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#0f172a' }}>GST Breakdown</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                 <div style={{ textAlign: 'center', padding: 16, background: '#f8fafc', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>{t('revenueSection.cgst')}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>CGST</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.gstBreakdown.cgst, currency)}</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, background: '#f8fafc', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>{t('revenueSection.sgst')}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>SGST</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.gstBreakdown.sgst, currency)}</div>
                 </div>
                 <div style={{ textAlign: 'center', padding: 16, background: '#f8fafc', borderRadius: 8 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>{t('revenueSection.igst')}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>IGST</div>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.gstBreakdown.igst, currency)}</div>
                 </div>
               </div>
               <div style={{ textAlign: 'center', marginTop: 12, padding: 12, background: '#f0fdf4', borderRadius: 8 }}>
-                <span style={{ fontSize: 13, color: '#64748b' }}>{t('revenueSection.totalGstCollected')} </span>
+                <span style={{ fontSize: 13, color: '#64748b' }}>Total GST Collected: </span>
                 <span style={{ fontSize: 16, fontWeight: 700, color: '#16a34a' }}>{formatPrice(data.gstBreakdown.total, currency)}</span>
               </div>
             </div>
@@ -300,15 +296,15 @@ export default function RevenueSection() {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
             <div style={{ ...cardStyle, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>{t('revenueSection.shippingCollected')}</div>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Shipping Collected</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.summary.totalShipping, currency)}</div>
             </div>
             <div style={{ ...cardStyle, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>{t('revenueSection.discountsGiven')}</div>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Discounts Given</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#ef4444' }}>-{formatPrice(data.summary.totalDiscount, currency)}</div>
             </div>
             <div style={{ ...cardStyle, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>{t('revenueSection.taxCollected')}</div>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' }}>Tax Collected</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{formatPrice(data.summary.totalTax, currency)}</div>
             </div>
           </div>

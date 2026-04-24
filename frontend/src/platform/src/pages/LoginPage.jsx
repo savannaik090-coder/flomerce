@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.jsx';
 import { login as loginService, requestPasswordReset, googleAuth } from '../services/authService.js';
 
@@ -14,7 +13,6 @@ export default function LoginPage() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const { isAuthenticated, login, loading } = useAuth();
-  const { t } = useTranslation(['auth', 'common']);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,7 +59,7 @@ export default function LoginPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || t('googleFailed'));
+      setError(err.message || "Google sign-in failed");
     }
   }
 
@@ -75,12 +73,12 @@ export default function LoginPage() {
         login(result.token, result.user);
         navigate('/dashboard');
       } else if (result.error?.includes('verify') || result.message?.includes('verify')) {
-        setError(t('verifyEmailNotice'));
+        setError("Please verify your email before logging in. Check your inbox.");
       } else {
-        throw new Error(result.error || t('loginFailed'));
+        throw new Error(result.error || "Login failed");
       }
     } catch (err) {
-      setError(err.message || t('loginFailed'));
+      setError(err.message || "Login failed");
     } finally {
       setSubmitting(false);
     }
@@ -92,9 +90,9 @@ export default function LoginPage() {
     setForgotError('');
     try {
       await requestPasswordReset(forgotEmail);
-      setForgotMsg(t('resetSent'));
+      setForgotMsg("If an account exists, a reset link has been sent.");
     } catch (err) {
-      setForgotError(err.message || t('resetFailed'));
+      setForgotError(err.message || "Failed to send reset email");
     }
   }
 
@@ -103,62 +101,62 @@ export default function LoginPage() {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        <h2>{t('loginTitle')}</h2>
-        <p>{t('loginSubtitle')}</p>
+        <h2>Welcome back</h2>
+        <p>Enter your details to access your account.</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>{t('common:email')}</label>
+            <label>Email address</label>
             <input
               type="email"
-              placeholder={t("common:emailPlaceholder")}
+              placeholder="name@company.com"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="form-group">
-            <label>{t('common:password')}</label>
+            <label>Password</label>
             <input
               type="password"
-              placeholder={t("common:passwordPlaceholder")}
+              placeholder="••••••••"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={submitting}>
-            {submitting ? t('signingIn') : t('signIn')}
+            {submitting ? "Logging in..." : "Sign in"}
           </button>
           <div id="google-signin-btn" className="google-btn-wrapper"></div>
           {error && <div className="error-msg">{error}</div>}
         </form>
         <div className="auth-link">
-          <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>{t('forgotPassword')}</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); setShowForgotModal(true); }}>Forgot password?</a>
         </div>
         <p className="auth-footer">
-          {t('newToFlomerce')} <Link to="/signup">{t('createAccount')}</Link>
+          New to Flomerce? <Link to="/signup">Create an account</Link>
         </p>
       </div>
 
       {showForgotModal && (
         <div className="forgot-modal-overlay" onClick={() => setShowForgotModal(false)}>
           <div className="forgot-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{t('forgotTitle')}</h3>
-            <p>{t('forgotDesc')}</p>
+            <h3>Forgot Password</h3>
+            <p>Enter your email to receive a reset link.</p>
             <form onSubmit={handleForgotPassword}>
               <div className="form-group">
-                <label>{t('common:email')}</label>
+                <label>Email address</label>
                 <input
                   type="email"
                   required
-                  placeholder={t("common:emailPlaceholder")}
+                  placeholder="name@company.com"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                 />
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setShowForgotModal(false)}>{t('common:cancel')}</button>
-                <button type="submit" className="btn btn-primary">{t('sendResetLink')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowForgotModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Send Reset Link</button>
               </div>
               {forgotMsg && <div className="success-msg">{forgotMsg}</div>}
               {forgotError && <div className="error-msg">{forgotError}</div>}

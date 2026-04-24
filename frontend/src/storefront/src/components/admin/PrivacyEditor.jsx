@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -7,9 +6,8 @@ import { getPrivacyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 
 export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
-  const brand = siteConfig?.brand_name || t('privacyEditor.defaultBrand');
+  const brand = siteConfig?.brand_name || "Our Store";
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';
   const [intro, setIntro] = useState('');
@@ -94,7 +92,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || t('privacyEditor.failedToSave'));
+        throw new Error(result.error || "Failed to save");
       }
       setStatus('success');
       serverValuesRef.current = JSON.stringify({ intro, sections: sections.map(s => ({ title: s.title, content: s.content })) });
@@ -117,10 +115,10 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
 
   function removeSection(index) {
     setConfirmModal({
-      title: t('privacyEditor.removeSection'),
-      message: t('privacyEditor.removeConfirm'),
+      title: "Remove Section",
+      message: "Remove this section?",
       danger: true,
-      confirmText: t('privacyEditor.yesRemove'),
+      confirmText: "Yes, Remove",
       onConfirm: () => {
         setSections(prev => prev.filter((_, i) => i !== index));
       }
@@ -136,11 +134,11 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       <form onSubmit={handleSave} style={{ maxWidth: 700 }}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">{t('privacyEditor.introTitle')}</h3>
+            <h3 className="card-title">Introduction</h3>
           </div>
           <div className="card-content">
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              {t('privacyEditor.introHelp')}
+              This text appears at the top of your Privacy Policy page before the sections.
             </p>
             <textarea
               value={intro}
@@ -152,27 +150,27 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700 }}>{t('privacyEditor.sectionsTitle')}</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700 }}>Sections</h3>
           <button type="button" className="btn btn-secondary" onClick={addSection} style={{ fontSize: 13 }}>
-            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />{t('privacyEditor.addSection')}
+            <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Section
           </button>
         </div>
 
         {sections.map((section, index) => (
           <div key={index} className="card" style={{ marginBottom: 16 }}>
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 className="card-title" style={{ fontSize: 14 }}>{t('privacyEditor.sectionNum', { num: index + 1 })}</h3>
+              <h3 className="card-title" style={{ fontSize: 14 }}>{`Section ${index + 1}`}</h3>
               <button
                 type="button"
                 onClick={() => removeSection(index)}
                 style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', cursor: 'pointer', fontSize: 12, padding: '4px 10px' }}
               >
-                <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />{t('privacyEditor.remove')}
+                <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />Remove
               </button>
             </div>
             <div className="card-content">
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('privacyEditor.titleLabel')}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Title</label>
                 <input
                   type="text"
                   value={section.title}
@@ -181,7 +179,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('privacyEditor.contentLabel')}</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Content</label>
                 <textarea
                   value={section.content}
                   onChange={e => updateSection(index, 'content', e.target.value)}
@@ -201,7 +199,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
             color: status === 'success' ? '#166534' : '#dc2626',
             marginBottom: 16, fontSize: 14,
           }}>
-            {status === 'success' ? t('privacyEditor.savedSuccess') : status.replace('error:', '')}
+            {status === 'success' ? "Privacy Policy saved successfully!" : status.replace('error:', '')}
           </div>
         )}
 

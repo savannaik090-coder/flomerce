@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/inventoryService.js';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -7,7 +6,6 @@ import AlertModal, { isPlanError } from '../../../../shared/ui/AlertModal.jsx';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function LocationsSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +47,7 @@ export default function LocationsSection() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.name.trim()) return toast.warning(t('locationsSection.nameRequired'));
+    if (!form.name.trim()) return toast.warning("Location name is required");
     setSaving(true);
     try {
       if (editingId) {
@@ -63,7 +61,7 @@ export default function LocationsSection() {
       if (isPlanError(err)) {
         setPlanLimitMsg(err.message);
       } else {
-        toast.error(t('locationsSection.failedSave', { error: err.message }));
+        toast.error(`Failed to save location: ${err.message}`);
       }
     } finally {
       setSaving(false);
@@ -72,15 +70,15 @@ export default function LocationsSection() {
 
   function handleDelete(loc) {
     setConfirmModal({
-      title: t('locationsSection.deleteTitle'),
-      message: t('locationsSection.deleteConfirm', { name: loc.name }),
+      title: "Delete Location",
+      message: `Delete location "${loc.name}"? Stock must be zero or transferred first.`,
       danger: true,
       onConfirm: async () => {
         try {
           await deleteLocation(siteConfig.id, loc.id);
           await loadLocations();
         } catch (err) {
-          toast.error(err.message || t('locationsSection.failedDelete'));
+          toast.error(err.message || "Failed to delete location");
         }
       }
     });
@@ -91,7 +89,7 @@ export default function LocationsSection() {
       await updateLocation(siteConfig.id, loc.id, { ...loc, is_default: true });
       await loadLocations();
     } catch (err) {
-      toast.error(t('locationsSection.failedSetDefault', { error: err.message }));
+      toast.error(`Failed to set default: ${err.message}`);
     }
   }
 
@@ -102,44 +100,44 @@ export default function LocationsSection() {
     <div>
       <div className="card">
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 className="card-title">{t('locationsSection.title', { count: locations.length })}</h3>
+          <h3 className="card-title">{`Inventory Locations (${locations.length})`}</h3>
           <button className="btn btn-primary btn-sm" onClick={() => { resetForm(); setShowForm(true); }}>
-            <i className="fas fa-plus" /> {t('locationsSection.addLocation')}
+            <i className="fas fa-plus" /> Add Location
           </button>
         </div>
         <div className="card-content">
           {showForm && (
             <form onSubmit={handleSubmit} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '1.25rem', marginBottom: '1.5rem' }}>
-              <h4 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{editingId ? t('locationsSection.editLocation') : t('locationsSection.newLocation')}</h4>
+              <h4 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>{editingId ? "Edit Location" : "New Location"}</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('locationsSection.nameLabel')}</label>
-                  <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('locationsSection.namePh')} required
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Name *</label>
+                  <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Main Warehouse" required
                     style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('locationsSection.priorityLabel')}</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Priority</label>
                   <input type="number" min="0" value={form.priority} onChange={e => setForm({ ...form, priority: parseInt(e.target.value) || 0 })}
                     style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', boxSizing: 'border-box' }} />
-                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t('locationsSection.priorityHelp')}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Lower = higher priority for order fulfillment</span>
                 </div>
               </div>
               <div style={{ marginTop: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>{t('locationsSection.addressLabel')}</label>
-                <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder={t('locationsSection.addressPh')} rows={2}
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4, color: '#374151' }}>Address</label>
+                <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Full address (optional)" rows={2}
                   style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div style={{ marginTop: '0.75rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.is_default} onChange={e => setForm({ ...form, is_default: e.target.checked })} />
-                  {t('locationsSection.defaultCheckbox')}
+                  Set as default fulfillment location
                 </label>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: '1rem' }}>
                 <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
-                  {saving ? t('locationsSection.saving') : editingId ? t('locationsSection.update') : t('locationsSection.create')}
+                  {saving ? "Saving..." : editingId ? "Update" : "Create"}
                 </button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={resetForm}>{t('locationsSection.cancel')}</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={resetForm}>Cancel</button>
               </div>
             </form>
           )}
@@ -147,8 +145,8 @@ export default function LocationsSection() {
           {locations.length === 0 ? (
             <div className="empty-state">
               <i className="fas fa-map-marker-alt" />
-              <h3>{t('locationsSection.emptyTitle')}</h3>
-              <p>{t('locationsSection.emptyDesc')}</p>
+              <h3>No locations yet</h3>
+              <p>Add your first inventory location to track stock across multiple places.</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -163,15 +161,15 @@ export default function LocationsSection() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{loc.name}</span>
                       {loc.is_default ? (
-                        <span style={{ fontSize: '0.65rem', background: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>{t('locationsSection.defaultBadge')}</span>
+                        <span style={{ fontSize: '0.65rem', background: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>DEFAULT</span>
                       ) : null}
-                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{t('locationsSection.priorityBadge', { value: loc.priority })}</span>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{`Priority: ${loc.priority}`}</span>
                     </div>
                     {loc.address ? <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>{loc.address}</div> : null}
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {!loc.is_default && (
-                      <button className="btn btn-outline btn-sm" onClick={() => handleSetDefault(loc)} title={t('locationsSection.setDefaultTitle')}
+                      <button className="btn btn-outline btn-sm" onClick={() => handleSetDefault(loc)} title="Set as default"
                         style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
                         <i className="fas fa-star" />
                       </button>
@@ -193,13 +191,13 @@ export default function LocationsSection() {
 
       <div className="card" style={{ marginTop: '1.5rem' }}>
         <div className="card-header">
-          <h3 className="card-title">{t('locationsSection.howItWorksTitle')}</h3>
+          <h3 className="card-title">How Inventory Locations Work</h3>
         </div>
         <div className="card-content" style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.7 }}>
-          <p><Trans i18nKey="locationsSection.howItWorks1" t={t} components={{ b: <strong /> }} /></p>
-          <p><Trans i18nKey="locationsSection.howItWorks2" t={t} components={{ b: <strong /> }} /></p>
-          <p><Trans i18nKey="locationsSection.howItWorks3" t={t} components={{ b: <strong /> }} /></p>
-          <p><Trans i18nKey="locationsSection.howItWorks4" t={t} components={{ b: <strong /> }} /></p>
+          <p><strong>1. Create locations</strong> — Add your warehouses, stores, or fulfillment centers.</p>
+          <p><strong>2. Set stock per location</strong> — Go to the Inventory tab to assign stock for each product at each location.</p>
+          <p><strong>3. Transfer stock</strong> — Move inventory between locations from the Inventory tab.</p>
+          <p><strong>4. Automatic fulfillment</strong> — When an order is placed, stock is deducted from the default location first, then by priority order. The total stock shown to customers is the sum across all locations.</p>
         </div>
       </div>
     </div>
@@ -217,12 +215,12 @@ export default function LocationsSection() {
       <AlertModal
         open={!!planLimitMsg}
         variant="upgrade"
-        title={t('locationsSection.upgradeTitle')}
+        title="Upgrade Required"
         message={planLimitMsg}
         onClose={() => setPlanLimitMsg(null)}
-        secondaryAction={{ label: t('locationsSection.maybeLater') }}
+        secondaryAction={{ label: "Maybe Later" }}
         primaryAction={{
-          label: t('locationsSection.upgradePlan'),
+          label: "Upgrade Plan",
           icon: 'fa-arrow-up',
           variant: 'upgrade',
           href: 'https://flomerce.com/dashboard/billing',

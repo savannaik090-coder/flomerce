@@ -1,6 +1,4 @@
 import React, { useContext, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import i18n from '../../shared/i18n/init.js';
 import { PLATFORM_URL } from './config.js';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useSiteConfig } from './hooks/useSiteConfig.js';
@@ -28,6 +26,7 @@ import './styles/cart-panel.css';
 import './styles/search.css';
 import './styles/whatsapp.css';
 import './styles/currency.css';
+import TranslatedText from './components/TranslatedText';
 
 const HomePage = React.lazy(() => import('./pages/HomePage.jsx'));
 const CategoryPage = React.lazy(() => import('./pages/CategoryPage.jsx'));
@@ -75,12 +74,11 @@ function PageLoading() {
 }
 
 function SiteLoadingScreen() {
-  const { t } = useTranslation('storefront');
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: 48, height: 48, border: '3px solid #eee', borderTop: '3px solid #000', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }} />
-        <p style={{ fontSize: 18, color: '#333' }}>{t('app.loadingStore', 'Loading store...')}</p>
+        <p style={{ fontSize: 18, color: '#333' }}><TranslatedText text="Loading store..." /></p>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
@@ -88,13 +86,12 @@ function SiteLoadingScreen() {
 }
 
 function SiteErrorScreen({ error }) {
-  const { t } = useTranslation('storefront');
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ textAlign: 'center', maxWidth: 400, padding: 32 }}>
-        <h1 style={{ fontSize: 24, marginBottom: 12, color: '#ef4444' }}>{t('app.storeNotFound', 'Store Not Found')}</h1>
-        <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>{error || t('app.storeNotFoundMessage', 'The store you are looking for could not be found.')}</p>
-        <a href={PLATFORM_URL} style={{ background: '#000', color: '#fff', padding: '12px 24px', borderRadius: 6, textDecoration: 'none', fontWeight: 600 }}>{t('app.goToFlomerce', 'Go to Flomerce')}</a>
+        <h1 style={{ fontSize: 24, marginBottom: 12, color: '#ef4444' }}><TranslatedText text="Store Not Found" /></h1>
+        <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>{error || "The store you are looking for could not be found."}</p>
+        <a href={PLATFORM_URL} style={{ background: '#000', color: '#fff', padding: '12px 24px', borderRadius: 6, textDecoration: 'none', fontWeight: 600 }}><TranslatedText text="Go to Flomerce" /></a>
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { formatDateShortForAdmin } from '../../utils/dateFormatter.js';
 import { API_BASE } from '../../config.js';
@@ -39,7 +38,6 @@ function formatDateLabel(dateStr, period, timezone) {
 }
 
 export default function AnalyticsSection() {
-  const { t } = useTranslation('admin');
   const { siteConfig } = useContext(SiteContext);
   const [period, setPeriod] = useState('7days');
   const [loading, setLoading] = useState(true);
@@ -68,7 +66,7 @@ export default function AnalyticsSection() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 60, flexDirection: 'column', gap: 16 }}>
         <div style={{ width: 36, height: 36, border: '3px solid #e2e8f0', borderTop: '3px solid #2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <span style={{ fontSize: 14, color: '#64748b' }}>{t('analytics.loading')}</span>
+        <span style={{ fontSize: 14, color: '#64748b' }}>Loading analytics...</span>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -87,12 +85,12 @@ export default function AnalyticsSection() {
   return (
     <div className="analytics-section">
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>{t('analytics.title')}</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Analytics</h2>
         <div className="period-selector">
           {[
-            { value: '7days', label: t('analytics.period7') },
-            { value: '30days', label: t('analytics.period30') },
-            { value: '12months', label: t('analytics.period12m') },
+            { value: '7days', label: "7 Days" },
+            { value: '30days', label: "30 Days" },
+            { value: '12months', label: "12 Months" },
           ].map(p => (
             <button
               key={p.value}
@@ -108,37 +106,37 @@ export default function AnalyticsSection() {
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('analytics.statVisitors')}</span>
+            <span className="stat-title">Visitors</span>
             <div className="stat-icon" style={{ background: '#eff6ff' }}>
               <i className="fas fa-users" style={{ color: '#2563eb' }} />
             </div>
           </div>
           <div className="stat-value">{stats.visitors.toLocaleString()}</div>
-          <div className="stat-change">{t('analytics.statVisitorsDesc')}</div>
+          <div className="stat-change">Unique visitors</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('analytics.statPageViews')}</span>
+            <span className="stat-title">Page Views</span>
             <div className="stat-icon" style={{ background: '#f0fdf4' }}>
               <i className="fas fa-eye" style={{ color: '#10b981' }} />
             </div>
           </div>
           <div className="stat-value">{stats.pageViews.toLocaleString()}</div>
-          <div className="stat-change">{t('analytics.statPageViewsDesc')}</div>
+          <div className="stat-change">Total page views</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('analytics.statBounce')}</span>
+            <span className="stat-title">Bounce Rate</span>
             <div className="stat-icon" style={{ background: '#fefce8' }}>
               <i className="fas fa-sign-out-alt" style={{ color: '#f59e0b' }} />
             </div>
           </div>
           <div className="stat-value">{stats.bounceRate}%</div>
-          <div className="stat-change">{t('analytics.statBounceDesc')}</div>
+          <div className="stat-change">Single-page sessions</div>
         </div>
         <div className="stat-card">
           <div className="stat-header">
-            <span className="stat-title">{t('analytics.statAvgPages')}</span>
+            <span className="stat-title">Avg. Pages/Visit</span>
             <div className="stat-icon" style={{ background: '#f5f3ff' }}>
               <i className="fas fa-layer-group" style={{ color: '#8b5cf6' }} />
             </div>
@@ -146,16 +144,16 @@ export default function AnalyticsSection() {
           <div className="stat-value">
             {stats.visitors > 0 ? (stats.pageViews / stats.visitors).toFixed(1) : '0'}
           </div>
-          <div className="stat-change">{t('analytics.statAvgPagesDesc')}</div>
+          <div className="stat-change">Pages per visitor</div>
         </div>
       </div>
 
       {!hasData && (
         <div className="card" style={{ marginBottom: 24, textAlign: 'center', padding: '40px 20px' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('analytics.noDataTitle')}</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>No analytics data yet</h3>
           <p style={{ fontSize: 13, color: '#64748b', maxWidth: 400, margin: '0 auto' }}>
-            {t('analytics.noDataDesc')}
+            Analytics data will appear here as visitors browse your store. Page views, traffic sources, devices, and countries are tracked automatically.
           </p>
         </div>
       )}
@@ -164,7 +162,7 @@ export default function AnalyticsSection() {
         <>
           <div className="card" style={{ marginBottom: 24 }}>
             <div className="card-header">
-              <h3 className="card-title">{t('analytics.trends')}</h3>
+              <h3 className="card-title">Visitor Trends</h3>
             </div>
             <div className="card-content">
               <div style={{ overflowX: 'auto' }}>
@@ -180,7 +178,7 @@ export default function AnalyticsSection() {
                           minHeight: 4,
                           transition: 'height 0.3s',
                         }}
-                        title={t('analytics.trendTooltip', { date: formatDateLabel(d.date_label, period, siteConfig?.settings?.timezone), visitors: d.visitors, views: d.views })}
+                        title={`${formatDateLabel(d.date_label, period, siteConfig?.settings?.timezone)}: ${d.visitors} visitors, ${d.views} views`}
                       />
                       <span style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>
                         {formatDateLabel(d.date_label, period, siteConfig?.settings?.timezone)}
@@ -192,7 +190,7 @@ export default function AnalyticsSection() {
               <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
                   <div style={{ width: 12, height: 12, background: '#2563eb', borderRadius: 2 }} />
-                  {t('analytics.trendsLegend')}
+                  Visitors
                 </div>
               </div>
             </div>
@@ -201,7 +199,7 @@ export default function AnalyticsSection() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, marginBottom: 24 }}>
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">{t('analytics.sources')}</h3>
+                <h3 className="card-title">Traffic Sources</h3>
               </div>
               <div className="card-content">
                 {sources.length > 0 ? sources.map((s, i) => (
@@ -215,14 +213,14 @@ export default function AnalyticsSection() {
                     </div>
                   </div>
                 )) : (
-                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>{t('analytics.noSources')}</p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>No source data yet</p>
                 )}
               </div>
             </div>
 
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">{t('analytics.devices')}</h3>
+                <h3 className="card-title">Device Breakdown</h3>
               </div>
               <div className="card-content">
                 {devices.length > 0 ? devices.map((d, i) => (
@@ -239,7 +237,7 @@ export default function AnalyticsSection() {
                     </div>
                   </div>
                 )) : (
-                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>{t('analytics.noDevices')}</p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>No device data yet</p>
                 )}
               </div>
             </div>
@@ -248,7 +246,7 @@ export default function AnalyticsSection() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, marginBottom: 24 }}>
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">{t('analytics.countries')}</h3>
+                <h3 className="card-title">Top Countries</h3>
               </div>
               <div className="card-content">
                 {countries.length > 0 ? (
@@ -256,9 +254,9 @@ export default function AnalyticsSection() {
                     <table>
                       <thead>
                         <tr>
-                          <th>{t('analytics.colCountry')}</th>
-                          <th>{t('analytics.colVisitors')}</th>
-                          <th>{t('analytics.colShare')}</th>
+                          <th>Country</th>
+                          <th>Visitors</th>
+                          <th>Share</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -280,14 +278,14 @@ export default function AnalyticsSection() {
                     </table>
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>{t('analytics.noCountries')}</p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>No country data yet</p>
                 )}
               </div>
             </div>
 
             <div className="card">
               <div className="card-header">
-                <h3 className="card-title">{t('analytics.topPages')}</h3>
+                <h3 className="card-title">Top Pages</h3>
               </div>
               <div className="card-content">
                 {topPages.length > 0 ? (
@@ -295,16 +293,16 @@ export default function AnalyticsSection() {
                     <table>
                       <thead>
                         <tr>
-                          <th>{t('analytics.colPage')}</th>
-                          <th>{t('analytics.colViews')}</th>
-                          <th>{t('analytics.colVisitors')}</th>
+                          <th>Page</th>
+                          <th>Views</th>
+                          <th>Visitors</th>
                         </tr>
                       </thead>
                       <tbody>
                         {topPages.map((p, i) => (
                           <tr key={i}>
                             <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.page_path}>
-                              {p.page_path === '/' ? t('analytics.homePage') : p.page_path}
+                              {p.page_path === '/' ? "Home" : p.page_path}
                             </td>
                             <td>{p.views.toLocaleString()}</td>
                             <td>{p.visitors.toLocaleString()}</td>
@@ -314,7 +312,7 @@ export default function AnalyticsSection() {
                     </table>
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>{t('analytics.noPages')}</p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>No page data yet</p>
                 )}
               </div>
             </div>

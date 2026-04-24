@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getAuthToken } from '../../services/api.js';
+import TranslatedText from '../TranslatedText';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
@@ -35,7 +35,6 @@ function StarInput({ value, onChange }) {
 }
 
 function RatingBreakdown({ stats }) {
-  const { t } = useTranslation('storefront');
   if (!stats || stats.total === 0) return null;
   const { total, avgRating, breakdown } = stats;
   return (
@@ -44,7 +43,7 @@ function RatingBreakdown({ stats }) {
         <div className="rating-big">{avgRating}</div>
         <div className="rating-summary-detail">
           <StarRating rating={Math.round(avgRating)} size={20} />
-          <span className="rating-count">{total} {total === 1 ? t('productReviews.reviewSingular', 'review') : t('productReviews.reviewPlural', 'reviews')}</span>
+          <span className="rating-count">{total} {total === 1 ? "review" : "reviews"}</span>
         </div>
       </div>
       <div className="rating-bars">
@@ -67,7 +66,6 @@ function RatingBreakdown({ stats }) {
 }
 
 export default function ProductReviews({ productId }) {
-  const { t } = useTranslation('storefront');
   const { siteConfig } = useContext(SiteContext);
   const siteId = siteConfig?.id;
 
@@ -140,13 +138,13 @@ export default function ProductReviews({ productId }) {
           content: formData.content || undefined,
         }),
       });
-      setSubmitMessage({ type: 'success', text: res.message || t('productReviews.toasts.submitted', 'Review submitted!') });
+      setSubmitMessage({ type: 'success', text: res.message || "Review submitted!" });
       setShowForm(false);
       setFormData({ rating: 0, title: '', content: '' });
       await loadReviews();
       await checkEligibility();
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || t('productReviews.errors.submitFail', 'Failed to submit review') });
+      setSubmitMessage({ type: 'error', text: err.message || "Failed to submit review" });
     } finally {
       setSubmitting(false);
     }
@@ -156,12 +154,12 @@ export default function ProductReviews({ productId }) {
 
   return (
     <div className="product-reviews-section">
-      <h2 className="section-title">{t('productReviews.title', 'Customer Reviews')}</h2>
+      <h2 className="section-title"><TranslatedText text="Customer Reviews" /></h2>
 
       {loading && reviews.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
           <div className="spinner" style={{ margin: '0 auto 12px' }} />
-          {t('productReviews.loading', 'Loading reviews...')}
+          <TranslatedText text="Loading reviews..." />
         </div>
       ) : (
         <>
@@ -177,49 +175,49 @@ export default function ProductReviews({ productId }) {
             <div className="review-cta">
               <button className="write-review-btn" onClick={() => setShowForm(true)}>
                 <i className="fas fa-pen" style={{ marginInlineEnd: 8 }} />
-                {t('productReviews.writeReview', 'Write a Review')}
+                <TranslatedText text="Write a Review" />
               </button>
             </div>
           )}
 
           {eligibility?.reason === 'already_reviewed' && (
-            <div className="review-notice">{t('productReviews.alreadyReviewed', 'You have already reviewed this product.')}</div>
+            <div className="review-notice"><TranslatedText text="You have already reviewed this product." /></div>
           )}
 
           {showForm && (
             <form className="review-form" onSubmit={handleSubmit}>
-              <h3 className="review-form-title">{t('productReviews.form.title', 'Write Your Review')}</h3>
+              <h3 className="review-form-title"><TranslatedText text="Write Your Review" /></h3>
               <div className="review-form-field">
-                <label>{t('review.form.rating', 'Your Rating *')}</label>
+                <label><TranslatedText text="Your Rating *" /></label>
                 <StarInput value={formData.rating} onChange={r => setFormData(prev => ({ ...prev, rating: r }))} />
-                {formData.rating === 0 && <span className="review-form-hint">{t('productReviews.form.selectRating', 'Select a rating')}</span>}
+                {formData.rating === 0 && <span className="review-form-hint"><TranslatedText text="Select a rating" /></span>}
               </div>
               <div className="review-form-field">
-                <label>{t('review.form.title', 'Review Title')}</label>
+                <label><TranslatedText text="Review Title" /></label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder={t('review.form.titlePlaceholder', 'Summarize your experience')}
+                  placeholder=<TranslatedText text="Summarize your experience" />
                   maxLength={120}
                 />
               </div>
               <div className="review-form-field">
-                <label>{t('review.form.content', 'Your Review')}</label>
+                <label><TranslatedText text="Your Review" /></label>
                 <textarea
                   value={formData.content}
                   onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder={t('productReviews.form.contentPlaceholder', 'Share your thoughts about this product...')}
+                  placeholder=<TranslatedText text="Share your thoughts about this product..." />
                   rows={4}
                   maxLength={2000}
                 />
               </div>
               <div className="review-form-actions">
                 <button type="submit" className="review-submit-btn" disabled={submitting || formData.rating === 0}>
-                  {submitting ? t('review.buttons.submitting', 'Submitting...') : t('review.buttons.submit', 'Submit Review')}
+                  {submitting ? "Submitting..." : "Submit Review"}
                 </button>
                 <button type="button" className="review-cancel-btn" onClick={() => setShowForm(false)}>
-                  {t('productReviews.cancel', 'Cancel')}
+                  <TranslatedText text="Cancel" />
                 </button>
               </div>
             </form>
@@ -227,18 +225,18 @@ export default function ProductReviews({ productId }) {
 
           {sort && reviews.length > 1 && (
             <div className="review-sort">
-              <label>{t('productReviews.sortBy', 'Sort by:')}</label>
+              <label><TranslatedText text="Sort by:" /></label>
               <select value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="recent">{t('productReviews.sort.recent', 'Most Recent')}</option>
-                <option value="highest">{t('productReviews.sort.highest', 'Highest Rated')}</option>
-                <option value="lowest">{t('productReviews.sort.lowest', 'Lowest Rated')}</option>
+                <option value="recent"><TranslatedText text="Most Recent" /></option>
+                <option value="highest"><TranslatedText text="Highest Rated" /></option>
+                <option value="lowest"><TranslatedText text="Lowest Rated" /></option>
               </select>
             </div>
           )}
 
           {reviews.length === 0 && !loading && (
             <div className="review-empty">
-              <p>{t('productReviews.noReviews', 'No reviews yet.')} {eligibility?.eligible ? t('productReviews.beFirst', 'Be the first to review this product!') : ''}</p>
+              <p><TranslatedText text="No reviews yet." /> {eligibility?.eligible ? "Be the first to review this product!" : ''}</p>
             </div>
           )}
 
@@ -246,8 +244,8 @@ export default function ProductReviews({ productId }) {
             <div key={review.id} className="review-card">
               <div className="review-header">
                 <StarRating rating={review.rating} />
-                <span className="review-author">{review.customer_name || t('productReviews.customer', 'Customer')}</span>
-                {review.is_verified === 1 && <span className="verified-badge">{t('productReviews.verifiedPurchase', 'Verified Purchase')}</span>}
+                <span className="review-author">{review.customer_name || "Customer"}</span>
+                {review.is_verified === 1 && <span className="verified-badge"><TranslatedText text="Verified Purchase" /></span>}
                 <span className="review-date">
                   {review.created_at ? new Date(review.created_at).toLocaleDateString() : ''}
                 </span>
@@ -261,7 +259,7 @@ export default function ProductReviews({ productId }) {
                       key={i}
                       className="review-image-thumb"
                       src={img}
-                      alt={t('productReviews.reviewImageAlt', 'Review {{index}}', { index: i + 1 })}
+                      alt={`Review ${i + 1}`}
                       onClick={() => setReviewImageModal(img)}
                     />
                   ))}
@@ -275,7 +273,7 @@ export default function ProductReviews({ productId }) {
       {reviewImageModal && (
         <div className="review-image-modal" onClick={() => setReviewImageModal(null)}>
           <button className="close-modal" onClick={() => setReviewImageModal(null)}>&times;</button>
-          <img src={reviewImageModal} alt={t('productReviews.reviewAlt', 'Review')} />
+          <img src={reviewImageModal} alt=<TranslatedText text="Review" /> />
         </div>
       )}
     </div>

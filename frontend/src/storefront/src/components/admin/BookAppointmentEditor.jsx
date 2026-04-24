@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
 export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
-  const { t } = useTranslation('admin');
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [showBookAppointment, setShowBookAppointment] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,7 +53,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
-        setStatus('error:' + (result.error || t('bookAppointmentEditor.failedToSave')));
+        setStatus('error:' + (result.error || "Failed to save"));
       }
     } catch (err) {
       setStatus('error:' + err.message);
@@ -71,8 +69,8 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
         <SectionToggle
           enabled={showBookAppointment}
           onChange={setShowBookAppointment}
-          label={t('bookAppointmentEditor.toggleLabel')}
-          description={t('bookAppointmentEditor.toggleDesc')}
+          label="Show Book Appointment in Footer"
+          description="Display 'Book Appointment' link in the footer's customer service section"
         />
 
         {status.startsWith('error:') && (
@@ -82,7 +80,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
         )}
         {status === 'success' && (
           <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#16a34a', fontSize: 13, marginBottom: 16 }}>
-            {t('bookAppointmentEditor.savedSuccess')}
+            Saved successfully!
           </div>
         )}
 
