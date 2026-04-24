@@ -23,15 +23,6 @@ import { purgeLocaleCache } from '../../utils/cdn-cache.js';
 // JSON files — see frontend/src/shared/i18n/locales/en/index.js for the
 // full history. Re-introduce a namespace here only when the matching JSON
 // is restored AND a UI surface actually calls useTranslation() on it.
-// Bumping this marker forces the bundled `EN_CATALOG` fingerprint to change on
-// deploy even when the only edit upstream is to a JSON file. Without it, a CI
-// pipeline that only redeploys the worker when a `.js` file under
-// `backend/workers/**` changes will keep serving the previous EN catalog and
-// the staleness diff in the admin panel will show "0 out of date" forever.
-// Bump on every banner-key / catalog-key change. See replit.md → Translation
-// Architecture for the rationale.
-const EN_CATALOG_DEPLOY_MARKER = '2026-04-24.legalBindingTitle.v2';
-
 import EN_COMMON from '../../../frontend/src/shared/i18n/locales/en/common.json';
 import EN_NAV from '../../../frontend/src/shared/i18n/locales/en/nav.json';
 import EN_LANGUAGES from '../../../frontend/src/shared/i18n/locales/en/languages.json';
