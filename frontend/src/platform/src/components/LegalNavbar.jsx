@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+// LanguageSwitcher is intentionally imported here even though the legal pages
+// themselves stay hard-coded English — visitors need to be able to switch
+// language from a legal page and have that choice take effect when they
+// navigate back to Landing or About. Only the switcher is included; no other
+// useTranslation() / t() calls belong in this file or in the legal page
+// bodies that consume it.
+import { LanguageSwitcher } from '../../../shared/i18n/index.js';
 
 export default function LegalNavbar({ showMenu = false }) {
   const { isAuthenticated, logout } = useAuth();
@@ -50,6 +57,7 @@ export default function LegalNavbar({ showMenu = false }) {
             <a href="#contact" className="nav-link" onClick={(e) => { e.preventDefault(); scrollTo('contact'); }}>Contact</a>
           </>
         )}
+        <LanguageSwitcher compact />
         {isAuthenticated ? (
           <>
             <Link to="/dashboard" className="nav-link">Dashboard</Link>
