@@ -251,7 +251,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
                 <div className="form-group"><label><TranslatedText text="Phone Number" /></label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
                 <div className="form-group"><label><TranslatedText text="Subject *" /></label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder=<TranslatedText text="How can we help you?" /> /></div>
+              <div className="form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={"How can we help you?"} /></div>
               <button type="submit" className="contact-submit-btn" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</button>
             </form>
           </div>
@@ -314,7 +314,7 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
                 <div className="mn-form-group"><label><TranslatedText text="Phone Number" /></label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
                 <div className="mn-form-group"><label><TranslatedText text="Subject *" /></label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="mn-form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder=<TranslatedText text="How can we help you?" /> /></div>
+              <div className="mn-form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={"How can we help you?"} /></div>
               <button type="submit" className="mn-contact-submit" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</button>
             </form>
           </div>

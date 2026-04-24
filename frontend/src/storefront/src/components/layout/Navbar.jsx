@@ -112,7 +112,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       <nav className="navbar">
         <div className={`nav-container${isCentered ? ' nav-container--logo-center' : ''}`}>
           <div className="hamburger" onClick={() => setMenuOpen(true)}>
-            <img src="/images/icons/bars-staggered (2).png" alt=<TranslatedText text="Menu" /> style={{ width: 25, height: 25 }} />
+            <img src="/images/icons/bars-staggered (2).png" alt={"Menu"} style={{ width: 25, height: 25 }} />
           </div>
 
           <Link to="/" className={`brand${isCentered ? ' brand--center' : ''}`}>
@@ -158,7 +158,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                             <li key={link.id} className={`sub-group${isExpanded ? ' sub-group-open' : ''}`}>
                               <div className="grouped-cat-header">
                                 <Link to={link.url} onClick={closeMobileMenu} className="grouped-cat-link">{link.label}</Link>
-                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label=<TranslatedText text="Show subcategories" />>
+                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label="Show subcategories">
                                   <i className="fas fa-plus"></i>
                                 </button>
                               </div>
@@ -211,7 +211,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                     <li className={`nav-item cat-with-subs${openDropdown === (cat.id || cat.slug) ? ' dropdown-open' : ''}`} key={cat.id || cat.slug}>
                       <div className="nav-link-row">
                         <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
-                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label=<TranslatedText text="Show subcategories" />>
+                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label="Show subcategories">
                           <i className={`fas fa-plus`}></i>
                         </button>
                       </div>
@@ -263,15 +263,15 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             <div className="mobile-account-links mobile-special">
               {showAccountIcon && (
                 <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
-                  <img src="/images/icons/user.png" alt=<TranslatedText text="Account" /> style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Account" />
+                  <img src="/images/icons/user.png" alt={"Account"} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Account" />
                 </Link>
               )}
               <a href="#" className="mobile-account-link wishlist-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onWishlistOpen?.(); }}>
-                <img src="/images/icons/heart.png" alt=<TranslatedText text="Wishlist" /> style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Wishlist" /> ({wishlistCount})
+                <img src="/images/icons/heart.png" alt={"Wishlist"} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Wishlist" /> ({wishlistCount})
               </a>
               {showCartIcon && (
                 <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
-                  <img src="/images/icons/cart-minus.png" alt=<TranslatedText text="Cart" /> style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Shopping Bag" /> ({cartCount})
+                  <img src="/images/icons/cart-minus.png" alt={"Cart"} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Shopping Bag" /> ({cartCount})
                 </a>
               )}
             </div>
@@ -280,20 +280,20 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           <div className="nav-icons">
             <LanguageSwitcher compact />
             <a href="#" className="icon-link search-icon" onClick={(e) => { e.preventDefault(); onSearchOpen?.(); }}>
-              <img src="/images/icons/search.png" alt=<TranslatedText text="Search" /> style={{ width: 20, height: 20 }} />
+              <img src="/images/icons/search.png" alt={"Search"} style={{ width: 20, height: 20 }} />
             </a>
             {showAccountIcon && (
               <Link to={isAuthenticated ? '/profile' : '/login'} className="icon-link account-icon">
-                <img src="/images/icons/user.png" alt=<TranslatedText text="Account" /> style={{ width: 25, height: 25 }} />
+                <img src="/images/icons/user.png" alt={"Account"} style={{ width: 25, height: 25 }} />
               </Link>
             )}
             <a href="#" className="icon-link wishlist-icon-container wishlist-toggle" onClick={(e) => { e.preventDefault(); onWishlistOpen?.(); }}>
-              <img src="/images/icons/heart.png" alt=<TranslatedText text="Wishlist" /> style={{ width: 20, height: 20 }} />
+              <img src="/images/icons/heart.png" alt={"Wishlist"} style={{ width: 20, height: 20 }} />
               <div className="wishlist-count">{wishlistCount}</div>
             </a>
             {showCartIcon && (
               <a href="#" className="icon-link cart-icon-container cart-toggle" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
-                <img src="/images/icons/cart-minus.png" alt=<TranslatedText text="Cart" /> style={{ width: 20, height: 20 }} />
+                <img src="/images/icons/cart-minus.png" alt={"Cart"} style={{ width: 20, height: 20 }} />
                 <div className="cart-count">{cartCount}</div>
               </a>
             )}

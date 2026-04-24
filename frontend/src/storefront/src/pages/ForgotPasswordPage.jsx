@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333', fontWeight: 600 }}><TranslatedText text="Email Address" /></label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder=<TranslatedText text="Enter your email" /> required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={"Enter your email"} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
           </div>
           <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? "Sending..." : "Send Reset Link"}

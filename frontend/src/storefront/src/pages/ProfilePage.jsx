@@ -712,7 +712,7 @@ export default function ProfilePage() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}><TranslatedText text="Additional notes *" /></label>
-              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder=<TranslatedText text="Describe the issue in detail..." /> style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder={"Describe the issue in detail..."} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {returnReason && !returnDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}><TranslatedText text="Please provide additional details." /></p>}
             </div>
             <div style={{ marginBottom: 20 }}>
@@ -790,7 +790,7 @@ export default function ProfilePage() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}><TranslatedText text="Additional notes *" /></label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder=<TranslatedText text="Please provide more details about your cancellation..." /> style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder={"Please provide more details about your cancellation..."} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}><TranslatedText text="Please provide additional details before submitting." /></p>}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -814,9 +814,9 @@ export default function ProfilePage() {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="Address Label" /></label>
               <select value={addressForm.label} onChange={e => handleAddressFieldChange('label', e.target.value)} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
-                <option value="Home"><TranslatedText text="Home" /></option>
-                <option value="Work"><TranslatedText text="Work" /></option>
-                <option value="Other"><TranslatedText text="Other" /></option>
+                <option value="Home">Home</option>
+                <option value="Work">Work</option>
+                <option value="Other">Other</option>
               </select>
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
@@ -866,7 +866,7 @@ export default function ProfilePage() {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="State *" /></label>
               <select value={addressForm.state} onChange={e => handleAddressFieldChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
-                <option value=""><TranslatedText text="Select State" /></option>
+                <option value="">Select State</option>
                 {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               {addressFieldErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.state}</div>}

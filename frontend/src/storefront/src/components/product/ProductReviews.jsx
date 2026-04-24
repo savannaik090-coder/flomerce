@@ -198,7 +198,7 @@ export default function ProductReviews({ productId }) {
                   type="text"
                   value={formData.title}
                   onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder=<TranslatedText text="Summarize your experience" />
+                  placeholder={"Summarize your experience"}
                   maxLength={120}
                 />
               </div>
@@ -207,7 +207,7 @@ export default function ProductReviews({ productId }) {
                 <textarea
                   value={formData.content}
                   onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder=<TranslatedText text="Share your thoughts about this product..." />
+                  placeholder={"Share your thoughts about this product..."}
                   rows={4}
                   maxLength={2000}
                 />
@@ -227,9 +227,9 @@ export default function ProductReviews({ productId }) {
             <div className="review-sort">
               <label><TranslatedText text="Sort by:" /></label>
               <select value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="recent"><TranslatedText text="Most Recent" /></option>
-                <option value="highest"><TranslatedText text="Highest Rated" /></option>
-                <option value="lowest"><TranslatedText text="Lowest Rated" /></option>
+                <option value="recent">Most Recent</option>
+                <option value="highest">Highest Rated</option>
+                <option value="lowest">Lowest Rated</option>
               </select>
             </div>
           )}
@@ -273,7 +273,7 @@ export default function ProductReviews({ productId }) {
       {reviewImageModal && (
         <div className="review-image-modal" onClick={() => setReviewImageModal(null)}>
           <button className="close-modal" onClick={() => setReviewImageModal(null)}>&times;</button>
-          <img src={reviewImageModal} alt=<TranslatedText text="Review" /> />
+          <img src={reviewImageModal} alt={"Review"} />
         </div>
       )}
     </div>

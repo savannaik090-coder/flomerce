@@ -120,7 +120,7 @@ export default function SignupPage() {
             <PhoneInput
               value={phone}
               onChange={val => setPhone(val)}
-              placeholder=<TranslatedText text="Phone number" />
+              placeholder={"Phone number"}
               style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }}
             />
           </div>

@@ -21,21 +21,28 @@ function getItemName(item) {
 function SelectedOptionsDisplay({ selectedOptions }) {
   if (!selectedOptions) return null;
   const parts = [];
-  if (selectedOptions.color) parts.push(`$<TranslatedText text="Color" />: ${selectedOptions.color}`);
+  if (selectedOptions.color) {
+    parts.push(<><TranslatedText text="Color" />{`: ${selectedOptions.color}`}</>);
+  }
   if (selectedOptions.customOptions) {
     for (const [label, value] of Object.entries(selectedOptions.customOptions)) {
-      parts.push(`${label}: ${value}`);
+      parts.push(<><TranslatedText text={label} />{`: ${value}`}</>);
     }
   }
   if (selectedOptions.pricedOptions) {
     for (const [label, val] of Object.entries(selectedOptions.pricedOptions)) {
-      parts.push(`${label}: ${val.name}`);
+      parts.push(<><TranslatedText text={label} />{`: ${val.name}`}</>);
     }
   }
   if (parts.length === 0) return null;
   return (
     <div style={{ fontSize: 11, color: '#888', marginTop: 2, lineHeight: 1.4 }}>
-      {parts.join(' \u2022 ')}
+      {parts.map((p, i) => (
+        <React.Fragment key={i}>
+          {i > 0 ? ' \u2022 ' : ''}
+          {p}
+        </React.Fragment>
+      ))}
     </div>
   );
 }

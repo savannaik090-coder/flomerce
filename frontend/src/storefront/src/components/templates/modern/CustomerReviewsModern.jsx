@@ -109,7 +109,7 @@ export default function CustomerReviewsModern() {
             &times;
           </span>
           <div className="image-modal-content">
-            <img src={modalImage} alt=<TranslatedText text="Full Size Review" /> />
+            <img src={modalImage} alt={"Full Size Review"} />
           </div>
         </div>
       )}

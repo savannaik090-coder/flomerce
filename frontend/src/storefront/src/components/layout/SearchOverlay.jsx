@@ -127,7 +127,7 @@ export default function SearchOverlay({ isOpen, onClose }) {
               ref={inputRef}
               type="text"
               className="search-input"
-              placeholder=<TranslatedText text="Search products..." />
+              placeholder={"Search products..."}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {

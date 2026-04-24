@@ -126,7 +126,7 @@ export default function OrderTrackPage() {
           type="text"
           value={orderIdInput}
           onChange={e => setOrderIdInput(e.target.value)}
-          placeholder=<TranslatedText text="Enter order number (e.g. ORD-XXXX)" />
+          placeholder={"Enter order number (e.g. ORD-XXXX)"}
           style={{
             flex: 1, padding: '12px 16px', border: '1px solid #e2e8f0', borderRadius: 8,
             fontSize: 15, fontFamily: 'inherit', outline: 'none', background: '#fff',

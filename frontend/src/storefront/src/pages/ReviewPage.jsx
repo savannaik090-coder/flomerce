@@ -195,7 +195,7 @@ export default function ReviewPage() {
                         type="text"
                         value={formData.customerName}
                         onChange={e => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                        placeholder=<TranslatedText text="Your name (optional)" />
+                        placeholder={"Your name (optional)"}
                         maxLength={80}
                       />
                     </div>
@@ -205,7 +205,7 @@ export default function ReviewPage() {
                         type="text"
                         value={formData.title}
                         onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder=<TranslatedText text="Summarize your experience" />
+                        placeholder={"Summarize your experience"}
                         maxLength={120}
                       />
                     </div>
@@ -214,7 +214,7 @@ export default function ReviewPage() {
                       <textarea
                         value={formData.content}
                         onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                        placeholder=<TranslatedText text="Share your thoughts..." />
+                        placeholder={"Share your thoughts..."}
                         rows={3}
                         maxLength={2000}
                       />

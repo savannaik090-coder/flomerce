@@ -106,11 +106,11 @@ export default function CancelPage() {
             <form onSubmit={handleLookup}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Order Number" /></label>
-                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder=<TranslatedText text="e.g. FX-123456" /> style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder={"e.g. FX-123456"} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Email Address" /></label>
-                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder=<TranslatedText text="your@email.com" /> style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={"your@email.com"} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               {lookupMessage && (
                 <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupMessage.includes('sent') ? '#f0fdf4' : '#fef2f2', color: lookupMessage.includes('sent') ? '#166534' : '#991b1b', fontSize: 14 }}>
@@ -177,7 +177,7 @@ export default function CancelPage() {
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#334155' }}>
                 <TranslatedText text="Additional notes *" />
               </label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder=<TranslatedText text="Please provide more details about your cancellation..." /> style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder={"Please provide more details about your cancellation..."} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}><TranslatedText text="Please provide additional details before submitting." /></p>}
             </div>
             <button onClick={handleSubmit} disabled={submitting || !cancelReason || !cancelDetail.trim()} style={{ width: '100%', padding: '12px 24px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>

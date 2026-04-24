@@ -104,7 +104,7 @@ export default function OrderHelpPage() {
                   type="text"
                   value={lookupOrderId}
                   onChange={e => setLookupOrderId(e.target.value)}
-                  placeholder=<TranslatedText text="e.g. ORD-XXXX" />
+                  placeholder={"e.g. ORD-XXXX"}
                   style={{ flex: 1, padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit' }}
                   required
                 />

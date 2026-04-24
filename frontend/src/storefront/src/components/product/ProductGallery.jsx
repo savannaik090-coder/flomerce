@@ -79,8 +79,8 @@ export default function ProductGallery({ images, productName, filteredImageIndic
       <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}><TranslatedText text="✕ Close" /></button>
       {hasMultipleImages && (
         <>
-          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0} aria-label=<TranslatedText text="Previous image" />>‹</button>
-          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1} aria-label=<TranslatedText text="Next image" />>›</button>
+          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0} aria-label="Previous image">‹</button>
+          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1} aria-label="Next image">›</button>
         </>
       )}
       <img
@@ -117,7 +117,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
               className="gallery-nav gallery-nav-prev"
               onClick={() => goToImage(activeIndex - 1)}
               disabled={activeIndex === 0}
-              aria-label=<TranslatedText text="Previous image" />
+              aria-label="Previous image"
             >
               ‹
             </button>
@@ -136,7 +136,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
               className="gallery-nav gallery-nav-next"
               onClick={() => goToImage(activeIndex + 1)}
               disabled={activeIndex === parsedImages.length - 1}
-              aria-label=<TranslatedText text="Next image" />
+              aria-label="Next image"
             >
               ›
             </button>

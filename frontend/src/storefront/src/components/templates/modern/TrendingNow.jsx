@@ -68,10 +68,10 @@ export default function TrendingNow() {
           <p className="mn-section-subtitle"><TranslatedText text="Our most popular picks" /></p>
         </div>
         <div className="mn-trending-nav">
-          <button className="mn-trending-arrow" onClick={() => scroll('left')} aria-label=<TranslatedText text="Scroll left" />>
+          <button className="mn-trending-arrow" onClick={() => scroll('left')} aria-label="Scroll left">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
-          <button className="mn-trending-arrow" onClick={() => scroll('right')} aria-label=<TranslatedText text="Scroll right" />>
+          <button className="mn-trending-arrow" onClick={() => scroll('right')} aria-label="Scroll right">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>

@@ -9,22 +9,27 @@ async function translateCartItemsInPlace(env, siteId, items, lang) {
   const slots = [];
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
-    if (it?.name) slots.push({ i, kind: 'name', value: String(it.name) });
-    if (it?.selectedOptions && typeof it.selectedOptions === 'object') {
-      for (const [label, val] of Object.entries(it.selectedOptions)) {
+    if (!it || typeof it !== 'object') continue;
+    if (typeof it.name === 'string' && it.name) {
+      slots.push({ i, kind: 'name', value: it.name });
+    }
+    const so = it.selectedOptions;
+    if (so && typeof so === 'object') {
+      for (const [label, val] of Object.entries(so)) {
         if (label === 'pricedOptions') continue;
         slots.push({ i, kind: 'optKey', label, value: String(label) });
         if (typeof val === 'string') {
-          slots.push({ i, kind: 'optVal', label, value: String(val) });
+          slots.push({ i, kind: 'optVal', label, value: val });
         } else if (val && typeof val === 'object' && typeof val.name === 'string') {
-          slots.push({ i, kind: 'optValName', label, value: String(val.name) });
+          slots.push({ i, kind: 'optValName', label, value: val.name });
         }
       }
-      if (it.selectedOptions.pricedOptions && typeof it.selectedOptions.pricedOptions === 'object') {
-        for (const [label, val] of Object.entries(it.selectedOptions.pricedOptions)) {
+      const po = so.pricedOptions;
+      if (po && typeof po === 'object') {
+        for (const [label, val] of Object.entries(po)) {
           slots.push({ i, kind: 'pricedKey', label, value: String(label) });
           if (val && typeof val === 'object' && typeof val.name === 'string') {
-            slots.push({ i, kind: 'pricedValName', label, value: String(val.name) });
+            slots.push({ i, kind: 'pricedValName', label, value: val.name });
           }
         }
       }
@@ -38,37 +43,76 @@ async function translateCartItemsInPlace(env, siteId, items, lang) {
   } catch (e) {
     return;
   }
+
+  // Bucket translations per item, keyed on ORIGINAL label so multi-option
+  // carts stay correctly aligned. We must NOT mutate keys mid-loop because
+  // a later optVal slot would otherwise lose its matching key.
+  const perItem = new Map();
+  function bucket(i) {
+    let b = perItem.get(i);
+    if (!b) {
+      b = {
+        name: undefined,
+        optRename: new Map(),
+        optVal: new Map(),
+        optValName: new Map(),
+        pricedRename: new Map(),
+        pricedValName: new Map(),
+      };
+      perItem.set(i, b);
+    }
+    return b;
+  }
   for (let k = 0; k < slots.length; k++) {
     const s = slots[k];
     const t = translations[k];
     if (t === undefined || t === null) continue;
-    const it = items[s.i];
-    if (!it) continue;
+    const b = bucket(s.i);
+    switch (s.kind) {
+      case 'name': b.name = t; break;
+      case 'optKey': b.optRename.set(s.label, t); break;
+      case 'optVal': b.optVal.set(s.label, t); break;
+      case 'optValName': b.optValName.set(s.label, t); break;
+      case 'pricedKey': b.pricedRename.set(s.label, t); break;
+      case 'pricedValName': b.pricedValName.set(s.label, t); break;
+    }
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    if (!it || typeof it !== 'object') continue;
+    const b = perItem.get(i);
+    if (!b) continue;
     try {
-      if (s.kind === 'name') it.name = t;
-      else if (s.kind === 'optKey') {
-        if (it.selectedOptions && it.selectedOptions[s.label] !== undefined) {
-          const v = it.selectedOptions[s.label];
-          delete it.selectedOptions[s.label];
-          it.selectedOptions[t] = v;
+      if (b.name !== undefined) it.name = b.name;
+      const so = it.selectedOptions;
+      if (so && typeof so === 'object') {
+        const next = {};
+        for (const [label, val] of Object.entries(so)) {
+          if (label === 'pricedOptions') continue;
+          const newKey = b.optRename.get(label) || label;
+          let newVal = val;
+          if (typeof val === 'string') {
+            if (b.optVal.has(label)) newVal = b.optVal.get(label);
+          } else if (val && typeof val === 'object' && typeof val.name === 'string') {
+            if (b.optValName.has(label)) newVal = { ...val, name: b.optValName.get(label) };
+          }
+          next[newKey] = newVal;
         }
-      } else if (s.kind === 'optVal') {
-        const key = it.selectedOptions && it.selectedOptions[s.label] !== undefined ? s.label : Object.keys(it.selectedOptions || {}).find((k) => true);
-        if (it.selectedOptions && key !== undefined) it.selectedOptions[key] = t;
-      } else if (s.kind === 'optValName') {
-        if (it.selectedOptions && it.selectedOptions[s.label] && typeof it.selectedOptions[s.label] === 'object') {
-          it.selectedOptions[s.label].name = t;
+        const po = so.pricedOptions;
+        if (po && typeof po === 'object') {
+          const nextPo = {};
+          for (const [label, val] of Object.entries(po)) {
+            const newKey = b.pricedRename.get(label) || label;
+            let newVal = val;
+            if (val && typeof val === 'object' && typeof val.name === 'string') {
+              if (b.pricedValName.has(label)) newVal = { ...val, name: b.pricedValName.get(label) };
+            }
+            nextPo[newKey] = newVal;
+          }
+          next.pricedOptions = nextPo;
         }
-      } else if (s.kind === 'pricedKey') {
-        if (it.selectedOptions?.pricedOptions && it.selectedOptions.pricedOptions[s.label] !== undefined) {
-          const v = it.selectedOptions.pricedOptions[s.label];
-          delete it.selectedOptions.pricedOptions[s.label];
-          it.selectedOptions.pricedOptions[t] = v;
-        }
-      } else if (s.kind === 'pricedValName') {
-        if (it.selectedOptions?.pricedOptions && it.selectedOptions.pricedOptions[s.label] && typeof it.selectedOptions.pricedOptions[s.label] === 'object') {
-          it.selectedOptions.pricedOptions[s.label].name = t;
-        }
+        it.selectedOptions = next;
       }
     } catch (e) {}
   }

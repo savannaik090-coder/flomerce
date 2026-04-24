@@ -57,22 +57,22 @@ export default function FooterModern() {
             {hasSocialLinks && (
               <div className="mn-footer-social">
                 {socialLinks.instagram && (
-                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="Instagram" />>
+                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram">
                     <i className="fab fa-instagram"></i>
                   </a>
                 )}
                 {socialLinks.facebook && (
-                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="Facebook" />>
+                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook">
                     <i className="fab fa-facebook-f"></i>
                   </a>
                 )}
                 {socialLinks.twitter && (
-                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="Twitter" />>
+                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" aria-label="Twitter">
                     <i className="fab fa-twitter"></i>
                   </a>
                 )}
                 {socialLinks.youtube && (
-                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label=<TranslatedText text="YouTube" />>
+                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube">
                     <i className="fab fa-youtube"></i>
                   </a>
                 )}
@@ -142,12 +142,12 @@ export default function FooterModern() {
             <div className="mn-footer-app-buttons">
               {showAppStore && (
                 <a href={appBanner.appStoreUrl || '#'} target="_blank" rel="noopener noreferrer">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt=<TranslatedText text="App Store" /> style={{ height: 36 }} />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt={"App Store"} style={{ height: 36 }} />
                 </a>
               )}
               {showPlayStore && (
                 <a href={appBanner.playStoreUrl || '#'} target="_blank" rel="noopener noreferrer">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt=<TranslatedText text="Google Play" /> style={{ height: 36 }} />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt={"Google Play"} style={{ height: 36 }} />
                 </a>
               )}
             </div>

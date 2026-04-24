@@ -198,7 +198,7 @@ export default function ProductReviewsModern({ productId }) {
                   type="text"
                   value={formData.title}
                   onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder=<TranslatedText text="Summarize your experience" />
+                  placeholder={"Summarize your experience"}
                   maxLength={120}
                 />
               </div>
@@ -207,7 +207,7 @@ export default function ProductReviewsModern({ productId }) {
                 <textarea
                   value={formData.content}
                   onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder=<TranslatedText text="Share your thoughts about this product..." />
+                  placeholder={"Share your thoughts about this product..."}
                   rows={4}
                   maxLength={2000}
                 />
@@ -227,9 +227,9 @@ export default function ProductReviewsModern({ productId }) {
             <div className="mn-review-sort">
               <label><TranslatedText text="Sort by:" /></label>
               <select value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="recent"><TranslatedText text="Most Recent" /></option>
-                <option value="highest"><TranslatedText text="Highest Rated" /></option>
-                <option value="lowest"><TranslatedText text="Lowest Rated" /></option>
+                <option value="recent">Most Recent</option>
+                <option value="highest">Highest Rated</option>
+                <option value="lowest">Lowest Rated</option>
               </select>
             </div>
           )}
@@ -272,8 +272,8 @@ export default function ProductReviewsModern({ productId }) {
 
       {reviewImageModal && (
         <div className="review-image-modal" onClick={() => setReviewImageModal(null)}>
-          <button className="close-modal" onClick={() => setReviewImageModal(null)} aria-label=<TranslatedText text="Close" />>&times;</button>
-          <img src={reviewImageModal} alt=<TranslatedText text="Review" /> />
+          <button className="close-modal" onClick={() => setReviewImageModal(null)} aria-label="Close">&times;</button>
+          <img src={reviewImageModal} alt={"Review"} />
         </div>
       )}
     </div>

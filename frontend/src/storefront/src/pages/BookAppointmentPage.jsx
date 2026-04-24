@@ -238,7 +238,7 @@ export default function BookAppointmentPage() {
             </div>
             <div className="appt-form-group">
               <label><TranslatedText text="Additional Notes" /></label>
-              <textarea name="notes" value={form.notes} onChange={handleChange} placeholder=<TranslatedText text="Any specific requirements or questions..." /> />
+              <textarea name="notes" value={form.notes} onChange={handleChange} placeholder={"Any specific requirements or questions..."} />
             </div>
           </div>
 

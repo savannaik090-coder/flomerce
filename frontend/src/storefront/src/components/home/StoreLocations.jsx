@@ -54,7 +54,7 @@ export default function StoreLocations() {
 
         <div className="stores-grid-wrapper">
           {defaultStore.length > 1 && (
-            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev} aria-label=<TranslatedText text="Scroll left" />>
+            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev} aria-label="Scroll left">
               <i className="fas fa-chevron-left"></i>
             </button>
           )}
@@ -102,7 +102,7 @@ export default function StoreLocations() {
                     </Link>
                   )}
                   {store.phone && (
-                    <a href={`tel:${store.phone}`} className="call-btn" aria-label=<TranslatedText text="Call store" />>
+                    <a href={`tel:${store.phone}`} className="call-btn" aria-label="Call store">
                       <i className="fas fa-phone"></i>
                     </a>
                   )}
@@ -112,7 +112,7 @@ export default function StoreLocations() {
           ))}
           </div>
           {defaultStore.length > 1 && (
-            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext} aria-label=<TranslatedText text="Scroll right" />>
+            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext} aria-label="Scroll right">
               <i className="fas fa-chevron-right"></i>
             </button>
           )}

@@ -170,11 +170,11 @@ export default function ReturnPage() {
             <form onSubmit={handleLookup}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Order Number" /></label>
-                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder=<TranslatedText text="e.g. FX-123456" /> style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder={"e.g. FX-123456"} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Email Address" /></label>
-                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder=<TranslatedText text="your@email.com" /> style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={"your@email.com"} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               {lookupMessage && (
                 <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupMessage.includes('sent') ? '#f0fdf4' : '#fef2f2', color: lookupMessage.includes('sent') ? '#166534' : '#991b1b', fontSize: 14 }}>

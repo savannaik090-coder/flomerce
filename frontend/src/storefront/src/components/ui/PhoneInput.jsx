@@ -95,7 +95,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
           type="tel"
           value={localNumber}
           onChange={handlePhoneChange}
-          placeholder=<TranslatedText text="Phone number" />
+          placeholder={"Phone number"}
           style={{
             flex: 1, padding: '10px 12px', border: 'none', outline: 'none',
             fontSize: 14, minWidth: 0, boxSizing: 'border-box',
@@ -116,7 +116,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder=<TranslatedText text="Search country..." />
+              placeholder={"Search country..."}
               style={{
                 width: '100%', padding: '8px 10px', border: '1px solid #ddd',
                 borderRadius: 4, fontSize: 13, boxSizing: 'border-box', outline: 'none',

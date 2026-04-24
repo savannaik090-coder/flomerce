@@ -367,14 +367,26 @@ export default function CheckoutPageModern() {
 
   const renderSelectedOptions = (item) => {
     const parts = [];
-    if (item.selectedOptions?.color) parts.push(`$<TranslatedText text="Color" />: ${item.selectedOptions.color}`);
+    if (item.selectedOptions?.color) {
+      parts.push(<><TranslatedText text="Color" />{`: ${item.selectedOptions.color}`}</>);
+    }
     if (item.selectedOptions?.customOptions) {
-      for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) parts.push(`${label}: ${value}`);
+      for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) {
+        parts.push(<><TranslatedText text={label} />{`: ${value}`}</>);
+      }
     }
     if (item.selectedOptions?.pricedOptions) {
-      for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) parts.push(`${label}: ${val.name}`);
+      for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) {
+        parts.push(<><TranslatedText text={label} />{`: ${val.name}`}</>);
+      }
     }
-    return parts.length > 0 ? <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{parts.join(' \u2022 ')}</div> : null;
+    return parts.length > 0 ? (
+      <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
+        {parts.map((p, k) => (
+          <React.Fragment key={k}>{k > 0 ? ' \u2022 ' : ''}{p}</React.Fragment>
+        ))}
+      </div>
+    ) : null;
   };
 
   if (orderPlaced) {
@@ -573,7 +585,7 @@ export default function CheckoutPageModern() {
                 <>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 8 }}><TranslatedText text="Have a coupon code?" /></div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }} onKeyDown={e => e.key === 'Enter' && applyCoupon()} placeholder=<TranslatedText text="Enter code" /> style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }} />
+                    <input type="text" value={couponCode} onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }} onKeyDown={e => e.key === 'Enter' && applyCoupon()} placeholder={"Enter code"} style={{ flex: 1, padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 0, fontSize: 14, fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase' }} />
                     <button type="button" onClick={applyCoupon} disabled={couponApplying} style={{ padding: '9px 16px', background: '#111', color: '#fff', border: 'none', borderRadius: 0, fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}><TranslatedText text="Apply" /></button>
                   </div>
                   {couponError && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}><TranslatedText text={couponError} /></div>}
@@ -668,7 +680,7 @@ export default function CheckoutPageModern() {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}><TranslatedText text="Country *" /></label>
               <select value={address.country} onChange={e => handleAddressChange('country', e.target.value)} style={{ ...inputStyle(addressErrors.country), background: '#fff' }}>
-                <option value=""><TranslatedText text="Select Country" /></option>
+                <option value="">Select Country</option>
                 {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
               </select>
               {addressErrors.country && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.country}</div>}
@@ -690,7 +702,7 @@ export default function CheckoutPageModern() {
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}><TranslatedText text="State / Region *" /></label>
                 <select value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={{ ...inputStyle(addressErrors.state), background: '#fff' }}>
-                  <option value=""><TranslatedText text="Select State / Region" /></option>
+                  <option value="">Select State / Region</option>
                   {statesForCountry.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 {addressErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.state}</div>}

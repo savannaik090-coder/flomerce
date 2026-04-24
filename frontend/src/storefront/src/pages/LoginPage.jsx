@@ -169,7 +169,7 @@ export default function LoginPage() {
             <p style={{ color: '#666', marginBottom: 16 }}><TranslatedText text="Enter your email address and we'll send you a link to reset your password." /></p>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="Email Address" /></label>
-              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder=<TranslatedText text="Enter your email" /> style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder={"Enter your email"} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
             </div>
             {resetError && <div style={{ color: '#e74c3c', fontSize: 14, marginBottom: 12, padding: 10, background: '#ffebee', borderRadius: 4 }}>{resetError}</div>}
             {resetSuccess && <div style={{ color: '#2ecc71', fontSize: 14, marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 4 }}>{resetSuccess}</div>}
