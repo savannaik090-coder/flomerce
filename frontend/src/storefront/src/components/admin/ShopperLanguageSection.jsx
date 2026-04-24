@@ -255,7 +255,8 @@ export default function ShopperLanguageSection({ open, onToggle }) {
     }
   }
 
-  const enableToggleDisabled = !hasKey;
+  const hasPendingKey = apiKey.trim().length > 0 && !apiKey.trim().startsWith('•');
+  const enableToggleDisabled = !hasKey && !hasPendingKey;
 
   return (
     <div className="card" style={{ marginBottom: 20 }}>
@@ -373,8 +374,10 @@ export default function ShopperLanguageSection({ open, onToggle }) {
                     <div style={{ fontWeight: 600, color: '#1e293b' }}>Enable shopper language switcher</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
                       {enableToggleDisabled
-                        ? "Save a translator key first to enable this."
-                        : "When on, shoppers see a language switcher in the storefront header."}
+                        ? "Paste a translator key above to enable this."
+                        : (hasPendingKey && !hasKey
+                            ? "When on, shoppers see a language switcher. Click \"Save\" to apply."
+                            : "When on, shoppers see a language switcher in the storefront header.")}
                     </div>
                   </div>
                   <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: enableToggleDisabled ? 'not-allowed' : 'pointer' }}>
