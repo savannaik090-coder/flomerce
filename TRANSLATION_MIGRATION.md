@@ -1,13 +1,15 @@
 # Translation Architecture Migration
 
 **Decision date:** April 24, 2026
-**Goal:** Remove System A (static JSON-namespace translation via i18next/react-i18next) entirely. Make System B (per-merchant on-demand Microsoft Translator via `<TranslatedText>`) the single source of all storefront translation. Admin / dashboard / wizard / owner / auth / legal surfaces become English-only.
+**Original goal (superseded):** Remove System A (static JSON-namespace translation via i18next/react-i18next) entirely. Make System B (per-merchant on-demand Microsoft Translator via `<TranslatedText>`) the single source of all storefront translation. Admin / dashboard / wizard / owner / auth / legal surfaces become English-only.
+
+> **⚠️ CURRENT STATE — read this before the historical sections below.** System A was *partially restored* later the same day (Apr 24, 2026) and now serves the public-facing landing surfaces only: `LandingPage.jsx`, `Navbar.jsx`, `LandingPricing.jsx`, `ContactForm.jsx`, and `AboutPage.jsx` (5 files). All other platform pages — auth, dashboard, wizard, owner admin (including the Translations tab chrome), and the remaining legal pages (terms / privacy / refund / shipping) — remain English-only. The storefront still uses System B exclusively. The historical sections that follow describe the temporary "fully removed" state and are kept for context only — do **not** treat them as the current architecture. See `replit.md` "Translation Architecture" section for the authoritative current state.
 
 ---
 
-## STATUS AS OF HANDOFF (April 24, 2026)
+## STATUS AS OF HANDOFF (April 24, 2026) — historical
 
-**✅ COMPLETE (Apr 24, 2026).** Both SPAs build cleanly. All System A files removed. All admin surfaces are English-only. Storefront chrome translates on-demand via System B. `replit.md` updated to reflect the new architecture. Final smoke-test for `/dashboard`, `/wizard`, and storefront admin was done at the source level (auth-gated UIs cannot be rendered without credentials in this environment) — see Status Log below.
+**✅ FULL REMOVAL was completed earlier on Apr 24, 2026, then partially reverted later the same day** (see warning above and the bottom of this file for the post-revert log entries). The table below describes the original full-removal milestones.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -244,3 +246,11 @@ Deleted 11 unused namespace JSONs from `frontend/src/shared/i18n/locales/en/`: `
 One non-i18n consumer needed care: `getLocalizedWizardSeed()` in `i18n-worker.js` was reading `seoTitleTemplates`, `seoDescriptionTemplates`, and `defaultCategories` from `EN_WIZARD` (the wizard.json import). Those three sub-trees aren't UI strings — they're English defaults the site-creation wizard pre-fills into the merchant's SEO/category fields. They were extracted into `backend/workers/platform/wizard-seed-data.js` (a plain JS module, not part of the i18n catalog) so the wizard worker keeps functioning. Localization of these defaults was effectively English-only already (translated overrides existed in non-EN catalogs but nothing in the merchant flow encouraged shop owners to ship in a non-EN content language), so removing the per-locale fallback path is a no-op for the merchant experience.
 
 Measurable wins: platform SPA bundle dropped from 754 KB → 557 KB, and the per-locale `/api/i18n/locale/:lang` response dropped from ~210 KB → ~5.3 KB (40× smaller). The next non-English visitor will trigger a one-time recache because the EN_CATALOG hash changed — that's expected and self-healing.
+
+## Apr 24, 2026 — AboutPage promoted to System A; landing footer address de-translated
+
+- `frontend/src/platform/src/pages/AboutPage.jsx` switched from `LegalNavbar` (English) to the translated `Navbar` (with `LanguageSwitcher`). All hardcoded English replaced with `t('about.*')` calls. Bullet/numbered list items moved to per-item keys under `about.whatItems.*`, `about.howItems.*`, `about.valuesItems.*` (label + desc) — never one HTML blob.
+- `frontend/src/shared/i18n/locales/en/landing.json`: removed flat `aboutTitle/aboutTagline/aboutWhoTitle/aboutWhatTitle/aboutMissionTitle/aboutHowTitle/aboutValuesTitle/aboutContactTitle` keys (unused leftovers); removed `addressLine`; added nested `about.*` group with full body content.
+- Legal pages (Terms / Privacy / Refund / Shipping) untouched — they keep `LegalNavbar` and stay English-only.
+- Landing footer fix: `{t('addressLine')}` replaced with raw `Karwar, Karnataka, India — 581400`. The phone (`+91 9901954610`) and email (`SUPPORT_EMAIL`) were already raw, so the contact column is now uniformly English regardless of selected language. The About page footer follows the same convention.
+- System A surface count: 4 → 5 files (`LandingPage`, `Navbar`, `LandingPricing`, `ContactForm`, `AboutPage`).

@@ -26,18 +26,9 @@
   "footerShipping": "Shipping & Delivery Policy",
   "rightsReserved": "All rights reserved.",
   "logoAlt": "Flomerce logo",
-  "addressLine": "Karwar, Karnataka, India — 581400",
   "pwaInstallTitle": "Install Flomerce",
   "pwaInstallDesc": "Add to home screen for better experience",
   "pwaInstall": "Install",
-  "aboutTitle": "About Us",
-  "aboutTagline": "Empowering small businesses to sell online",
-  "aboutWhoTitle": "Who We Are",
-  "aboutWhatTitle": "What We Do",
-  "aboutMissionTitle": "Our Mission",
-  "aboutHowTitle": "How It Works",
-  "aboutValuesTitle": "Our Values",
-  "aboutContactTitle": "Contact Us",
   "features": {
     "store": { "title": "Complete Online Store", "desc": "Launch a fully functional e-commerce store with product listings, categories, and a beautiful storefront — ready to sell in minutes." },
     "orders": { "title": "Order Management", "desc": "Track orders from placement to delivery with status updates, customer notifications, and shipping management built in." },
@@ -98,5 +89,48 @@
     "mailBodyEmail": "Email",
     "namePlaceholder": "John Doe",
     "emailPlaceholder": "john@example.com"
+  },
+  "about": {
+    "title": "About Us",
+    "tagline": "Empowering small businesses to sell online",
+    "whoTitle": "Who We Are",
+    "whoP1": "Flomerce is a software-as-a-service (SaaS) platform built to help small businesses, entrepreneurs, and creators launch their own professional e-commerce websites — without writing a single line of code. We believe that every business, no matter how small, deserves a powerful online presence.",
+    "whoP2": "Based in Karwar, Karnataka, India, Flomerce was founded with a simple mission: make online selling accessible, affordable, and effortless for everyone.",
+    "whatTitle": "What We Do",
+    "whatIntro": "Flomerce provides a complete, all-in-one platform for creating and managing online stores. Each store gets its own branded subdomain (e.g., your-store.{{domain}}) and comes packed with everything needed to run a successful e-commerce business:",
+    "whatItems": {
+      "storeBuilder": { "label": "Store Builder", "desc": "Create a fully functional online store in minutes with beautiful, ready-to-use templates" },
+      "productMgmt": { "label": "Product Management", "desc": "Add products with images, categories, variants, pricing, and inventory tracking" },
+      "orderProcessing": { "label": "Order Processing", "desc": "Complete order lifecycle management — from placement to delivery, with real-time status updates and customer notifications" },
+      "securePayments": { "label": "Secure Payments", "desc": "Accept payments through Razorpay (UPI, cards, net banking, wallets) and cash on delivery" },
+      "customerMgmt": { "label": "Customer Management", "desc": "Built-in customer accounts, wishlists, order history, and reviews" },
+      "analytics": { "label": "Analytics & Insights", "desc": "Track visitors, page views, traffic sources, and sales from your admin dashboard" },
+      "seoTools": { "label": "SEO Tools", "desc": "Built-in search engine optimization with meta tags, sitemaps, and Google structured data" },
+      "pushNotif": { "label": "Push Notifications", "desc": "Engage customers with automated alerts for new products, price drops, and back-in-stock items" },
+      "customDomains": { "label": "Custom Domains", "desc": "Connect your own domain name for a fully branded experience" }
+    },
+    "missionTitle": "Our Mission",
+    "missionP1": "We are on a mission to democratize e-commerce for small businesses across India and beyond. Traditional e-commerce solutions are often expensive, complex, and require technical expertise. Flomerce eliminates these barriers by providing an intuitive, affordable platform that anyone can use.",
+    "missionP2": "Whether you sell jewellery, clothing, beauty products, or any other retail goods — Flomerce gives you the tools to build your brand, reach customers, and grow your business online.",
+    "howTitle": "How It Works",
+    "howItems": {
+      "signUp": { "label": "Sign Up", "desc": "Create your free account in seconds — no credit card required" },
+      "buildStore": { "label": "Build Your Store", "desc": "Choose a template, add your brand name, logo, and products" },
+      "setupPayments": { "label": "Set Up Payments", "desc": "Connect your own Razorpay merchant account to accept payments directly" },
+      "goLive": { "label": "Go Live", "desc": "Your store is instantly live on your own subdomain, ready for customers" }
+    },
+    "valuesTitle": "Our Values",
+    "valuesItems": {
+      "simplicity": { "label": "Simplicity", "desc": "We build tools that are easy to use, so you can focus on your business, not technology" },
+      "transparency": { "label": "Transparency", "desc": "Clear pricing, no hidden fees, and honest communication" },
+      "security": { "label": "Security", "desc": "Your data and your customers' data are protected with industry-standard security measures" },
+      "support": { "label": "Support", "desc": "We are here to help you succeed — reach out to us anytime" }
+    },
+    "contactTitle": "Contact Us",
+    "contactIntro": "We would love to hear from you. Whether you have questions, feedback, or need help getting started:",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "addressLabel": "Address",
+    "websiteLabel": "Website"
   }
 }

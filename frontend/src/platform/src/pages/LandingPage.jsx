@@ -188,7 +188,7 @@ export default function LandingPage() {
               <h4>{t('footerContact')}</h4>
               <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <a href="tel:+919901954610">+91 9901954610</a>
-              <span>{t('addressLine')}</span>
+              <span>Karwar, Karnataka, India — 581400</span>
             </div>
           </div>
           <div className="footer-bottom">
