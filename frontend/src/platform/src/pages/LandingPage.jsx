@@ -178,11 +178,11 @@ export default function LandingPage() {
             </div>
             <div className="footer-links-group">
               <h4>{t('footerCompany')}</h4>
-              <Link to="/about">{t('footerAbout')}</Link>
-              <Link to="/terms">{t('footerTerms')}</Link>
-              <Link to="/privacy-policy">{t('footerPrivacy')}</Link>
-              <Link to="/refund-policy">{t('footerRefund')}</Link>
-              <Link to="/shipping-policy">{t('footerShipping')}</Link>
+              <Link to="/about">About Us</Link>
+              <Link to="/terms">Terms & Conditions</Link>
+              <Link to="/privacy-policy">Privacy Policy</Link>
+              <Link to="/refund-policy">Refund & Cancellation Policy</Link>
+              <Link to="/shipping-policy">Shipping & Delivery Policy</Link>
             </div>
             <div className="footer-links-group">
               <h4>{t('footerContact')}</h4>

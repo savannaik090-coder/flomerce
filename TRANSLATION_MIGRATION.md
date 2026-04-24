@@ -254,3 +254,11 @@ Measurable wins: platform SPA bundle dropped from 754 KB → 557 KB, and the per
 - Legal pages (Terms / Privacy / Refund / Shipping) untouched — they keep `LegalNavbar` and stay English-only.
 - Landing footer fix: `{t('addressLine')}` replaced with raw `Karwar, Karnataka, India — 581400`. The phone (`+91 9901954610`) and email (`SUPPORT_EMAIL`) were already raw, so the contact column is now uniformly English regardless of selected language. The About page footer follows the same convention.
 - System A surface count: 4 → 5 files (`LandingPage`, `Navbar`, `LandingPricing`, `ContactForm`, `AboutPage`).
+
+## Apr 24, 2026 (later) — footer page-link names made raw English on Landing + About
+
+To eliminate cross-page footer inconsistency (link names translated on Landing/About but English on Terms/Privacy/Refund/Shipping because those pages are intentionally English-only), the five footer page-link names are now raw English literals on every page:
+- `About Us`, `Terms & Conditions`, `Privacy Policy`, `Refund & Cancellation Policy`, `Shipping & Delivery Policy`.
+
+Removed from `landing.json`: `footerAbout`, `footerTerms`, `footerPrivacy`, `footerRefund`, `footerShipping`.
+Kept translated: `footerTagline`, `footerCompany`, `footerContact`, `rightsReserved`, `logoAlt`.
