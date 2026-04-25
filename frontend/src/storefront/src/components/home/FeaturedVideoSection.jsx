@@ -14,7 +14,7 @@ export default function FeaturedVideoSection() {
   const description = settings.featuredVideoDescription || categoryDefaults.description;
   const videoUrl = settings.featuredVideoUrl || '';
   const chatLink = settings.featuredVideoChatLink || '';
-  const chatButtonText = settings.featuredVideoChatButtonText || 'CHAT NOW';
+  const chatButtonText = settings.featuredVideoChatButtonText || '';
   const phone = siteConfig?.phone || '';
 
   const handleChatClick = () => {
@@ -44,7 +44,9 @@ export default function FeaturedVideoSection() {
         {title && <h1 className="fv-title"><TranslatedText text={title} /></h1>}
         {description && <p className="fv-description"><TranslatedText text={description} /></p>}
         <button className="fv-chat-btn" onClick={handleChatClick}>
-          <TranslatedText text={chatButtonText} />
+          {chatButtonText
+            ? <TranslatedText text={chatButtonText} />
+            : <TranslatedText text="CHAT NOW" />}
         </button>
       </div>
     </section>

@@ -15,7 +15,7 @@ export default function ProductShowcase() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const showcaseImage = siteConfig?.settings?.showcaseImage || '';
-  const showcaseTitle = siteConfig?.settings?.showcaseTitle || 'Lumina Collection';
+  const showcaseTitle = siteConfig?.settings?.showcaseTitle || '';
 
   useEffect(() => {
     if (!siteConfig?.id) return;
@@ -37,7 +37,11 @@ export default function ProductShowcase() {
     <section className="interactive-showcase-section">
       <div className="interactive-showcase-container">
         <div className="showcase-header">
-          <h2 className="section-title"><TranslatedText text={showcaseTitle} /></h2>
+          <h2 className="section-title">
+            {showcaseTitle
+              ? <TranslatedText text={showcaseTitle} />
+              : <TranslatedText text="Lumina Collection" />}
+          </h2>
         </div>
         <div className="showcase-content">
           {showcaseImage && (

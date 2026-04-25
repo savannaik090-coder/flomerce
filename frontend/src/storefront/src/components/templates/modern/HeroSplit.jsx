@@ -48,15 +48,29 @@ export default function HeroSplit() {
     >
       <div className="modern-hero-inner">
         <div className="modern-hero-text">
-          <span className="modern-hero-tag"><TranslatedText text={slide.subtitle || 'New Collection'} /></span>
-          <h1 className="modern-hero-title"><TranslatedText text={slide.title || siteConfig?.brandName || 'Welcome'} /></h1>
-          <p className="modern-hero-desc"><TranslatedText text={slide.description || 'Discover our curated collection of premium products.'} /></p>
+          <span className="modern-hero-tag">
+            {slide.subtitle
+              ? <TranslatedText text={slide.subtitle} />
+              : <TranslatedText text="New Collection" />}
+          </span>
+          <h1 className="modern-hero-title">
+            {slide.title
+              ? <TranslatedText text={slide.title} />
+              : (siteConfig?.brandName || <TranslatedText text="Welcome" />)}
+          </h1>
+          <p className="modern-hero-desc">
+            {slide.description
+              ? <TranslatedText text={slide.description} />
+              : <TranslatedText text="Discover our curated collection of premium products." />}
+          </p>
           <button
             className="modern-hero-btn"
             style={{ backgroundColor: primaryColor }}
             onClick={() => { if (slide.buttonLink) window.location.href = slide.buttonLink; }}
           >
-            <TranslatedText text={slide.buttonText || 'Shop Now'} />
+            {slide.buttonText
+              ? <TranslatedText text={slide.buttonText} />
+              : <TranslatedText text="Shop Now" />}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>

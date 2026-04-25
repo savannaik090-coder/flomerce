@@ -29,12 +29,12 @@ export default function FirstVisitBanner() {
 
   if (!show || settings.showWelcomeBanner === false) return null;
 
-  const brandName = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
+  const brandName = siteConfig?.brandName || siteConfig?.brand_name || '';
   const bannerImage = settings.welcomeBannerImage || '';
   const usingDefaultHeading = !settings.welcomeBannerHeading;
   const heading = settings.welcomeBannerHeading || `Welcome to ${brandName}!`;
-  const message = settings.welcomeBannerMessage || 'Discover our exquisite collection. Sign up today to receive exclusive offers and updates.';
-  const buttonText = settings.welcomeBannerButtonText || 'Sign Up Now';
+  const message = settings.welcomeBannerMessage || '';
+  const buttonText = settings.welcomeBannerButtonText || '';
   const buttonLink = settings.welcomeBannerButtonLink || '/signup';
 
   return (
@@ -66,9 +66,15 @@ export default function FirstVisitBanner() {
                   : <TranslatedText text="Welcome to our store!" />)
               : <TranslatedText text={heading} />}
           </h2>
-          <p><TranslatedText text={message} /></p>
+          <p>
+            {message
+              ? <TranslatedText text={message} />
+              : <TranslatedText text="Discover our exquisite collection. Sign up today to receive exclusive offers and updates." />}
+          </p>
           <Link to={buttonLink} className="first-visit-cta-button" onClick={close}>
-            <TranslatedText text={buttonText} />
+            {buttonText
+              ? <TranslatedText text={buttonText} />
+              : <TranslatedText text="Sign Up Now" />}
           </Link>
         </div>
       </div>

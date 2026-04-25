@@ -17,8 +17,8 @@ export default function CustomerReviews() {
     ? settings.reviews
     : getDefaultReviews(siteConfig?.category);
 
-  const sectionTitle = settings.reviewsSectionTitle || "What Our Customers Say";
-  const sectionSubtitle = settings.reviewsSectionSubtitle || "Real reviews from our happy customers";
+  const sectionTitle = settings.reviewsSectionTitle || '';
+  const sectionSubtitle = settings.reviewsSectionSubtitle || '';
   const usingDefaultReviews = !settings.reviews?.length;
   const phone = siteConfig?.phone || '';
 
@@ -38,8 +38,16 @@ export default function CustomerReviews() {
     <section className="customer-reviews-section" id="customer-reviews">
       <div className="reviews-container">
         <div className="reviews-header">
-          <h2 className="section-title"><TranslatedText text={sectionTitle} /></h2>
-          <p className="section-subtitle"><TranslatedText text={sectionSubtitle} /></p>
+          <h2 className="section-title">
+            {sectionTitle
+              ? <TranslatedText text={sectionTitle} />
+              : <TranslatedText text="What Our Customers Say" />}
+          </h2>
+          <p className="section-subtitle">
+            {sectionSubtitle
+              ? <TranslatedText text={sectionSubtitle} />
+              : <TranslatedText text="Real reviews from our happy customers" />}
+          </p>
         </div>
 
         <div className="reviews-wrapper">

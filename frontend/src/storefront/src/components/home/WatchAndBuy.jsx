@@ -149,7 +149,11 @@ export default function WatchAndBuy() {
                   ) : (
                     <div className="wb-video wb-video-placeholder" style={{ background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
                       <i className="fas fa-video" style={{ fontSize: 28, color: '#cbd5e1' }}></i>
-                      <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}><TranslatedText text={item.title || "Video"} /></span>
+                      <span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>
+                        {item.title
+                          ? <TranslatedText text={item.title} />
+                          : <TranslatedText text="Video" />}
+                      </span>
                     </div>
                   )}
 
@@ -193,7 +197,11 @@ export default function WatchAndBuy() {
                         <i className="fas fa-shopping-bag" style={{ color: '#fff', fontSize: 18 }}></i>
                       </div>
                       <div className="wb-product-info">
-                        <div className="wb-product-name"><TranslatedText text={item.title || "View Product"} /></div>
+                        <div className="wb-product-name">
+                          {item.title
+                            ? <TranslatedText text={item.title} />
+                            : <TranslatedText text="View Product" />}
+                        </div>
                         <div className="wb-product-sku"><TranslatedText text="SKU:" /> {item.productSku}</div>
                       </div>
                     </Link>

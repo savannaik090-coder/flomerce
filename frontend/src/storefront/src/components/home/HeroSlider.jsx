@@ -89,7 +89,9 @@ export default function HeroSlider() {
                     if (slide.buttonLink) window.location.href = slide.buttonLink;
                   }}
                 >
-                  <TranslatedText text={slide.buttonText || 'SHOP NOW'} />
+                  {slide.buttonText
+                    ? <TranslatedText text={slide.buttonText} />
+                    : <TranslatedText text="SHOP NOW" />}
                 </button>
               </div>
             </div>

@@ -12,8 +12,8 @@ export default function BrandStory() {
   const isHidden = settings.showBrandStory === false;
   if (isHidden) return null;
 
-  const headline = settings.brandStoryHeadline || "Our Story";
-  const text = settings.brandStoryText || "We believe in crafting products that blend quality with purpose. Every piece is thoughtfully designed to bring beauty and function into your everyday life.";
+  const headline = settings.brandStoryHeadline || '';
+  const text = settings.brandStoryText || '';
   const image = settings.brandStoryImage || '';
   const ctaText = settings.brandStoryCtaText || '';
   const ctaLink = settings.brandStoryCtaLink || '/about';
@@ -28,8 +28,16 @@ export default function BrandStory() {
         )}
         <div className={`mn-brand-text-side ${!image ? 'mn-brand-text-full' : ''}`}>
           <span className="mn-brand-label"><TranslatedText text="Our Brand" /></span>
-          <h2 className="mn-brand-headline"><TranslatedText text={headline} /></h2>
-          <p className="mn-brand-body"><TranslatedText text={text} /></p>
+          <h2 className="mn-brand-headline">
+            {headline
+              ? <TranslatedText text={headline} />
+              : <TranslatedText text="Our Story" />}
+          </h2>
+          <p className="mn-brand-body">
+            {text
+              ? <TranslatedText text={text} />
+              : <TranslatedText text="We believe in crafting products that blend quality with purpose. Every piece is thoughtfully designed to bring beauty and function into your everyday life." />}
+          </p>
           {ctaText && ctaLink.startsWith('http') ? (
             <a href={ctaLink} className="mn-brand-cta" target="_blank" rel="noopener noreferrer"><TranslatedText text={ctaText} /></a>
           ) : ctaText ? (

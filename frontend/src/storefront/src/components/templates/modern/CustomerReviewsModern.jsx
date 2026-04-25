@@ -17,8 +17,8 @@ export default function CustomerReviewsModern() {
     ? settings.reviews
     : getDefaultReviews(siteConfig?.category);
 
-  const sectionTitle = settings.reviewsSectionTitle || "What Our Customers Say";
-  const sectionSubtitle = settings.reviewsSectionSubtitle || "Real reviews from our happy customers";
+  const sectionTitle = settings.reviewsSectionTitle || '';
+  const sectionSubtitle = settings.reviewsSectionSubtitle || '';
   const phone = siteConfig?.phone || '';
 
   const scroll = (direction) => {
@@ -37,8 +37,16 @@ export default function CustomerReviewsModern() {
     <section className="mn-customer-reviews" id="customer-reviews">
       <div className="mn-customer-reviews-container">
         <div className="mn-customer-reviews-header">
-          <h2 className="mn-customer-reviews-title"><TranslatedText text={sectionTitle} /></h2>
-          <p className="mn-customer-reviews-subtitle"><TranslatedText text={sectionSubtitle} /></p>
+          <h2 className="mn-customer-reviews-title">
+            {sectionTitle
+              ? <TranslatedText text={sectionTitle} />
+              : <TranslatedText text="What Our Customers Say" />}
+          </h2>
+          <p className="mn-customer-reviews-subtitle">
+            {sectionSubtitle
+              ? <TranslatedText text={sectionSubtitle} />
+              : <TranslatedText text="Real reviews from our happy customers" />}
+          </p>
         </div>
 
         <div className="mn-customer-reviews-wrapper">
