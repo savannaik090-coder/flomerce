@@ -179,16 +179,26 @@ export default function ShopperLanguageSection({ open, onToggle }) {
       });
       const result = await res.json();
       if (res.ok && result?.success) {
-        setMessage({ type: 'success', text: "Translator settings saved." });
-        setApiKey('');
-        const refresh = await fetch(`${API_BASE}/api/sites/${siteId}/translator-settings`, { headers: authHeaders() });
-        const refreshed = (await refresh.json())?.data;
-        if (refreshed) {
-          setHasKey(!!refreshed.hasKey);
-          setKeyMasked(refreshed.keyMasked || '');
-          setEnabled(!!refreshed.enabled);
-          setUsage(refreshed.usage || null);
+        // Hydrate from the PUT response itself — the backend now returns the
+        // authoritative saved row. We deliberately avoid a follow-up GET
+        // because it can hit a D1 read replica that hasn't seen the write yet,
+        // which previously made the "Clear cache" / "Remove key" buttons
+        // disappear right after saving a new key. Sync ALL six fields so
+        // local state never drifts from what the server actually stored.
+        const saved = result.data;
+        if (saved) {
+          setHasKey(!!saved.hasKey);
+          setKeyMasked(saved.keyMasked || '');
+          setRegion(saved.region || 'global');
+          setLanguages(Array.isArray(saved.languages) ? saved.languages : []);
+          setEnabled(!!saved.enabled);
+          setUsage(saved.usage || null);
         }
+        // Clear the input AFTER the new state is applied so the toggle and
+        // action buttons don't briefly disappear during the save (avoids the
+        // hasPendingKey=false && hasKey=false flicker window).
+        setApiKey('');
+        setMessage({ type: 'success', text: "Translator settings saved." });
       } else {
         setMessage({ type: 'error', text: result?.error || "Failed to save." });
       }

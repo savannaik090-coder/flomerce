@@ -1458,30 +1458,44 @@ async function getSiteTranslatorRow(env, siteId) {
   ).bind(siteId).first();
 }
 
+/**
+ * Build the canonical translator-settings payload for a site, given an
+ * already-known row + (optionally) the cleartext key we just received in
+ * a save request. Returning a single shape from both GET and PUT lets the
+ * frontend trust the PUT response directly and skip the read-after-write
+ * refresh that was racing D1's read replicas.
+ */
+async function buildTranslatorSettingsPayload(env, siteId, row, plaintextKey) {
+  const enc = row?.translator_api_key_encrypted || '';
+  let keyMasked = '';
+  if (plaintextKey) {
+    keyMasked = maskSecret(plaintextKey);
+  } else if (enc) {
+    try {
+      const plain = await decryptSecret(env, enc);
+      keyMasked = maskSecret(plain);
+    } catch (e) {
+      console.error('Translator key decrypt failed:', e?.message || e);
+      keyMasked = '••••••••••????';
+    }
+  }
+  const usage = await getSiteTranslatorUsage(env, siteId);
+  return {
+    enabled: row?.translator_enabled === 1,
+    region: row?.translator_region || '',
+    languages: parseLanguagesField(row?.translator_languages),
+    hasKey: !!enc,
+    keyMasked,
+    usage,
+  };
+}
+
 async function getSiteTranslatorSettings(env, siteId) {
   try {
     const row = await getSiteTranslatorRow(env, siteId);
     if (!row) return errorResponse('Site not found', 404);
-    const enc = row.translator_api_key_encrypted || '';
-    let keyMasked = '';
-    if (enc) {
-      try {
-        const plain = await decryptSecret(env, enc);
-        keyMasked = maskSecret(plain);
-      } catch (e) {
-        console.error('Translator key decrypt failed:', e?.message || e);
-        keyMasked = '••••••••••????';
-      }
-    }
-    const usage = await getSiteTranslatorUsage(env, siteId);
-    return successResponse({
-      enabled: row.translator_enabled === 1,
-      region: row.translator_region || '',
-      languages: parseLanguagesField(row.translator_languages),
-      hasKey: !!enc,
-      keyMasked,
-      usage,
-    });
+    const data = await buildTranslatorSettingsPayload(env, siteId, row, null);
+    return successResponse(data);
   } catch (e) {
     console.error('Get site translator settings error:', e);
     return errorResponse('Failed to load translator settings', 500);
@@ -1593,7 +1607,22 @@ async function saveSiteTranslatorSettings(request, env, siteId, ctx) {
 
     if (ctx) ctx.waitUntil(purgeStorefrontCache(env, siteId, ['site']));
 
-    return successResponse(null, 'Translator settings saved');
+    // Return the authoritative saved state in the response so the frontend
+    // can hydrate without a follow-up GET (which previously raced D1's
+    // regional read replicas and left the UI showing pre-save values).
+    const savedRow = {
+      translator_api_key_encrypted: newEncrypted || '',
+      translator_region: region || '',
+      translator_enabled: enabled ? 1 : 0,
+      translator_languages: JSON.stringify(languages),
+    };
+    const data = await buildTranslatorSettingsPayload(
+      env,
+      siteId,
+      savedRow,
+      incomingKey && !isMaskedPlaceholder ? incomingKey : null
+    );
+    return successResponse(data, 'Translator settings saved');
   } catch (e) {
     console.error('Save site translator settings error:', e);
     return errorResponse('Failed to save translator settings: ' + (e.message || 'Unknown error'), 500);
