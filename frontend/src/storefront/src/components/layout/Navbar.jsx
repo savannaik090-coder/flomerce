@@ -101,7 +101,9 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           return (
             <div className="promo-banner" style={{ justifyContent: 'center' }}>
               <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>
-                <TranslatedText text="Welcome to" /> {siteConfig?.brandName || <TranslatedText text="Our Store" />}
+                {siteConfig?.brandName
+                  ? <TranslatedText text="Welcome to {{brand}}" vars={{ brand: siteConfig.brandName }} />
+                  : <TranslatedText text="Welcome to our store" />}
               </p>
             </div>
           );

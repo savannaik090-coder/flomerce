@@ -12,10 +12,30 @@ import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx'
  * Usage:
  *   <TranslatedText text={product.name} />
  *   <TranslatedText text={description} as="p" />
+ *
+ * For phrases with dynamic values (proper nouns, brand names, numbers
+ * that must NOT be translated), use the `vars` prop with `{name}` tokens
+ * in the source string. The full template is translated as one unit so
+ * grammar/word order is preserved across languages, then `{name}` is
+ * replaced with the literal value:
+ *
+ *   <TranslatedText text="Welcome to {{brand}}" vars={{ brand: 'Acme' }} />
+ *   // en: "Welcome to Acme"
+ *   // hi: "Acme में आपका स्वागत है"
+ *
+ * The double-brace syntax matches the i18next placeholder convention that
+ * the server translator already protects via <span class="notranslate">,
+ * so Microsoft leaves `{{brand}}` intact through the round trip.
  */
-export default function TranslatedText({ text, as: Tag, className, style, ...rest }) {
+export default function TranslatedText({ text, vars, as: Tag, className, style, ...rest }) {
   const { translate } = useShopperTranslation();
-  const value = translate(text);
+  let value = translate(text);
+  if (vars && typeof value === 'string') {
+    for (const [k, v] of Object.entries(vars)) {
+      if (v === undefined || v === null) continue;
+      value = value.split(`{{${k}}}`).join(String(v));
+    }
+  }
   if (Tag) {
     return <Tag className={className} style={style} {...rest}>{value}</Tag>;
   }

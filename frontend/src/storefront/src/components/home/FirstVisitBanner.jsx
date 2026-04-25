@@ -61,7 +61,9 @@ export default function FirstVisitBanner() {
         <div className="first-visit-banner-text">
           <h2>
             {usingDefaultHeading
-              ? <><TranslatedText text="Welcome to" /> {brandName}!</>
+              ? (brandName
+                  ? <TranslatedText text="Welcome to {{brand}}!" vars={{ brand: brandName }} />
+                  : <TranslatedText text="Welcome to our store!" />)
               : <TranslatedText text={heading} />}
           </h2>
           <p><TranslatedText text={message} /></p>
