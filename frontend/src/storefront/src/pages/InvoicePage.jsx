@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../services/api.js';
-import TranslatedText from '../components/TranslatedText';
-import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 function formatCurrency(amount, currency = 'INR') {
   const num = parseFloat(amount) || 0;
@@ -38,7 +36,6 @@ function calcGST(price, qty, gstRate, storeState, customerState) {
 }
 
 export default function InvoicePage() {
-  const { translate: tx } = useShopperTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,13 +47,12 @@ export default function InvoicePage() {
     const subdomain = params.get('subdomain');
 
     if (!order || !t || !subdomain) {
-      setError(tx('Invalid invoice link. Please use the link sent in your order confirmation email.'));
+      setError('Invalid invoice link. Please use the link sent in your order confirmation email.');
       setLoading(false);
       return;
     }
 
     fetchInvoice(order, t, subdomain);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchInvoice(orderNumber, token, subdomain) {
@@ -68,10 +64,10 @@ export default function InvoicePage() {
       if (result.success) {
         setData(result.data);
       } else {
-        setError(result.error || tx('Invoice not found or link has expired.'));
+        setError(result.error || 'Invoice not found or link has expired.');
       }
     } catch (e) {
-      setError(tx('Failed to load invoice. Please try again.'));
+      setError('Failed to load invoice. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -82,7 +78,7 @@ export default function InvoicePage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center', color: '#64748b' }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-          <div style={{ fontSize: 16 }}><TranslatedText text="Loading your invoice..." /></div>
+          <div style={{ fontSize: 16 }}>Loading your invoice...</div>
         </div>
       </div>
     );
@@ -93,8 +89,8 @@ export default function InvoicePage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ textAlign: 'center', padding: 40, maxWidth: 480 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: '#dc2626', marginBottom: 8 }}><TranslatedText text="Invoice Unavailable" /></div>
-          <div style={{ color: '#64748b', fontSize: 14 }}><TranslatedText text={error} /></div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: '#dc2626', marginBottom: 8 }}>Invoice Unavailable</div>
+          <div style={{ color: '#64748b', fontSize: 14 }}>{error}</div>
         </div>
       </div>
     );
@@ -139,7 +135,7 @@ export default function InvoicePage() {
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '20px 16px' }}>
         <div className="invoice-no-print inv-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: '#64748b' }}>{tx('Order #{{num}}').replace('{{num}}', order.order_number)} — {gstConfig.brandName}</div>
+          <div style={{ fontSize: 13, color: '#64748b' }}>Order #{order.order_number} — {gstConfig.brandName}</div>
           <button
             onClick={() => {
               const content = document.getElementById('public-invoice-print-area');
@@ -166,38 +162,38 @@ export default function InvoicePage() {
             }}
             style={{ padding: '8px 20px', borderRadius: 6, border: 'none', background: '#0f172a', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
           >
-            🖨️ <TranslatedText text="Print / Save PDF" />
+            🖨️ Print / Save PDF
           </button>
         </div>
 
         <div id="public-invoice-print-area" className="inv-card" style={{ background: '#fff', borderRadius: 10, padding: 32, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', color: '#333', fontSize: 13 }}>
           <div style={{ textAlign: 'center', borderBottom: '2px solid #0f172a', paddingBottom: 16, marginBottom: 24 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#64748b', marginBottom: 4 }}>{isGSTRegistered ? <TranslatedText text="TAX INVOICE" /> : <TranslatedText text="BILL OF SUPPLY" />}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: '#64748b', marginBottom: 4 }}>{isGSTRegistered ? 'TAX INVOICE' : 'BILL OF SUPPLY'}</div>
             <div className="inv-header-title" style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{gstConfig.brandName}</div>
             {gstConfig.legalName && gstConfig.legalName !== gstConfig.brandName && (
               <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{gstConfig.legalName}</div>
             )}
             {gstConfig.address && <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{gstConfig.address}</div>}
-            {isGSTRegistered && <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginTop: 6 }}><TranslatedText text="GSTIN:" /> {gstConfig.gstin}</div>}
+            {isGSTRegistered && <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginTop: 6 }}>GSTIN: {gstConfig.gstin}</div>}
           </div>
 
           <div className="inv-details-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}><TranslatedText text="Invoice Details" /></div>
-              <div><span style={{ color: '#64748b' }}><TranslatedText text="Invoice No:" /></span> <strong>INV-{order.order_number}</strong></div>
-              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}><TranslatedText text="Date:" /></span> {formatDate(order.created_at)}</div>
-              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}><TranslatedText text="Order No:" /></span> #{order.order_number}</div>
-              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}><TranslatedText text="Payment:" /></span> {order.payment_method === 'cod' ? <TranslatedText text="Cash on Delivery" /> : <TranslatedText text="Online Payment" />}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Invoice Details</div>
+              <div><span style={{ color: '#64748b' }}>Invoice No:</span> <strong>INV-{order.order_number}</strong></div>
+              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>Date:</span> {formatDate(order.created_at)}</div>
+              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>Order No:</span> #{order.order_number}</div>
+              <div style={{ marginTop: 4 }}><span style={{ color: '#64748b' }}>Payment:</span> {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</div>
             </div>
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}><TranslatedText text="Bill To" /></div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Bill To</div>
               <div style={{ fontWeight: 600 }}>{order.customer_name}</div>
               {order.customer_email && <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>{order.customer_email}</div>}
               {order.customer_phone && <div style={{ color: '#64748b', fontSize: 12 }}>{order.customer_phone}</div>}
               {addr.address && <div style={{ marginTop: 4 }}>{addr.address}</div>}
               {(addr.city || addr.state) && <div>{[addr.city, addr.state].filter(Boolean).join(', ')}{addr.pinCode || addr.pin_code ? ' – ' + (addr.pinCode || addr.pin_code) : ''}</div>}
               {addr.country && <div>{addr.country}</div>}
-              {order.customer_gstin && <div style={{ marginTop: 4, fontWeight: 600 }}><TranslatedText text="GSTIN:" /> {order.customer_gstin}</div>}
+              {order.customer_gstin && <div style={{ marginTop: 4, fontWeight: 600 }}>GSTIN: {order.customer_gstin}</div>}
             </div>
           </div>
 
@@ -206,20 +202,20 @@ export default function InvoicePage() {
             <thead>
               <tr style={{ background: '#0f172a', color: '#fff' }}>
                 <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>#</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="Item" /></th>
-                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="HSN" /></th>}
-                <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="Qty" /></th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="Rate" /></th>
-                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="Taxable" /></th>}
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Item</th>
+                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>HSN</th>}
+                <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Qty</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Rate</th>
+                {isGSTRegistered && <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Taxable</th>}
                 {isGSTRegistered && isIntra ? (
                   <>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="CGST" /></th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="SGST" /></th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>CGST</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>SGST</th>
                   </>
                 ) : isGSTRegistered ? (
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="IGST" /></th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>IGST</th>
                 ) : null}
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}><TranslatedText text="Total" /></th>
+                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -263,40 +259,40 @@ export default function InvoicePage() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
             <div className="inv-summary" style={{ minWidth: 280, background: '#f8fafc', borderRadius: 6, padding: '14px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ color: '#64748b' }}><TranslatedText text="Subtotal (before tax)" /></span>
+                <span style={{ color: '#64748b' }}>Subtotal (before tax)</span>
                 <span>{formatCurrency(order.subtotal, currency)}</span>
               </div>
               {isGSTRegistered && isIntra ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ color: '#64748b' }}><TranslatedText text="CGST" /></span>
+                    <span style={{ color: '#64748b' }}>CGST</span>
                     <span>{formatCurrency(totalCGST, currency)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ color: '#64748b' }}><TranslatedText text="SGST" /></span>
+                    <span style={{ color: '#64748b' }}>SGST</span>
                     <span>{formatCurrency(totalSGST, currency)}</span>
                   </div>
                 </>
               ) : isGSTRegistered ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ color: '#64748b' }}><TranslatedText text="IGST" /></span>
+                  <span style={{ color: '#64748b' }}>IGST</span>
                   <span>{formatCurrency(totalIGST, currency)}</span>
                 </div>
               ) : null}
               {parseFloat(order.discount || 0) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#16a34a' }}>
-                  <span><TranslatedText text="Discount" />{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
+                  <span>Discount{order.coupon_code ? ` (${order.coupon_code})` : ''}</span>
                   <span>−{formatCurrency(order.discount, currency)}</span>
                 </div>
               )}
               {parseFloat(order.shipping_cost || 0) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ color: '#64748b' }}><TranslatedText text="Shipping" /></span>
+                  <span style={{ color: '#64748b' }}>Shipping</span>
                   <span>{formatCurrency(order.shipping_cost, currency)}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '2px solid #e2e8f0', fontWeight: 700, fontSize: 16 }}>
-                <span><TranslatedText text="Total" /></span>
+                <span>Total</span>
                 <span>{formatCurrency(order.total, currency)}</span>
               </div>
             </div>
@@ -304,7 +300,7 @@ export default function InvoicePage() {
 
           {isGSTRegistered && (
             <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, color: '#78350f' }}>
-              <TranslatedText text="This is a computer-generated invoice. No signature required." />
+              This is a computer-generated invoice. No signature required.
             </div>
           )}
         </div>

@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getApiUrl } from '../services/api.js';
-import TranslatedText from '../components/TranslatedText';
-import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 // Public, token-gated overage invoice page.
 // URL: /billing/invoice?invoice=FLM-2026-04-XXXXXX&t=<token>&site=<siteId>
@@ -56,7 +54,6 @@ function loadRazorpayScript() {
 }
 
 export default function OverageInvoicePage() {
-  const { translate: tx } = useShopperTranslation();
   const [data, setData] = useState(null);
   const [keyId, setKeyId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +67,7 @@ export default function OverageInvoicePage() {
 
   const fetchInvoice = useCallback(async () => {
     if (!invoiceNumber || !token) {
-      setError(tx('Invalid invoice link. Please use the link in your billing email.'));
+      setError('Invalid invoice link. Please use the link in your billing email.');
       setLoading(false);
       return;
     }
@@ -83,14 +80,14 @@ export default function OverageInvoicePage() {
         setData(json.data.invoice);
         setKeyId(json.data.razorpayKeyId || null);
       } else {
-        setError(json.error || tx('Invoice not found or link has expired.'));
+        setError(json.error || 'Invoice not found or link has expired.');
       }
     } catch (e) {
-      setError(tx('Failed to load invoice. Please try again.'));
+      setError('Failed to load invoice. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [invoiceNumber, token, tx]);
+  }, [invoiceNumber, token]);
 
   useEffect(() => { fetchInvoice(); }, [fetchInvoice]);
 
@@ -100,7 +97,7 @@ export default function OverageInvoicePage() {
     setPaying(true);
     try {
       const ok = await loadRazorpayScript();
-      if (!ok) throw new Error(tx('Could not load payment library. Check your connection and try again.'));
+      if (!ok) throw new Error('Could not load payment library. Check your connection and try again.');
 
       const orderRes = await fetch(getApiUrl(`/api/billing/invoices/${encodeURIComponent(data.invoiceNumber)}/pay`), {
         method: 'POST',
@@ -108,11 +105,11 @@ export default function OverageInvoicePage() {
         body: JSON.stringify({ token }),
       });
       const orderJson = await orderRes.json();
-      if (!orderJson.success) throw new Error(orderJson.error || tx('Could not start payment.'));
+      if (!orderJson.success) throw new Error(orderJson.error || 'Could not start payment.');
       const { orderId, amount, razorpayKeyId } = orderJson.data;
 
       const rzpKey = razorpayKeyId || keyId;
-      if (!rzpKey) throw new Error(tx('Payment is not configured. Please contact support.'));
+      if (!rzpKey) throw new Error('Payment is not configured. Please contact support.');
 
       const rzp = new window.Razorpay({
         key: rzpKey,
@@ -128,7 +125,7 @@ export default function OverageInvoicePage() {
           // is delayed (paid state will hide the button on its own once the
           // refresh sees status=paid).
           setPaying(false);
-          setStatusMsg(tx('Payment received. Updating invoice…'));
+          setStatusMsg('Payment received. Updating invoice…');
           setTimeout(() => fetchInvoice().then(() => setStatusMsg('')), 4000);
         },
         modal: {
@@ -138,12 +135,12 @@ export default function OverageInvoicePage() {
         },
       });
       rzp.on('payment.failed', function (resp) {
-        setStatusMsg(tx('Payment failed: {{reason}}').replace('{{reason}}', resp?.error?.description || tx('Unknown error')));
+        setStatusMsg('Payment failed: ' + (resp?.error?.description || 'Unknown error'));
         setPaying(false);
       });
       rzp.open();
     } catch (e) {
-      setStatusMsg(e.message || tx('Could not start payment.'));
+      setStatusMsg(e.message || 'Could not start payment.');
       setPaying(false);
     }
   }
@@ -151,7 +148,7 @@ export default function OverageInvoicePage() {
   if (loading) {
     return (
       <div style={shellStyle}>
-        <div style={{ textAlign: 'center', color: '#64748b' }}><TranslatedText text="Loading invoice…" /></div>
+        <div style={{ textAlign: 'center', color: '#64748b' }}>Loading invoice…</div>
       </div>
     );
   }
@@ -160,8 +157,8 @@ export default function OverageInvoicePage() {
       <div style={shellStyle}>
         <div style={{ background: '#fff', padding: 32, borderRadius: 12, maxWidth: 480, textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
-          <h2 style={{ margin: '0 0 8px', color: '#0f172a' }}><TranslatedText text="Invoice unavailable" /></h2>
-          <p style={{ margin: 0, color: '#64748b' }}><TranslatedText text={error} /></p>
+          <h2 style={{ margin: '0 0 8px', color: '#0f172a' }}>Invoice unavailable</h2>
+          <p style={{ margin: 0, color: '#64748b' }}>{error}</p>
         </div>
       </div>
     );
@@ -176,10 +173,10 @@ export default function OverageInvoicePage() {
       <style>{printCss}</style>
 
       <div className="invoice-actions" style={{ width: '100%', maxWidth: 800, marginBottom: 16, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <button onClick={() => window.print()} style={btnSecondary}>🖨️ <TranslatedText text="Print / Save PDF" /></button>
+        <button onClick={() => window.print()} style={btnSecondary}>🖨️ Print / Save PDF</button>
         {!isPaid && hasAmount && (
           <button onClick={handlePay} disabled={paying} style={{ ...btnPrimary, opacity: paying ? 0.7 : 1, cursor: paying ? 'wait' : 'pointer' }}>
-            {paying ? tx('Opening checkout…') : `${tx('Pay')} ${fmtINR(inv.totalCostINR)}`}
+            {paying ? 'Opening checkout…' : `Pay ${fmtINR(inv.totalCostINR)}`}
           </button>
         )}
       </div>
@@ -193,59 +190,59 @@ export default function OverageInvoicePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0f172a', paddingBottom: 20, marginBottom: 24 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 26, color: '#0f172a' }}>Flomerce</h1>
-            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}><TranslatedText text="Multi-tenant commerce platform" /></p>
+            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>Multi-tenant commerce platform</p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <h2 style={{ margin: 0, fontSize: 22, color: '#0f172a' }}><TranslatedText text="INVOICE" /></h2>
+            <h2 style={{ margin: 0, fontSize: 22, color: '#0f172a' }}>INVOICE</h2>
             <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>{inv.invoiceNumber}</p>
             <p style={{ margin: '4px 0 0', fontSize: 13 }}>
               <span style={{
                 display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontWeight: 600, fontSize: 12,
                 background: isPaid ? '#dcfce7' : '#fee2e2', color: isPaid ? '#166534' : '#991b1b',
-              }}>{isPaid ? <TranslatedText text="PAID" /> : <TranslatedText text="UNPAID" />}</span>
+              }}>{isPaid ? 'PAID' : 'UNPAID'}</span>
             </p>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24, fontSize: 14 }}>
           <div>
-            <div style={labelStyle}><TranslatedText text="Billed to" /></div>
+            <div style={labelStyle}>Billed to</div>
             <div style={{ fontWeight: 600, color: '#0f172a' }}>{inv.brandName || inv.subdomain}</div>
             <div style={{ color: '#64748b' }}>{inv.subdomain}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={labelStyle}><TranslatedText text="Billing period" /></div>
+            <div style={labelStyle}>Billing period</div>
             <div style={{ fontWeight: 600, color: '#0f172a' }}>{fmtMonth(inv.yearMonth)}</div>
-            <div style={{ color: '#64748b' }}>{tx('Issued {{date}}').replace('{{date}}', fmtDate(inv.snapshotAt))}</div>
-            {!isPaid && inv.dueDate && <div style={{ color: '#64748b' }}>{tx('Due {{date}}').replace('{{date}}', fmtDate(inv.dueDate))}</div>}
-            {isPaid && inv.paidAt && <div style={{ color: '#16a34a' }}>{tx('Paid {{date}}').replace('{{date}}', fmtDate(inv.paidAt))}</div>}
+            <div style={{ color: '#64748b' }}>Issued {fmtDate(inv.snapshotAt)}</div>
+            {!isPaid && inv.dueDate && <div style={{ color: '#64748b' }}>Due {fmtDate(inv.dueDate)}</div>}
+            {isPaid && inv.paidAt && <div style={{ color: '#16a34a' }}>Paid {fmtDate(inv.paidAt)}</div>}
           </div>
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 24 }}>
           <thead>
             <tr style={{ background: '#f8fafc' }}>
-              <th align="left" style={thStyle}><TranslatedText text="Resource" /></th>
-              <th align="right" style={thStyle}><TranslatedText text="Included" /></th>
-              <th align="right" style={thStyle}><TranslatedText text="Overage" /></th>
-              <th align="right" style={thStyle}><TranslatedText text="Amount" /></th>
+              <th align="left" style={thStyle}>Resource</th>
+              <th align="right" style={thStyle}>Included</th>
+              <th align="right" style={thStyle}>Overage</th>
+              <th align="right" style={thStyle}>Amount</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={tdStyle}><TranslatedText text="D1 storage" /></td>
+              <td style={tdStyle}>D1 storage</td>
               <td align="right" style={tdStyle}>{inv.d1LimitBytes != null ? fmtGB(inv.d1LimitBytes) : '—'}</td>
               <td align="right" style={tdStyle}>{fmtGB(inv.d1OverageBytes)}</td>
               <td align="right" style={tdStyle}>{fmtINR(inv.d1CostINR)}</td>
             </tr>
             <tr>
-              <td style={tdStyle}><TranslatedText text="R2 storage" /></td>
+              <td style={tdStyle}>R2 storage</td>
               <td align="right" style={tdStyle}>{inv.r2LimitBytes != null ? fmtGB(inv.r2LimitBytes) : '—'}</td>
               <td align="right" style={tdStyle}>{fmtGB(inv.r2OverageBytes)}</td>
               <td align="right" style={tdStyle}>{fmtINR(inv.r2CostINR)}</td>
             </tr>
             <tr>
-              <td colSpan={3} align="right" style={{ ...tdStyle, fontWeight: 700 }}><TranslatedText text="Total due" /></td>
+              <td colSpan={3} align="right" style={{ ...tdStyle, fontWeight: 700 }}>Total due</td>
               <td align="right" style={{ ...tdStyle, fontWeight: 700, fontSize: 16 }}>{fmtINR(inv.totalCostINR)}</td>
             </tr>
           </tbody>
@@ -253,16 +250,17 @@ export default function OverageInvoicePage() {
 
         {isPaid && inv.paymentRef && (
           <div style={{ background: '#f0fdf4', padding: 14, borderRadius: 8, marginBottom: 20, fontSize: 13, color: '#166534' }}>
-            <div><strong><TranslatedText text="Payment reference:" /></strong> {inv.paymentRef}</div>
-            {inv.paymentMethod && <div><strong><TranslatedText text="Method:" /></strong> {inv.paymentMethod}</div>}
+            <div><strong>Payment reference:</strong> {inv.paymentRef}</div>
+            {inv.paymentMethod && <div><strong>Method:</strong> {inv.paymentMethod}</div>}
           </div>
         )}
 
         <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
           <p style={{ margin: 0 }}>
-            <TranslatedText text="This invoice covers usage above your enterprise plan's included quota. Amounts are in Indian Rupees (INR). Questions? Reply to your billing email or contact support." />
+            This invoice covers usage above your enterprise plan's included quota. Amounts are in Indian Rupees (INR).
+            Questions? Reply to your billing email or contact support.
           </p>
-          <p style={{ margin: '8px 0 0' }}>{tx('Invoice ID: {{invoice}} · Site: {{site}}').replace('{{invoice}}', inv.invoiceNumber).replace('{{site}}', inv.siteId)}</p>
+          <p style={{ margin: '8px 0 0' }}>Invoice ID: {inv.invoiceNumber} · Site: {inv.siteId}</p>
         </div>
       </div>
     </div>
