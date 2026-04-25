@@ -4,6 +4,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { apiRequest } from '../services/api.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
+import '../styles/product-detail.css';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
