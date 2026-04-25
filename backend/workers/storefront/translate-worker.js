@@ -1,7 +1,7 @@
 import { errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateSiteAdmin } from './site-admin-worker.js';
 import { resolveSiteDBById, ensureTranslationCacheTable } from '../../utils/site-db.js';
-import { translateContentBatch } from '../../utils/server-translator.js';
+import { translateContentBatch, DEFAULT_DAILY_CHAR_CAP } from '../../utils/server-translator.js';
 
 // Re-emit a successResponse with `X-Translator-Capped: 1` so clients
 // can detect cap behavior from a header alone (in addition to the

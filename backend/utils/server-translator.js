@@ -6,7 +6,7 @@ import { generateId } from './helpers.js';
 // Aligned with backend/workers/storefront/translate-worker.js so the same
 // env.TRANSLATOR_DAILY_CAP override applies uniformly to every translation
 // path (legacy /translate proxy AND the new server-composed payloads).
-const DEFAULT_DAILY_CHAR_CAP = 100_000;
+export const DEFAULT_DAILY_CHAR_CAP = 100_000;
 // Internal-use limits, intentionally higher than the user-facing /translate
 // proxy (200 / 50_000) because server-composed payloads can pack many
 // products' fields into a single batch (10 products × ~8 translatable fields
