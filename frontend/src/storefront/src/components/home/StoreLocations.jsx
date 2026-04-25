@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
-import { storeLocationDefaults } from '../../defaults/generic.js';
+import { storeLocationDefaults, storeLocationBrandedTemplate } from '../../defaults/generic.js';
 import TranslatedText from '../TranslatedText';
 
 export default function StoreLocations() {
@@ -22,9 +22,16 @@ export default function StoreLocations() {
     ? stores
     : [
         {
+          // When a brand name is present we feed the templated phrase to
+          // the renderer so the entire "{{brand}} Showroom" string is one
+          // translation unit (extracted into the bundle by the i18n
+          // extractor) and the brand stays in its original spelling via
+          // the `vars` substitution path. Without a brand we fall back
+          // to the static "Our Showroom" entry.
           name: siteConfig?.brandName
-            ? `${siteConfig.brandName} ${storeLocationDefaults.brandedNameSuffix}`
+            ? storeLocationBrandedTemplate.name
             : storeLocationDefaults.name,
+          _nameVars: siteConfig?.brandName ? { brand: siteConfig.brandName } : undefined,
           address: address || '',
           hours: storeLocationDefaults.hours,
           phone: phone || '',
@@ -76,7 +83,7 @@ export default function StoreLocations() {
                 )}
               </div>
               <div className="store-details">
-                <h3 className="store-name"><TranslatedText text={store.name} /></h3>
+                <h3 className="store-name"><TranslatedText text={store.name} vars={store._nameVars} /></h3>
                 {store.address && <p className="store-address"><TranslatedText text={store.address} /></p>}
                 {store.hours && (
                   <div className="store-hours">

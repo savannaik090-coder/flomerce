@@ -32,6 +32,43 @@ const OUT = path.join(ROOT, 'backend/i18n-manifest.json');
 const TRANSLATED_TEXT_RE = /<TranslatedText\s+(?:[^>]*?\s)?text=(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\}|\{"([^"]+)"\}|\{'([^']+)'\})/g;
 const DEFAULT_FIELD_RE = /(?:^|[^a-zA-Z_$])(?:name|title|subtitle|description|headline|text|buttonText|ctaText|ctaLabel|label|caption|tagline|role|message|body|heading|content|copyright|placeholder|tooltip|hours|address|brandedNameSuffix|intro|note|hint|prompt|warning|error|reason|reply)\s*:\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
 
+// Strip line and block comments before regex scanning so backtick-
+// quoted words inside JSDoc explanations (e.g. an inline `name:` example
+// in a comment) cannot accidentally satisfy DEFAULT_FIELD_RE and leak
+// junk into the manifest. We preserve string-literal content so that
+// `name: "//not a comment"` style values are still extracted intact.
+function stripComments(src) {
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  let inStr = null; // '"' | "'" | '`' | null
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (inStr) {
+      out += c;
+      if (c === '\\' && i + 1 < n) { out += c2; i += 2; continue; }
+      if (c === inStr) inStr = null;
+      i += 1;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') { inStr = c; out += c; i += 1; continue; }
+    if (c === '/' && c2 === '/') {
+      while (i < n && src[i] !== '\n') i += 1;
+      continue;
+    }
+    if (c === '/' && c2 === '*') {
+      i += 2;
+      while (i < n && !(src[i] === '*' && src[i + 1] === '/')) i += 1;
+      i += 2;
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
@@ -64,7 +101,7 @@ const allFiles = walk(SRC);
 
 let chromeCount = 0;
 for (const f of allFiles) {
-  const content = fs.readFileSync(f, 'utf8');
+  const content = stripComments(fs.readFileSync(f, 'utf8'));
   TRANSLATED_TEXT_RE.lastIndex = 0;
   let m;
   while ((m = TRANSLATED_TEXT_RE.exec(content)) !== null) {
@@ -81,7 +118,7 @@ const defaultsDir = path.join(SRC, 'defaults');
 if (fs.existsSync(defaultsDir)) {
   for (const entry of fs.readdirSync(defaultsDir, { withFileTypes: true })) {
     if (!entry.isFile() || !/\.(jsx?|tsx?)$/.test(entry.name)) continue;
-    const content = fs.readFileSync(path.join(defaultsDir, entry.name), 'utf8');
+    const content = stripComments(fs.readFileSync(path.join(defaultsDir, entry.name), 'utf8'));
     DEFAULT_FIELD_RE.lastIndex = 0;
     let m;
     while ((m = DEFAULT_FIELD_RE.exec(content)) !== null) {

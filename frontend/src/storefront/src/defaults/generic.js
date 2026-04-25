@@ -187,6 +187,15 @@ export const storeLocationDefaults = {
   hours: 'Monday to Saturday 11:00 am - 08:00 pm',
 };
 
+// Templated branded-store name. Stored as a separate constant whose
+// "name" field is what the i18n extractor scans for, so the full
+// templated phrase enters the translation bundle as one unit. The
+// runtime substitutes the brand-name placeholder via the
+// TranslatedText "vars" prop, leaving the brand in its original spelling.
+export const storeLocationBrandedTemplate = {
+  name: '{{brand}} Showroom',
+};
+
 export const orderActionNotes = {
   returnRefund: 'Your return request has been approved. If any payment was made, the refund will be processed within 5\u20137 business days. Please pack the product securely \u2014 our delivery partner will contact you for pickup within 8\u201312 days.',
   returnReplacement: 'Your return request has been approved for a replacement. Please pack the product securely \u2014 our delivery partner will contact you within 8\u201312 days to pick up the old product and deliver the replacement at the same time.',
