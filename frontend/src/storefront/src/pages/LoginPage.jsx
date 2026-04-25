@@ -4,6 +4,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
 import { setAuthToken } from '../services/api.js';
+import { translateApiError } from '../services/errorMessages.js';
 import { PLATFORM_URL } from '../config.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -76,7 +77,7 @@ export default function LoginPage() {
         setVerificationEmail(email);
         setShowVerificationNotice(true);
       } else {
-        setError(err.message || tx("Login failed. Please check your credentials."));
+        setError(translateApiError(err, tx, tx("Login failed. Please check your credentials.")));
       }
     } finally {
       setLoading(false);
@@ -92,7 +93,7 @@ export default function LoginPage() {
       await authService.requestPasswordReset(resetEmail, siteConfig?.id);
       setResetSuccess(tx("Password reset email sent! Check your inbox."));
     } catch (err) {
-      setResetError(err.message || tx("Failed to send reset email"));
+      setResetError(translateApiError(err, tx, tx("Failed to send reset email")));
     } finally {
       setResetLoading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { translateApiError } from '../services/errorMessages.js';
 import { apiRequest } from '../services/api.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -68,7 +69,7 @@ export default function ReviewPage() {
       setItems(data.items || []);
       setReviewedItems(data.reviewedItems || {});
     } catch (err) {
-      setError(err.message || tx("Invalid or expired review link"));
+      setError(translateApiError(err, tx, tx("Invalid or expired review link")));
     } finally {
       setLoading(false);
     }
@@ -98,7 +99,7 @@ export default function ReviewPage() {
       setActiveItem(null);
       setFormData({ rating: 0, title: '', content: '', customerName: '' });
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || tx("Failed to submit review") });
+      setSubmitMessage({ type: 'error', text: translateApiError(err, tx, tx("Failed to submit review")) });
     } finally {
       setSubmitting(false);
     }

@@ -260,7 +260,7 @@ async function createCategory(request, env, user, ctx) {
     }
 
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     let site;
@@ -367,7 +367,7 @@ async function updateCategory(request, env, user, categoryId, ctx) {
     const resolvedSiteId = siteId || category.site_id;
 
     if (await checkMigrationLock(env, resolvedSiteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);
@@ -469,7 +469,7 @@ async function deleteCategory(env, user, categoryId, ctx) {
     const resolvedSiteId = siteId || category.site_id;
 
     if (await checkMigrationLock(env, resolvedSiteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);

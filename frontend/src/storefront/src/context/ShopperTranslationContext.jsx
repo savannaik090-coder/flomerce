@@ -30,6 +30,27 @@ import { API_BASE } from '../config.js';
 
 export const ShopperTranslationContext = createContext(null);
 
+// Languages that natively render right-to-left. When the active shopper
+// language is in this set we flip <html dir="rtl"> so logical CSS
+// properties (margin-inline-start, inset-inline-end, text-align: start)
+// mirror correctly. Source: ISO 639-1 / 639-3 codes for major RTL scripts.
+const RTL_LANGUAGES = new Set([
+  'ar',  // Arabic
+  'he',  // Hebrew
+  'fa',  // Persian / Farsi
+  'ur',  // Urdu
+  'ps',  // Pashto
+  'sd',  // Sindhi
+  'ckb', // Central Kurdish (Sorani)
+  'dv',  // Divehi / Maldivian
+  'yi',  // Yiddish
+]);
+
+function isRtlLanguage(lang) {
+  if (!lang || typeof lang !== 'string') return false;
+  return RTL_LANGUAGES.has(lang.toLowerCase().split('-')[0]);
+}
+
 function clientHash(s) {
   // Must match djb2Hash in backend/workers/storefront/translations-bundle.js
   let h = 5381;
@@ -114,6 +135,20 @@ export function ShopperTranslationProvider({ children }) {
       window.removeEventListener('storage', onStorage);
     };
   }, [contentLanguage]);
+
+  // Sync <html dir> and <html lang> with the effective shopper language.
+  // RTL languages (Arabic, Hebrew, Persian, Urdu, etc.) require dir="rtl"
+  // for logical CSS properties to mirror layout correctly. We compute the
+  // effective language inline (rather than depending on `target` below)
+  // because `target` is null for source-language shoppers — but we still
+  // want <html lang> set even when no translation is active.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const effective = (language || contentLanguage || 'en').toLowerCase();
+    const dir = isRtlLanguage(effective) ? 'rtl' : 'ltr';
+    document.documentElement.setAttribute('dir', dir);
+    document.documentElement.setAttribute('lang', effective);
+  }, [language, contentLanguage]);
 
   // Resolve the effective target language. Null means "render source as-is."
   const target = useMemo(() => {

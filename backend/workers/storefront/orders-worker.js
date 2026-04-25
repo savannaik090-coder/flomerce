@@ -390,7 +390,7 @@ async function createOrder(request, env, user, ctx) {
     }
 
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, siteId);
@@ -739,7 +739,7 @@ async function updateOrderStatus(request, env, user, orderId) {
     const resolvedSiteId = siteId || order.site_id;
 
     if (await checkMigrationLock(env, resolvedSiteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);
@@ -1123,7 +1123,7 @@ async function createGuestOrder(request, env, ctx) {
     }
 
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, siteId);
@@ -1423,7 +1423,7 @@ async function createReturnRequest(request, env, orderId) {
     const data = await request.json();
     const { siteId, items, reason, reasonDetail, photos, resolution, returnToken } = data;
     if (!siteId || !orderId) return errorResponse('siteId and orderId are required');
-    if (!reason) return errorResponse('Reason is required');
+    if (!reason) return errorResponse('Reason is required', 400, 'REASON_REQUIRED');
 
     const db = await resolveSiteDBById(env, siteId);
     await ensureReturnRequestsTable(db);
@@ -1431,7 +1431,7 @@ async function createReturnRequest(request, env, orderId) {
     const config = await getSiteConfig(env, siteId);
     let settings = {};
     try { if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
-    if (!settings.returnsEnabled) return errorResponse('Returns are not enabled for this store', 403);
+    if (!settings.returnsEnabled) return errorResponse('Returns are not enabled for this store', 403, 'RETURNS_DISABLED');
 
     let order = await db.prepare('SELECT * FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(orderId, orderId, siteId).first();
     let isGuest = false;
@@ -1439,10 +1439,10 @@ async function createReturnRequest(request, env, orderId) {
       order = await db.prepare('SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(orderId, orderId, siteId).first();
       isGuest = true;
     }
-    if (!order) return errorResponse('Order not found', 404);
+    if (!order) return errorResponse('Order not found', 404, 'ORDER_NOT_FOUND');
 
     if ((order.status || '').toLowerCase() !== 'delivered') {
-      return errorResponse('Only delivered orders can be returned', 400);
+      return errorResponse('Only delivered orders can be returned', 400, 'ONLY_DELIVERED_RETURNABLE');
     }
 
     const returnWindowDays = settings.returnWindowDays || 7;
@@ -1460,17 +1460,17 @@ async function createReturnRequest(request, env, orderId) {
       if (!returnToken) return errorResponse('Return token is required for guest orders', 403);
       const storedToken = order.return_token;
       if (!storedToken || storedToken !== returnToken) {
-        return errorResponse('Invalid return token', 403);
+        return errorResponse('Invalid return token', 403, 'INVALID_RETURN_TOKEN');
       }
     } else {
       if (returnToken) {
         const storedToken = order.return_token;
         if (!storedToken || storedToken !== returnToken) {
-          return errorResponse('Invalid return token', 403);
+          return errorResponse('Invalid return token', 403, 'INVALID_RETURN_TOKEN');
         }
       } else {
         const user = await validateAnyAuth(request, env, { siteId, db });
-        if (!user) return errorResponse('Authentication required', 401);
+        if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
         if (order.user_id && order.user_id !== user.id) {
           return errorResponse('You can only return your own orders', 403);
         }
@@ -1478,7 +1478,7 @@ async function createReturnRequest(request, env, orderId) {
     }
 
     const existing = await db.prepare('SELECT id FROM return_requests WHERE order_id = ? AND site_id = ?').bind(order.id, siteId).first();
-    if (existing) return errorResponse('A return request already exists for this order', 409);
+    if (existing) return errorResponse('A return request already exists for this order', 409, 'RETURN_ALREADY_EXISTS');
 
     const returnId = generateId();
     await db.prepare(
@@ -1551,7 +1551,7 @@ async function handleReturnsList(request, env) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
       const user = await validateAnyAuth(request, env, { siteId });
-      if (!user) return errorResponse('Authentication required', 401);
+      if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
       const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
       if (!site) return errorResponse('Unauthorized', 403);
     } else {
@@ -1585,7 +1585,7 @@ async function handleReturnUpdate(request, env, returnId) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
       const user = await validateAnyAuth(request, env, { siteId });
-      if (!user) return errorResponse('Authentication required', 401);
+      if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
       const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
       if (!site) return errorResponse('Unauthorized', 403);
     } else {
@@ -1657,7 +1657,7 @@ async function resendReturnLink(request, env, orderId) {
       order = await db.prepare('SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND customer_email = ?').bind(orderId, orderId, siteId, email).first();
       isGuest = true;
     }
-    if (!order) return errorResponse('Order not found or email does not match', 404);
+    if (!order) return errorResponse('Order not found or email does not match', 404, 'ORDER_LOOKUP_FAILED');
 
     let returnToken = order.return_token;
     if (!returnToken) {
@@ -1858,7 +1858,7 @@ async function createCancellationRequest(request, env, orderId) {
     const data = await request.json();
     const { siteId, reason, reasonDetail, cancelToken } = data;
     if (!siteId || !orderId) return errorResponse('siteId and orderId are required');
-    if (!reason) return errorResponse('Reason is required');
+    if (!reason) return errorResponse('Reason is required', 400, 'REASON_REQUIRED');
 
     const db = await resolveSiteDBById(env, siteId);
     await ensureCancellationRequestsTable(db);
@@ -1866,7 +1866,7 @@ async function createCancellationRequest(request, env, orderId) {
     const config = await getSiteConfig(env, siteId);
     let settings = {};
     try { if (config.settings) settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
-    if (!settings.cancellationEnabled) return errorResponse('Cancellation is not available for this store', 403);
+    if (!settings.cancellationEnabled) return errorResponse('Cancellation is not available for this store', 403, 'CANCELLATION_DISABLED');
 
     let order = await db.prepare('SELECT * FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(orderId, orderId, siteId).first();
     let orderType = 'order';
@@ -1874,11 +1874,11 @@ async function createCancellationRequest(request, env, orderId) {
       order = await db.prepare('SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(orderId, orderId, siteId).first();
       orderType = 'guest_order';
     }
-    if (!order) return errorResponse('Order not found', 404);
+    if (!order) return errorResponse('Order not found', 404, 'ORDER_NOT_FOUND');
 
     const statusLower = (order.status || '').toLowerCase();
     if (!['pending', 'confirmed'].includes(statusLower)) {
-      return errorResponse('Only pending or confirmed orders can be cancelled', 400);
+      return errorResponse('Only pending or confirmed orders can be cancelled', 400, 'ONLY_PENDING_CANCELLABLE');
     }
 
     const windowHours = settings.cancellationWindowHours || 24;
@@ -1893,18 +1893,18 @@ async function createCancellationRequest(request, env, orderId) {
       let storedToken = null;
       try { storedToken = order.cancel_token; } catch (e) {}
       if (!storedToken || storedToken !== cancelToken) {
-        return errorResponse('Invalid cancel token', 403);
+        return errorResponse('Invalid cancel token', 403, 'INVALID_CANCEL_TOKEN');
       }
     } else {
       if (cancelToken) {
         let storedToken = null;
         try { storedToken = order.cancel_token; } catch (e) {}
         if (!storedToken || storedToken !== cancelToken) {
-          return errorResponse('Invalid cancel token', 403);
+          return errorResponse('Invalid cancel token', 403, 'INVALID_CANCEL_TOKEN');
         }
       } else {
         const user = await validateAnyAuth(request, env, { siteId, db });
-        if (!user) return errorResponse('Authentication required', 401);
+        if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
         if (!order.user_id || order.user_id !== user.id) {
           return errorResponse('You can only cancel your own orders', 403);
         }
@@ -1912,7 +1912,7 @@ async function createCancellationRequest(request, env, orderId) {
     }
 
     const existing = await db.prepare('SELECT id FROM cancellation_requests WHERE order_id = ? AND site_id = ?').bind(order.id, siteId).first();
-    if (existing) return errorResponse('A cancellation request already exists for this order', 409);
+    if (existing) return errorResponse('A cancellation request already exists for this order', 409, 'CANCEL_ALREADY_EXISTS');
 
     const cancelId = generateId();
     await db.prepare(
@@ -1982,7 +1982,7 @@ async function handleCancellationsList(request, env) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
       const user = await validateAnyAuth(request, env, { siteId });
-      if (!user) return errorResponse('Authentication required', 401);
+      if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
       const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
       if (!site) return errorResponse('Unauthorized', 403);
     } else {
@@ -2016,7 +2016,7 @@ async function handleCancellationUpdate(request, env, cancelId) {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('SiteAdmin ')) {
       const user = await validateAnyAuth(request, env, { siteId });
-      if (!user) return errorResponse('Authentication required', 401);
+      if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
       const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
       if (!site) return errorResponse('Unauthorized', 403);
     } else {
@@ -2128,11 +2128,11 @@ async function resendCancelLink(request, env, orderId) {
       order = await db.prepare('SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND customer_email = ?').bind(orderId, orderId, siteId, email).first();
       isGuest = true;
     }
-    if (!order) return errorResponse('Order not found or email does not match', 404);
+    if (!order) return errorResponse('Order not found or email does not match', 404, 'ORDER_LOOKUP_FAILED');
 
     const statusLower = (order.status || '').toLowerCase();
     if (!['pending', 'confirmed'].includes(statusLower)) {
-      return errorResponse('This order can no longer be cancelled', 400);
+      return errorResponse('This order can no longer be cancelled', 400, 'ORDER_NOT_CANCELLABLE');
     }
 
     let cancelToken = null;
@@ -2211,7 +2211,7 @@ async function getInvoiceData(request, env, orderId) {
       order = await db.prepare('SELECT * FROM guest_orders WHERE id = ? AND site_id = ?').bind(orderId, siteId).first();
       isGuest = true;
     }
-    if (!order) return errorResponse('Order not found', 404);
+    if (!order) return errorResponse('Order not found', 404, 'ORDER_NOT_FOUND');
 
     let items = [];
     try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) {}

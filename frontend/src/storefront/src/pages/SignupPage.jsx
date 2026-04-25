@@ -4,6 +4,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import * as authService from '../services/authService.js';
 import { setAuthToken } from '../services/api.js';
+import { translateApiError } from '../services/errorMessages.js';
 import { PLATFORM_URL } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import TranslatedText from '../components/TranslatedText';
@@ -85,7 +86,7 @@ export default function SignupPage() {
       }
       setShowVerificationPopup(true);
     } catch (err) {
-      setError(err.message || tx("Signup failed. Please try again."));
+      setError(translateApiError(err, tx, tx("Signup failed. Please try again.")));
     } finally {
       setLoading(false);
     }

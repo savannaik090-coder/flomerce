@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
+import { translateApiError } from '../services/errorMessages.js';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { CurrencyContext } from '../context/CurrencyContext.jsx';
 import * as authService from '../services/authService.js';
@@ -220,7 +221,7 @@ export default function ProfilePage() {
       setReturnResolution('refund');
       toast.success(tx("Return request submitted successfully!"));
     } catch (err) {
-      toast.error(tx("Failed to submit return: {{error}}").replace('{{error}}', err.message || tx("Unknown error")));
+      toast.error(tx("Failed to submit return: {{error}}").replace('{{error}}', translateApiError(err, tx, tx("Unknown error"))));
     } finally {
       setReturningOrder(false);
     }
@@ -241,7 +242,7 @@ export default function ProfilePage() {
       setCancelDetail('');
       toast.success(tx("Cancellation request submitted successfully!"));
     } catch (err) {
-      toast.error(tx("Failed to submit cancellation: {{error}}").replace('{{error}}', err.message || tx("Unknown error")));
+      toast.error(tx("Failed to submit cancellation: {{error}}").replace('{{error}}', translateApiError(err, tx, tx("Unknown error"))));
     } finally {
       setCancellingOrder(false);
     }
@@ -373,7 +374,7 @@ export default function ProfilePage() {
       setEditAddress(null);
       setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
     } catch (err) {
-      setAddressError(err.message || tx("Failed to save address"));
+      setAddressError(translateApiError(err, tx, tx("Failed to save address")));
     } finally {
       setSavingAddress(false);
     }

@@ -224,7 +224,7 @@ async function checkReviewEligibility(request, env) {
         } catch (e) {}
       }
 
-      if (!order) return errorResponse('Invalid or expired review link', 403);
+      if (!order) return errorResponse('Invalid or expired review link', 403, 'INVALID_REVIEW_LINK');
 
       const items = parseJsonSafe(order.items);
       const reviewedItems = {};
@@ -299,22 +299,22 @@ async function submitReview(request, env) {
     const data = await request.json();
     const { siteId, productId, orderId, rating, title, content, images } = data;
     if (!siteId || !productId || !rating) return errorResponse('siteId, productId and rating are required', 400);
-    if (rating < 1 || rating > 5) return errorResponse('Rating must be between 1 and 5', 400);
+    if (rating < 1 || rating > 5) return errorResponse('Rating must be between 1 and 5', 400, 'RATING_OUT_OF_RANGE');
 
     const locked = await checkMigrationLock(env, siteId);
-    if (locked) return errorResponse('Site is under maintenance', 503);
+    if (locked) return errorResponse('Site is under maintenance', 503, 'SITE_MAINTENANCE');
 
     const db = await resolveSiteDBById(env, siteId);
     await ensureReviewColumns(db);
 
     const user = await validateAnyAuth(request, env, { siteId, db });
-    if (!user) return errorResponse('Authentication required', 401);
+    if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
 
     const existingReview = await db.prepare(
       `SELECT id FROM reviews WHERE site_id = ? AND product_id = ? AND user_id = ? LIMIT 1`
     ).bind(siteId, productId, user.id).first();
 
-    if (existingReview) return errorResponse('You have already reviewed this product', 400);
+    if (existingReview) return errorResponse('You have already reviewed this product', 400, 'ALREADY_REVIEWED');
 
     let isVerified = 0;
     if (orderId) {
@@ -374,10 +374,10 @@ async function submitGuestReview(request, env) {
     if (!siteId || !orderId || !reviewToken || !productId || !rating) {
       return errorResponse('siteId, orderId, reviewToken, productId, and rating are required', 400);
     }
-    if (rating < 1 || rating > 5) return errorResponse('Rating must be between 1 and 5', 400);
+    if (rating < 1 || rating > 5) return errorResponse('Rating must be between 1 and 5', 400, 'RATING_OUT_OF_RANGE');
 
     const locked = await checkMigrationLock(env, siteId);
-    if (locked) return errorResponse('Site is under maintenance', 503);
+    if (locked) return errorResponse('Site is under maintenance', 503, 'SITE_MAINTENANCE');
 
     const db = await resolveSiteDBById(env, siteId);
     await ensureReviewColumns(db);
@@ -392,16 +392,16 @@ async function submitGuestReview(request, env) {
       order = await db.prepare(
         `SELECT id, order_number, customer_name, items FROM orders WHERE id = ? AND site_id = ? AND review_token = ? AND status = 'delivered'`
       ).bind(orderId, siteId, reviewToken).first();
-      if (!order) return errorResponse('Invalid or expired review link', 403);
+      if (!order) return errorResponse('Invalid or expired review link', 403, 'INVALID_REVIEW_LINK');
     }
     const items = parseJsonSafe(order.items);
     const hasProduct = items.some(item => (item.productId || item.product_id || item.id) === productId);
-    if (!hasProduct) return errorResponse('This product was not part of the order', 400);
+    if (!hasProduct) return errorResponse('This product was not part of the order', 400, 'NOT_IN_ORDER');
 
     const existingReview = await db.prepare(
       `SELECT id FROM reviews WHERE site_id = ? AND product_id = ? AND order_id = ? LIMIT 1`
     ).bind(siteId, productId, orderId).first();
-    if (existingReview) return errorResponse('This product has already been reviewed for this order', 400);
+    if (existingReview) return errorResponse('This product has already been reviewed for this order', 400, 'ALREADY_REVIEWED_FOR_ORDER');
 
     const siteConfig = await getSiteConfig(env, siteId);
     let settings = {};
@@ -447,7 +447,7 @@ async function getAdminReviews(request, env) {
 
     if (!isAdmin) {
       const user = await validateAnyAuth(request, env, { siteId });
-      if (!user) return errorResponse('Authentication required', 401);
+      if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
       const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
       if (!site) return errorResponse('Unauthorized', 403);
     }
@@ -516,7 +516,7 @@ async function updateReviewStatus(request, env, reviewId, ctx) {
 
     if (!isAdmin) {
       const user = await validateAnyAuth(request, env, { siteId });
-      if (!user) return errorResponse('Authentication required', 401);
+      if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
       const site = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
       if (!site) return errorResponse('Unauthorized', 403);
     }

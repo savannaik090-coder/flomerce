@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import * as authService from '../services/authService.js';
+import { translateApiError } from '../services/errorMessages.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
@@ -31,7 +32,7 @@ export default function VerifyEmailPage() {
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       setStatus('error');
-      setError(err.message || tx("Verification failed. The link may have expired."));
+      setError(translateApiError(err, tx, tx("Verification failed. The link may have expired.")));
     }
   }
 

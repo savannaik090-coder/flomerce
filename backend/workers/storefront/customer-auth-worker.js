@@ -83,14 +83,14 @@ async function getAddresses(env, customer) {
 async function createAddress(request, env, customer) {
   try {
     if (await checkMigrationLock(env, customer.site_id)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const body = await request.json();
     const { label, firstName, lastName, phone, houseNumber, roadName, city, country, state, pinCode, isDefault } = body;
 
     if (!firstName || !houseNumber || !city || !pinCode) {
-      return errorResponse('First name, house number, city, and postal code are required');
+      return errorResponse('First name, house number, city, and postal code are required', 400, 'ADDRESS_FIELDS_REQUIRED');
     }
 
     const id = generateId();
@@ -141,7 +141,7 @@ async function createAddress(request, env, customer) {
 async function updateAddress(request, env, customer, addressId) {
   try {
     if (await checkMigrationLock(env, customer.site_id)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, customer.site_id);
@@ -151,7 +151,7 @@ async function updateAddress(request, env, customer, addressId) {
     ).bind(addressId, customer.id, customer.site_id).first();
 
     if (!existing) {
-      return errorResponse('Address not found', 404);
+      return errorResponse('Address not found', 404, 'ADDRESS_NOT_FOUND');
     }
 
     const body = await request.json();
@@ -224,7 +224,7 @@ async function deleteAddress(env, customer, addressId) {
     ).bind(addressId, customer.id, customer.site_id).first();
 
     if (!existing) {
-      return errorResponse('Address not found', 404);
+      return errorResponse('Address not found', 404, 'ADDRESS_NOT_FOUND');
     }
 
     const bytesToRemove = existing.row_size_bytes || 0;
@@ -263,15 +263,15 @@ async function handleSignup(request, env) {
     const signupLang = (reqBody.lang || '').trim() || null;
 
     if (!siteId || !name || !email || !password) {
-      return errorResponse('Site ID, name, email and password are required');
+      return errorResponse('Site ID, name, email and password are required', 400, 'SIGNUP_FIELDS_REQUIRED');
     }
 
     if (!validateEmail(email)) {
-      return errorResponse('Invalid email format');
+      return errorResponse('Invalid email format', 400, 'INVALID_EMAIL_FORMAT');
     }
 
     if (password.length < 8) {
-      return errorResponse('Password must be at least 8 characters');
+      return errorResponse('Password must be at least 8 characters', 400, 'PASSWORD_TOO_SHORT');
     }
 
     const site = await env.DB.prepare(
@@ -279,7 +279,7 @@ async function handleSignup(request, env) {
     ).bind(siteId).first();
 
     if (!site) {
-      return errorResponse('Store not found', 404);
+      return errorResponse('Store not found', 404, 'STORE_NOT_FOUND');
     }
 
     const db = await resolveSiteDBById(env, siteId);
@@ -298,7 +298,7 @@ async function handleSignup(request, env) {
     const { checkUsageLimit } = await import('../../utils/usage-tracker.js');
 
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const rowData = { id: customerId, site_id: siteId, email: email.toLowerCase(), name, phone };
@@ -391,7 +391,7 @@ async function handleLogin(request, env) {
     const { siteId, email, password } = await request.json();
 
     if (!siteId || !email || !password) {
-      return errorResponse('Site ID, email and password are required');
+      return errorResponse('Site ID, email and password are required', 400, 'LOGIN_FIELDS_REQUIRED');
     }
 
     const db = await resolveSiteDBById(env, siteId);
@@ -450,7 +450,7 @@ async function handleCustomerGoogleLogin(request, env) {
 
   try {
     const { siteId, credential } = await request.json();
-    if (!siteId || !credential) return errorResponse('Site ID and credential are required', 400);
+    if (!siteId || !credential) return errorResponse('Site ID and credential are required', 400, 'GOOGLE_FIELDS_REQUIRED');
 
     const clientId = env.GOOGLE_CLIENT_ID;
     if (!clientId) {
@@ -485,7 +485,7 @@ async function handleCustomerGoogleLogin(request, env) {
     const site = await env.DB.prepare(
       'SELECT id, brand_name, subdomain FROM sites WHERE id = ? AND is_active = 1'
     ).bind(siteId).first();
-    if (!site) return errorResponse('Store not found', 404);
+    if (!site) return errorResponse('Store not found', 404, 'STORE_NOT_FOUND');
 
     const db = await resolveSiteDBById(env, siteId);
     const email = payload.email.toLowerCase();
@@ -497,7 +497,7 @@ async function handleCustomerGoogleLogin(request, env) {
 
     if (!customer) {
       if (await checkMigrationLock(env, siteId)) {
-        return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+        return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
       }
 
       const { checkUsageLimit } = await import('../../utils/usage-tracker.js');
@@ -619,7 +619,7 @@ async function handleUpdateProfile(request, env) {
     }
 
     if (await checkMigrationLock(env, customer.site_id)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const { name, phone } = await request.json();
@@ -751,7 +751,7 @@ async function handleResetPassword(request, env) {
     }
 
     if (password.length < 8) {
-      return errorResponse('Password must be at least 8 characters');
+      return errorResponse('Password must be at least 8 characters', 400, 'PASSWORD_TOO_SHORT');
     }
 
     let db = null;

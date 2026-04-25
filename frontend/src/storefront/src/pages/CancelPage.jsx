@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { translateApiError } from '../services/errorMessages.js';
 import * as orderService from '../services/orderService.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -64,7 +65,7 @@ export default function CancelPage() {
       setLookupMessage(tx("A cancellation link has been sent to your email. Please check your inbox."));
       setLookupSuccess(true);
     } catch (err) {
-      setLookupMessage(err.message || tx("Could not find this order. Please check your order number and email."));
+      setLookupMessage(translateApiError(err, tx, tx("Could not find this order. Please check your order number and email.")));
       setLookupSuccess(false);
     } finally {
       setLookupLoading(false);
@@ -85,7 +86,7 @@ export default function CancelPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || tx("Failed to submit cancellation request"));
+      setError(translateApiError(err, tx, tx("Failed to submit cancellation request")));
     } finally {
       setSubmitting(false);
     }

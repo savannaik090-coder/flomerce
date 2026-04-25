@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { translateApiError } from '../services/errorMessages.js';
 import * as orderService from '../services/orderService.js';
 import { API_BASE } from '../config.js';
 import { useToast } from '../../../shared/ui/Toast.jsx';
@@ -84,7 +85,7 @@ export default function ReturnPage() {
       setLookupMessage(tx("A return link has been sent to your email. Please check your inbox."));
       setLookupSuccess(true);
     } catch (err) {
-      setLookupMessage(err.message || tx("Could not find this order. Please check your order number and email."));
+      setLookupMessage(translateApiError(err, tx, tx("Could not find this order. Please check your order number and email.")));
       setLookupSuccess(false);
     } finally {
       setLookupLoading(false);
@@ -148,7 +149,7 @@ export default function ReturnPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || tx("Failed to submit return request"));
+      setError(translateApiError(err, tx, tx("Failed to submit return request")));
     } finally {
       setSubmitting(false);
     }

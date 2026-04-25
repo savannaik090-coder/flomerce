@@ -112,7 +112,7 @@ async function getWishlist(env, user, siteId, db) {
 async function addToWishlist(request, env, user, siteId, db) {
   try {
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const { productId } = await request.json();
@@ -126,7 +126,7 @@ async function addToWishlist(request, env, user, siteId, db) {
     ).bind(productId, siteId).first();
 
     if (!product) {
-      return errorResponse('Product not found', 404);
+      return errorResponse('Product not found', 404, 'PRODUCT_NOT_FOUND');
     }
 
     const existing = await db.prepare(
@@ -134,7 +134,7 @@ async function addToWishlist(request, env, user, siteId, db) {
     ).bind(user.id, productId, siteId).first();
 
     if (existing) {
-      return errorResponse('Product already in wishlist', 400, 'ALREADY_EXISTS');
+      return errorResponse('Product already in wishlist', 400, 'ALREADY_IN_WISHLIST');
     }
 
     const wishlistId = generateId();
@@ -158,7 +158,7 @@ async function addToWishlist(request, env, user, siteId, db) {
 async function removeFromWishlist(request, env, user, siteId, db) {
   try {
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const url = new URL(request.url);

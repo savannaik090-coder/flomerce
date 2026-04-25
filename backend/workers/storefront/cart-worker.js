@@ -179,7 +179,7 @@ async function handleClearCart(request, env, url) {
 
   try {
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     let cart = null;
@@ -225,7 +225,7 @@ async function handleMergeCarts(request, env) {
 
   const db = await resolveSiteDBById(env, siteId);
   const user = await validateAnyAuth(request, env, { siteId, db });
-  if (!user) return errorResponse('Authentication required', 401);
+  if (!user) return errorResponse('Authentication required', 401, 'AUTH_REQUIRED');
 
   try {
     await mergeCarts(env, siteId, user.id, sessionId);
@@ -342,7 +342,7 @@ async function getCart(env, siteId, user, sessionId, lang = null) {
 async function addToCart(request, env, siteId, user, sessionId) {
   try {
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const { productId, quantity, variant, selectedOptions } = await request.json();
@@ -358,11 +358,11 @@ async function addToCart(request, env, siteId, user, sessionId) {
     ).bind(productId, siteId).first();
 
     if (!product) {
-      return errorResponse('Product not found', 404);
+      return errorResponse('Product not found', 404, 'PRODUCT_NOT_FOUND');
     }
 
     if (!product.is_active) {
-      return errorResponse('Product is not available', 400);
+      return errorResponse('Product is not available', 400, 'PRODUCT_NOT_AVAILABLE');
     }
 
     if (product.stock < quantity) {
@@ -415,7 +415,7 @@ async function addToCart(request, env, siteId, user, sessionId) {
 async function updateCartItem(request, env, siteId, user, sessionId) {
   try {
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const { productId, quantity, variant, selectedOptions } = await request.json();
@@ -437,7 +437,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     );
 
     if (existingIndex < 0) {
-      return errorResponse('Item not found in cart', 404);
+      return errorResponse('Item not found in cart', 404, 'ITEM_NOT_FOUND_IN_CART');
     }
 
     if (quantity <= 0) {
@@ -473,7 +473,7 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
 async function removeFromCart(request, env, siteId, user, sessionId) {
   try {
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const url = new URL(request.url);

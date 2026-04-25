@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../context/CartContext.jsx';
+import { translateApiError } from '../services/errorMessages.js';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
@@ -246,7 +247,7 @@ export default function CheckoutPage() {
       });
       return true;
     } catch (err) {
-      setError(err.message || tx("Some items in your cart are no longer available. Please update your cart and try again."));
+      setError(translateApiError(err, tx, tx("Some items in your cart are no longer available. Please update your cart and try again.")));
       return false;
     }
   }, [siteConfig, items]);
@@ -440,7 +441,7 @@ export default function CheckoutPage() {
         });
         rzp.open();
       } catch (err) {
-        setError(err.message || tx("Failed to initialize payment. Please try again."));
+        setError(translateApiError(err, tx, tx("Failed to initialize payment. Please try again.")));
         setLoading(false);
       }
       return;
@@ -455,7 +456,7 @@ export default function CheckoutPage() {
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
-      setError(err.message || tx("Failed to place order. Please try again."));
+      setError(translateApiError(err, tx, tx("Failed to place order. Please try again.")));
     }
     setLoading(false);
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll, validateCartStock]);

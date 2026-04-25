@@ -360,7 +360,7 @@ async function createProduct(request, env, user, ctx) {
     }
 
     if (await checkMigrationLock(env, siteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     let site;
@@ -517,7 +517,7 @@ async function updateProduct(request, env, user, productId, ctx) {
     const resolvedSiteId = siteId || product.site_id;
 
     if (await checkMigrationLock(env, resolvedSiteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);
@@ -697,7 +697,7 @@ async function deleteProduct(env, user, productId) {
     const resolvedSiteId = siteId || product.site_id;
 
     if (await checkMigrationLock(env, resolvedSiteId)) {
-      return errorResponse('Site is currently being migrated. Please try again shortly.', 423);
+      return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
 
     const db = await resolveSiteDBById(env, resolvedSiteId);

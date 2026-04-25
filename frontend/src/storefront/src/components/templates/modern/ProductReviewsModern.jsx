@@ -3,6 +3,7 @@ import { SiteContext } from '../../../context/SiteContext.jsx';
 import { apiRequest, getAuthToken } from '../../../services/api.js';
 import TranslatedText from '../../TranslatedText';
 import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
+import { translateApiError } from '../../../services/errorMessages.js';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
@@ -147,7 +148,7 @@ export default function ProductReviewsModern({ productId }) {
       await loadReviews();
       await checkEligibility();
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || tx("Failed to submit review") });
+      setSubmitMessage({ type: 'error', text: translateApiError(err, tx, tx("Failed to submit review")) });
     } finally {
       setSubmitting(false);
     }

@@ -4,6 +4,7 @@ import { SiteContext } from '../../../context/SiteContext.jsx';
 import { apiRequest } from '../../../services/api.js';
 import TranslatedText from '../../TranslatedText';
 import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
+import { translateApiError } from '../../../services/errorMessages.js';
 
 const STAR_FULL = '\u2605';
 
@@ -66,7 +67,7 @@ export default function ReviewPageModern() {
       setItems(data.items || []);
       setReviewedItems(data.reviewedItems || {});
     } catch (err) {
-      setError(err.message || tx("Invalid or expired review link"));
+      setError(translateApiError(err, tx, tx("Invalid or expired review link")));
     } finally {
       setLoading(false);
     }
@@ -96,7 +97,7 @@ export default function ReviewPageModern() {
       setActiveItem(null);
       setFormData({ rating: 0, title: '', content: '', customerName: '' });
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || tx("Failed to submit review") });
+      setSubmitMessage({ type: 'error', text: translateApiError(err, tx, tx("Failed to submit review")) });
     } finally {
       setSubmitting(false);
     }

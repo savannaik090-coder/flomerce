@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { translateApiError } from '../services/errorMessages.js';
 import * as authService from '../services/authService.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -23,7 +24,7 @@ export default function ForgotPasswordPage() {
       await authService.requestPasswordReset(email, siteConfig?.id);
       setSuccess(tx("Password reset link has been sent to your email. Please check your inbox and spam folder."));
     } catch (err) {
-      setError(err.message || tx("Failed to send reset email. Please try again."));
+      setError(translateApiError(err, tx, tx("Failed to send reset email. Please try again.")));
     } finally {
       setLoading(false);
     }

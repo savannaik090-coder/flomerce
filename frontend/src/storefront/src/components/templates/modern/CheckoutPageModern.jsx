@@ -12,6 +12,7 @@ import * as authService from '../../../services/authService.js';
 import '../../../styles/checkout.css';
 import TranslatedText from '../../TranslatedText';
 import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
+import { translateApiError } from '../../../services/errorMessages.js';
 
 export default function CheckoutPageModern() {
   const { translate: tx } = useShopperTranslation();
@@ -224,7 +225,7 @@ export default function CheckoutPageModern() {
       });
       return true;
     } catch (err) {
-      setError(err.message || tx("Some items in your cart are no longer available. Please update your cart and try again."));
+      setError(translateApiError(err, tx, tx("Some items in your cart are no longer available. Please update your cart and try again.")));
       return false;
     }
   }, [siteConfig, items]);
@@ -346,7 +347,7 @@ export default function CheckoutPageModern() {
           setLoading(false);
         });
         rzp.open();
-      } catch (err) { setError(err.message || tx("Failed to initialize payment. Please try again.")); setLoading(false); }
+      } catch (err) { setError(translateApiError(err, tx, tx("Failed to initialize payment. Please try again."))); setLoading(false); }
       return;
     }
 
@@ -358,7 +359,7 @@ export default function CheckoutPageModern() {
       setPlacedOrderDetails({ items: [...items], address: { ...address }, paymentMethod, total: finalTotal, discount: couponDiscount, couponCode: appliedCoupon?.code || null, originalTotal: subtotal, shippingCost });
       setOrderPlaced(true);
       clearAll();
-    } catch (err) { setError(err.message || tx("Failed to place order. Please try again.")); }
+    } catch (err) { setError(translateApiError(err, tx, tx("Failed to place order. Please try again."))); }
     setLoading(false);
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll, validateCartStock]);
 
