@@ -250,7 +250,7 @@ export default function ProductDetailPage() {
 
         <div className="product-detail-right">
           <div className="product-detail-info">
-            <h1 className="product-title">{product.name}</h1>
+            <h1 className="product-title"><TranslatedText text={product.name} /></h1>
             <div className="price">
               <span className="product-price">{formatAmount(effectivePrice)}</span>
             </div>
@@ -259,7 +259,7 @@ export default function ProductDetailPage() {
               <div className="meta-item">
                 <span className="meta-label"><TranslatedText text="Availability:" /></span>
                 <span className={`meta-value ${isOutOfStock ? 'out-of-stock' : 'in-stock'}`}>
-                  {isOutOfStock ? "Out of Stock ✗" : "In Stock ✓"}
+                  {isOutOfStock ? <><TranslatedText text="Out of Stock" /> ✗</> : <><TranslatedText text="In Stock" /> ✓</>}
                 </span>
               </div>
               <div className="meta-item">
@@ -342,7 +342,7 @@ export default function ProductDetailPage() {
             {product.description && (
               <div className="product-description-section product-description-inline">
                 <h3><TranslatedText text="Product Description" /></h3>
-                <p>{product.description}</p>
+                <p><TranslatedText text={product.description} /></p>
               </div>
             )}
 
@@ -352,7 +352,7 @@ export default function ProductDetailPage() {
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
               >
-                {isOutOfStock ? "OUT OF STOCK" : "ADD TO CART"}
+                {isOutOfStock ? <TranslatedText text="OUT OF STOCK" /> : <TranslatedText text="ADD TO CART" />}
               </button>
               <button
                 className="buy-now-btn"
@@ -366,7 +366,7 @@ export default function ProductDetailPage() {
                 onClick={handleWishlistToggle}
               >
                 <i className="fas fa-heart" />
-                {productInWishlist ? "REMOVE FROM WISHLIST" : "ADD TO WISHLIST"}
+                {productInWishlist ? <TranslatedText text="REMOVE FROM WISHLIST" /> : <TranslatedText text="ADD TO WISHLIST" />}
               </button>
             </div>
 

@@ -74,7 +74,7 @@ export default function ProductCardModern({ product, variant = 'grid', onWishlis
           </button>
         </div>
         <div className="mn-product-info">
-          <h3 className="mn-product-name">{(isDemo || product._isDemo) ? <TranslatedText text={product.name} /> : product.name}</h3>
+          <h3 className="mn-product-name"><TranslatedText text={product.name} /></h3>
           <div className="mn-product-pricing">
             <span className="mn-product-price">{formatAmount(product.price)}</span>
             {hasComparePrice && (

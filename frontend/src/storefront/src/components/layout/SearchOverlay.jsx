@@ -163,10 +163,10 @@ export default function SearchOverlay({ isOpen, onClose }) {
                     />
                   </div>
                   <div className="search-product-details">
-                    <div className="search-product-name">{product.name}</div>
+                    <div className="search-product-name"><TranslatedText text={product.name} /></div>
                     <div className="search-product-price">{formatAmount(product.price)}</div>
                     {product.category_name && (
-                      <div className="search-product-category">{product.category_name}</div>
+                      <div className="search-product-category"><TranslatedText text={product.category_name} /></div>
                     )}
                   </div>
                 </div>

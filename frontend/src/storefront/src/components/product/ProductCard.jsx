@@ -101,7 +101,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
                 textTransform: 'uppercase',
               }}
             >
-              Out of Stock
+              <TranslatedText text="Out of Stock" />
             </div>
           )}
           <button
@@ -144,7 +144,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
               whiteSpace: 'nowrap',
             }}
           >
-            {product.name}
+            <TranslatedText text={product.name} />
           </h3>
           <div className="product-pricing">
             <span
