@@ -75,6 +75,88 @@ export default function OrdersSection() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
+  const [shipActionLoading, setShipActionLoading] = useState(false);
+
+  const shiprocketEnabled = !!siteConfig?.settings?.shiprocketEnabled;
+
+  function applyOrderUpdate(orderId, patch) {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...patch } : o));
+    setOrderDetailModal(prev => (prev && prev.id === orderId) ? { ...prev, ...patch } : prev);
+  }
+
+  async function handleShipNow(order) {
+    if (!order?.id) return;
+    setShipActionLoading(true);
+    try {
+      const res = await apiRequest(`/api/shipping/orders/${order.id}/ship?siteId=${siteConfig.id}`, { method: 'POST' });
+      const data = res.data || res;
+      applyOrderUpdate(order.id, {
+        status: data.status || 'shipped',
+        shiprocket_order_id: data.shiprocket_order_id,
+        shiprocket_shipment_id: data.shiprocket_shipment_id,
+        shiprocket_awb: data.shiprocket_awb,
+        shiprocket_courier: data.shiprocket_courier,
+        shiprocket_label_url: data.shiprocket_label_url,
+        shiprocket_status: data.shiprocket_status || 'shipped',
+        tracking_number: data.shiprocket_awb || order.tracking_number,
+      });
+      toast.success('Shipment created successfully');
+    } catch (err) {
+      toast.error(`Ship Now failed: ${err.message}`);
+    } finally {
+      setShipActionLoading(false);
+    }
+  }
+
+  async function handleShipmentCancel(order) {
+    if (!order?.id) return;
+    if (!window.confirm('Cancel this Shiprocket shipment? The AWB will be voided.')) return;
+    setShipActionLoading(true);
+    try {
+      const res = await apiRequest(`/api/shipping/orders/${order.id}/cancel?siteId=${siteConfig.id}`, { method: 'POST' });
+      const data = res.data || res;
+      applyOrderUpdate(order.id, {
+        shiprocket_status: data.shiprocket_status || 'cancelled',
+      });
+      toast.success('Shipment cancelled');
+    } catch (err) {
+      toast.error(`Cancel shipment failed: ${err.message}`);
+    } finally {
+      setShipActionLoading(false);
+    }
+  }
+
+  async function handleReprintLabel(order) {
+    if (order?.shiprocket_label_url) {
+      window.open(order.shiprocket_label_url, '_blank', 'noopener');
+      return;
+    }
+    setShipActionLoading(true);
+    try {
+      const res = await apiRequest(`/api/shipping/orders/${order.id}/label?siteId=${siteConfig.id}`);
+      const url = (res.data && res.data.shiprocket_label_url) || res.shiprocket_label_url;
+      if (url) {
+        applyOrderUpdate(order.id, { shiprocket_label_url: url });
+        window.open(url, '_blank', 'noopener');
+      } else {
+        toast.error('Label not available yet — try again in a moment.');
+      }
+    } catch (err) {
+      toast.error(`Label fetch failed: ${err.message}`);
+    } finally {
+      setShipActionLoading(false);
+    }
+  }
+
+  function handleTrackShipment(order) {
+    const awb = order?.shiprocket_awb || order?.tracking_number;
+    if (!awb) {
+      toast.error('No AWB / tracking number available');
+      return;
+    }
+    window.open(`https://shiprocket.co/tracking/${encodeURIComponent(awb)}`, '_blank', 'noopener');
+  }
+
   const [activeView, setActiveView] = useState('orders');
   const [returns, setReturns] = useState([]);
   const [returnsLoading, setReturnsLoading] = useState(false);
@@ -1451,8 +1533,39 @@ export default function OrdersSection() {
               </div>
             </div>
 
+            {(order.shiprocket_awb || order.shiprocket_courier || order.shiprocket_status) && (
+              <div style={{ marginBottom: 16, padding: 12, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#0c4a6e', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Shiprocket Shipment</div>
+                <div style={{ fontSize: 13, color: '#0f172a', lineHeight: 1.7 }}>
+                  {order.shiprocket_courier && <div><span style={{ color: '#64748b' }}>Courier:</span> <strong>{order.shiprocket_courier}</strong></div>}
+                  {order.shiprocket_awb && <div><span style={{ color: '#64748b' }}>AWB:</span> <strong>{order.shiprocket_awb}</strong></div>}
+                  {order.shiprocket_status && <div><span style={{ color: '#64748b' }}>Status:</span> <strong>{order.shiprocket_status}</strong></div>}
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button onClick={() => setOrderDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
+              {shiprocketEnabled && !isCancelled && !order.shiprocket_awb && (
+                <button onClick={() => handleShipNow(order)} disabled={shipActionLoading} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#0ea5e9', color: '#fff', cursor: shipActionLoading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, opacity: shipActionLoading ? 0.6 : 1 }}>
+                  {shipActionLoading ? 'Working...' : '🚚 Ship Now'}
+                </button>
+              )}
+              {shiprocketEnabled && order.shiprocket_awb && (
+                <>
+                  <button onClick={() => handleReprintLabel(order)} disabled={shipActionLoading} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #0ea5e9', background: '#fff', color: '#0ea5e9', cursor: shipActionLoading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>
+                    🏷️ Reprint Label
+                  </button>
+                  <button onClick={() => handleTrackShipment(order)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #0f172a', background: '#fff', color: '#0f172a', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+                    📦 Track
+                  </button>
+                  {order.shiprocket_status !== 'cancelled' && !isDelivered && (
+                    <button onClick={() => handleShipmentCancel(order)} disabled={shipActionLoading} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ef4444', background: '#fff', color: '#ef4444', cursor: shipActionLoading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600 }}>
+                      Cancel Shipment
+                    </button>
+                  )}
+                </>
+              )}
               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
                 <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: "Confirm this order?" }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Confirm</button>
               )}

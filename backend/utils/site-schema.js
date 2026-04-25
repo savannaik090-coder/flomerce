@@ -592,6 +592,23 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE guest_orders ADD COLUMN placed_in_language TEXT',
     'ALTER TABLE site_customers ADD COLUMN preferred_lang TEXT',
     'ALTER TABLE carts ADD COLUMN language TEXT',
+    // Shiprocket integration columns
+    'ALTER TABLE orders ADD COLUMN shiprocket_order_id TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_shipment_id TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_awb TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_courier TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_label_url TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_status TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_last_event_at TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_error TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_order_id TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_shipment_id TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_awb TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_courier TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_label_url TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_status TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_last_event_at TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_error TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

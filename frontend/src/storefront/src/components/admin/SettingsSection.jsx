@@ -72,6 +72,30 @@ export default function SettingsSection() {
   const [abandonedCartWhatsApp, setAbandonedCartWhatsApp] = useState(true);
   const [abandonedCartEmail, setAbandonedCartEmail] = useState(true);
 
+  // Shiprocket integration state (loaded from /api/shipping/status — separate
+  // from public site-info which never exposes the encrypted credentials).
+  const [shiprocketLoading, setShiprocketLoading] = useState(false);
+  const [shiprocketSaving, setShiprocketSaving] = useState(false);
+  const [shiprocketConnecting, setShiprocketConnecting] = useState(false);
+  const [shiprocketDisconnecting, setShiprocketDisconnecting] = useState(false);
+  const [shiprocketMsg, setShiprocketMsg] = useState('');
+  const [shiprocketErr, setShiprocketErr] = useState('');
+  const [shiprocketConnected, setShiprocketConnected] = useState(false);
+  const [shiprocketEnabledUI, setShiprocketEnabledUI] = useState(false);
+  const [shiprocketEmail, setShiprocketEmail] = useState('');
+  const [shiprocketPassword, setShiprocketPassword] = useState('');
+  const [shiprocketEmailMasked, setShiprocketEmailMasked] = useState('');
+  const [shiprocketWebhookToken, setShiprocketWebhookToken] = useState('');
+  const [shiprocketPickupLocations, setShiprocketPickupLocations] = useState([]);
+  const [shiprocketPickupNickname, setShiprocketPickupNickname] = useState('');
+  const [shiprocketDefaultWeight, setShiprocketDefaultWeight] = useState(500);
+  const [shiprocketDefaultLength, setShiprocketDefaultLength] = useState(10);
+  const [shiprocketDefaultBreadth, setShiprocketDefaultBreadth] = useState(10);
+  const [shiprocketDefaultHeight, setShiprocketDefaultHeight] = useState(10);
+  const [shiprocketAutoOnPay, setShiprocketAutoOnPay] = useState(false);
+  const [shiprocketAutoOnCod, setShiprocketAutoOnCod] = useState(false);
+  const [pickupLocationsRefreshing, setPickupLocationsRefreshing] = useState(false);
+
   const defaultOpenSections = { storeUrl: true, customDomain: true, brand: true, contact: true };
   const [openSections, setOpenSections] = useState(defaultOpenSections);
 
@@ -141,6 +165,130 @@ export default function SettingsSection() {
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
   }, [siteConfig?.id]);
+
+  useEffect(() => {
+    if (siteConfig?.id) loadShiprocketStatus();
+  }, [siteConfig?.id]);
+
+  async function loadShiprocketStatus() {
+    setShiprocketLoading(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/shipping/status?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        headers: token ? { 'Authorization': `SiteAdmin ${token}` } : {},
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        const d = json.data;
+        setShiprocketConnected(!!d.connected);
+        setShiprocketEnabledUI(!!d.enabled);
+        setShiprocketEmailMasked(d.email || '');
+        setShiprocketWebhookToken(d.webhookToken || '');
+        setShiprocketPickupNickname(d.pickupLocationNickname || '');
+        setShiprocketDefaultWeight(d.defaultWeight || 500);
+        setShiprocketDefaultLength(d.defaultLength || 10);
+        setShiprocketDefaultBreadth(d.defaultBreadth || 10);
+        setShiprocketDefaultHeight(d.defaultHeight || 10);
+        setShiprocketAutoOnPay(!!d.autoShipOnPayment);
+        setShiprocketAutoOnCod(!!d.autoShipOnConfirmCod);
+        if (d.connected) refreshPickupLocations();
+      }
+    } catch (e) {
+      console.error('Failed to load Shiprocket status:', e);
+    } finally {
+      setShiprocketLoading(false);
+    }
+  }
+
+  async function refreshPickupLocations() {
+    setPickupLocationsRefreshing(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/shipping/pickup-locations?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        headers: token ? { 'Authorization': `SiteAdmin ${token}` } : {},
+      });
+      const json = await res.json();
+      if (res.ok && json.success && Array.isArray(json.data?.pickupLocations)) {
+        setShiprocketPickupLocations(json.data.pickupLocations);
+      }
+    } catch (e) { console.error('refreshPickupLocations error:', e); }
+    finally { setPickupLocationsRefreshing(false); }
+  }
+
+  async function handleShiprocketConnect() {
+    setShiprocketMsg(''); setShiprocketErr('');
+    if (!shiprocketEmail || !shiprocketPassword) {
+      setShiprocketErr('Email and password are required.');
+      return;
+    }
+    setShiprocketConnecting(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/shipping/connect?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `SiteAdmin ${token}` } : {}) },
+        body: JSON.stringify({ email: shiprocketEmail, password: shiprocketPassword }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setShiprocketMsg('Connected to Shiprocket.');
+        setShiprocketPassword('');
+        await loadShiprocketStatus();
+      } else {
+        setShiprocketErr(json.error || json.message || 'Connection failed');
+      }
+    } catch (e) { setShiprocketErr(`Connection failed: ${e.message}`); }
+    finally { setShiprocketConnecting(false); }
+  }
+
+  async function handleShiprocketDisconnect() {
+    setShiprocketMsg(''); setShiprocketErr('');
+    setShiprocketDisconnecting(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/shipping/disconnect?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `SiteAdmin ${token}` } : {},
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setShiprocketMsg('Disconnected from Shiprocket.');
+        await loadShiprocketStatus();
+      } else {
+        setShiprocketErr(json.error || json.message || 'Disconnect failed');
+      }
+    } catch (e) { setShiprocketErr(`Disconnect failed: ${e.message}`); }
+    finally { setShiprocketDisconnecting(false); }
+  }
+
+  async function handleShiprocketSaveSettings() {
+    setShiprocketMsg(''); setShiprocketErr('');
+    setShiprocketSaving(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/shipping/settings?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `SiteAdmin ${token}` } : {}) },
+        body: JSON.stringify({
+          enabled: shiprocketEnabledUI,
+          pickupLocationNickname: shiprocketPickupNickname,
+          defaultWeight: Number(shiprocketDefaultWeight) || 500,
+          defaultLength: Number(shiprocketDefaultLength) || 10,
+          defaultBreadth: Number(shiprocketDefaultBreadth) || 10,
+          defaultHeight: Number(shiprocketDefaultHeight) || 10,
+          autoShipOnPayment: !!shiprocketAutoOnPay,
+          autoShipOnConfirmCod: !!shiprocketAutoOnCod,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setShiprocketMsg('Shipping settings saved.');
+      } else {
+        setShiprocketErr(json.error || json.message || 'Save failed');
+      }
+    } catch (e) { setShiprocketErr(`Save failed: ${e.message}`); }
+    finally { setShiprocketSaving(false); }
+  }
 
   async function loadSettings() {
     setLoading(true);
@@ -1608,6 +1756,127 @@ Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsAp
               </div>
               <span style={{ fontSize: 12, background: '#e0f2fe', color: '#0369a1', padding: '3px 10px', borderRadius: 20, fontWeight: 600, flexShrink: 0 }}>Always On</span>
             </div>
+          </div>}
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <CollapsibleHeader sectionKey="shiprocket" title="Shipping (Shiprocket)" />
+          {isSectionOpen('shiprocket') && <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Connect your Shiprocket account to auto-create shipments, assign couriers, schedule pickups, and print labels for every order. Available for India only.
+            </p>
+
+            {shiprocketLoading ? (
+              <p style={{ fontSize: 13, color: '#64748b' }}>Loading...</p>
+            ) : (
+              <>
+                {!shiprocketConnected ? (
+                  <div style={{ marginBottom: 16, padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Connect your Shiprocket account</p>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Shiprocket Email</label>
+                      <input type="email" value={shiprocketEmail} onChange={(e) => setShiprocketEmail(e.target.value)} placeholder="merchant@example.com" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Shiprocket Password</label>
+                      <input type="password" value={shiprocketPassword} onChange={(e) => setShiprocketPassword(e.target.value)} placeholder="••••••••" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                      <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Your password is encrypted at rest and only used to obtain a Shiprocket API token.</p>
+                    </div>
+                    <button type="button" onClick={handleShiprocketConnect} disabled={shiprocketConnecting} className="btn btn-primary" style={{ fontSize: 13 }}>
+                      {shiprocketConnecting ? 'Connecting...' : 'Connect'}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 16, padding: 14, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: '#16a34a', fontSize: 18 }}>&#10003;</span>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>Connected as {shiprocketEmailMasked || 'Shiprocket account'}</span>
+                      </div>
+                      <button type="button" onClick={handleShiprocketDisconnect} disabled={shiprocketDisconnecting} className="btn btn-outline" style={{ color: '#ef4444', borderColor: '#fecaca', fontSize: 12, padding: '6px 12px' }}>
+                        {shiprocketDisconnecting ? 'Disconnecting...' : 'Disconnect'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {shiprocketConnected && (
+                  <>
+                    <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input id="sr-enabled" type="checkbox" checked={shiprocketEnabledUI} onChange={(e) => setShiprocketEnabledUI(e.target.checked)} />
+                      <label htmlFor="sr-enabled" style={{ fontSize: 13, fontWeight: 600 }}>Enable Shiprocket for this store</label>
+                    </div>
+
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Pickup Location</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <select value={shiprocketPickupNickname} onChange={(e) => setShiprocketPickupNickname(e.target.value)} style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit' }}>
+                          <option value="">Select pickup location...</option>
+                          {shiprocketPickupLocations.map((loc, idx) => (
+                            <option key={loc.id || idx} value={loc.pickup_location || loc.nickname || ''}>
+                              {(loc.pickup_location || loc.nickname || 'Location')}{loc.city ? ` — ${loc.city}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="button" onClick={refreshPickupLocations} disabled={pickupLocationsRefreshing} className="btn btn-outline" style={{ fontSize: 12 }}>
+                          {pickupLocationsRefreshing ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Add new pickup locations from your Shiprocket dashboard, then refresh.</p>
+                    </div>
+
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Default Parcel Weight (grams)</label>
+                      <input type="number" min="1" value={shiprocketDefaultWeight} onChange={(e) => setShiprocketDefaultWeight(e.target.value)} style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                    </div>
+
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Default Parcel Dimensions (cm)</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input type="number" min="1" value={shiprocketDefaultLength} onChange={(e) => setShiprocketDefaultLength(e.target.value)} placeholder="L" style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit' }} />
+                        <input type="number" min="1" value={shiprocketDefaultBreadth} onChange={(e) => setShiprocketDefaultBreadth(e.target.value)} placeholder="B" style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit' }} />
+                        <input type="number" min="1" value={shiprocketDefaultHeight} onChange={(e) => setShiprocketDefaultHeight(e.target.value)} placeholder="H" style={{ flex: 1, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit' }} />
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input id="sr-auto-pay" type="checkbox" checked={shiprocketAutoOnPay} onChange={(e) => setShiprocketAutoOnPay(e.target.checked)} />
+                      <label htmlFor="sr-auto-pay" style={{ fontSize: 13 }}>Auto-ship orders as soon as payment is received (online orders)</label>
+                    </div>
+                    <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input id="sr-auto-cod" type="checkbox" checked={shiprocketAutoOnCod} onChange={(e) => setShiprocketAutoOnCod(e.target.checked)} />
+                      <label htmlFor="sr-auto-cod" style={{ fontSize: 13 }}>Auto-ship COD orders on placement</label>
+                    </div>
+
+                    <div style={{ marginBottom: 14, padding: 12, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 6 }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Webhook URL (configure in your Shiprocket dashboard)</p>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all' }}>
+                          {API_BASE}/api/webhooks/shiprocket/{siteConfig?.id}
+                        </code>
+                        <button type="button" onClick={() => copyToClipboard(`${API_BASE}/api/webhooks/shiprocket/${siteConfig?.id}`)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
+                      </div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginTop: 10, marginBottom: 6 }}>X-Api-Key (paste into the webhook auth header)</p>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all' }}>
+                          {shiprocketWebhookToken || '(generated on connect)'}
+                        </code>
+                        {shiprocketWebhookToken && (
+                          <button type="button" onClick={() => copyToClipboard(shiprocketWebhookToken)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
+                        )}
+                      </div>
+                    </div>
+
+                    <button type="button" onClick={handleShiprocketSaveSettings} disabled={shiprocketSaving} className="btn btn-primary" style={{ fontSize: 13 }}>
+                      {shiprocketSaving ? 'Saving...' : 'Save Shipping Settings'}
+                    </button>
+                  </>
+                )}
+
+                {shiprocketMsg && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 10 }}>{shiprocketMsg}</p>}
+                {shiprocketErr && <p style={{ color: '#ef4444', fontSize: 13, marginTop: 10 }}>{shiprocketErr}</p>}
+              </>
+            )}
           </div>}
         </div>
 

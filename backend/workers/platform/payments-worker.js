@@ -312,7 +312,7 @@ async function verifyPayment(request, env) {
           await orderDb.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newOrderBytes, dbOrderId).run();
           await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
         }
-        await processPostPaymentActions(env, order);
+        await processPostPaymentActions(env, order, ctx);
       } else {
         if (orderSiteId) {
           orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
@@ -353,7 +353,7 @@ async function verifyPayment(request, env) {
                 await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
               }
             }
-            await processPostPaymentActions(env, guestOrder);
+            await processPostPaymentActions(env, guestOrder, ctx);
           }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);
@@ -467,7 +467,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
   }
 }
 
-async function processPostPaymentActions(env, order) {
+async function processPostPaymentActions(env, order, ctx) {
   try {
     const orderItems = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     const shippingAddress = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : order.shipping_address;
@@ -486,6 +486,31 @@ async function processPostPaymentActions(env, order) {
     });
   } catch (emailErr) {
     console.error('Failed to send order emails after payment:', emailErr);
+  }
+
+  // Auto-ship via Shiprocket if the merchant has the toggle enabled.
+  // Run as a background task via ctx.waitUntil so payment verification responds
+  // to the customer immediately even if Shiprocket is slow or down. Failures
+  // are logged and persisted on the order's shiprocket_status/error columns.
+  const autoShipTask = (async () => {
+    try {
+      const config = await getSiteConfig(env, order.site_id);
+      let s = {};
+      try { if (config.settings) s = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch {}
+      if (s?.shiprocket?.enabled && s?.shiprocket?.autoShipOnPayment) {
+        const { shipOrderViaShiprocket } = await import('../storefront/shipping-worker.js');
+        const r = await shipOrderViaShiprocket(env, order.site_id, order.id);
+        if (!r?.ok) console.warn('[auto-ship paid] failed:', r);
+      }
+    } catch (e) {
+      console.error('[auto-ship paid] hook error:', e);
+    }
+  })();
+  if (ctx && typeof ctx.waitUntil === 'function') {
+    ctx.waitUntil(autoShipTask);
+  } else {
+    // Best-effort: detach from the response. Errors are caught inside the task.
+    autoShipTask.catch(() => {});
   }
 }
 

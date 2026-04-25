@@ -4,6 +4,7 @@ import { handleTranslateProxy, handleTranslateCachePurge } from './storefront/tr
 import { handleTranslationsBundle, TRANSLATIONS_MANIFEST_HASH } from './storefront/translations-bundle.js';
 import { handleProducts, updateProductStock } from './storefront/products-worker.js';
 import { handleOrders } from './storefront/orders-worker.js';
+import { handleShipping, handleShiprocketWebhook } from './storefront/shipping-worker.js';
 import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
 import { handleWishlist } from './storefront/wishlist-worker.js';
 import { handlePayments, activateSubscription } from './platform/payments-worker.js';
@@ -392,7 +393,14 @@ async function handleAPI(request, env, path, ctx) {
       if (pathParts[2] === 'razorpay') {
         return handlePayments(request, env, '/api/payments/webhook', ctx);
       }
+      // Per-tenant Shiprocket webhook: /api/webhooks/shiprocket/:siteId
+      if (pathParts[2] === 'shiprocket') {
+        return handleShiprocketWebhook(request, env, path);
+      }
       return errorResponse('Not found', 404);
+
+    case 'shipping':
+      return handleShipping(request, env, path, ctx);
 
     case 'billing':
       return handleBilling(request, env, path, ctx);
@@ -572,7 +580,12 @@ async function handleSiteInfo(request, env) {
       }
     }
 
-    const { razorpayKeySecret, adminVerificationCode, whatsappAccessToken, whatsappApiKey, whatsappPhoneNumberId, ...publicSettings } = settings;
+    const { razorpayKeySecret, adminVerificationCode, whatsappAccessToken, whatsappApiKey, whatsappPhoneNumberId, shiprocket: _shiprocketRaw, ...publicSettings } = settings;
+    // Public storefront only needs to know if Shiprocket is enabled; never
+    // expose encrypted credentials, the long-lived token, or the webhook key.
+    if (_shiprocketRaw && typeof _shiprocketRaw === 'object') {
+      publicSettings.shiprocketEnabled = !!_shiprocketRaw.enabled;
+    }
 
     const googleClientId = env.GOOGLE_CLIENT_ID || null;
     const vapidPublicKey = env.VAPID_PUBLIC_KEY || null;
