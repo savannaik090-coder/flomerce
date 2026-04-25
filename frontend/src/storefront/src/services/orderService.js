@@ -8,10 +8,15 @@ function getCurrentLang() {
 }
 
 export async function createOrder(orderData) {
-  const siteParam = orderData.siteId ? `?siteId=${orderData.siteId}` : '';
-  return apiRequest(`/api/orders${siteParam}`, {
+  const lang = getCurrentLang();
+  const params = new URLSearchParams();
+  if (orderData.siteId) params.set('siteId', orderData.siteId);
+  if (orderData.lang || lang) params.set('lang', orderData.lang || lang);
+  const qs = params.toString();
+  const suffix = qs ? `?${qs}` : '';
+  return apiRequest(`/api/orders${suffix}`, {
     method: 'POST',
-    body: JSON.stringify(orderData),
+    body: JSON.stringify({ ...orderData, lang: orderData.lang || lang || undefined }),
   });
 }
 
