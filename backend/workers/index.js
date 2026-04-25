@@ -791,8 +791,9 @@ async function translateSiteInfoInPlace(env, siteId, lang, data) {
 const TRANSLATABLE_SUFFIXES = [
   'title', 'subtitle', 'description', 'headline', 'tagline', 'about',
   'caption', 'label', 'buttontext', 'ctatext', 'ctalabel', 'message',
-  'heading', 'body', 'copyright', 'text', 'name', 'role', 'content',
-  'placeholder', 'tooltip',
+  'messages', 'heading', 'body', 'copyright', 'text', 'name', 'role',
+  'content', 'placeholder', 'tooltip', 'banner', 'banners', 'note',
+  'notes', 'hours', 'address',
 ];
 // Substrings that, when present in the key (case-insensitive), force the
 // field to be skipped — these keys carry URLs, identifiers, contact
@@ -832,10 +833,22 @@ function isTranslatableValue(v) {
   return true;
 }
 
-function walkTranslatableLeaves(node, slots, depth = 0) {
+function walkTranslatableLeaves(node, slots, depth = 0, parentKey = null) {
   if (depth > 8) return;
   if (Array.isArray(node)) {
-    for (const item of node) walkTranslatableLeaves(item, slots, depth + 1);
+    const arrayItemsAreTranslatable = parentKey && isTranslatableKey(parentKey);
+    for (let i = 0; i < node.length; i++) {
+      const item = node[i];
+      if (typeof item === 'string') {
+        // Plain-string array elements (e.g. settings.promoBanner = ['msg1', 'msg2'])
+        // inherit translatability from the array's parent key.
+        if (arrayItemsAreTranslatable && isTranslatableValue(item)) {
+          slots.push({ ref: node, key: i, value: item });
+        }
+      } else if (item && typeof item === 'object') {
+        walkTranslatableLeaves(item, slots, depth + 1, parentKey);
+      }
+    }
     return;
   }
   if (!node || typeof node !== 'object') return;
@@ -845,7 +858,7 @@ function walkTranslatableLeaves(node, slots, depth = 0) {
         slots.push({ ref: node, key: k, value: v });
       }
     } else if (v && typeof v === 'object') {
-      walkTranslatableLeaves(v, slots, depth + 1);
+      walkTranslatableLeaves(v, slots, depth + 1, k);
     }
   }
 }

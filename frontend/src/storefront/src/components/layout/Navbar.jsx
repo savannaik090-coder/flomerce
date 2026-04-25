@@ -91,10 +91,18 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
         const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
 
         if (isSingle) {
-          const text = validMsgs.length === 1 ? validMsgs[0] : `Welcome to ${siteConfig?.brandName || 'Our Store'}`;
+          if (validMsgs.length === 1) {
+            return (
+              <div className="promo-banner" style={{ justifyContent: 'center' }}>
+                <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>{validMsgs[0]}</p>
+              </div>
+            );
+          }
           return (
             <div className="promo-banner" style={{ justifyContent: 'center' }}>
-              <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>{text}</p>
+              <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>
+                <TranslatedText text="Welcome to" /> {siteConfig?.brandName || <TranslatedText text="Our Store" />}
+              </p>
             </div>
           );
         }
