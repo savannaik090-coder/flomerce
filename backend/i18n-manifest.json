@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-04-25T14:56:50.001Z",
-  "hash": "74defa2a0eac5907",
-  "count": 916,
+  "generatedAt": "2026-04-25T15:01:47.518Z",
+  "hash": "a71c6fd3785b96d0",
+  "count": 917,
   "strings": [
     " until you verify your email.",
     "\"Amazing customer service and wonderful products. Will definitely order again!\"",
@@ -267,6 +267,8 @@
     "Follow Us",
     "Follow the specific care instructions provided with your product",
     "Follow us on social media",
+    "For accuracy, our Privacy Policy is shown only in English. Automatic translation may be misleading or incorrect.",
+    "For accuracy, our Terms & Conditions are shown only in English. Automatic translation may be misleading or incorrect.",
     "For any questions regarding these Terms and Conditions, please contact us at {email}{phoneClause}.",
     "Forgot Password",
     "Forgot Password?",
@@ -745,7 +747,6 @@
     "Telangana",
     "Tell us more about your return request...",
     "Tell your brand's story here — what drives you, what makes your products special, and why customers should care...",
-    "Terms & Conditions",
     "Terms and Conditions",
     "Thank You!",
     "Thank you for your purchase. We'll get it ready for you.",
