@@ -55,9 +55,9 @@ export default function CategorySection({ category }) {
   return (
     <section className="home-category-section">
       <div className="home-category-header">
-        <h2 className="section-title">{category.name}</h2>
+        <h2 className="section-title"><TranslatedText text={category.name} /></h2>
         {category.subtitle && (
-          <p className="section-subtitle">{category.subtitle}</p>
+          <p className="section-subtitle"><TranslatedText text={category.subtitle} /></p>
         )}
       </div>
 
@@ -71,7 +71,7 @@ export default function CategorySection({ category }) {
             />
             <div className="home-category-banner-overlay" />
             <div className="home-category-banner-content">
-              <h3 className="home-category-banner-title">{category.name}</h3>
+              <h3 className="home-category-banner-title"><TranslatedText text={category.name} /></h3>
               <div className="home-category-banner-divider" />
               <Link to={`/category/${category.slug}`} className="home-category-banner-btn" style={{ textDecoration: 'none' }}><TranslatedText text="VIEW ALL" /></Link>
             </div>

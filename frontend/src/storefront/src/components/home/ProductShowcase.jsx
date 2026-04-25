@@ -37,7 +37,7 @@ export default function ProductShowcase() {
     <section className="interactive-showcase-section">
       <div className="interactive-showcase-container">
         <div className="showcase-header">
-          <h2 className="section-title">{showcaseTitle}</h2>
+          <h2 className="section-title"><TranslatedText text={showcaseTitle} /></h2>
         </div>
         <div className="showcase-content">
           {showcaseImage && (
@@ -74,7 +74,7 @@ export default function ProductShowcase() {
                     className="showcase-product-thumb"
                   />
                   <div className="showcase-product-info">
-                    <div className="showcase-product-name">{product.name}</div>
+                    <div className="showcase-product-name"><TranslatedText text={product.name} /></div>
                     <div className="showcase-product-price">{formatAmount(product.price)}</div>
                   </div>
                 </Link>
@@ -85,7 +85,7 @@ export default function ProductShowcase() {
                 className="add-set-to-bag-btn"
                 onClick={() => products.forEach((p) => addToCart(p, 1))}
               >
-                Add Set to Bag
+                <TranslatedText text="Add Set to Bag" />
               </button>
             )}
           </div>
@@ -109,9 +109,11 @@ export default function ProductShowcase() {
               className="popup-product-image"
             />
             <div className="popup-product-details">
-              <h3 className="popup-product-name">{selectedProduct.name}</h3>
+              <h3 className="popup-product-name"><TranslatedText text={selectedProduct.name} /></h3>
               <div className="popup-product-price">{formatAmount(selectedProduct.price)}</div>
-              <p className="popup-product-description">{selectedProduct.description || ''}</p>
+              <p className="popup-product-description">
+                {selectedProduct.description ? <TranslatedText text={selectedProduct.description} /> : ''}
+              </p>
               <div className="popup-action-buttons">
                 <button
                   className="popup-add-to-cart-btn"
@@ -120,7 +122,7 @@ export default function ProductShowcase() {
                     setSelectedProduct(null);
                   }}
                 >
-                  Add to Cart
+                  <TranslatedText text="Add to Cart" />
                 </button>
                 <Link
                   to={`/product/${selectedProduct.id}`}
@@ -128,7 +130,7 @@ export default function ProductShowcase() {
                   style={{ textAlign: 'center', textDecoration: 'none' }}
                   onClick={() => setSelectedProduct(null)}
                 >
-                  View Details
+                  <TranslatedText text="View Details" />
                 </Link>
               </div>
             </div>

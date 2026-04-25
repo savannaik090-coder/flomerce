@@ -30,7 +30,7 @@ const SRC = path.join(ROOT, 'frontend/src/storefront/src');
 const OUT = path.join(ROOT, 'backend/i18n-manifest.json');
 
 const TRANSLATED_TEXT_RE = /<TranslatedText\s+(?:[^>]*?\s)?text=(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\}|\{"([^"]+)"\}|\{'([^']+)'\})/g;
-const DEFAULT_FIELD_RE = /(?:^|[^a-zA-Z_$])(?:name|title|subtitle|description|headline|text|buttonText|ctaText|ctaLabel|label|caption|tagline|role|message|body|heading|content|copyright|placeholder|tooltip)\s*:\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
+const DEFAULT_FIELD_RE = /(?:^|[^a-zA-Z_$])(?:name|title|subtitle|description|headline|text|buttonText|ctaText|ctaLabel|label|caption|tagline|role|message|body|heading|content|copyright|placeholder|tooltip|hours|address|brandedNameSuffix|intro|note|hint|prompt|warning|error|reason|reply)\s*:\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

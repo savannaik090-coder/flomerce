@@ -2,6 +2,7 @@ import React from 'react';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 
 import { getFeaturedVideoDefaults } from '../../defaults/index.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 export default function FeaturedVideoSection() {
   const { siteConfig } = useSiteConfig();
@@ -40,10 +41,10 @@ export default function FeaturedVideoSection() {
         <div className="fv-overlay"></div>
       </div>
       <div className="fv-content">
-        {title && <h1 className="fv-title">{title}</h1>}
-        {description && <p className="fv-description">{description}</p>}
+        {title && <h1 className="fv-title"><TranslatedText text={title} /></h1>}
+        {description && <p className="fv-description"><TranslatedText text={description} /></p>}
         <button className="fv-chat-btn" onClick={handleChatClick}>
-          {chatButtonText}
+          <TranslatedText text={chatButtonText} />
         </button>
       </div>
     </section>

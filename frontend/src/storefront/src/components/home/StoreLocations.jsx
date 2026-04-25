@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
+import { storeLocationDefaults } from '../../defaults/generic.js';
 import TranslatedText from '../TranslatedText';
 
 export default function StoreLocations() {
@@ -22,10 +23,10 @@ export default function StoreLocations() {
     : [
         {
           name: siteConfig?.brandName
-            ? `${siteConfig.brandName} Showroom`
-            : "Our Showroom",
+            ? `${siteConfig.brandName} ${storeLocationDefaults.brandedNameSuffix}`
+            : storeLocationDefaults.name,
           address: address || '',
-          hours: "Monday to Saturday 11:00 am - 08:00 pm",
+          hours: storeLocationDefaults.hours,
           phone: phone || '',
           mapLink: '',
           image: '',
@@ -75,12 +76,12 @@ export default function StoreLocations() {
                 )}
               </div>
               <div className="store-details">
-                <h3 className="store-name">{store.name}</h3>
-                {store.address && <p className="store-address">{store.address}</p>}
+                <h3 className="store-name"><TranslatedText text={store.name} /></h3>
+                {store.address && <p className="store-address"><TranslatedText text={store.address} /></p>}
                 {store.hours && (
                   <div className="store-hours">
                     <i className="far fa-clock"></i>
-                    <span>{store.hours}</span>
+                    <span><TranslatedText text={store.hours} /></span>
                   </div>
                 )}
                 <div className="store-contact">

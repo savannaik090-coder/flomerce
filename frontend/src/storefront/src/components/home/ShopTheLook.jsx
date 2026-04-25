@@ -105,7 +105,7 @@ export default function ShopTheLook() {
                     <img src={product.image} alt={product.name} className="stl-product-thumb" />
                   )}
                   <div className="stl-product-info">
-                    <div className="stl-product-name">{product.name}</div>
+                    <div className="stl-product-name"><TranslatedText text={product.name} /></div>
                     <div className="stl-product-price">
                       {formatAmount(product.price)}
                       {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
@@ -128,7 +128,7 @@ export default function ShopTheLook() {
               <img src={popupProduct.image} alt={popupProduct.name} className="stl-popup-image" />
             )}
             <div className="stl-popup-details">
-              <h3 className="stl-popup-name">{popupProduct.name}</h3>
+              <h3 className="stl-popup-name"><TranslatedText text={popupProduct.name} /></h3>
               <div className="stl-popup-price">{formatAmount(popupProduct.price)}</div>
               <div className="stl-popup-actions">
                 <Link

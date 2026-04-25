@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { getHeroSliderDefaults } from '../../defaults/index.js';
+import TranslatedText from '../TranslatedText.jsx';
 
 const currentYear = new Date().getFullYear();
 
@@ -48,7 +49,6 @@ export default function HeroSlider() {
         {slides.map((slide, i) => {
           const rawDesc = slide.description || '';
           const strippedDesc = rawDesc.replace(/\s*\d{4}\s*$/, '');
-          const desc = strippedDesc ? `${strippedDesc} ${currentYear}` : '';
           return (
             <div key={i} className={`slide ${i === currentIndex ? 'active' : ''}`}>
               {slide.image && (
@@ -77,16 +77,19 @@ export default function HeroSlider() {
                 </div>
               )}
               <div className="slide-content">
-                <h1 className="slide-title">{slide.title}</h1>
-                <h2 className="slide-subtitle">{slide.subtitle}</h2>
-                <p className="slide-description">{desc}</p>
+                <h1 className="slide-title">{slide.title ? <TranslatedText text={slide.title} /> : null}</h1>
+                <h2 className="slide-subtitle">{slide.subtitle ? <TranslatedText text={slide.subtitle} /> : null}</h2>
+                <p className="slide-description">
+                  {strippedDesc ? <TranslatedText text={strippedDesc} /> : null}
+                  {strippedDesc ? ` ${currentYear}` : ''}
+                </p>
                 <button
                   className="shop-now-btn"
                   onClick={() => {
                     if (slide.buttonLink) window.location.href = slide.buttonLink;
                   }}
                 >
-                  {slide.buttonText || 'SHOP NOW'}
+                  <TranslatedText text={slide.buttonText || 'SHOP NOW'} />
                 </button>
               </div>
             </div>

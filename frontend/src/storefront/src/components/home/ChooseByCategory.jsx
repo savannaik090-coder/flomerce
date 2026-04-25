@@ -68,7 +68,7 @@ export default function ChooseByCategory({ categories }) {
                   <div className="choose-by-category-overlay" />
                 </div>
                 <div className="choose-by-category-label">
-                  <span className="choose-by-category-label-text">{cat.name}</span>
+                  <span className="choose-by-category-label-text"><TranslatedText text={cat.name} /></span>
                 </div>
               </Link>
             );

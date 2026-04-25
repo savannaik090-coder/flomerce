@@ -19,6 +19,7 @@ export default function CustomerReviews() {
 
   const sectionTitle = settings.reviewsSectionTitle || "What Our Customers Say";
   const sectionSubtitle = settings.reviewsSectionSubtitle || "Real reviews from our happy customers";
+  const usingDefaultReviews = !settings.reviews?.length;
   const phone = siteConfig?.phone || '';
 
   const scroll = (direction) => {
@@ -37,8 +38,8 @@ export default function CustomerReviews() {
     <section className="customer-reviews-section" id="customer-reviews">
       <div className="reviews-container">
         <div className="reviews-header">
-          <h2 className="section-title">{sectionTitle}</h2>
-          <p className="section-subtitle">{sectionSubtitle}</p>
+          <h2 className="section-title"><TranslatedText text={sectionTitle} /></h2>
+          <p className="section-subtitle"><TranslatedText text={sectionSubtitle} /></p>
         </div>
 
         <div className="reviews-wrapper">
@@ -62,7 +63,7 @@ export default function CustomerReviews() {
                 )}
                 <div className="review-content">
                   <div className="review-text">
-                    <p>{review.text}</p>
+                    <p>{usingDefaultReviews && review.text ? <TranslatedText text={review.text} /> : review.text}</p>
                   </div>
                   <div className="review-rating">
                     <div className="stars">
@@ -70,7 +71,7 @@ export default function CustomerReviews() {
                     </div>
                     {review.name && (
                       <span style={{ fontSize: '0.85rem', color: '#888' }}>
-                        — {review.name}
+                        — {usingDefaultReviews ? <TranslatedText text={review.name} /> : review.name}
                       </span>
                     )}
                   </div>

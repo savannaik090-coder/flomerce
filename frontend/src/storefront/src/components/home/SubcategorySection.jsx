@@ -83,7 +83,7 @@ export default function SubcategorySection({ section }) {
             <div className="product-loader show">
               <div className="product-loader-spinner"></div>
               <div className="product-loader-text">
-                <TranslatedText text="Loading" /> <TranslatedText text={section.name.toLowerCase()} />...
+                <TranslatedText text="Loading" /> <TranslatedText text={section.name} />...
               </div>
             </div>
           ) : (

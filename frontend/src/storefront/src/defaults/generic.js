@@ -181,6 +181,12 @@ export const demoCategoriesDefaults = [
   { id: 'demo-cat-g-6', name: 'Special Offers', slug: 'demo', subtitle: 'Limited time', image_url: '', browseImage: '', _isDemo: true },
 ];
 
+export const storeLocationDefaults = {
+  name: 'Our Showroom',
+  brandedNameSuffix: 'Showroom',
+  hours: 'Monday to Saturday 11:00 am - 08:00 pm',
+};
+
 export const orderActionNotes = {
   returnRefund: 'Your return request has been approved. If any payment was made, the refund will be processed within 5\u20137 business days. Please pack the product securely \u2014 our delivery partner will contact you for pickup within 8\u201312 days.',
   returnReplacement: 'Your return request has been approved for a replacement. Please pack the product securely \u2014 our delivery partner will contact you within 8\u201312 days to pick up the old product and deliver the replacement at the same time.',
