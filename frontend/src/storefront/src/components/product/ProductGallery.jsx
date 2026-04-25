@@ -16,7 +16,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
       const rawUrl = typeof img === 'string' ? img : (img.url || img);
       return { url: resolveImageUrl(rawUrl), alt: (typeof img === 'object' && img.alt) || `${productName || "Product"} ${i + 1}`, originalIndex: i };
     }).filter(img => img.url);
-  }, [images, productName, t]);
+  }, [images, productName]);
 
   const parsedImages = React.useMemo(() => {
     if (!filteredImageIndices || filteredImageIndices.length === 0) return allParsedImages;
