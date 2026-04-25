@@ -4,8 +4,10 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { PLATFORM_URL } from '../../config.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
 import TranslatedText from '../TranslatedText.jsx';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 export default function Footer() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const [openSections, setOpenSections] = useState({});
   const categories = siteConfig?.categories || [];
@@ -210,12 +212,12 @@ export default function Footer() {
             <div className="app-buttons-container">
               {showAppStore && (
                 <a href={appBanner.appStoreUrl || '#'} target="_blank" rel="noopener noreferrer" className="app-store-button">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="Download on App Store" />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt={tx("Download on App Store")} />
                 </a>
               )}
               {showPlayStore && (
                 <a href={appBanner.playStoreUrl || '#'} target="_blank" rel="noopener noreferrer" className="google-play-button">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt={tx("Get it on Google Play")} />
                 </a>
               )}
             </div>
@@ -237,7 +239,7 @@ export default function Footer() {
               <span><i className="fab fa-google-pay"></i></span>
               <span><i className="fab fa-cc-mastercard"></i></span>
               <span><i className="fab fa-cc-paypal"></i></span>
-              <span className="union-pay">UP</span>
+              <span className="union-pay" aria-label={tx("Union Pay")}>UP</span>
               <span><i className="fab fa-cc-visa"></i></span>
             </div>
           </div>

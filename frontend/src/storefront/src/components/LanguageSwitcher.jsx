@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 /**
  * Storefront-only shopper language switcher (System B). Writes the chosen
@@ -67,6 +68,7 @@ function readStoredLanguage(fallback) {
 }
 
 export default function LanguageSwitcher({ compact = false }) {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext) || {};
   const enabled = !!(siteConfig?.translatorEnabled || siteConfig?.translator_enabled);
   const contentLanguage = siteConfig?.contentLanguage || siteConfig?.content_language || 'en';
@@ -127,7 +129,7 @@ export default function LanguageSwitcher({ compact = false }) {
 
   return (
     <select
-      aria-label="Choose language"
+      aria-label={tx("Choose language")}
       value={language}
       onChange={handleChange}
       style={baseStyle}

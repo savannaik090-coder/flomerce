@@ -515,7 +515,7 @@ export default function CheckoutPage() {
                               </div>
                             ) : null;
                           })()}
-                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>{`Qty: ${qty} × ${formatAmount(price)}`}</div>
+                          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}><TranslatedText text="Qty:" /> {`${qty} × ${formatAmount(price)}`}</div>
                         </div>
                         <div style={{ fontWeight: 700, color: '#7a4012', fontSize: 14, flexShrink: 0 }}>{formatAmount(price * qty)}</div>
                       </div>
@@ -532,7 +532,7 @@ export default function CheckoutPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
                   <span style={{ fontSize: 14 }}><TranslatedText text="Shipping" /></span>
                   <span style={{ fontWeight: 500, fontSize: 14, color: od.shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                    {od.shippingCost > 0 ? formatAmount(od.shippingCost) : "Free"}
+                    {od.shippingCost > 0 ? formatAmount(od.shippingCost) : <TranslatedText text="Free" />}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #f0f0f0', marginBottom: 24 }}>
@@ -548,7 +548,7 @@ export default function CheckoutPage() {
                       <div>{od.address.houseNumber}, {od.address.roadName}</div>
                       <div>{od.address.city}, {od.address.state}</div>
                       <div>{od.address.country ? getCountryName(od.address.country) : ''}</div>
-                      <div>{od.address.country === 'IN' ? "PIN" : "Postal Code"}: {od.address.pinCode}</div>
+                      <div>{od.address.country === 'IN' ? <TranslatedText text="PIN" /> : <TranslatedText text="Postal Code" />}: {od.address.pinCode}</div>
                       <div style={{ marginTop: 4, color: '#666' }}>{od.address.phone}</div>
                     </div>
                   </div>
@@ -556,15 +556,15 @@ export default function CheckoutPage() {
                     <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', fontWeight: 600, marginBottom: 8, letterSpacing: 0.5 }}><TranslatedText text="Payment" /></div>
                     <div style={{ fontSize: 13, color: '#333' }}>
                       <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                        {od.paymentMethod === 'cod' ? "Cash on Delivery" : "Online Payment (Razorpay)"}
+                        {od.paymentMethod === 'cod' ? <TranslatedText text="Cash on Delivery" /> : <TranslatedText text="Online Payment (Razorpay)" />}
                       </div>
                       <div style={{ fontSize: 12, color: '#888' }}>
                         {od.paymentMethod === 'cod'
-                          ? "You will pay when the order is delivered to you."
-                          : "Payment completed successfully online."}
+                          ? <TranslatedText text="You will pay when the order is delivered to you." />
+                          : <TranslatedText text="Payment completed successfully online." />}
                       </div>
                       <div style={{ marginTop: 10, display: 'inline-block', background: od.paymentMethod === 'cod' ? '#fff3e0' : '#e8f5e9', color: od.paymentMethod === 'cod' ? '#e65100' : '#2e7d32', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
-                        {od.paymentMethod === 'cod' ? "Pending" : "Paid"}
+                        {od.paymentMethod === 'cod' ? <TranslatedText text="Pending" /> : <TranslatedText text="Paid" />}
                       </div>
                     </div>
                   </div>
@@ -603,9 +603,9 @@ export default function CheckoutPage() {
 
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 40, gap: 0 }}>
         {[
-          { num: 1, label: "Order Summary", icon: '&#128722;' },
-          { num: 2, label: "Address", icon: '&#128205;' },
-          { num: 3, label: "Payment", icon: '&#128179;' },
+          { num: 1, label: tx("Order Summary"), icon: '&#128722;' },
+          { num: 2, label: tx("Address"), icon: '&#128205;' },
+          { num: 3, label: tx("Payment"), icon: '&#128179;' },
         ].map((s) => (
           <div key={s.num} style={{ textAlign: 'center', flex: 1 }}>
             <div style={{
@@ -705,14 +705,14 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}><TranslatedText text="Shipping" /></span>
                 <span style={{ fontSize: 14, fontWeight: 600, color: shippingCost > 0 ? '#1a1a1a' : '#25ab00' }}>
-                  {shippingCost > 0 ? formatAmount(shippingCost) : "Free"}
+                  {shippingCost > 0 ? formatAmount(shippingCost) : <TranslatedText text="Free" />}
                 </span>
               </div>
               {showShippingNote && (
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'end' }}><TranslatedText text="May vary based on your location" /></div>
               )}
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
-                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'end' }}>{`Free shipping on orders above ${formatAmount(deliveryConfig.freeAbove)}`}</div>
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'end' }}><TranslatedText text="Free shipping on orders above" /> {formatAmount(deliveryConfig.freeAbove)}</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
@@ -762,7 +762,7 @@ export default function CheckoutPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, gap: 12 }}>
             <Link to="/" style={{ padding: '10px 20px', border: `1px solid ${'#9c7c38'}`, color: '#9c7c38', borderRadius: 0, textDecoration: 'none', fontWeight: 500 }}><TranslatedText text="Continue Shopping" /></Link>
-            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} /><TranslatedText text="Checking Availability..." /></>) : "Continue to Address"}</button>
+            <button onClick={() => goToStep(2)} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>{loading ? (<><span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} /><TranslatedText text="Checking Availability..." /></>) : <TranslatedText text="Continue to Address" />}</button>
           </div>
         </div>
       )}

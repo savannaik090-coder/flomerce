@@ -6,9 +6,11 @@ import * as authService from '../services/authService.js';
 import { setAuthToken } from '../services/api.js';
 import { PLATFORM_URL } from '../config.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const { isAuthenticated, login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
@@ -147,7 +149,7 @@ export default function LoginPage() {
 
             <div style={{ marginBottom: 20 }}>
               <button onClick={handleGoogleLogin} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: 12, backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, color: '#333', cursor: 'pointer', transition: 'background-color 0.3s ease' }}>
-                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt="Google" style={{ width: 20, marginInlineEnd: 10 }} />
+                <img src="https://cdn-icons-png.flaticon.com/128/300/300221.png" alt={tx("Google")} style={{ width: 20, marginInlineEnd: 10 }} />
                 <TranslatedText text="Sign in with Google" />
               </button>
             </div>
@@ -169,13 +171,13 @@ export default function LoginPage() {
             <p style={{ color: '#666', marginBottom: 16 }}><TranslatedText text="Enter your email address and we'll send you a link to reset your password." /></p>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="Email Address" /></label>
-              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder={"Enter your email"} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
+              <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)} placeholder={tx("Enter your email")} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
             </div>
-            {resetError && <div style={{ color: '#e74c3c', fontSize: 14, marginBottom: 12, padding: 10, background: '#ffebee', borderRadius: 4 }}>{resetError}</div>}
+            {resetError && <div style={{ color: '#e74c3c', fontSize: 14, marginBottom: 12, padding: 10, background: '#ffebee', borderRadius: 4 }}><TranslatedText text={resetError} /></div>}
             {resetSuccess && <div style={{ color: '#2ecc71', fontSize: 14, marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 4 }}>{resetSuccess}</div>}
             <div style={{ display: 'flex', gap: 12 }}>
               <button onClick={handleForgotPassword} disabled={resetLoading} style={{ flex: 1, backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: 12, borderRadius: 4, fontSize: 14, fontWeight: 'bold', cursor: resetLoading ? 'not-allowed' : 'pointer' }}>
-                {resetLoading ? "Sending..." : "Send Reset Email"}
+                {resetLoading ? <TranslatedText text="Sending..." /> : <TranslatedText text="Send Reset Email" />}
               </button>
               <button onClick={() => setShowForgotModal(false)} style={{ padding: '12px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}><TranslatedText text="Cancel" /></button>
             </div>

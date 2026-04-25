@@ -7,8 +7,10 @@ import { useWishlist } from '../../hooks/useWishlist.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
 import LanguageSwitcher from '../LanguageSwitcher.jsx';
 import TranslatedText from '../TranslatedText.jsx';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const { cartCount } = useContext(CartContext);
   const { isAuthenticated } = useContext(AuthContext);
@@ -168,7 +170,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                             <li key={link.id} className={`sub-group${isExpanded ? ' sub-group-open' : ''}`}>
                               <div className="grouped-cat-header">
                                 <Link to={link.url} onClick={closeMobileMenu} className="grouped-cat-link">{link.label}</Link>
-                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label="Show subcategories">
+                                <button className="subcategory-toggle" onClick={(e) => toggleSubGroup(`grouped-${link.id}`, e)} aria-label={tx("Show subcategories")}>
                                   <i className="fas fa-plus"></i>
                                 </button>
                               </div>
@@ -221,7 +223,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
                     <li className={`nav-item cat-with-subs${openDropdown === (cat.id || cat.slug) ? ' dropdown-open' : ''}`} key={cat.id || cat.slug}>
                       <div className="nav-link-row">
                         <Link to={`/category/${cat.slug}`} className="nav-link" onClick={closeMobileMenu}>{cat.name}</Link>
-                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label="Show subcategories">
+                        <button className="subcategory-toggle" onClick={(e) => toggleDropdown(cat.id || cat.slug, e)} aria-label={tx("Show subcategories")}>
                           <i className={`fas fa-plus`}></i>
                         </button>
                       </div>
