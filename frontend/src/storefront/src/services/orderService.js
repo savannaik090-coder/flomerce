@@ -1,5 +1,12 @@
 import { apiRequest } from './api.js';
 
+function getCurrentLang() {
+  try {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage?.getItem('flomerce_lang') || null;
+  } catch { return null; }
+}
+
 export async function createOrder(orderData) {
   const siteParam = orderData.siteId ? `?siteId=${orderData.siteId}` : '';
   return apiRequest(`/api/orders${siteParam}`, {
@@ -56,9 +63,10 @@ export async function updateReturn(returnId, data) {
 }
 
 export async function resendReturnLink(orderId, data) {
+  const lang = getCurrentLang();
   return apiRequest(`/api/orders/${orderId}/return-link`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, lang: data?.lang || lang || undefined }),
   });
 }
 
@@ -87,8 +95,9 @@ export async function updateCancellation(cancelId, data) {
 }
 
 export async function resendCancelLink(orderId, data) {
+  const lang = getCurrentLang();
   return apiRequest(`/api/orders/${orderId}/cancel-link`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, lang: data?.lang || lang || undefined }),
   });
 }

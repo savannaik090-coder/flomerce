@@ -272,6 +272,11 @@ async function getCart(env, siteId, user, sessionId, lang = null) {
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
     const cart = await getOrCreateCart(db, env, siteId, user, sessionId);
+    if (lang && cart && cart.id && lang !== cart.language) {
+      try {
+        await db.prepare('UPDATE carts SET language = ? WHERE id = ?').bind(lang, cart.id).run();
+      } catch (e) {}
+    }
     const items = JSON.parse(cart.items);
 
     const enrichedItems = [];

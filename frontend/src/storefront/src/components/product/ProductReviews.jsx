@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { apiRequest, getAuthToken } from '../../services/api.js';
 import TranslatedText from '../TranslatedText';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
@@ -66,6 +67,8 @@ function RatingBreakdown({ stats }) {
 }
 
 export default function ProductReviews({ productId }) {
+  const { translate } = useShopperTranslation();
+  const translateSort = (s) => translate(s);
   const { siteConfig } = useContext(SiteContext);
   const siteId = siteConfig?.id;
 
@@ -227,9 +230,9 @@ export default function ProductReviews({ productId }) {
             <div className="review-sort">
               <label><TranslatedText text="Sort by:" /></label>
               <select value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="recent">Most Recent</option>
-                <option value="highest">Highest Rated</option>
-                <option value="lowest">Lowest Rated</option>
+                <option value="recent">{translateSort("Most Recent")}</option>
+                <option value="highest">{translateSort("Highest Rated")}</option>
+                <option value="lowest">{translateSort("Lowest Rated")}</option>
               </select>
             </div>
           )}

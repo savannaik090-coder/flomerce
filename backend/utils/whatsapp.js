@@ -32,15 +32,88 @@ function parseItems(items) {
   return Array.isArray(items) ? items : [];
 }
 
-export async function sendWhatsAppMessage(settings, to, templateName, components) {
-  const provider = settings.whatsappProvider || 'meta';
-  if (provider === 'interakt') {
-    return sendViaInterakt(settings, to, templateName, components);
-  }
-  return sendViaMeta(settings, to, templateName, components);
+/**
+ * Map a storefront language tag (e.g. "hi", "es", "en-US") to a WhatsApp
+ * template language code that Meta accepts. WhatsApp template languages must
+ * match the code under which the template was approved in WhatsApp Business
+ * Manager — so this mapping is a best-effort hint. The merchant can override
+ * everything via settings.whatsappLanguage (their default).
+ *
+ * Returns null if we don't have a confident mapping; callers should then fall
+ * back to settings.whatsappLanguage || 'en'.
+ */
+function mapToWhatsAppLanguageCode(targetLang) {
+  if (!targetLang || typeof targetLang !== 'string') return null;
+  const norm = targetLang.toLowerCase().replace('_', '-');
+  const direct = {
+    hi: 'hi',
+    'hi-in': 'hi',
+    en: 'en',
+    'en-us': 'en_US',
+    'en-gb': 'en_GB',
+    es: 'es',
+    'es-es': 'es_ES',
+    'es-mx': 'es_MX',
+    fr: 'fr',
+    de: 'de',
+    pt: 'pt_PT',
+    'pt-br': 'pt_BR',
+    'pt-pt': 'pt_PT',
+    ar: 'ar',
+    bn: 'bn',
+    ta: 'ta',
+    te: 'te',
+    mr: 'mr',
+    gu: 'gu',
+    kn: 'kn',
+    ml: 'ml',
+    pa: 'pa_IN',
+    ur: 'ur',
+    zh: 'zh_CN',
+    'zh-cn': 'zh_CN',
+    'zh-hk': 'zh_HK',
+    'zh-tw': 'zh_TW',
+    ja: 'ja',
+    ko: 'ko',
+    ru: 'ru',
+    it: 'it',
+    nl: 'nl',
+    tr: 'tr',
+    th: 'th',
+    vi: 'vi',
+    id: 'id',
+  };
+  if (direct[norm]) return direct[norm];
+  const base = norm.split('-')[0];
+  return direct[base] || null;
 }
 
-async function sendViaMeta(settings, to, templateName, components) {
+/**
+ * Resolve the WhatsApp template language code to send for this message.
+ * Priority: explicit targetLang (mapped) → settings.whatsappLanguage → 'en'.
+ * If `settings.whatsappAllowedLanguages` is provided as an array, the mapped
+ * code must be in that allow-list to be used (since each WhatsApp template is
+ * approved per language code; sending an unregistered code fails the API).
+ */
+function resolveWhatsAppLangCode(settings, targetLang) {
+  const fallback = settings.whatsappLanguage || 'en';
+  const mapped = mapToWhatsAppLanguageCode(targetLang);
+  if (!mapped) return fallback;
+  if (Array.isArray(settings.whatsappAllowedLanguages) && settings.whatsappAllowedLanguages.length > 0) {
+    if (!settings.whatsappAllowedLanguages.includes(mapped)) return fallback;
+  }
+  return mapped;
+}
+
+export async function sendWhatsAppMessage(settings, to, templateName, components, targetLang = null) {
+  const provider = settings.whatsappProvider || 'meta';
+  if (provider === 'interakt') {
+    return sendViaInterakt(settings, to, templateName, components, targetLang);
+  }
+  return sendViaMeta(settings, to, templateName, components, targetLang);
+}
+
+async function sendViaMeta(settings, to, templateName, components, targetLang = null) {
   const { whatsappAccessToken, whatsappPhoneNumberId } = settings;
   if (!whatsappAccessToken || !whatsappPhoneNumberId) {
     console.log('WhatsApp Meta: Missing credentials, skipping');
@@ -59,7 +132,7 @@ async function sendViaMeta(settings, to, templateName, components) {
     type: 'template',
     template: {
       name: templateName,
-      language: { code: settings.whatsappLanguage || 'en' },
+      language: { code: resolveWhatsAppLangCode(settings, targetLang) },
     },
   };
 
@@ -94,7 +167,7 @@ async function sendViaMeta(settings, to, templateName, components) {
   }
 }
 
-async function sendViaInterakt(settings, to, templateName, components) {
+async function sendViaInterakt(settings, to, templateName, components, targetLang = null) {
   const { whatsappApiKey } = settings;
   if (!whatsappApiKey) {
     console.log('WhatsApp Interakt: Missing API key, skipping');
@@ -126,7 +199,7 @@ async function sendViaInterakt(settings, to, templateName, components) {
     type: 'Template',
     template: {
       name: templateName,
-      languageCode: settings.whatsappLanguage || 'en',
+      languageCode: resolveWhatsAppLangCode(settings, targetLang),
       bodyValues: bodyParams,
     },
   };
@@ -230,6 +303,7 @@ export async function buildOrderConfirmationWA(order, brandName, currency = 'INR
   return {
     text,
     templateName: 'order_confirmation',
+    targetLang,
     components: [
       {
         type: 'body',
@@ -268,6 +342,7 @@ export async function buildOrderShippedWA(order, brandName, trackingUrl, currenc
   return {
     text,
     templateName: 'order_shipped',
+    targetLang,
     components: [
       {
         type: 'body',
@@ -304,6 +379,7 @@ export async function buildOrderDeliveredWA(order, brandName, reviewUrl, currenc
   return {
     text,
     templateName: 'order_delivered',
+    targetLang,
     components: [
       {
         type: 'body',
@@ -340,6 +416,7 @@ export async function buildOrderCancelledWA(order, brandName, reason, currency =
   return {
     text,
     templateName: 'order_cancelled',
+    targetLang,
     components: [
       {
         type: 'body',
@@ -371,6 +448,7 @@ export async function buildOrderPackedWA(order, brandName, env = null, siteId = 
   return {
     text,
     templateName: 'order_packed',
+    targetLang,
     components: [
       {
         type: 'body',
@@ -394,10 +472,10 @@ export async function sendOrderWhatsApp(settings, phone, messageData) {
   if (!hasCredentials) return null;
   if (!phone) return null;
 
-  const { text, templateName, components } = messageData;
+  const { text, templateName, components, targetLang } = messageData;
 
   if (settings.whatsappUseTemplates !== false) {
-    return sendWhatsAppMessage(settings, phone, templateName, components);
+    return sendWhatsAppMessage(settings, phone, templateName, components, targetLang || null);
   }
 
   return sendWhatsAppText(settings, phone, text);
@@ -422,6 +500,7 @@ export async function buildAbandonedCartWA(customerName, brandName, itemsSummary
   return {
     text,
     templateName: 'abandoned_cart_reminder',
+    targetLang,
     components: [
       {
         type: 'body',

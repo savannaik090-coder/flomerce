@@ -590,6 +590,8 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0',
     'ALTER TABLE orders ADD COLUMN placed_in_language TEXT',
     'ALTER TABLE guest_orders ADD COLUMN placed_in_language TEXT',
+    'ALTER TABLE site_customers ADD COLUMN preferred_lang TEXT',
+    'ALTER TABLE carts ADD COLUMN language TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

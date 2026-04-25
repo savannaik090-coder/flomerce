@@ -30,7 +30,7 @@ const SRC = path.join(ROOT, 'frontend/src/storefront/src');
 const OUT = path.join(ROOT, 'backend/i18n-manifest.json');
 
 const TRANSLATED_TEXT_RE = /<TranslatedText\s+(?:[^>]*?\s)?text=(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\}|\{"([^"]+)"\}|\{'([^']+)'\})/g;
-const DEFAULT_FIELD_RE = /(?:^|[^a-zA-Z_$])(?:name|title|subtitle|description|headline|text|buttonText|ctaText|ctaLabel|label|caption|tagline|role|message|body|heading|content|copyright|placeholder|tooltip|hours|address|brandedNameSuffix|intro|note|hint|prompt|warning|error|reason|reply)\s*:\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
+const DEFAULT_FIELD_RE = /(?:^|[^a-zA-Z_$])(?:name|title|subtitle|description|headline|text|buttonText|buttonLink|ctaText|ctaLabel|label|caption|tagline|role|message|body|heading|content|copyright|placeholder|tooltip|hours|address|brandedNameSuffix|intro|note|hint|prompt|warning|error|reason|reply|policy|charges|regions|deliveryTime|tracking|replacements|mandatory|guide|washing|cleaning|maintenance|story|refund|replacement|approval|termsIntro|privacyIntro|returnRefund|returnReplacement|cancellationApproval|shippingRegions|shippingCharges|shippingDeliveryTime|shippingTracking|returnPolicy|returnReplacements|returnMandatory|careGuideWashing|careGuideCleaning|careGuideMaintenance|heroSubtitle|storyText|question|answer|alt|summary)\s*:\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
 
 // Strip line and block comments before regex scanning so backtick-
 // quoted words inside JSDoc explanations (e.g. an inline `name:` example

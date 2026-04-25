@@ -1,6 +1,7 @@
 import { generateId, generateToken, getExpiryDate, validateEmail, sanitizeInput, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { hashPassword, verifyPassword } from '../../utils/auth.js';
 import { sendEmail } from '../../utils/email.js';
+import { translateLabels, translateString } from '../../utils/email-i18n.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, ensureAddressCountryColumn, getSiteConfig } from '../../utils/site-db.js';
 import { PLATFORM_DOMAIN } from '../../config.js';
@@ -257,7 +258,9 @@ async function handleSignup(request, env) {
   }
 
   try {
-    const { siteId, name, email, password, phone } = await request.json();
+    const reqBody = await request.json();
+    const { siteId, name, email, password, phone } = reqBody;
+    const signupLang = (reqBody.lang || '').trim() || null;
 
     if (!siteId || !name || !email || !password) {
       return errorResponse('Site ID, name, email and password are required');
@@ -329,7 +332,7 @@ async function handleSignup(request, env) {
 
       const baseUrl = getStorefrontUrl(env, site);
       const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
-      const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
+      const emailContent = await buildVerificationEmail(site.brand_name, verifyUrl, env, siteId, signupLang);
       let signupOwnerEmail = '';
       try {
         const sCfg = await getSiteConfig(env, siteId);
@@ -337,7 +340,8 @@ async function handleSignup(request, env) {
         try { if (sCfg?.settings) sSet = typeof sCfg.settings === 'string' ? JSON.parse(sCfg.settings) : sCfg.settings; } catch (e) {}
         signupOwnerEmail = sSet.email || sSet.ownerEmail || sCfg?.email || '';
       } catch (e) {}
-      const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: signupOwnerEmail || undefined });
+      const verifySubject = await translateString(env, siteId, signupLang, `Verify your email - ${site.brand_name}`);
+      const emailResult = await sendEmail(env, email.toLowerCase(), verifySubject, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: signupOwnerEmail || undefined });
       if (emailResult !== true) {
         console.error('Verification email send failed:', emailResult);
       }
@@ -659,7 +663,9 @@ async function handleRequestPasswordReset(request, env) {
   }
 
   try {
-    const { siteId, email } = await request.json();
+    const _resetReq = await request.json();
+    const { siteId, email } = _resetReq;
+    const resetLang = (_resetReq.lang || '').trim() || null;
 
     if (!siteId || !email) {
       return errorResponse('Site ID and email are required');
@@ -711,7 +717,7 @@ async function handleRequestPasswordReset(request, env) {
 
     const baseUrl = getStorefrontUrl(env, site);
     const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email.toLowerCase())}`;
-    const emailContent = buildPasswordResetEmail(site.brand_name, resetUrl, customer.name);
+    const emailContent = await buildPasswordResetEmail(site.brand_name, resetUrl, customer.name, env, siteId, resetLang);
     let resetOwnerEmail = '';
     try {
       const rCfg = await getSiteConfig(env, siteId);
@@ -719,7 +725,8 @@ async function handleRequestPasswordReset(request, env) {
       try { if (rCfg?.settings) rSet = typeof rCfg.settings === 'string' ? JSON.parse(rCfg.settings) : rCfg.settings; } catch (e) {}
       resetOwnerEmail = rSet.email || rSet.ownerEmail || rCfg?.email || '';
     } catch (e) {}
-    const emailResult = await sendEmail(env, email.toLowerCase(), `Reset your password - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resetOwnerEmail || undefined });
+    const resetSubject = await translateString(env, siteId, resetLang, `Reset your password - ${site.brand_name}`);
+    const emailResult = await sendEmail(env, email.toLowerCase(), resetSubject, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resetOwnerEmail || undefined });
     if (emailResult !== true) {
       console.error('Password reset email send failed:', emailResult);
     }
@@ -920,7 +927,9 @@ async function handleResendVerification(request, env) {
   }
 
   try {
-    const { siteId, email } = await request.json();
+    const _resendReq = await request.json();
+    const { siteId, email } = _resendReq;
+    const resendLang = (_resendReq.lang || '').trim() || null;
 
     if (!siteId || !email) {
       return errorResponse('Site ID and email are required');
@@ -976,7 +985,7 @@ async function handleResendVerification(request, env) {
 
     const baseUrl = getStorefrontUrl(env, site);
     const verifyUrl = `${baseUrl}/verify-email?token=${verifyToken}&email=${encodeURIComponent(email.toLowerCase())}`;
-    const emailContent = buildVerificationEmail(site.brand_name, verifyUrl);
+    const emailContent = await buildVerificationEmail(site.brand_name, verifyUrl, env, siteId, resendLang);
     let resendOwnerEmail = '';
     try {
       const rvCfg = await getSiteConfig(env, siteId);
@@ -984,7 +993,8 @@ async function handleResendVerification(request, env) {
       try { if (rvCfg?.settings) rvSet = typeof rvCfg.settings === 'string' ? JSON.parse(rvCfg.settings) : rvCfg.settings; } catch (e) {}
       resendOwnerEmail = rvSet.email || rvSet.ownerEmail || rvCfg?.email || '';
     } catch (e) {}
-    const emailResult = await sendEmail(env, email.toLowerCase(), `Verify your email - ${site.brand_name}`, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resendOwnerEmail || undefined });
+    const resendSubject = await translateString(env, siteId, resendLang, `Verify your email - ${site.brand_name}`);
+    const emailResult = await sendEmail(env, email.toLowerCase(), resendSubject, emailContent.html, emailContent.text, { senderName: site.brand_name, replyTo: resendOwnerEmail || undefined });
     if (emailResult !== true) {
       console.error('Resend verification email send failed:', emailResult);
     }
@@ -996,7 +1006,18 @@ async function handleResendVerification(request, env) {
   }
 }
 
-function buildPasswordResetEmail(brandName, resetUrl, customerName) {
+async function buildPasswordResetEmail(brandName, resetUrl, customerName, env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    HEADING: 'Reset Your Password',
+    GREETING: `Hi ${customerName || 'there'},`,
+    INTRO: 'We received a request to reset your password. Click the button below to create a new password:',
+    BUTTON: 'Reset Password',
+    EXPIRY: "This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.",
+    LINK_FALLBACK_LABEL: 'Link not working?',
+    LINK_FALLBACK_BODY: 'Copy and paste this URL into your browser:',
+    DEFAULT_STORE: 'Your Store',
+  });
+  const safeBrand = brandName || t.DEFAULT_STORE;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -1004,32 +1025,42 @@ function buildPasswordResetEmail(brandName, resetUrl, customerName) {
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
       <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
         <div style="background: #0f172a; color: #ffffff; padding: 32px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || 'Your Store'}</h1>
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${safeBrand}</h1>
         </div>
         <div style="padding: 32px;">
-          <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">Reset Your Password</h2>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">Hi ${customerName || 'there'},</p>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
+          <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">${t.HEADING}</h2>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">${t.GREETING}</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">${t.INTRO}</p>
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background: #c8a97e; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 16px;">Reset Password</a>
+            <a href="${resetUrl}" style="display: inline-block; background: #c8a97e; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 16px;">${t.BUTTON}</a>
           </div>
-          <p style="color: #666; font-size: 13px; line-height: 1.6;">This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
+          <p style="color: #666; font-size: 13px; line-height: 1.6;">${t.EXPIRY}</p>
           <div style="margin-top: 24px; padding: 12px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #888; word-break: break-all;">
-            <strong>Link not working?</strong> Copy and paste this URL into your browser:<br>${resetUrl}
+            <strong>${t.LINK_FALLBACK_LABEL}</strong> ${t.LINK_FALLBACK_BODY}<br>${resetUrl}
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">${brandName || 'Your Store'}</p>
+          <p style="margin: 0;">${safeBrand}</p>
         </div>
       </div>
     </body>
     </html>
   `;
-  const text = `Reset Your Password\n\nHi ${customerName || 'there'},\n\nWe received a request to reset your password. Visit this link to create a new password:\n${resetUrl}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, you can ignore this email.`;
+  const text = `${t.HEADING}\n\n${t.GREETING}\n\n${t.INTRO}\n${resetUrl}\n\n${t.EXPIRY}`;
   return { html, text };
 }
 
-function buildVerificationEmail(brandName, verifyUrl) {
+async function buildVerificationEmail(brandName, verifyUrl, env = null, siteId = null, targetLang = null) {
+  const t = await translateLabels(env, siteId, targetLang, {
+    HEADING: 'Verify Your Email',
+    INTRO: 'Welcome! Please verify your email address to activate your account and start shopping.',
+    BUTTON: 'Verify Email',
+    EXPIRY: "This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.",
+    LINK_FALLBACK_LABEL: 'Link not working?',
+    LINK_FALLBACK_BODY: 'Copy and paste this URL into your browser:',
+    DEFAULT_STORE: 'Your Store',
+  });
+  const safeBrand = brandName || t.DEFAULT_STORE;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -1037,27 +1068,27 @@ function buildVerificationEmail(brandName, verifyUrl) {
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5;">
       <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
         <div style="background: #0f172a; color: #ffffff; padding: 32px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${brandName || 'Your Store'}</h1>
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700;">${safeBrand}</h1>
         </div>
         <div style="padding: 32px;">
-          <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">Verify Your Email</h2>
-          <p style="color: #333; font-size: 15px; line-height: 1.6;">Welcome! Please verify your email address to activate your account and start shopping.</p>
+          <h2 style="margin: 0 0 16px; font-size: 22px; color: #0f172a;">${t.HEADING}</h2>
+          <p style="color: #333; font-size: 15px; line-height: 1.6;">${t.INTRO}</p>
           <div style="text-align: center; margin: 32px 0;">
-            <a href="${verifyUrl}" style="display: inline-block; background: #28a745; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 16px;">Verify Email</a>
+            <a href="${verifyUrl}" style="display: inline-block; background: #28a745; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 16px;">${t.BUTTON}</a>
           </div>
-          <p style="color: #666; font-size: 13px; line-height: 1.6;">This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.</p>
+          <p style="color: #666; font-size: 13px; line-height: 1.6;">${t.EXPIRY}</p>
           <div style="margin-top: 24px; padding: 12px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #888; word-break: break-all;">
-            <strong>Link not working?</strong> Copy and paste this URL into your browser:<br>${verifyUrl}
+            <strong>${t.LINK_FALLBACK_LABEL}</strong> ${t.LINK_FALLBACK_BODY}<br>${verifyUrl}
           </div>
         </div>
         <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-          <p style="margin: 0;">${brandName || 'Your Store'}</p>
+          <p style="margin: 0;">${safeBrand}</p>
         </div>
       </div>
     </body>
     </html>
   `;
-  const text = `Verify Your Email\n\nWelcome! Please verify your email address by visiting this link:\n${verifyUrl}\n\nThis link expires in 24 hours.\n\nIf you didn't create an account, you can ignore this email.`;
+  const text = `${t.HEADING}\n\n${t.INTRO}\n${verifyUrl}\n\n${t.EXPIRY}`;
   return { html, text };
 }
 

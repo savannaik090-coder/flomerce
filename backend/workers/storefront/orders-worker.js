@@ -6,7 +6,65 @@ import { sendEmail, getOwnerRecipients, buildOrderConfirmationEmail, buildOwnerN
 import { sendOrderWhatsApp, buildOrderConfirmationWA, buildOrderShippedWA, buildOrderDeliveredWA, buildOrderCancelledWA, buildOrderPackedWA, isWhatsAppConfigured } from '../../utils/whatsapp.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, getSiteConfig, ensureProductOptionsColumn } from '../../utils/site-db.js';
+import { translateContentBatch } from '../../utils/server-translator.js';
+import { translateLabels, translateString } from '../../utils/email-i18n.js';
 import { PLATFORM_DOMAIN } from '../../config.js';
+
+/**
+ * Translate the merchant-authored text inside a parsed orders array so the
+ * shopper sees product names / variant names / merchant notes in their
+ * chosen language. Mutates in place.
+ *
+ * Translatable per-order fields (only when present and string):
+ *   - items[].name
+ *   - items[].variant_name
+ *   - items[].productName
+ *   - notes (merchant order notes — NOT customer notes which are user input)
+ *
+ * Skipped on purpose: customer_name / customer_email / customer_phone,
+ * shipping_address / billing_address (all user input — don't mangle),
+ * status / payment_status (technical enums, translated client-side via
+ * <TranslatedText>), prices, IDs, dates, tracking numbers, carriers.
+ */
+async function translateOrdersInPlace(env, siteId, orders, lang) {
+  if (!Array.isArray(orders) || orders.length === 0) return;
+  if (!lang || typeof lang !== 'string') return;
+
+  const slots = [];
+  for (let oi = 0; oi < orders.length; oi++) {
+    const o = orders[oi];
+    if (!o) continue;
+    if (Array.isArray(o.items)) {
+      for (let ii = 0; ii < o.items.length; ii++) {
+        const it = o.items[ii];
+        if (!it || typeof it !== 'object') continue;
+        if (typeof it.name === 'string' && it.name) slots.push({ oi, ii, kind: 'name', value: it.name });
+        if (typeof it.variant_name === 'string' && it.variant_name) slots.push({ oi, ii, kind: 'variant_name', value: it.variant_name });
+        if (typeof it.productName === 'string' && it.productName) slots.push({ oi, ii, kind: 'productName', value: it.productName });
+      }
+    }
+  }
+
+  if (slots.length === 0) return;
+
+  try {
+    const result = await translateContentBatch(env, siteId, slots.map((s) => s.value), lang);
+    const translations = Array.isArray(result?.translations) ? result.translations : null;
+    if (!translations) return;
+    for (let i = 0; i < slots.length; i++) {
+      const s = slots[i];
+      const t = translations[i];
+      if (typeof t !== 'string' || !t) continue;
+      const o = orders[s.oi];
+      if (!o || !Array.isArray(o.items)) continue;
+      const it = o.items[s.ii];
+      if (!it) continue;
+      it[s.kind] = t;
+    }
+  } catch (e) {
+    console.error('[orders] translateOrdersInPlace failed:', e?.message || e);
+  }
+}
 
 export async function handleOrders(request, env, path, ctx) {
   const corsResponse = handleCORS(request);
@@ -221,6 +279,11 @@ async function getOrders(request, env, user, preResolvedDb) {
       billing_address: order.billing_address ? JSON.parse(order.billing_address) : null,
     }));
 
+    const lang = (url.searchParams.get('lang') || '').trim();
+    if (lang && siteId) {
+      await translateOrdersInPlace(env, siteId, parsedOrders, lang);
+    }
+
     return successResponse(parsedOrders);
   } catch (error) {
     console.error('Get orders error:', error);
@@ -287,12 +350,20 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
       return errorResponse('Order not found', 404, 'NOT_FOUND');
     }
 
-    return successResponse({
+    const parsed = {
       ...order,
       items: JSON.parse(order.items),
       shipping_address: JSON.parse(order.shipping_address),
       billing_address: order.billing_address ? JSON.parse(order.billing_address) : null,
-    });
+    };
+
+    const lang = (url.searchParams.get('lang') || '').trim();
+    const targetSiteId = siteId || order.site_id;
+    if (lang && targetSiteId) {
+      await translateOrdersInPlace(env, targetSiteId, [parsed], lang);
+    }
+
+    return successResponse(parsed);
   } catch (error) {
     console.error('Get order error:', error);
     return errorResponse('Failed to fetch order', 500);
@@ -787,7 +858,8 @@ async function updateOrderStatus(request, env, user, orderId) {
           const emailJobs = [];
           if (fullOrder.customer_email) {
             const { html, text } = await buildCancellationCustomerEmail(emailOrder, siteBrandName, cancellationReason, ownerEmail, cancelCurrency, storeTz, false, env, cancelSiteId, placedLang);
-            emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been cancelled`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Cancellation customer email error:', e)));
+            const cancelCustSubject = await translateString(env, cancelSiteId, placedLang, `Your order #${fullOrder.order_number} has been cancelled`);
+            emailJobs.push(sendEmail(env, fullOrder.customer_email, cancelCustSubject, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Cancellation customer email error:', e)));
           }
           {
             const ownerRecipients = getOwnerRecipients(cancelSettings, cancelConfig);
@@ -875,14 +947,17 @@ async function updateOrderStatus(request, env, user, orderId) {
             const statusSiteId = fullOrder.site_id;
             if (status === 'confirmed') {
               const { html, text } = await buildOrderConfirmationEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, emailOptions, storeTz, env, statusSiteId, placedLang);
-              await sendEmail(env, fullOrder.customer_email, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Confirmation email error:', e));
+              const confSubject = await translateString(env, statusSiteId, placedLang, `Order Confirmed #${fullOrder.order_number} - ${siteBrandName}`);
+              await sendEmail(env, fullOrder.customer_email, confSubject, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Confirmation email error:', e));
             } else if (status === 'packed') {
               const { html, text } = await buildOrderPackedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, { trackingUrl }, storeTz, env, statusSiteId, placedLang);
-              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Packed email error:', e));
+              const packedSubject = await translateString(env, statusSiteId, placedLang, `Your order #${fullOrder.order_number} has been packed! - ${siteBrandName}`);
+              await sendEmail(env, fullOrder.customer_email, packedSubject, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Packed email error:', e));
             } else if (status === 'shipped') {
               const shipOptions = { trackingUrl, trackingNumber: fullOrder.tracking_number || trackingNumber, carrier: fullOrder.carrier || carrier };
               const { html, text } = await buildOrderShippedEmail(emailOrder, siteBrandName, ownerEmail, statusCurrency, shipOptions, storeTz, env, statusSiteId, placedLang);
-              await sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Shipped email error:', e));
+              const shippedSubject = await translateString(env, statusSiteId, placedLang, `Your order #${fullOrder.order_number} has been shipped! - ${siteBrandName}`);
+              await sendEmail(env, fullOrder.customer_email, shippedSubject, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Shipped email error:', e));
             }
           }
 
@@ -978,7 +1053,8 @@ async function updateOrderStatus(request, env, user, orderId) {
           if (fullOrder.customer_email) {
             try {
               const { html, text } = await buildDeliveryCustomerEmail(emailOrder, siteBrandName, ownerEmail, deliveryCurrency, deliveryEmailOptions, storeTz, env, deliverySiteId, placedLang);
-              emailJobs.push(sendEmail(env, fullOrder.customer_email, `Your order #${fullOrder.order_number} has been delivered!`, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Delivery customer email send error:', e)));
+              const deliveredSubject = await translateString(env, deliverySiteId, placedLang, `Your order #${fullOrder.order_number} has been delivered!`);
+              emailJobs.push(sendEmail(env, fullOrder.customer_email, deliveredSubject, html, text, { senderName: siteBrandName, replyTo: ownerEmail || undefined }).catch(e => console.error('Delivery customer email send error:', e)));
             } catch (buildErr) {
               console.error('Delivery customer email build error:', buildErr);
             }
@@ -1546,9 +1622,16 @@ async function handleReturnUpdate(request, env, returnId) {
         let retSettings = {};
         try { if (config.settings) retSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
         const ownerEmail = retSettings.email || retSettings.ownerEmail || config.email;
+        let retPlacedLang = null;
+        try {
+          let ord = await db.prepare('SELECT placed_in_language FROM orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(ret.order_id, ret.order_number, siteId).first();
+          if (!ord) ord = await db.prepare('SELECT placed_in_language FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ?').bind(ret.order_id, ret.order_number, siteId).first();
+          retPlacedLang = ord?.placed_in_language || null;
+        } catch (e) {}
         const updatedRet = { ...ret, status, admin_note: adminNote !== undefined ? adminNote : ret.admin_note, refund_amount: refundAmount !== undefined ? refundAmount : ret.refund_amount };
-        const { html, text } = buildReturnStatusEmail(updatedRet, brandName, status, adminNote);
-        await sendEmail(env, ret.customer_email, `Return Update #${ret.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
+        const { html, text } = await buildReturnStatusEmail(updatedRet, brandName, status, adminNote, env, siteId, retPlacedLang);
+        const retUpdateSubject = await translateString(env, siteId, retPlacedLang, `Return Update #${ret.order_number} - ${brandName}`);
+        await sendEmail(env, ret.customer_email, retUpdateSubject, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
       } catch (e) {}
     }
 
@@ -1563,6 +1646,7 @@ async function resendReturnLink(request, env, orderId) {
   try {
     const data = await request.json();
     const { siteId, email } = data;
+    const reqLang = (data.lang || '').trim() || null;
     if (!siteId || !orderId || !email) return errorResponse('siteId, orderId and email are required');
 
     const db = await resolveSiteDBById(env, siteId);
@@ -1593,24 +1677,33 @@ async function resendReturnLink(request, env, orderId) {
     try { if (config.settings) retLinkSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
     const ownerEmail = retLinkSettings.email || retLinkSettings.ownerEmail || config.email;
 
+    const retLinkLang = reqLang || order.placed_in_language || null;
+    const tRet = await translateLabels(env, siteId, retLinkLang, {
+      HEADING: 'Your Return Link',
+      INTRO: `Use the link below to submit a return request for order #${order.order_number}:`,
+      BUTTON: 'Request Return',
+      FALLBACK: "If the button doesn't work, copy this link:",
+      TEXT_PREFIX: `Your return link for order #${order.order_number}:`,
+    });
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
       <div style="max-width:600px;margin:0 auto;background:#fff;">
         <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
           <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Your Return Link</h2>
-          <p style="color:#64748b;font-size:14px;line-height:1.6;">Use the link below to submit a return request for order <strong>#${order.order_number}</strong>:</p>
+          <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">${tRet.HEADING}</h2>
+          <p style="color:#64748b;font-size:14px;line-height:1.6;">${tRet.INTRO}</p>
           <div style="margin:24px 0;text-align:center;">
-            <a href="${returnUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Request Return</a>
+            <a href="${returnUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">${tRet.BUTTON}</a>
           </div>
-          <p style="color:#94a3b8;font-size:12px;">If the button doesn't work, copy this link: ${returnUrl}</p>
+          <p style="color:#94a3b8;font-size:12px;">${tRet.FALLBACK} ${returnUrl}</p>
         </div>
       </div>
     </body></html>`;
-    const text = `Your return link for order #${order.order_number}: ${returnUrl}`;
+    const text = `${tRet.TEXT_PREFIX} ${returnUrl}`;
 
-    await sendEmail(env, email, `Return Link for Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined });
+    const retLinkSubject = await translateString(env, siteId, retLinkLang, `Return Link for Order #${order.order_number} - ${brandName}`);
+    await sendEmail(env, email, retLinkSubject, html, text, { senderName: brandName, replyTo: ownerEmail || undefined });
 
     return successResponse(null, 'Return link sent to your email');
   } catch (error) {
@@ -1642,11 +1735,22 @@ function buildReturnRequestEmail(order, brandName, reason, reasonDetail) {
   return { html, text };
 }
 
-function buildReturnStatusEmail(ret, brandName, status, adminNote) {
-  const statusLabels = { approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded' };
+async function buildReturnStatusEmail(ret, brandName, status, adminNote, env = null, siteId = null, targetLang = null) {
+  const statusLabelsEn = { approved: 'Approved', rejected: 'Rejected', refunded: 'Refunded' };
   const statusColors = { approved: '#22c55e', rejected: '#ef4444', refunded: '#2563eb' };
-  const label = statusLabels[status] || status;
+  const baseLabel = statusLabelsEn[status] || status;
   const color = statusColors[status] || '#64748b';
+
+  const t = await translateLabels(env, siteId, targetLang, {
+    HEADING: 'Return Request Update',
+    INTRO: `Your return request for order #${ret.order_number} has been updated.`,
+    NOTE_LABEL: 'Note from store:',
+    REFUND_LABEL: 'Refund amount:',
+    STATUS_LABEL: baseLabel,
+    ORDER_LABEL: 'Order',
+    STATUS_TEXT_LABEL: 'Status',
+    NOTE_TEXT_LABEL: 'Note',
+  });
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
     <div style="max-width:600px;margin:0 auto;background:#fff;">
@@ -1654,17 +1758,17 @@ function buildReturnStatusEmail(ret, brandName, status, adminNote) {
         <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
       </div>
       <div style="padding:32px;">
-        <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Return Request Update</h2>
-        <p style="color:#64748b;font-size:14px;margin-bottom:20px;">Your return request for order <strong>#${ret.order_number}</strong> has been updated.</p>
+        <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">${t.HEADING}</h2>
+        <p style="color:#64748b;font-size:14px;margin-bottom:20px;">${t.INTRO}</p>
         <div style="text-align:center;margin:24px 0;">
-          <span style="display:inline-block;background:${color};color:#fff;padding:8px 24px;border-radius:20px;font-weight:600;font-size:16px;">${label}</span>
+          <span style="display:inline-block;background:${color};color:#fff;padding:8px 24px;border-radius:20px;font-weight:600;font-size:16px;">${t.STATUS_LABEL}</span>
         </div>
-        ${adminNote ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-top:16px;"><p style="margin:0 0 4px;font-size:12px;color:#64748b;font-weight:600;">Note from store:</p><p style="margin:0;font-size:14px;color:#334155;">${adminNote}</p></div>` : ''}
-        ${status === 'refunded' && ret.refund_amount ? `<p style="margin-top:16px;font-size:14px;color:#334155;">Refund amount: <strong>${ret.refund_amount}</strong></p>` : ''}
+        ${adminNote ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-top:16px;"><p style="margin:0 0 4px;font-size:12px;color:#64748b;font-weight:600;">${t.NOTE_LABEL}</p><p style="margin:0;font-size:14px;color:#334155;">${adminNote}</p></div>` : ''}
+        ${status === 'refunded' && ret.refund_amount ? `<p style="margin-top:16px;font-size:14px;color:#334155;">${t.REFUND_LABEL} <strong>${ret.refund_amount}</strong></p>` : ''}
       </div>
     </div>
   </body></html>`;
-  const text = `Return Request Update\nOrder: #${ret.order_number}\nStatus: ${label}${adminNote ? '\nNote: ' + adminNote : ''}`;
+  const text = `${t.HEADING}\n${t.ORDER_LABEL}: #${ret.order_number}\n${t.STATUS_TEXT_LABEL}: ${t.STATUS_LABEL}${adminNote ? `\n${t.NOTE_TEXT_LABEL}: ` + adminNote : ''}`;
   return { html, text };
 }
 
@@ -1974,7 +2078,8 @@ async function handleCancellationUpdate(request, env, cancelId) {
             const emailOrder = { order_number: order.order_number, customer_name: order.customer_name, customer_email: order.customer_email, total: order.total, payment_method: order.payment_method, created_at: order.created_at };
             const placedLang = order.placed_in_language || null;
             const { html, text } = await buildCancellationCustomerEmail(emailOrder, brandName, reason, ownerEmail, currency, storeTz, true, env, siteId, placedLang);
-            await sendEmail(env, order.customer_email, `Cancellation approved - Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
+            const cancelApprovedSubject = await translateString(env, siteId, placedLang, `Cancellation approved - Order #${order.order_number} - ${brandName}`);
+            await sendEmail(env, order.customer_email, cancelApprovedSubject, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
           }
         }
       } catch (e) {
@@ -1997,7 +2102,8 @@ async function handleCancellationUpdate(request, env, cancelId) {
         } catch (e) {}
         const updatedReq = { ...req, status, admin_note: adminNote !== undefined ? adminNote : req.admin_note };
         const { html, text } = await buildCancellationStatusEmail(updatedReq, brandName, status, adminNote, env, siteId, placedLang);
-        await sendEmail(env, req.customer_email, `Cancellation Update #${req.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
+        const cancelUpdateSubject = await translateString(env, siteId, placedLang, `Cancellation Update #${req.order_number} - ${brandName}`);
+        await sendEmail(env, req.customer_email, cancelUpdateSubject, html, text, { senderName: brandName, replyTo: ownerEmail || undefined }).catch(() => {});
       } catch (e) {}
     }
 
@@ -2048,24 +2154,33 @@ async function resendCancelLink(request, env, orderId) {
     try { if (config.settings) cancelLinkSettings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings; } catch (e) {}
     const ownerEmail = cancelLinkSettings.email || cancelLinkSettings.ownerEmail || config.email;
 
+    const cancelLinkLang = (data?.lang || '').trim() || order.placed_in_language || null;
+    const tCancel = await translateLabels(env, siteId, cancelLinkLang, {
+      HEADING: 'Your Cancellation Link',
+      INTRO: `Use the link below to submit a cancellation request for order #${order.order_number}:`,
+      BUTTON: 'Cancel Order',
+      FALLBACK: "If the button doesn't work, copy this link:",
+      TEXT_PREFIX: `Your cancellation link for order #${order.order_number}:`,
+    });
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f5f5f5;">
       <div style="max-width:600px;margin:0 auto;background:#fff;">
         <div style="background:#0f172a;color:#fff;padding:32px;text-align:center;">
           <h1 style="margin:0;font-size:24px;font-weight:700;">${brandName}</h1>
         </div>
         <div style="padding:32px;">
-          <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">Your Cancellation Link</h2>
-          <p style="color:#64748b;font-size:14px;line-height:1.6;">Use the link below to submit a cancellation request for order <strong>#${order.order_number}</strong>:</p>
+          <h2 style="margin:0 0 16px;font-size:20px;color:#0f172a;">${tCancel.HEADING}</h2>
+          <p style="color:#64748b;font-size:14px;line-height:1.6;">${tCancel.INTRO}</p>
           <div style="margin:24px 0;text-align:center;">
-            <a href="${cancelUrl}" style="display:inline-block;background:#e53935;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Cancel Order</a>
+            <a href="${cancelUrl}" style="display:inline-block;background:#e53935;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">${tCancel.BUTTON}</a>
           </div>
-          <p style="color:#94a3b8;font-size:12px;">If the button doesn't work, copy this link: ${cancelUrl}</p>
+          <p style="color:#94a3b8;font-size:12px;">${tCancel.FALLBACK} ${cancelUrl}</p>
         </div>
       </div>
     </body></html>`;
-    const text = `Your cancellation link for order #${order.order_number}: ${cancelUrl}`;
+    const text = `${tCancel.TEXT_PREFIX} ${cancelUrl}`;
 
-    await sendEmail(env, email, `Cancellation Link for Order #${order.order_number} - ${brandName}`, html, text, { senderName: brandName, replyTo: ownerEmail || undefined });
+    const cancelLinkSubject = await translateString(env, siteId, cancelLinkLang, `Cancellation Link for Order #${order.order_number} - ${brandName}`);
+    await sendEmail(env, email, cancelLinkSubject, html, text, { senderName: brandName, replyTo: ownerEmail || undefined });
 
     return successResponse(null, 'Cancellation link sent to your email');
   } catch (error) {

@@ -795,6 +795,8 @@ const TRANSLATABLE_SUFFIXES = [
   'messages', 'heading', 'body', 'copyright', 'text', 'name', 'role',
   'content', 'placeholder', 'tooltip', 'banner', 'banners', 'note',
   'notes', 'hours', 'address',
+  // FAQ items + image alt text on merchant-defined sections.
+  'question', 'answer', 'alt', 'summary',
 ];
 // Substrings that, when present in the key (case-insensitive), force the
 // field to be skipped — these keys carry URLs, identifiers, contact
@@ -1208,7 +1210,7 @@ async function processAbandonedCartReminders(env) {
 
         const abandonedCarts = await db.prepare(
           `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
-                  c.reminder_count, c.reminder_sent_at
+                  c.reminder_count, c.reminder_sent_at, c.language
            FROM carts c
            WHERE c.user_id IS NOT NULL
              AND c.items != '[]'
@@ -1249,7 +1251,7 @@ async function processAbandonedCartReminders(env) {
             }
 
             const customer = await db.prepare(
-              `SELECT name, email, phone FROM site_customers WHERE id = ? AND site_id = ?`
+              `SELECT name, email, phone, preferred_lang FROM site_customers WHERE id = ? AND site_id = ?`
             ).bind(cart.user_id, cart.site_id).first();
 
             if (!customer) continue;
@@ -1283,13 +1285,15 @@ async function processAbandonedCartReminders(env) {
             let emailSent = false;
             let whatsappSent = false;
 
-            let customerLang = null;
-            try {
-              const lastOrder = await db.prepare(
-                `SELECT placed_in_language FROM orders WHERE user_id = ? AND site_id = ? AND placed_in_language IS NOT NULL ORDER BY created_at DESC LIMIT 1`
-              ).bind(cart.user_id, cart.site_id).first();
-              customerLang = lastOrder?.placed_in_language || null;
-            } catch (e) {}
+            let customerLang = cart.language || customer.preferred_lang || null;
+            if (!customerLang) {
+              try {
+                const lastOrder = await db.prepare(
+                  `SELECT placed_in_language FROM orders WHERE user_id = ? AND site_id = ? AND placed_in_language IS NOT NULL ORDER BY created_at DESC LIMIT 1`
+                ).bind(cart.user_id, cart.site_id).first();
+                customerLang = lastOrder?.placed_in_language || null;
+              } catch (e) {}
+            }
 
             if (sendEmailChannel && customer.email) {
               try {
@@ -1297,9 +1301,11 @@ async function processAbandonedCartReminders(env) {
                   customer.name, brandName, enrichedItems, cartTotal, storeUrl, currency,
                   env, cart.site_id, customerLang
                 );
+                const { translateString } = await import('../utils/email-i18n.js');
+                const cartSubject = await translateString(env, cart.site_id, customerLang, `You left items in your cart - ${brandName}`);
                 const result = await sendEmail(
                   env, customer.email,
-                  `You left items in your cart - ${brandName}`,
+                  cartSubject,
                   emailContent.html, emailContent.text
                 );
                 emailSent = result === true;

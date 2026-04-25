@@ -1,5 +1,12 @@
 import { apiRequest, setAuthToken } from './api.js';
 
+function getCurrentLang() {
+  try {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage?.getItem('flomerce_lang') || null;
+  } catch { return null; }
+}
+
 export async function login(siteId, email, password) {
   const data = await apiRequest('/api/customer-auth/login', {
     method: 'POST',
@@ -12,9 +19,10 @@ export async function login(siteId, email, password) {
 }
 
 export async function signup(siteId, name, email, password, phone) {
+  const lang = getCurrentLang();
   const data = await apiRequest('/api/customer-auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ siteId, name, email, password, phone: phone || undefined }),
+    body: JSON.stringify({ siteId, name, email, password, phone: phone || undefined, lang: lang || undefined }),
   });
   if (data.token) {
     setAuthToken(data.token);
@@ -67,9 +75,10 @@ export async function deleteAddress(id) {
 }
 
 export async function requestPasswordReset(email, siteId) {
+  const lang = getCurrentLang();
   return apiRequest('/api/customer-auth/request-password-reset', {
     method: 'POST',
-    body: JSON.stringify({ email, siteId }),
+    body: JSON.stringify({ email, siteId, lang: lang || undefined }),
   });
 }
 
@@ -88,9 +97,10 @@ export async function verifyEmail(token, email) {
 }
 
 export async function resendVerification(email, siteId) {
+  const lang = getCurrentLang();
   return apiRequest('/api/customer-auth/resend-verification', {
     method: 'POST',
-    body: JSON.stringify({ email, siteId }),
+    body: JSON.stringify({ email, siteId, lang: lang || undefined }),
   });
 }
 
