@@ -50,7 +50,7 @@ function useContactForm(siteConfig) {
   return { form, setForm, status, submitting, handleChange, handleSubmit };
 }
 
-function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit, t }) {
+function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
   return (
     <div className="contact-page">
       <style>{`
@@ -269,7 +269,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
   );
 }
 
-function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit, t }) {
+function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
   return (
     <div>
       <section className="mn-contact-hero">
@@ -344,7 +344,7 @@ export default function ContactPage() {
 
   const { form, setForm, status, submitting, handleChange, handleSubmit } = useContactForm(siteConfig);
 
-  const pageProps = { siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit, t };
+  const pageProps = { siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit };
 
   return isModern
     ? <ModernContactPage {...pageProps} />

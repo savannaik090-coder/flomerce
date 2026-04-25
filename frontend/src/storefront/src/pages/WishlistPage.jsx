@@ -7,7 +7,7 @@ import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../components/templates/modern/modern.css';
 import TranslatedText from '../components/TranslatedText';
 
-function ClassicWishlistPage({ items, removeFromWishlist, formatAmount, t }) {
+function ClassicWishlistPage({ items, removeFromWishlist, formatAmount }) {
   return (
     <div style={{ maxWidth: 1000, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}><TranslatedText text="My Wishlist" /></h1>
@@ -51,7 +51,7 @@ function ClassicWishlistPage({ items, removeFromWishlist, formatAmount, t }) {
   );
 }
 
-function ModernWishlistPage({ items, removeFromWishlist, formatAmount, t }) {
+function ModernWishlistPage({ items, removeFromWishlist, formatAmount }) {
   return (
     <div className="mn-wishlist-page">
       <h1><TranslatedText text="My Wishlist" /></h1>
@@ -106,7 +106,7 @@ export default function WishlistPage() {
     );
   }
 
-  const pageProps = { items, removeFromWishlist, formatAmount, t };
+  const pageProps = { items, removeFromWishlist, formatAmount };
 
   return isModern
     ? <ModernWishlistPage {...pageProps} />

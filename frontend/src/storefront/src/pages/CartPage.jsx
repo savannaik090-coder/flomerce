@@ -7,7 +7,7 @@ import { resolveImageUrl } from '../utils/imageUrl.js';
 import '../components/templates/modern/modern.css';
 import TranslatedText from '../components/TranslatedText';
 
-function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount, t }) {
+function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount }) {
   return (
     <div style={{ maxWidth: 900, margin: '40px auto 60px', padding: '0 20px' }}>
       <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, marginBottom: 30, textAlign: 'center' }}><TranslatedText text="Shopping Cart" /></h1>
@@ -68,7 +68,7 @@ function ClassicCartPage({ items, subtotal, updateQuantity, removeItem, formatAm
   );
 }
 
-function ModernCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount, t }) {
+function ModernCartPage({ items, subtotal, updateQuantity, removeItem, formatAmount }) {
   return (
     <div className="mn-cart-page">
       <h1><TranslatedText text="Shopping Cart" /></h1>
@@ -136,7 +136,7 @@ export default function CartPage() {
     );
   }
 
-  const pageProps = { items, subtotal, updateQuantity, removeItem, formatAmount, t };
+  const pageProps = { items, subtotal, updateQuantity, removeItem, formatAmount };
 
   return isModern
     ? <ModernCartPage {...pageProps} />

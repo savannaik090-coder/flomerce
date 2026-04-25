@@ -372,23 +372,23 @@ export default function ProductDetailPage() {
 
             {siteConfig?.settings?.showProductPolicies !== false && (
             <div className="product-policies-accordions">
-              <PolicyAccordion title=<TranslatedText text="Shipping & Delivery Details" /> icon="fa-truck">
-                <PolicyItem label=<TranslatedText text="Regions" /> value={pol('shippingRegions')} />
-                <PolicyItem label=<TranslatedText text="Shipping Charges" /> value={pol('shippingCharges')} />
-                <PolicyItem label=<TranslatedText text="Delivery Time" /> value={pol('shippingDeliveryTime')} />
-                <PolicyItem label=<TranslatedText text="Tracking" /> value={pol('shippingTracking')} />
+              <PolicyAccordion title={<TranslatedText text="Shipping & Delivery Details" />} icon="fa-truck">
+                <PolicyItem label={<TranslatedText text="Regions" />} value={pol('shippingRegions')} />
+                <PolicyItem label={<TranslatedText text="Shipping Charges" />} value={pol('shippingCharges')} />
+                <PolicyItem label={<TranslatedText text="Delivery Time" />} value={pol('shippingDeliveryTime')} />
+                <PolicyItem label={<TranslatedText text="Tracking" />} value={pol('shippingTracking')} />
               </PolicyAccordion>
 
-              <PolicyAccordion title=<TranslatedText text="Return & Exchange" /> icon="fa-exchange-alt">
-                <PolicyItem label=<TranslatedText text="Policy" /> value={pol('returnPolicy')} />
-                <PolicyItem label=<TranslatedText text="Replacements" /> value={pol('returnReplacements')} />
-                <PolicyItem label=<TranslatedText text="Mandatory Requirement" /> value={pol('returnMandatory')} />
+              <PolicyAccordion title={<TranslatedText text="Return & Exchange" />} icon="fa-exchange-alt">
+                <PolicyItem label={<TranslatedText text="Policy" />} value={pol('returnPolicy')} />
+                <PolicyItem label={<TranslatedText text="Replacements" />} value={pol('returnReplacements')} />
+                <PolicyItem label={<TranslatedText text="Mandatory Requirement" />} value={pol('returnMandatory')} />
               </PolicyAccordion>
 
-              <PolicyAccordion title=<TranslatedText text="Care Guide" /> icon="fa-hand-holding-heart">
-                <PolicyItem label=<TranslatedText text="Cleaning" /> value={pol('careGuideCleaning')} />
-                <PolicyItem label=<TranslatedText text="Washing" /> value={pol('careGuideWashing')} />
-                <PolicyItem label=<TranslatedText text="Maintenance" /> value={pol('careGuideMaintenance')} />
+              <PolicyAccordion title={<TranslatedText text="Care Guide" />} icon="fa-hand-holding-heart">
+                <PolicyItem label={<TranslatedText text="Cleaning" />} value={pol('careGuideCleaning')} />
+                <PolicyItem label={<TranslatedText text="Washing" />} value={pol('careGuideWashing')} />
+                <PolicyItem label={<TranslatedText text="Maintenance" />} value={pol('careGuideMaintenance')} />
               </PolicyAccordion>
             </div>
             )}
