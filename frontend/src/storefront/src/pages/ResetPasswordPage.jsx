@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
               <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333', fontWeight: 600 }}><TranslatedText text="New Password" /></label>
               <div style={{ position: 'relative' }}>
                 <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required style={{ width: '100%', padding: 12, paddingInlineEnd: 45, border: '1px solid #ddd', borderRadius: 4, fontSize: 16, boxSizing: 'border-box' }} />
-                <span onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 15, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#999', fontSize: 14 }}>{showPassword ? "Hide" : "Show"}</span>
+                <span onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 15, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#999', fontSize: 14 }}>{showPassword ? <TranslatedText text="Hide" /> : <TranslatedText text="Show" />}</span>
               </div>
               <small style={{ color: '#666', fontSize: 12, fontStyle: 'italic' }}><TranslatedText text="Minimum 8 characters" /></small>
             </div>
@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 16, boxSizing: 'border-box' }} />
             </div>
             <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
-              {loading ? "Resetting..." : "Reset Password"}
+              {loading ? <TranslatedText text="Resetting..." /> : <TranslatedText text="Reset Password" />}
             </button>
           </form>
         )}

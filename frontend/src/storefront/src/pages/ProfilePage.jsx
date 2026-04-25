@@ -11,6 +11,7 @@ import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import { useToast } from '../../../shared/ui/Toast.jsx';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -32,6 +33,7 @@ const INDIAN_STATES = [
 ];
 
 export default function ProfilePage() {
+  const { translate: tx } = useShopperTranslation();
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading, logout } = useContext(AuthContext);
   const { siteConfig } = useContext(SiteContext);
@@ -323,7 +325,7 @@ export default function ProfilePage() {
         }));
         setAddressFieldErrors(prev => ({ ...prev, pinCode: undefined }));
       } else {
-        setAddressFieldErrors(prev => ({ ...prev, pinCode: "Invalid PIN code" }));
+        setAddressFieldErrors(prev => ({ ...prev, pinCode: tx("Invalid PIN code") }));
       }
     } catch {
       setAddressFieldErrors(prev => ({ ...prev, pinCode: undefined }));
@@ -342,14 +344,14 @@ export default function ProfilePage() {
 
   const validateAddressForm = useCallback(() => {
     const errs = {};
-    if (!addressForm.firstName || addressForm.firstName.trim().length < 2) errs.firstName = "First name must be at least 2 characters";
+    if (!addressForm.firstName || addressForm.firstName.trim().length < 2) errs.firstName = tx("First name must be at least 2 characters");
     const phoneDigits = (addressForm.phone || '').replace(/[^0-9]/g, '');
-    if (phoneDigits.length > 0 && (phoneDigits.length < 7 || phoneDigits.length > 15)) errs.phone = "Please enter a valid phone number";
-    if (!addressForm.houseNumber || addressForm.houseNumber.trim().length < 1) errs.houseNumber = "House/Building number is required";
-    if (addressForm.roadName && addressForm.roadName.trim().length > 0 && addressForm.roadName.trim().length < 5) errs.roadName = "Road/Area must be at least 5 characters";
-    if (!addressForm.city || addressForm.city.trim().length < 2) errs.city = "City name must be at least 2 characters";
-    if (!addressForm.state || addressForm.state.trim().length < 2) errs.state = "Please select a state";
-    if (!/^\d{6}$/.test((addressForm.pinCode || '').trim())) errs.pinCode = "Please enter a valid 6-digit PIN code";
+    if (phoneDigits.length > 0 && (phoneDigits.length < 7 || phoneDigits.length > 15)) errs.phone = tx("Please enter a valid phone number");
+    if (!addressForm.houseNumber || addressForm.houseNumber.trim().length < 1) errs.houseNumber = tx("House/Building number is required");
+    if (addressForm.roadName && addressForm.roadName.trim().length > 0 && addressForm.roadName.trim().length < 5) errs.roadName = tx("Road/Area must be at least 5 characters");
+    if (!addressForm.city || addressForm.city.trim().length < 2) errs.city = tx("City name must be at least 2 characters");
+    if (!addressForm.state || addressForm.state.trim().length < 2) errs.state = tx("Please select a state");
+    if (!/^\d{6}$/.test((addressForm.pinCode || '').trim())) errs.pinCode = tx("Please enter a valid 6-digit PIN code");
     setAddressFieldErrors(errs);
     return Object.keys(errs).length === 0;
   }, [addressForm]);
@@ -412,15 +414,15 @@ export default function ProfilePage() {
 
   const getStatusLabel = (status) => {
     const labels = {
-      pending: "Pending",
-      pending_payment: "Awaiting Payment",
-      paid: "Paid",
-      confirmed: "Confirmed",
-      shipped: "Shipped",
-      delivered: "Delivered",
-      cancelled: "Cancelled",
+      pending: tx("Pending"),
+      pending_payment: tx("Awaiting Payment"),
+      paid: tx("Paid"),
+      confirmed: tx("Confirmed"),
+      shipped: tx("Shipped"),
+      delivered: tx("Delivered"),
+      cancelled: tx("Cancelled"),
     };
-    return labels[status?.toLowerCase()] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : "Pending");
+    return labels[status?.toLowerCase()] || (status ? status.charAt(0).toUpperCase() + status.slice(1) : tx("Pending"));
   };
 
   if (authLoading) {
@@ -457,7 +459,7 @@ export default function ProfilePage() {
               borderBottom: activeTab === tab ? '2px solid #c8a97e' : '2px solid transparent',
               cursor: 'pointer', textTransform: 'capitalize',
             }}>
-              {tab === 'account' ? "Account Details" : tab === 'orders' ? "Order History" : "Addresses"}
+              {tab === 'account' ? <TranslatedText text="Account Details" /> : tab === 'orders' ? <TranslatedText text="Order History" /> : <TranslatedText text="Addresses" />}
             </button>
           ))}
         </div>
@@ -470,7 +472,7 @@ export default function ProfilePage() {
                 <div style={{ display: 'flex', gap: 10 }}>
                   <input type="text" value={newName} onChange={e => setNewName(e.target.value)} style={{ flex: 1, padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14 }} />
                   <button onClick={handleSaveName} disabled={savingName} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                    {savingName ? "Saving..." : "Save"}
+                    {savingName ? <TranslatedText text="Saving..." /> : <TranslatedText text="Save" />}
                   </button>
                   <button onClick={() => { setEditingName(false); setNewName(user.name || ''); }} style={{ padding: '10px 16px', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}><TranslatedText text="Cancel" /></button>
                 </div>
@@ -712,7 +714,7 @@ export default function ProfilePage() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}><TranslatedText text="Additional notes *" /></label>
-              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder={"Describe the issue in detail..."} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea value={returnDetail} onChange={e => setReturnDetail(e.target.value)} rows={3} placeholder={tx("Describe the issue in detail...")} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {returnReason && !returnDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}><TranslatedText text="Please provide additional details." /></p>}
             </div>
             <div style={{ marginBottom: 20 }}>
@@ -736,7 +738,7 @@ export default function ProfilePage() {
                 <>
                   <input ref={returnFileRef} type="file" accept="image/*" multiple onChange={handleReturnPhotoChange} style={{ display: 'none' }} />
                   <button type="button" onClick={() => returnFileRef.current?.click()} disabled={uploadingReturnPhotos} style={{ padding: '8px 14px', border: '1.5px dashed #cbd5e1', borderRadius: 6, background: '#f8fafc', color: '#475569', cursor: uploadingReturnPhotos ? 'not-allowed' : 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <i className="fas fa-camera" /> {uploadingReturnPhotos ? "Uploading..." : "Upload Photos"}
+                    <i className="fas fa-camera" /> {uploadingReturnPhotos ? <TranslatedText text="Uploading..." /> : <TranslatedText text="Upload Photos" />}
                   </button>
                 </>
               )}
@@ -760,7 +762,7 @@ export default function ProfilePage() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setReturnModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}><TranslatedText text="Cancel" /></button>
               <button onClick={handleSubmitReturn} disabled={returningOrder || !isReturnFormValid()} style={{ padding: '10px 20px', background: '#c8a97e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (returningOrder || !isReturnFormValid()) ? 0.7 : 1 }}>
-                {returningOrder ? "Submitting..." : "Submit Return Request"}
+                {returningOrder ? <TranslatedText text="Submitting..." /> : <TranslatedText text="Submit Return Request" />}
               </button>
             </div>
           </div>
@@ -790,13 +792,13 @@ export default function ProfilePage() {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: 14 }}><TranslatedText text="Additional notes *" /></label>
-              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder={"Please provide more details about your cancellation..."} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              <textarea value={cancelDetail} onChange={e => setCancelDetail(e.target.value)} rows={3} placeholder={tx("Please provide more details about your cancellation...")} style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               {cancelReason && !cancelDetail.trim() && <p style={{ fontSize: 12, color: '#e53935', marginTop: 4 }}><TranslatedText text="Please provide additional details before submitting." /></p>}
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => setCancelModal(null)} style={{ padding: '10px 20px', background: '#f8f9fa', color: '#333', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer' }}><TranslatedText text="Close" /></button>
               <button onClick={handleSubmitCancel} disabled={cancellingOrder || !cancelReason || !cancelDetail.trim()} style={{ padding: '10px 20px', background: '#e53935', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: (cancellingOrder || !cancelReason || !cancelDetail.trim()) ? 0.7 : 1 }}>
-                {cancellingOrder ? "Submitting..." : "Submit Cancellation"}
+                {cancellingOrder ? <TranslatedText text="Submitting..." /> : <TranslatedText text="Submit Cancellation" />}
               </button>
             </div>
           </div>
@@ -807,16 +809,16 @@ export default function ProfilePage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', borderRadius: 8, padding: 30, width: '90%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, paddingBottom: 15, borderBottom: '1px solid #eee' }}>
-              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>{editAddress !== null ? "Edit Address" : "Add Address"}</h3>
+              <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif" }}>{editAddress !== null ? <TranslatedText text="Edit Address" /> : <TranslatedText text="Add Address" />}</h3>
               <button onClick={() => setShowAddressModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999' }}>x</button>
             </div>
             {addressError && <div style={{ background: '#ffebee', color: '#d32f2f', padding: 10, borderRadius: 4, marginBottom: 15, fontSize: 14 }}>{addressError}</div>}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="Address Label" /></label>
               <select value={addressForm.label} onChange={e => handleAddressFieldChange('label', e.target.value)} style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
-                <option value="Home">Home</option>
-                <option value="Work">Work</option>
-                <option value="Other">Other</option>
+                <option value="Home">{tx("Home")}</option>
+                <option value="Work">{tx("Work")}</option>
+                <option value="Other">{tx("Other")}</option>
               </select>
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
@@ -866,7 +868,7 @@ export default function ProfilePage() {
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="State *" /></label>
               <select value={addressForm.state} onChange={e => handleAddressFieldChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
-                <option value="">Select State</option>
+                <option value="">{tx("Select State")}</option>
                 {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               {addressFieldErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.state}</div>}
@@ -878,7 +880,7 @@ export default function ProfilePage() {
             <div style={{ display: 'flex', gap: 15, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowAddressModal(false)} style={{ backgroundColor: '#f8f9fa', color: '#333', border: '1px solid #ddd', padding: '10px 20px', borderRadius: 4, cursor: 'pointer' }}><TranslatedText text="Cancel" /></button>
               <button onClick={handleSaveAddress} disabled={savingAddress} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, opacity: savingAddress ? 0.7 : 1 }}>
-                {savingAddress ? "Saving..." : "Save Address"}
+                {savingAddress ? <TranslatedText text="Saving..." /> : <TranslatedText text="Save Address" />}
               </button>
             </div>
           </div>

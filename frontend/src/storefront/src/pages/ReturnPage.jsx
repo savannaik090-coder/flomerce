@@ -5,6 +5,7 @@ import * as orderService from '../services/orderService.js';
 import { API_BASE } from '../config.js';
 import { useToast } from '../../../shared/ui/Toast.jsx';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 const RETURN_REASONS = [
   'Received wrong item',
@@ -27,6 +28,7 @@ const REASON_KEYS = {
 const IMAGE_REQUIRED_REASONS = ['Received wrong item', 'Item damaged or defective'];
 
 export default function ReturnPage() {
+  const { translate: tx } = useShopperTranslation();
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -170,11 +172,11 @@ export default function ReturnPage() {
             <form onSubmit={handleLookup}>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Order Number" /></label>
-                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder={"e.g. FX-123456"} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <input type="text" value={lookupOrderId} onChange={e => setLookupOrderId(e.target.value)} placeholder={tx("e.g. FX-123456")} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' }}><TranslatedText text="Email Address" /></label>
-                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={"your@email.com"} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
+                <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={tx("your@email.com")} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               {lookupMessage && (
                 <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupMessage.includes('sent') ? '#f0fdf4' : '#fef2f2', color: lookupMessage.includes('sent') ? '#166534' : '#991b1b', fontSize: 14 }}>
@@ -182,7 +184,7 @@ export default function ReturnPage() {
                 </div>
               )}
               <button type="submit" disabled={lookupLoading} style={{ width: '100%', padding: '12px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: lookupLoading ? 'not-allowed' : 'pointer', opacity: lookupLoading ? 0.7 : 1 }}>
-                {lookupLoading ? "Sending..." : "Send Return Link"}
+                {lookupLoading ? <TranslatedText text="Sending..." /> : <TranslatedText text="Send Return Link" />}
               </button>
             </form>
           </>
@@ -208,7 +210,7 @@ export default function ReturnPage() {
               </span>
               {existingReturn.resolution && (
                 <div style={{ marginTop: 12, fontSize: 13, color: '#64748b' }}>
-                  <TranslatedText text="Requested:" /> <strong style={{ color: '#334155' }}>{existingReturn.resolution === 'replacement' ? "Replacement" : "Refund"}</strong>
+                  <TranslatedText text="Requested:" /> <strong style={{ color: '#334155' }}>{existingReturn.resolution === 'replacement' ? <TranslatedText text="Replacement" /> : <TranslatedText text="Refund" />}</strong>
                 </div>
               )}
               {existingReturn.admin_note && (
@@ -255,7 +257,7 @@ export default function ReturnPage() {
                 value={returnDetail}
                 onChange={e => setReturnDetail(e.target.value)}
                 rows={3}
-                placeholder={imageRequired ? "Please describe the issue in detail (e.g. what is wrong, when was it noticed)..." : "Tell us more about your return request..."}
+                placeholder={imageRequired ? tx("Please describe the issue in detail (e.g. what is wrong, when was it noticed)...") : tx("Tell us more about your return request...")}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
               />
               {returnReason && !returnDetail.trim() && (
@@ -304,7 +306,7 @@ export default function ReturnPage() {
                     style={{ padding: '10px 16px', border: '1.5px dashed #cbd5e1', borderRadius: 8, background: '#f8fafc', color: '#475569', cursor: uploadingPhotos ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}
                   >
                     <i className="fas fa-camera" />
-                    {uploadingPhotos ? "Uploading..." : "Upload Photos"}
+                    {uploadingPhotos ? <TranslatedText text="Uploading..." /> : <TranslatedText text="Upload Photos" />}
                   </button>
                 </>
               )}
@@ -340,7 +342,7 @@ export default function ReturnPage() {
               disabled={submitting || !isFormValid()}
               style={{ width: '100%', padding: '12px 24px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: (submitting || !isFormValid()) ? 0.6 : 1 }}
             >
-              {submitting ? "Submitting..." : "Submit Return Request"}
+              {submitting ? <TranslatedText text="Submitting..." /> : <TranslatedText text="Submit Return Request" />}
             </button>
           </div>
         )}

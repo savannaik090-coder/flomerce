@@ -6,6 +6,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import * as productService from '../../services/productService.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import TranslatedText from '../TranslatedText';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 const SEARCH_HISTORY_KEY = 'search_history';
 const MAX_HISTORY = 10;
@@ -51,6 +52,7 @@ function fuzzyMatch(query, text) {
 }
 
 export default function SearchOverlay({ isOpen, onClose }) {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useCurrency();
   const { isModern } = useTheme();
@@ -127,7 +129,7 @@ export default function SearchOverlay({ isOpen, onClose }) {
               ref={inputRef}
               type="text"
               className="search-input"
-              placeholder={"Search products..."}
+              placeholder={tx("Search products...")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {

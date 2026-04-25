@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import * as authService from '../services/authService.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function ForgotPasswordPage() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -41,10 +43,10 @@ export default function ForgotPasswordPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 20 }}>
             <label style={{ display: 'block', marginBottom: 8, fontFamily: "'Lato', sans-serif", fontSize: 14, color: '#333', fontWeight: 600 }}><TranslatedText text="Email Address" /></label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={"Enter your email"} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={tx("Enter your email")} required style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }} />
           </div>
           <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? "Sending..." : "Send Reset Link"}
+            {loading ? <TranslatedText text="Sending..." /> : <TranslatedText text="Send Reset Link" />}
           </button>
         </form>
 

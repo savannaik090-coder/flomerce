@@ -6,6 +6,7 @@ import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import '../components/templates/modern/modern.css';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 function useContactForm(siteConfig) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -51,6 +52,7 @@ function useContactForm(siteConfig) {
 }
 
 function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
+  const { translate: tx } = useShopperTranslation();
   return (
     <div className="contact-page">
       <style>{`
@@ -251,8 +253,8 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
                 <div className="form-group"><label><TranslatedText text="Phone Number" /></label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
                 <div className="form-group"><label><TranslatedText text="Subject *" /></label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={"How can we help you?"} /></div>
-              <button type="submit" className="contact-submit-btn" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</button>
+              <div className="form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={tx("How can we help you?")} /></div>
+              <button type="submit" className="contact-submit-btn" disabled={submitting}>{submitting ? <TranslatedText text="Sending..." /> : <TranslatedText text="Send Message" />}</button>
             </form>
           </div>
         </div>
@@ -270,6 +272,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
 }
 
 function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
+  const { translate: tx } = useShopperTranslation();
   return (
     <div>
       <section className="mn-contact-hero">
@@ -314,8 +317,8 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
                 <div className="mn-form-group"><label><TranslatedText text="Phone Number" /></label><PhoneInput value={form.phone} onChange={val => setForm(prev => ({ ...prev, phone: val }))} countryCode="IN" /></div>
                 <div className="mn-form-group"><label><TranslatedText text="Subject *" /></label><input type="text" name="subject" value={form.subject} onChange={handleChange} required /></div>
               </div>
-              <div className="mn-form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={"How can we help you?"} /></div>
-              <button type="submit" className="mn-contact-submit" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</button>
+              <div className="mn-form-group"><label><TranslatedText text="Message *" /></label><textarea name="message" value={form.message} onChange={handleChange} required placeholder={tx("How can we help you?")} /></div>
+              <button type="submit" className="mn-contact-submit" disabled={submitting}>{submitting ? <TranslatedText text="Sending..." /> : <TranslatedText text="Send Message" />}</button>
             </form>
           </div>
         </div>

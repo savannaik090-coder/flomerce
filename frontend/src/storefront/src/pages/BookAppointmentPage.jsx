@@ -5,6 +5,7 @@ import { API_BASE } from '../config.js';
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import { isPlanAtLeast } from '../utils/plan.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 const TIME_SLOTS = [
   '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM',
@@ -12,10 +13,11 @@ const TIME_SLOTS = [
 ];
 
 export default function BookAppointmentPage() {
+  const { translate: tx } = useShopperTranslation();
   const PURPOSES = [
-    { value: '', label: "Select purpose" },
-    { value: 'consultation', label: "General Consultation" },
-    { value: 'other', label: "Other" },
+    { value: '', label: tx("Select purpose") },
+    { value: 'consultation', label: tx("General Consultation") },
+    { value: 'other', label: tx("Other") },
   ];
   const { siteConfig } = useSiteConfig();
   const [appointmentType, setAppointmentType] = useState('');
@@ -238,12 +240,12 @@ export default function BookAppointmentPage() {
             </div>
             <div className="appt-form-group">
               <label><TranslatedText text="Additional Notes" /></label>
-              <textarea name="notes" value={form.notes} onChange={handleChange} placeholder={"Any specific requirements or questions..."} />
+              <textarea name="notes" value={form.notes} onChange={handleChange} placeholder={tx("Any specific requirements or questions...")} />
             </div>
           </div>
 
           <button type="submit" className="appt-submit-btn" disabled={submitting}>
-            {submitting ? "Booking..." : "Book Appointment"}
+            {submitting ? <TranslatedText text="Booking..." /> : <TranslatedText text="Book Appointment" />}
           </button>
         </form>
       </div>

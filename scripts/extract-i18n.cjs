@@ -32,6 +32,26 @@ const OUT = path.join(ROOT, 'backend/i18n-manifest.json');
 const TRANSLATED_TEXT_RE = /<TranslatedText\s+(?:[^>]*?\s)?text=(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\}|\{"([^"]+)"\}|\{'([^']+)'\})/g;
 const DEFAULT_FIELD_RE = /(?:^|[^a-zA-Z_$])(?:name|title|subtitle|description|headline|text|buttonText|buttonLink|ctaText|ctaLabel|label|caption|tagline|role|message|body|heading|content|copyright|placeholder|tooltip|hours|address|brandedNameSuffix|intro|note|hint|prompt|warning|error|reason|reply|policy|charges|regions|deliveryTime|tracking|replacements|mandatory|guide|washing|cleaning|maintenance|story|refund|replacement|approval|termsIntro|privacyIntro|returnRefund|returnReplacement|cancellationApproval|shippingRegions|shippingCharges|shippingDeliveryTime|shippingTracking|returnPolicy|returnReplacements|returnMandatory|careGuideWashing|careGuideCleaning|careGuideMaintenance|heroSubtitle|storyText|question|answer|alt|summary)\s*:\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
 
+// JSX attribute literals that the shopper sees on screen but cannot be
+// wrapped in <TranslatedText> (because attributes can't host JSX). The
+// shopper translation hook (`tx("...")`) is the runtime path; this regex
+// is the build-time extractor that adds the literal to the manifest so
+// the server can translate it for every supported language.
+const JSX_ATTR_RE = /\s(?:placeholder|aria-label|alt|title)=(?:"([^"]+)"|'([^']+)'|\{"([^"]+)"\}|\{'([^']+)'\}|\{`([^`]+)`\})/g;
+
+// Direct `tx("...")` / `translate("...")` calls — used inside arrays of
+// option objects, JSX attributes, and any other expression context where
+// `<TranslatedText>` cannot be used.
+const TX_CALL_RE = /(?:^|[^a-zA-Z_$.])(?:tx|translateString)\(\s*(?:"([^"]+)"|'([^']+)'|`([^`]+)`)\s*[),]/g;
+
+// Module-level constant arrays of human-readable strings that the
+// shopper sees rendered via `<TranslatedText text={reason} />`. The
+// individual array elements never match TRANSLATED_TEXT_RE because the
+// `text` prop is a variable, not a literal, so we scrape the array
+// bodies of well-known constant names and pull every quoted string.
+const CONST_ARRAY_RE = /\b(?:CANCEL_REASONS|RETURN_REASONS|REASON_LABELS|STATUS_LABELS|STEP_LABELS)\s*=\s*\[([\s\S]*?)\]/g;
+const ARRAY_STRING_RE = /(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
+
 // Strip line and block comments before regex scanning so backtick-
 // quoted words inside JSDoc explanations (e.g. an inline `name:` example
 // in a comment) cannot accidentally satisfy DEFAULT_FIELD_RE and leak
@@ -100,6 +120,9 @@ const strings = new Set();
 const allFiles = walk(SRC);
 
 let chromeCount = 0;
+let attrCount = 0;
+let txCallCount = 0;
+let constArrayCount = 0;
 for (const f of allFiles) {
   const content = stripComments(fs.readFileSync(f, 'utf8'));
   TRANSLATED_TEXT_RE.lastIndex = 0;
@@ -109,6 +132,35 @@ for (const f of allFiles) {
     if (looksLikeContent(text)) {
       strings.add(text);
       chromeCount += 1;
+    }
+  }
+  JSX_ATTR_RE.lastIndex = 0;
+  while ((m = JSX_ATTR_RE.exec(content)) !== null) {
+    const text = m[1] || m[2] || m[3] || m[4] || m[5];
+    if (looksLikeContent(text)) {
+      strings.add(text);
+      attrCount += 1;
+    }
+  }
+  TX_CALL_RE.lastIndex = 0;
+  while ((m = TX_CALL_RE.exec(content)) !== null) {
+    const text = m[1] || m[2] || m[3];
+    if (looksLikeContent(text)) {
+      strings.add(text);
+      txCallCount += 1;
+    }
+  }
+  CONST_ARRAY_RE.lastIndex = 0;
+  while ((m = CONST_ARRAY_RE.exec(content)) !== null) {
+    const body = m[1];
+    ARRAY_STRING_RE.lastIndex = 0;
+    let inner;
+    while ((inner = ARRAY_STRING_RE.exec(body)) !== null) {
+      const text = inner[1] || inner[2] || inner[3];
+      if (looksLikeContent(text)) {
+        strings.add(text);
+        constArrayCount += 1;
+      }
     }
   }
 }
@@ -148,6 +200,6 @@ const manifest = {
 fs.writeFileSync(OUT, JSON.stringify(manifest, null, 2));
 console.log(
   `[extract-i18n] ${sorted.length} unique strings ` +
-    `(${chromeCount} chrome literals, ${defaultsCount} defaults values) ` +
+    `(${chromeCount} chrome literals, ${attrCount} jsx attrs, ${txCallCount} tx() calls, ${constArrayCount} const-array entries, ${defaultsCount} defaults values) ` +
     `→ ${path.relative(ROOT, OUT)} (hash=${hash})`,
 );

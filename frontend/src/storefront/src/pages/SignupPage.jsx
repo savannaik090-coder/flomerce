@@ -56,11 +56,11 @@ export default function SignupPage() {
 
   const validate = () => {
     const errs = {};
-    if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+    if (name.trim().length < 2) errs.name = tx("Name must be at least 2 characters");
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email.trim())) errs.email = "Please enter a valid email";
-    if (password.length < 8) errs.password = "Password must be at least 8 characters";
-    if (password !== confirmPassword) errs.confirmPassword = "Passwords do not match";
+    if (!emailRegex.test(email.trim())) errs.email = tx("Please enter a valid email");
+    if (password.length < 8) errs.password = tx("Password must be at least 8 characters");
+    if (password !== confirmPassword) errs.confirmPassword = tx("Passwords do not match");
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -122,7 +122,7 @@ export default function SignupPage() {
             <PhoneInput
               value={phone}
               onChange={val => setPhone(val)}
-              placeholder={"Phone number"}
+              placeholder={tx("Phone number")}
               style={{ width: '100%', padding: 12, border: '1px solid #ddd', borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, boxSizing: 'border-box' }}
             />
           </div>
@@ -137,7 +137,7 @@ export default function SignupPage() {
             {fieldErrors.confirmPassword && <div style={{ color: '#d32f2f', fontSize: 14, marginTop: 5 }}>{fieldErrors.confirmPassword}</div>}
           </div>
           <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background-color 0.3s ease', position: 'relative' }}>
-            {loading ? "Creating Account..." : "Create Account"}
+            {loading ? <TranslatedText text="Creating Account..." /> : <TranslatedText text="Create Account" />}
           </button>
         </form>
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { COUNTRIES, COUNTRY_FLAGS, getDialCode } from '../../utils/countryStates.js';
 import TranslatedText from '../TranslatedText';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 const sortedCountries = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -14,6 +15,7 @@ function extractLocalNumber(fullValue, dial) {
 }
 
 export default function PhoneInput({ value, onChange, countryCode, error, style }) {
+  const { translate: tx } = useShopperTranslation();
   const [selectedCC, setSelectedCC] = useState(countryCode || 'IN');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -95,7 +97,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
           type="tel"
           value={localNumber}
           onChange={handlePhoneChange}
-          placeholder={"Phone number"}
+          placeholder={tx("Phone number")}
           style={{
             flex: 1, padding: '10px 12px', border: 'none', outline: 'none',
             fontSize: 14, minWidth: 0, boxSizing: 'border-box',
@@ -116,7 +118,7 @@ export default function PhoneInput({ value, onChange, countryCode, error, style 
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={"Search country..."}
+              placeholder={tx("Search country...")}
               style={{
                 width: '100%', padding: '8px 10px', border: '1px solid #ddd',
                 borderRadius: 4, fontSize: 13, boxSizing: 'border-box', outline: 'none',

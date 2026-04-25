@@ -135,7 +135,7 @@ export default function LoginPage() {
             <button type="button" onClick={() => { setShowForgotModal(true); setResetEmail(email); }} style={{ background: 'none', border: 'none', color: '#c8a97e', fontSize: 14, cursor: 'pointer', textDecoration: 'none' }}><TranslatedText text="Forgot Password?" /></button>
           </div>
           <button type="submit" disabled={loading} style={{ backgroundColor: loading ? '#e0d5c5' : '#c8a97e', color: '#fff', border: 'none', padding: 15, borderRadius: 4, fontFamily: "'Lato', sans-serif", fontSize: 16, fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer', transition: 'background-color 0.3s ease' }}>
-            {loading ? "Logging in..." : "Login"}
+            {loading ? <TranslatedText text="Logging in..." /> : <TranslatedText text="Login" />}
           </button>
         </form>
 
@@ -194,7 +194,7 @@ export default function LoginPage() {
             {resendSuccess && <div style={{ color: '#2ecc71', fontSize: 14, marginBottom: 12, padding: 10, background: '#e8f5e9', borderRadius: 4 }}>{resendSuccess}</div>}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={handleResendVerification} disabled={resendLoading} style={{ backgroundColor: '#c8a97e', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: 4, cursor: resendLoading ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-                {resendLoading ? "Sending..." : "Resend Verification Email"}
+                {resendLoading ? <TranslatedText text="Sending..." /> : <TranslatedText text="Resend Verification Email" />}
               </button>
               <button onClick={() => setShowVerificationNotice(false)} style={{ background: '#6b7280', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: 4, cursor: 'pointer' }}><TranslatedText text="Close" /></button>
             </div>

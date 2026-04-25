@@ -4,8 +4,10 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { trackOrder } from '../services/orderService.js';
 import { parseAsUTC } from '../utils/dateFormatter.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function OrderHelpPage() {
+  const { translate: tx } = useShopperTranslation();
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const cancelToken = searchParams.get('cancelToken');
@@ -91,7 +93,7 @@ export default function OrderHelpPage() {
           </div>
           <h1 style={{ fontSize: 26, fontWeight: 700, margin: '0 0 8px', color: '#0f172a', fontFamily: "'Playfair Display', serif" }}><TranslatedText text="Order Help" /></h1>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
-            {orderId ? "How can we help with your order?" : "Enter your order number to see your options"}
+            {orderId ? <TranslatedText text="How can we help with your order?" /> : <TranslatedText text="Enter your order number to see your options" />}
           </p>
         </div>
 
@@ -104,7 +106,7 @@ export default function OrderHelpPage() {
                   type="text"
                   value={lookupOrderId}
                   onChange={e => setLookupOrderId(e.target.value)}
-                  placeholder={"e.g. ORD-XXXX"}
+                  placeholder={tx("e.g. ORD-XXXX")}
                   style={{ flex: 1, padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, fontFamily: 'inherit' }}
                   required
                 />

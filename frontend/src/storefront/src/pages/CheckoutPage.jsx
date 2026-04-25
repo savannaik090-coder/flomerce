@@ -96,22 +96,22 @@ export default function CheckoutPage() {
 
   const validateAddress = useCallback(() => {
     const errs = {};
-    if (address.firstName.trim().length < 2) errs.firstName = "First name must be at least 2 characters";
-    if (address.lastName.trim().length < 2) errs.lastName = "Last name must be at least 2 characters";
+    if (address.firstName.trim().length < 2) errs.firstName = tx("First name must be at least 2 characters");
+    if (address.lastName.trim().length < 2) errs.lastName = tx("Last name must be at least 2 characters");
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(address.email.trim())) errs.email = "Please enter a valid email";
+    if (!emailRegex.test(address.email.trim())) errs.email = tx("Please enter a valid email");
     const phoneDigits = address.phone.replace(/[^0-9]/g, '');
-    if (phoneDigits.length < 7 || phoneDigits.length > 15) errs.phone = "Please enter a valid phone number";
-    if (address.houseNumber.trim().length < 1) errs.houseNumber = "House/Building number is required";
-    if (address.roadName.trim().length < 5) errs.roadName = "Road/Area must be at least 5 characters";
-    if (address.city.trim().length < 2) errs.city = "City name must be at least 2 characters";
-    if (!address.country) errs.country = "Please select a country";
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) errs.phone = tx("Please enter a valid phone number");
+    if (address.houseNumber.trim().length < 1) errs.houseNumber = tx("House/Building number is required");
+    if (address.roadName.trim().length < 5) errs.roadName = tx("Road/Area must be at least 5 characters");
+    if (address.city.trim().length < 2) errs.city = tx("City name must be at least 2 characters");
+    if (!address.country) errs.country = tx("Please select a country");
     const countryStates = getStatesForCountry(address.country);
-    if (countryStates.length > 0 && !address.state) errs.state = "Please select a state/region";
+    if (countryStates.length > 0 && !address.state) errs.state = tx("Please select a state/region");
     if (address.country === 'IN') {
-      if (!/^\d{6}$/.test(address.pinCode.trim())) errs.pinCode = "Please enter a valid 6-digit PIN code";
+      if (!/^\d{6}$/.test(address.pinCode.trim())) errs.pinCode = tx("Please enter a valid 6-digit PIN code");
     } else {
-      if (address.pinCode.trim().length < 3) errs.pinCode = "Please enter a valid postal/ZIP code";
+      if (address.pinCode.trim().length < 3) errs.pinCode = tx("Please enter a valid postal/ZIP code");
     }
     setAddressErrors(errs);
     return Object.keys(errs).length === 0;
@@ -133,7 +133,7 @@ export default function CheckoutPage() {
         }));
         setAddressErrors(prev => ({ ...prev, pinCode: undefined }));
       } else {
-        setAddressErrors(prev => ({ ...prev, pinCode: "Invalid PIN code" }));
+        setAddressErrors(prev => ({ ...prev, pinCode: tx("Invalid PIN code") }));
       }
     } catch {
       setAddressErrors(prev => ({ ...prev, pinCode: undefined }));
@@ -213,12 +213,12 @@ export default function CheckoutPage() {
   const applyCoupon = useCallback(() => {
     setCouponError('');
     const code = couponCode.trim().toUpperCase();
-    if (!code) { setCouponError("Please enter a coupon code"); return; }
+    if (!code) { setCouponError(tx("Please enter a coupon code")); return; }
     setCouponApplying(true);
     const found = availableCoupons.find(c => c.active && c.code.toUpperCase() === code);
-    if (!found) { setCouponError("Invalid coupon code"); setCouponApplying(false); return; }
-    if (found.expiryDate && new Date(found.expiryDate) < new Date()) { setCouponError("This coupon has expired"); setCouponApplying(false); return; }
-    if (found.minOrder && subtotal < found.minOrder) { setCouponError(`Minimum order amount for this coupon is ${formatAmount(found.minOrder)}`); setCouponApplying(false); return; }
+    if (!found) { setCouponError(tx("Invalid coupon code")); setCouponApplying(false); return; }
+    if (found.expiryDate && new Date(found.expiryDate) < new Date()) { setCouponError(tx("This coupon has expired")); setCouponApplying(false); return; }
+    if (found.minOrder && subtotal < found.minOrder) { setCouponError(tx("Minimum order amount for this coupon is {{amount}}").replace('{{amount}}', formatAmount(found.minOrder))); setCouponApplying(false); return; }
     setAppliedCoupon(found);
     setCouponApplying(false);
   }, [couponCode, availableCoupons, subtotal]);
@@ -845,7 +845,7 @@ export default function CheckoutPage() {
             </div>
             <div style={{ display: 'flex', gap: 15, marginBottom: 0 }}>
               <div style={{ flex: 1, marginBottom: 20 }}>
-                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{address.country === 'IN' ? "PIN Code *" : "Postal / ZIP Code *"}</label>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333', fontSize: 14 }}>{address.country === 'IN' ? <TranslatedText text="PIN Code *" /> : <TranslatedText text="Postal / ZIP Code *" />}</label>
                 <input type="text" maxLength={address.country === 'IN' ? 6 : 15} value={address.pinCode} onChange={e => handleAddressChange('pinCode', address.country === 'IN' ? e.target.value.replace(/\D/g, '') : e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressErrors.pinCode ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }} />
                 {pinValidating && <div style={{ color: '#7a4012', fontSize: 12, marginTop: 4 }}><TranslatedText text="Validating PIN code..." /></div>}
                 {addressErrors.pinCode && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressErrors.pinCode}</div>}
@@ -905,18 +905,18 @@ export default function CheckoutPage() {
             {address.houseNumber}, {address.roadName}<br />
             {address.city}{address.state ? `, ${address.state}` : ''} - {address.pinCode}<br />
             {getCountryName(address.country)}<br />
-            {`Phone: ${address.phone} | Email: ${address.email}`}
+            <TranslatedText text="Phone: {{phone}} | Email: {{email}}" vars={{ phone: address.phone, email: address.email }} />
           </div>
 
           <div style={{ marginBottom: 24 }}>
             <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}><TranslatedText text="Order Total" /></h5>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-              <span>{`Subtotal (${items.length} items)`}</span>
+              <span><TranslatedText text="Subtotal ({{count}} items)" vars={{ count: items.length }} /></span>
               <span style={{ fontWeight: 600 }}>{formatAmount(subtotal)}</span>
             </div>
             {couponDiscount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-                <span style={{ color: '#16a34a' }}>{`Coupon (${appliedCoupon.code})`}</span>
+                <span style={{ color: '#16a34a' }}><TranslatedText text="Coupon ({{code}})" vars={{ code: appliedCoupon.code }} /></span>
                 <span style={{ color: '#16a34a', fontWeight: 600 }}>- {formatAmount(couponDiscount)}</span>
               </div>
             )}
@@ -924,11 +924,11 @@ export default function CheckoutPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span><TranslatedText text="Shipping" /></span>
                 <span style={{ color: shippingCost > 0 ? '#1a1a1a' : '#25ab00', fontWeight: 500 }}>
-                  {shippingCost > 0 ? formatAmount(shippingCost) : "Free"}
+                  {shippingCost > 0 ? formatAmount(shippingCost) : <TranslatedText text="Free" />}
                 </span>
               </div>
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
-                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'end' }}>{`Free shipping on orders above ${formatAmount(deliveryConfig.freeAbove)}`}</div>
+                <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'end' }}><TranslatedText text="Free shipping on orders above {{amount}}" vars={{ amount: formatAmount(deliveryConfig.freeAbove) }} /></div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontSize: 18, fontWeight: 700 }}>
@@ -960,7 +960,7 @@ export default function CheckoutPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 24, gap: 12 }}>
             <button onClick={() => goToStep(2)} style={{ padding: '10px 20px', border: `1px solid #7a4012`, background: 'transparent', color: '#7a4012', cursor: 'pointer', fontWeight: 500 }}><TranslatedText text="Back to Address" /></button>
             <button onClick={placeOrder} disabled={loading} style={{ padding: '10px 24px', background: '#7a4012', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: loading ? 0.7 : 1 }}>
-              {loading ? "Processing..." : "Place Order"}
+              {loading ? <TranslatedText text="Processing..." /> : <TranslatedText text="Place Order" />}
             </button>
           </div>
         </div>

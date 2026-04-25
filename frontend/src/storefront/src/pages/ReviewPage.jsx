@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { apiRequest } from '../services/api.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 const STAR_FULL = '\u2605';
 const STAR_EMPTY = '\u2606';
@@ -26,6 +27,7 @@ function StarInput({ value, onChange }) {
 }
 
 export default function ReviewPage() {
+  const { translate: tx } = useShopperTranslation();
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -146,12 +148,12 @@ export default function ReviewPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>&#11088;</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
-            {allReviewed ? "Thank You!" : "How was your order?"}
+            {allReviewed ? <TranslatedText text="Thank You!" /> : <TranslatedText text="How was your order?" />}
           </h1>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
             {allReviewed
-              ? "You have reviewed all items from this order."
-              : "Select a product below to leave a review."}
+              ? <TranslatedText text="You have reviewed all items from this order." />
+              : <TranslatedText text="Select a product below to leave a review." />}
           </p>
         </div>
 
@@ -178,7 +180,7 @@ export default function ReviewPage() {
                   </div>
                   {!reviewed && (
                     <button type="button" className="write-review-btn" style={{ padding: '8px 16px', fontSize: 13 }}>
-                      {isActive ? "Close" : "Review"}
+                      {isActive ? <TranslatedText text="Close" /> : <TranslatedText text="Review" />}
                     </button>
                   )}
                 </div>
@@ -195,7 +197,7 @@ export default function ReviewPage() {
                         type="text"
                         value={formData.customerName}
                         onChange={e => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                        placeholder={"Your name (optional)"}
+                        placeholder={tx("Your name (optional)")}
                         maxLength={80}
                       />
                     </div>
@@ -205,7 +207,7 @@ export default function ReviewPage() {
                         type="text"
                         value={formData.title}
                         onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder={"Summarize your experience"}
+                        placeholder={tx("Summarize your experience")}
                         maxLength={120}
                       />
                     </div>
@@ -214,14 +216,14 @@ export default function ReviewPage() {
                       <textarea
                         value={formData.content}
                         onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                        placeholder={"Share your thoughts..."}
+                        placeholder={tx("Share your thoughts...")}
                         rows={3}
                         maxLength={2000}
                       />
                     </div>
                     <div className="review-form-actions">
                       <button type="submit" className="review-submit-btn" disabled={submitting || formData.rating === 0}>
-                        {submitting ? "Submitting..." : "Submit Review"}
+                        {submitting ? <TranslatedText text="Submitting..." /> : <TranslatedText text="Submit Review" />}
                       </button>
                     </div>
                   </form>

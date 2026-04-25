@@ -4,6 +4,7 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { trackOrder, getReturnStatus, getCancelStatus } from '../services/orderService.js';
 import { formatDateForCustomer } from '../utils/dateFormatter.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 const STATUS_STEPS = [
   { key: 'pending', label: 'Order Placed', icon: 'fa-shopping-bag', color: '#64748b' },
@@ -25,20 +26,21 @@ function formatDate(dateStr) {
 }
 
 export default function OrderTrackPage() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const stepLabels = {
-    pending: "Order Placed",
-    confirmed: "Confirmed",
-    packed: "Packed",
-    shipped: "Shipped",
-    delivered: "Delivered",
+    pending: tx("Order Placed"),
+    confirmed: tx("Confirmed"),
+    packed: tx("Packed"),
+    shipped: tx("Shipped"),
+    delivered: tx("Delivered"),
   };
   const statusLabels = {
-    requested: "Requested",
-    approved: "Approved",
-    rejected: "Rejected",
-    refunded: "Refunded",
-    replaced: "Replaced",
+    requested: tx("Requested"),
+    approved: tx("Approved"),
+    rejected: tx("Rejected"),
+    refunded: tx("Refunded"),
+    replaced: tx("Replaced"),
   };
   const [orderIdInput, setOrderIdInput] = useState('');
   const [order, setOrder] = useState(null);
@@ -126,7 +128,7 @@ export default function OrderTrackPage() {
           type="text"
           value={orderIdInput}
           onChange={e => setOrderIdInput(e.target.value)}
-          placeholder={"Enter order number (e.g. ORD-XXXX)"}
+          placeholder={tx("Enter order number (e.g. ORD-XXXX)")}
           style={{
             flex: 1, padding: '12px 16px', border: '1px solid #e2e8f0', borderRadius: 8,
             fontSize: 15, fontFamily: 'inherit', outline: 'none', background: '#fff',
@@ -141,7 +143,7 @@ export default function OrderTrackPage() {
             opacity: loading ? 0.7 : 1, whiteSpace: 'nowrap',
           }}
         >
-          {loading ? "Searching..." : "Track"}
+          {loading ? <TranslatedText text="Searching..." /> : <TranslatedText text="Track" />}
         </button>
       </form>
 
@@ -239,7 +241,7 @@ export default function OrderTrackPage() {
               </div>
               {returnInfo.resolution && (
                 <div style={{ fontSize: 13, color: '#78716c', marginBottom: 6 }}>
-                  <strong><TranslatedText text="Resolution:" /></strong> {returnInfo.resolution === 'replacement' ? "Replacement" : "Refund"}
+                  <strong><TranslatedText text="Resolution:" /></strong> {returnInfo.resolution === 'replacement' ? <TranslatedText text="Replacement" /> : <TranslatedText text="Refund" />}
                 </div>
               )}
               {returnInfo.refund_amount && returnInfo.resolution !== 'replacement' && (
