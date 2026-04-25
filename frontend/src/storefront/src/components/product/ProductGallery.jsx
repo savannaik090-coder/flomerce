@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import TranslatedText from '../TranslatedText';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 export default function ProductGallery({ images, productName, filteredImageIndices }) {
+  const { translate: tx } = useShopperTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState(0);
@@ -79,8 +81,8 @@ export default function ProductGallery({ images, productName, filteredImageIndic
       <button className="zoom-close" onClick={(e) => { e.stopPropagation(); setZoomOpen(false); }}><TranslatedText text="✕ Close" /></button>
       {hasMultipleImages && (
         <>
-          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0} aria-label="Previous image">‹</button>
-          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1} aria-label="Next image">›</button>
+          <button className="zoom-nav prev" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex - 1); }} disabled={zoomIndex === 0} aria-label={tx("Previous image")}>‹</button>
+          <button className="zoom-nav next" onClick={(e) => { e.stopPropagation(); goToZoomImage(zoomIndex + 1); }} disabled={zoomIndex === parsedImages.length - 1} aria-label={tx("Next image")}>›</button>
         </>
       )}
       <img
@@ -117,7 +119,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
               className="gallery-nav gallery-nav-prev"
               onClick={() => goToImage(activeIndex - 1)}
               disabled={activeIndex === 0}
-              aria-label="Previous image"
+              aria-label={tx("Previous image")}
             >
               ‹
             </button>
@@ -136,7 +138,7 @@ export default function ProductGallery({ images, productName, filteredImageIndic
               className="gallery-nav gallery-nav-next"
               onClick={() => goToImage(activeIndex + 1)}
               disabled={activeIndex === parsedImages.length - 1}
-              aria-label="Next image"
+              aria-label={tx("Next image")}
             >
               ›
             </button>

@@ -7,11 +7,11 @@ import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 const STATUS_STEPS = [
-  { key: 'pending', label: 'Order Placed', icon: 'fa-shopping-bag', color: '#64748b' },
-  { key: 'confirmed', label: 'Confirmed', icon: 'fa-check-circle', color: '#2563eb' },
-  { key: 'packed', label: 'Packed', icon: 'fa-box', color: '#7c3aed' },
-  { key: 'shipped', label: 'Shipped', icon: 'fa-truck', color: '#0284c7' },
-  { key: 'delivered', label: 'Delivered', icon: 'fa-check-double', color: '#16a34a' },
+  { key: 'pending', icon: 'fa-shopping-bag', color: '#64748b' },
+  { key: 'confirmed', icon: 'fa-check-circle', color: '#2563eb' },
+  { key: 'packed', icon: 'fa-box', color: '#7c3aed' },
+  { key: 'shipped', icon: 'fa-truck', color: '#0284c7' },
+  { key: 'delivered', icon: 'fa-check-double', color: '#16a34a' },
 ];
 
 function getStepIndex(status) {
@@ -73,7 +73,7 @@ export default function OrderTrackPage() {
   async function fetchOrder(id) {
     const searchId = (id || orderIdInput).trim();
     if (!searchId) {
-      setError("Please enter an order number or order ID");
+      setError(tx("Please enter an order number or order ID"));
       return;
     }
     setLoading(true);
@@ -96,10 +96,10 @@ export default function OrderTrackPage() {
           if (canRes.success && canRes.data) setCancelInfo(canRes.data);
         } catch {}
       } else {
-        setError(res.error || "Order not found. Please check your order number and try again.");
+        setError(res.error || tx("Order not found. Please check your order number and try again."));
       }
     } catch (err) {
-      setError("Order not found. Please check your order number and try again.");
+      setError(tx("Order not found. Please check your order number and try again."));
     } finally {
       setLoading(false);
     }
@@ -203,7 +203,7 @@ export default function OrderTrackPage() {
                       </div>
                       <div style={{ paddingInlineStart: 8 }}>
                         <div style={{ fontSize: 15, fontWeight: isCurrent ? 700 : 500, color: isCompleted ? '#0f172a' : '#94a3b8' }}>
-                          {stepLabels[step.key] || step.label}
+                          {stepLabels[step.key] || tx("In Progress")}
                           {isCurrent && (
                             <span style={{ marginInlineStart: 8, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12, background: step.color, color: '#fff' }}><TranslatedText text="Current" /></span>
                           )}
@@ -254,7 +254,7 @@ export default function OrderTrackPage() {
                   <strong><TranslatedText text="Admin Response:" /></strong> {returnInfo.admin_note}
                 </div>
               )}
-              <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>{`Submitted on ${formatDate(returnInfo.created_at)}`}</div>
+              <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>{tx("Submitted on {{date}}").replace('{{date}}', formatDate(returnInfo.created_at))}</div>
             </div>
           )}
 
@@ -275,7 +275,7 @@ export default function OrderTrackPage() {
                   <strong><TranslatedText text="Admin Response:" /></strong> {cancelInfo.admin_note}
                 </div>
               )}
-              <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>{`Submitted on ${formatDate(cancelInfo.created_at)}`}</div>
+              <div style={{ fontSize: 12, color: '#a8a29e', marginTop: 6 }}>{tx("Submitted on {{date}}").replace('{{date}}', formatDate(cancelInfo.created_at))}</div>
             </div>
           )}
 

@@ -15,15 +15,15 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim()) { setError("Please enter your email address"); return; }
+    if (!email.trim()) { setError(tx("Please enter your email address")); return; }
     setLoading(true);
     setError('');
     setSuccess('');
     try {
       await authService.requestPasswordReset(email, siteConfig?.id);
-      setSuccess("Password reset link has been sent to your email. Please check your inbox and spam folder.");
+      setSuccess(tx("Password reset link has been sent to your email. Please check your inbox and spam folder."));
     } catch (err) {
-      setError(err.message || "Failed to send reset email. Please try again.");
+      setError(err.message || tx("Failed to send reset email. Please try again."));
     } finally {
       setLoading(false);
     }

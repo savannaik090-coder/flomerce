@@ -5,14 +5,17 @@ import { useSEO } from '../hooks/useSEO.js';
 import { apiRequest } from '../services/api.js';
 import '../styles/blog.css';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function BlogListPage() {
+  const { translate: tx, target, contentLanguage } = useShopperTranslation();
+  const dateLocale = target || contentLanguage || 'en-US';
   const { siteConfig } = useContext(SiteContext);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  useSEO({ title: "Blog", pageType: 'blog' });
+  useSEO({ title: tx("Blog"), pageType: 'blog' });
 
   let settings = siteConfig?.settings || {};
   if (typeof settings === 'string') {
@@ -75,7 +78,7 @@ export default function BlogListPage() {
                 )}
                 <div className="blog-card-body">
                   <p className="blog-card-meta">
-                    {post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
+                    {post.published_at ? new Date(post.published_at).toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
                     {post.author ? ` · ${post.author}` : ''}
                   </p>
                   <h3 className="blog-card-title">{post.title}</h3>

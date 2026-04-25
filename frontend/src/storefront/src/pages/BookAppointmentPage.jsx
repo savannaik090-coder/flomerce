@@ -47,8 +47,8 @@ export default function BookAppointmentPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!appointmentType) { setStatus({ type: 'error', msg: "Please select an appointment type." }); return; }
-    if (!selectedTime) { setStatus({ type: 'error', msg: "Please select a time slot." }); return; }
+    if (!appointmentType) { setStatus({ type: 'error', msg: tx("Please select an appointment type.") }); return; }
+    if (!selectedTime) { setStatus({ type: 'error', msg: tx("Please select a time slot.") }); return; }
     setSubmitting(true);
     setStatus(null);
     try {
@@ -70,15 +70,15 @@ export default function BookAppointmentPage() {
       });
       const result = await response.json();
       if (response.ok && result.success) {
-        setStatus({ type: 'success', msg: "Your appointment has been booked successfully! We'll send you a confirmation shortly." });
+        setStatus({ type: 'success', msg: tx("Your appointment has been booked successfully! We'll send you a confirmation shortly.") });
         setForm({ fullName: '', email: '', phone: '', appointmentDate: '', purpose: '', notes: '' });
         setAppointmentType('');
         setSelectedTime('');
       } else {
-        setStatus({ type: 'error', msg: result.error || "Something went wrong. Please try again." });
+        setStatus({ type: 'error', msg: result.error || tx("Something went wrong. Please try again.") });
       }
     } catch {
-      setStatus({ type: 'error', msg: "Something went wrong. Please try again." });
+      setStatus({ type: 'error', msg: tx("Something went wrong. Please try again.") });
     } finally {
       setSubmitting(false);
     }

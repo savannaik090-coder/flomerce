@@ -3,8 +3,10 @@ import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import { getDefaultReviews } from '../../../defaults/index.js';
 import TranslatedText from '../../TranslatedText';
+import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
 
 export default function CustomerReviewsModern() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
   const scrollRef = useRef(null);
   const [modalImage, setModalImage] = useState(null);
@@ -29,7 +31,7 @@ export default function CustomerReviewsModern() {
   };
 
   const openWhatsApp = () => {
-    const msg = encodeURIComponent("Hi! I would like to share my review.");
+    const msg = encodeURIComponent(tx("Hi! I would like to share my review."));
     window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
   };
 
@@ -65,7 +67,7 @@ export default function CustomerReviewsModern() {
                     className="mn-customer-review-image"
                     onClick={() => setModalImage(resolveImageUrl(review.image))}
                   >
-                    <img src={resolveImageUrl(review.image)} alt={`Customer Review ${i + 1}`} />
+                    <img src={resolveImageUrl(review.image)} alt={tx("Customer Review {{n}}").replace('{{n}}', String(i + 1))} />
                   </div>
                 )}
                 <div className="mn-customer-review-body">
@@ -117,7 +119,7 @@ export default function CustomerReviewsModern() {
             &times;
           </span>
           <div className="image-modal-content">
-            <img src={modalImage} alt={"Full Size Review"} />
+            <img src={modalImage} alt={tx("Full Size Review")} />
           </div>
         </div>
       )}

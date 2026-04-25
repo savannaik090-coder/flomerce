@@ -6,6 +6,7 @@ import ProductCardModern from './ProductCardModern.jsx';
 import { API_BASE } from '../../../config.js';
 import { getDemoProductsForCategory } from '../../../defaults/index.js';
 import TranslatedText from '../../TranslatedText.jsx';
+import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
 import './modern.css';
 
 function resolveImg(src) {
@@ -16,6 +17,7 @@ function resolveImg(src) {
 }
 
 export default function CategoryGrid({ category }) {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ export default function CategoryGrid({ category }) {
           <p className="mn-section-subtitle">{category.subtitle}</p>
         )}
         <Link to={`/category/${category.slug}`} className="mn-view-all-link">
-          View All
+          <TranslatedText text="View All" />
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
@@ -68,7 +70,7 @@ export default function CategoryGrid({ category }) {
             className="mn-category-banner-img"
           />
           <div className="mn-category-banner-overlay">
-            <span className="mn-category-banner-text">Shop {category.name}</span>
+            <span className="mn-category-banner-text">{tx("Shop {{name}}").replace('{{name}}', category.name)}</span>
           </div>
         </Link>
       )}
@@ -77,7 +79,7 @@ export default function CategoryGrid({ category }) {
         {loading ? (
           <div className="mn-category-loader">
             <div className="product-loader-spinner"></div>
-            <p>Loading {category.name.toLowerCase()}...</p>
+            <p>{tx("Loading {{name}}...").replace('{{name}}', category.name.toLowerCase())}</p>
           </div>
         ) : (
           <div className="mn-product-grid">

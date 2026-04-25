@@ -3,9 +3,11 @@ import { useSiteConfig } from '../../../hooks/useSiteConfig.js';
 import { resolveImageUrl } from '../../../utils/imageUrl.js';
 import { getHeroSliderDefaults } from '../../../defaults/index.js';
 import TranslatedText from '../../TranslatedText';
+import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
 import './modern.css';
 
 export default function HeroSplit() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -82,7 +84,7 @@ export default function HeroSplit() {
                   key={i}
                   className={`modern-hero-dot${i === currentIndex ? ' active' : ''}`}
                   onClick={() => setCurrentIndex(i)}
-                  aria-label={`Go to slide ${i + 1}`}
+                  aria-label={tx("Go to slide {{n}}").replace('{{n}}', String(i + 1))}
                 />
               ))}
             </div>
@@ -102,12 +104,12 @@ export default function HeroSplit() {
           )}
           {showScrollButtons && slides.length > 1 && (
             <>
-              <button className="modern-hero-arrow modern-hero-arrow-left" onClick={prevSlide} aria-label="Previous slide">
+              <button className="modern-hero-arrow modern-hero-arrow-left" onClick={prevSlide} aria-label={tx("Previous slide")}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M15 18l-6-6 6-6"/>
                 </svg>
               </button>
-              <button className="modern-hero-arrow modern-hero-arrow-right" onClick={nextSlide} aria-label="Next slide">
+              <button className="modern-hero-arrow modern-hero-arrow-right" onClick={nextSlide} aria-label={tx("Next slide")}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 18l6-6-6-6"/>
                 </svg>

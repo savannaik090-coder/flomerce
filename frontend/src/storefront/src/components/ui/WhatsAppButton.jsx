@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
+import TranslatedText from '../TranslatedText';
 
 export default function WhatsAppButton() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const [showTooltip, setShowTooltip] = useState(false);
 
@@ -18,7 +21,7 @@ export default function WhatsAppButton() {
   if (!whatsapp && !phone) return null;
 
   if (whatsapp) {
-    const href = `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent("Hi! I would like to know more about your products. Can you help me?")}`;
+    const href = `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(tx("Hi! I would like to know more about your products. Can you help me?"))}`;
     return (
       <>
         <a href={href} className="whatsapp-btn" target="_blank" rel="noopener noreferrer">
@@ -26,7 +29,7 @@ export default function WhatsAppButton() {
         </a>
         {showTooltip && (
           <div className="whatsapp-tooltip" onClick={() => setShowTooltip(false)}>
-            Chat with us!
+            <TranslatedText text="Chat with us!" />
           </div>
         )}
       </>
@@ -41,7 +44,7 @@ export default function WhatsAppButton() {
       </a>
       {showTooltip && (
         <div className="whatsapp-tooltip" onClick={() => setShowTooltip(false)}>
-          Message us!
+          <TranslatedText text="Message us!" />
         </div>
       )}
     </>

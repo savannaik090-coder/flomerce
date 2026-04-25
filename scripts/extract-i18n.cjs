@@ -49,7 +49,7 @@ const TX_CALL_RE = /(?:^|[^a-zA-Z_$.])(?:tx|translateString)\(\s*(?:"([^"]+)"|'(
 // individual array elements never match TRANSLATED_TEXT_RE because the
 // `text` prop is a variable, not a literal, so we scrape the array
 // bodies of well-known constant names and pull every quoted string.
-const CONST_ARRAY_RE = /\b(?:CANCEL_REASONS|RETURN_REASONS|REASON_LABELS|STATUS_LABELS|STEP_LABELS)\s*=\s*\[([\s\S]*?)\]/g;
+const CONST_ARRAY_RE = /\b(?:CANCEL_REASONS|RETURN_REASONS|REASON_LABELS|STATUS_LABELS|STEP_LABELS|INDIAN_STATES)\s*=\s*\[([\s\S]*?)\]/g;
 const ARRAY_STRING_RE = /(?:"([^"]+)"|'([^']+)'|`([^`]+)`)/g;
 
 // Strip line and block comments before regex scanning so backtick-

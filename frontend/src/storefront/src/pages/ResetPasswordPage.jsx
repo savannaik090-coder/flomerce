@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import * as authService from '../services/authService.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function ResetPasswordPage() {
+  const { translate: tx } = useShopperTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [password, setPassword] = useState('');
@@ -19,7 +21,7 @@ export default function ResetPasswordPage() {
     const tk = searchParams.get('token');
     const e = searchParams.get('email');
     if (!tk || !e) {
-      setError("Invalid reset link. Please request a new password reset.");
+      setError(tx("Invalid reset link. Please request a new password reset."));
     } else {
       setToken(tk);
       setEmail(e);
@@ -28,16 +30,16 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
-    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
+    if (password.length < 8) { setError(tx("Password must be at least 8 characters")); return; }
+    if (password !== confirmPassword) { setError(tx("Passwords do not match")); return; }
     setLoading(true);
     setError('');
     try {
       await authService.resetPassword(token, email, password);
-      setSuccess("Password reset successfully! Redirecting to login...");
+      setSuccess(tx("Password reset successfully! Redirecting to login..."));
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.message || "Failed to reset password. The link may have expired.");
+      setError(err.message || tx("Failed to reset password. The link may have expired."));
     } finally {
       setLoading(false);
     }

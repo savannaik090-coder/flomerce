@@ -246,14 +246,14 @@ export default function CheckoutPage() {
       });
       return true;
     } catch (err) {
-      setError(err.message || "Some items in your cart are no longer available. Please update your cart and try again.");
+      setError(err.message || tx("Some items in your cart are no longer available. Please update your cart and try again."));
       return false;
     }
   }, [siteConfig, items]);
 
   const goToStep = useCallback(async (s) => {
     if (s === 2 && items.length === 0) {
-      setError("Your cart is empty");
+      setError(tx("Your cart is empty"));
       return;
     }
     if (s === 2) {
@@ -294,7 +294,7 @@ export default function CheckoutPage() {
     setError('');
 
     if (!siteConfig?.id) {
-      setError("Store configuration not loaded. Please refresh the page and try again.");
+      setError(tx("Store configuration not loaded. Please refresh the page and try again."));
       setLoading(false);
       return;
     }
@@ -343,12 +343,12 @@ export default function CheckoutPage() {
     if (paymentMethod === 'razorpay') {
       const razorpayKeyId = siteConfig?.settings?.razorpayKeyId || siteConfig?.settings?.razorpay_key_id;
       if (!razorpayKeyId) {
-        setError("Online payment is not configured for this store. Please use Cash on Delivery.");
+        setError(tx("Online payment is not configured for this store. Please use Cash on Delivery."));
         setLoading(false);
         return;
       }
       if (!window.Razorpay) {
-        setError("Payment gateway not loaded. Please refresh and try again.");
+        setError(tx("Payment gateway not loaded. Please refresh and try again."));
         setLoading(false);
         return;
       }
@@ -378,7 +378,7 @@ export default function CheckoutPage() {
         const razorpayOrderId = paymentData.orderId || paymentData.razorpay_order_id;
 
         if (!razorpayOrderId) {
-          setError("Failed to initialize payment. Please try again.");
+          setError(tx("Failed to initialize payment. Please try again."));
           setLoading(false);
           return;
         }
@@ -393,8 +393,8 @@ export default function CheckoutPage() {
           key: paymentData.keyId || razorpayKeyId,
           amount: paymentData.amount || Math.round(finalTotal * 100),
           currency: paymentData.currency || 'INR',
-          name: siteConfig?.brandName || 'Store',
-          description: "Store Order",
+          name: siteConfig?.brandName || tx('Store'),
+          description: tx("Store Order"),
           order_id: razorpayOrderId,
           handler: async function (response) {
             setLoading(true);
@@ -416,7 +416,7 @@ export default function CheckoutPage() {
               clearAll();
             } catch (verifyErr) {
               console.error('Payment verification error:', verifyErr);
-              setError("Payment verification failed. If money was deducted, please contact support with your order reference.");
+              setError(tx("Payment verification failed. If money was deducted, please contact support with your order reference."));
               setLoading(false);
             }
           },
@@ -435,12 +435,12 @@ export default function CheckoutPage() {
 
         const rzp = new window.Razorpay(options);
         rzp.on('payment.failed', function (resp) {
-          setError(`Payment failed: ${resp.error?.description || "Unknown error"}. Please try again.`);
+          setError(tx("Payment failed: {{reason}}. Please try again.").replace('{{reason}}', resp.error?.description || tx("Unknown error")));
           setLoading(false);
         });
         rzp.open();
       } catch (err) {
-        setError(err.message || "Failed to initialize payment. Please try again.");
+        setError(err.message || tx("Failed to initialize payment. Please try again."));
         setLoading(false);
       }
       return;
@@ -455,7 +455,7 @@ export default function CheckoutPage() {
       setOrderPlaced(true);
       clearAll();
     } catch (err) {
-      setError(err.message || "Failed to place order. Please try again.");
+      setError(err.message || tx("Failed to place order. Please try again."));
     }
     setLoading(false);
   }, [siteConfig, items, subtotal, address, paymentMethod, clearAll, validateCartStock]);
@@ -525,7 +525,7 @@ export default function CheckoutPage() {
 
                 {od.discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
-                    <span style={{ color: '#16a34a', fontSize: 14 }}>{`Coupon (${od.couponCode})`}</span>
+                    <span style={{ color: '#16a34a', fontSize: 14 }}>{tx("Coupon ({{code}})").replace('{{code}}', od.couponCode)}</span>
                     <span style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>- {formatAmount(od.discount)}</span>
                   </div>
                 )}
@@ -696,7 +696,7 @@ export default function CheckoutPage() {
             {couponDiscount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 500 }}>
-                  {`Coupon (${appliedCoupon.code})`}
+                  {tx("Coupon ({{code}})").replace('{{code}}', appliedCoupon.code)}
                 </span>
                 <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 700 }}>- {formatAmount(couponDiscount)}</span>
               </div>
@@ -749,9 +749,9 @@ export default function CheckoutPage() {
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>{`✓ Coupon applied: ${appliedCoupon.code}`}</span>
+                    <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 700 }}>{tx("✓ Coupon applied: {{code}}").replace('{{code}}', appliedCoupon.code)}</span>
                     <span style={{ fontSize: 13, color: '#64748b', marginInlineStart: 8 }}>
-                      ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})
+                      ({appliedCoupon.type === 'percent' ? tx("{{value}}% off").replace('{{value}}', String(appliedCoupon.value)) : tx("{{amount}} off").replace('{{amount}}', formatAmount(appliedCoupon.value))})
                     </span>
                   </div>
                   <button type="button" onClick={removeCoupon} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}><TranslatedText text="Remove" /></button>

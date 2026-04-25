@@ -4,10 +4,12 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import { getTermsDefaults } from '../defaults/index.js';
 import TranslatedText from '../components/TranslatedText.jsx';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function TermsPage() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
-  useSEO({ title: "Terms & Conditions", pageType: 'terms' });
+  useSEO({ title: tx("Terms & Conditions"), pageType: 'terms' });
   const brand = siteConfig?.brandName || siteConfig?.brand_name || 'Our Store';
   const email = siteConfig?.email || 'support@example.com';
   const phone = siteConfig?.phone || '';
@@ -40,7 +42,7 @@ export default function TermsPage() {
 
   return (
     <div style={{ maxWidth: 800, margin: '40px auto 80px', padding: '0 20px', fontFamily: 'inherit' }}>
-      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Terms & Conditions</h1>
+      <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}><TranslatedText text="Terms & Conditions" /></h1>
       <p style={{ color: '#64748b', marginBottom: 40 }}>{`Last updated: ${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}`}</p>
 
       <div style={{ lineHeight: 1.8, color: '#374151' }}>

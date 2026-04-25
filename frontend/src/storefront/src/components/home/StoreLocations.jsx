@@ -4,8 +4,10 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
 import { storeLocationDefaults, storeLocationBrandedTemplate } from '../../defaults/generic.js';
 import TranslatedText from '../TranslatedText';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 export default function StoreLocations() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
   const scrollRef = useRef(null);
 
@@ -62,7 +64,7 @@ export default function StoreLocations() {
 
         <div className="stores-grid-wrapper">
           {defaultStore.length > 1 && (
-            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev} aria-label="Scroll left">
+            <button className="stores-scroll-arrow stores-scroll-left" onClick={scrollPrev} aria-label={tx("Scroll left")}>
               <i className="fas fa-chevron-left"></i>
             </button>
           )}
@@ -110,7 +112,7 @@ export default function StoreLocations() {
                     </Link>
                   )}
                   {store.phone && (
-                    <a href={`tel:${store.phone}`} className="call-btn" aria-label="Call store">
+                    <a href={`tel:${store.phone}`} className="call-btn" aria-label={tx("Call store")}>
                       <i className="fas fa-phone"></i>
                     </a>
                   )}
@@ -120,7 +122,7 @@ export default function StoreLocations() {
           ))}
           </div>
           {defaultStore.length > 1 && (
-            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext} aria-label="Scroll right">
+            <button className="stores-scroll-arrow stores-scroll-right" onClick={scrollNext} aria-label={tx("Scroll right")}>
               <i className="fas fa-chevron-right"></i>
             </button>
           )}

@@ -26,6 +26,7 @@ export default function CancelPage() {
   const [lookupEmail, setLookupEmail] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState('');
+  const [lookupSuccess, setLookupSuccess] = useState(false);
 
   const [cancelReason, setCancelReason] = useState('');
   const [cancelDetail, setCancelDetail] = useState('');
@@ -60,9 +61,11 @@ export default function CancelPage() {
         siteId: siteConfig.id,
         email: lookupEmail.trim(),
       });
-      setLookupMessage("A cancellation link has been sent to your email. Please check your inbox.");
+      setLookupMessage(tx("A cancellation link has been sent to your email. Please check your inbox."));
+      setLookupSuccess(true);
     } catch (err) {
-      setLookupMessage(err.message || "Could not find this order. Please check your order number and email.");
+      setLookupMessage(err.message || tx("Could not find this order. Please check your order number and email."));
+      setLookupSuccess(false);
     } finally {
       setLookupLoading(false);
     }
@@ -82,7 +85,7 @@ export default function CancelPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || "Failed to submit cancellation request");
+      setError(err.message || tx("Failed to submit cancellation request"));
     } finally {
       setSubmitting(false);
     }
@@ -90,9 +93,9 @@ export default function CancelPage() {
 
   const statusColors = { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' };
   const statusLabels = {
-    requested: "Pending Review",
-    approved: "Approved (Cancelled)",
-    rejected: "Rejected",
+    requested: tx("Pending Review"),
+    approved: tx("Approved (Cancelled)"),
+    rejected: tx("Rejected"),
   };
 
   return (
@@ -115,7 +118,7 @@ export default function CancelPage() {
                 <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={tx("your@email.com")} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               {lookupMessage && (
-                <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupMessage.includes('sent') ? '#f0fdf4' : '#fef2f2', color: lookupMessage.includes('sent') ? '#166534' : '#991b1b', fontSize: 14 }}>
+                <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupSuccess ? '#f0fdf4' : '#fef2f2', color: lookupSuccess ? '#166534' : '#991b1b', fontSize: 14 }}>
                   {lookupMessage}
                 </div>
               )}

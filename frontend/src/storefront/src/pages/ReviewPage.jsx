@@ -48,7 +48,7 @@ export default function ReviewPage() {
 
   useEffect(() => {
     if (!siteId || !orderId || !token) {
-      setError("Invalid review link");
+      setError(tx("Invalid review link"));
       setLoading(false);
       return;
     }
@@ -68,7 +68,7 @@ export default function ReviewPage() {
       setItems(data.items || []);
       setReviewedItems(data.reviewedItems || {});
     } catch (err) {
-      setError(err.message || "Invalid or expired review link");
+      setError(err.message || tx("Invalid or expired review link"));
     } finally {
       setLoading(false);
     }
@@ -93,12 +93,12 @@ export default function ReviewPage() {
           customerName: formData.customerName || undefined,
         }),
       });
-      setSubmitMessage({ type: 'success', text: res.message || "Review submitted!" });
+      setSubmitMessage({ type: 'success', text: res.message || tx("Review submitted!") });
       setReviewedItems(prev => ({ ...prev, [activeItem.productId || activeItem.product_id || activeItem.id]: true }));
       setActiveItem(null);
       setFormData({ rating: 0, title: '', content: '', customerName: '' });
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || "Failed to submit review" });
+      setSubmitMessage({ type: 'error', text: err.message || tx("Failed to submit review") });
     } finally {
       setSubmitting(false);
     }

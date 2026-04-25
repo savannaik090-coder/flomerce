@@ -182,7 +182,7 @@ export default function ProfilePage() {
   const handleReturnPhotoChange = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    if (returnPhotos.length + files.length > 5) { toast.warning("You can upload a maximum of 5 photos."); return; }
+    if (returnPhotos.length + files.length > 5) { toast.warning(tx("You can upload a maximum of 5 photos.")); return; }
     setUploadingReturnPhotos(true);
     try {
       const newPhotos = [];
@@ -194,7 +194,7 @@ export default function ProfilePage() {
         if (result.success && result.data?.url) newPhotos.push(result.data.url);
       }
       setReturnPhotos(prev => [...prev, ...newPhotos]);
-    } catch { toast.error("Failed to upload one or more images."); }
+    } catch { toast.error(tx("Failed to upload one or more images.")); }
     finally {
       setUploadingReturnPhotos(false);
       if (returnFileRef.current) returnFileRef.current.value = '';
@@ -218,9 +218,9 @@ export default function ProfilePage() {
       setReturnDetail('');
       setReturnPhotos([]);
       setReturnResolution('refund');
-      toast.success("Return request submitted successfully!");
+      toast.success(tx("Return request submitted successfully!"));
     } catch (err) {
-      toast.error(`Failed to submit return: ${err.message || "Unknown error"}`);
+      toast.error(tx("Failed to submit return: {{error}}").replace('{{error}}', err.message || tx("Unknown error")));
     } finally {
       setReturningOrder(false);
     }
@@ -239,9 +239,9 @@ export default function ProfilePage() {
       setCancelModal(null);
       setCancelReason('');
       setCancelDetail('');
-      toast.success("Cancellation request submitted successfully!");
+      toast.success(tx("Cancellation request submitted successfully!"));
     } catch (err) {
-      toast.error(`Failed to submit cancellation: ${err.message || "Unknown error"}`);
+      toast.error(tx("Failed to submit cancellation: {{error}}").replace('{{error}}', err.message || tx("Unknown error")));
     } finally {
       setCancellingOrder(false);
     }
@@ -373,7 +373,7 @@ export default function ProfilePage() {
       setEditAddress(null);
       setAddressForm({ label: 'Home', firstName: '', lastName: '', phone: '', houseNumber: '', roadName: '', city: '', state: '', pinCode: '', isDefault: false });
     } catch (err) {
-      setAddressError(err.message || "Failed to save address");
+      setAddressError(err.message || tx("Failed to save address"));
     } finally {
       setSavingAddress(false);
     }
@@ -446,7 +446,7 @@ export default function ProfilePage() {
             {initials}
           </div>
           <div>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, margin: '0 0 5px' }}>{user.name || "User"}</h1>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, margin: '0 0 5px' }}>{user.name || tx("User")}</h1>
             <p style={{ color: '#777', margin: 0 }}>{user.email}</p>
           </div>
         </div>
@@ -478,7 +478,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 16, color: '#333' }}>{user.name || "Not set"}</span>
+                  <span style={{ fontSize: 16, color: '#333' }}>{user.name || tx("Not set")}</span>
                   <button onClick={() => setEditingName(true)} style={{ background: 'none', border: 'none', color: '#c8a97e', cursor: 'pointer', fontSize: 14 }}><TranslatedText text="Edit" /></button>
                 </div>
               )}
@@ -514,7 +514,7 @@ export default function ProfilePage() {
                   <div key={order.id} style={{ border: '1px solid #eee', borderRadius: 5, padding: 15, marginBottom: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 10, borderBottom: '1px solid #eee', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                       <div>
-                        <span style={{ fontWeight: 'bold' }}>{`Order #${order.order_number || order.id || order.order_id}`}</span>
+                        <span style={{ fontWeight: 'bold' }}>{tx("Order #{{id}}").replace('{{id}}', String(order.order_number || order.id || order.order_id))}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                         <span style={{ color: '#777', fontSize: 14 }}>{formatDateShortForCustomer(order.created_at)}</span>
@@ -537,7 +537,7 @@ export default function ProfilePage() {
                             <h4 style={{ margin: '0 0 5px', fontSize: 14 }}>{item.name}</h4>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ color: '#c8a97e', fontWeight: 'bold' }}>{formatAmount(item.price)}</span>
-                              <span style={{ color: '#777', fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 12 }}>{`Qty: ${item.quantity}`}</span>
+                              <span style={{ color: '#777', fontSize: 13, background: '#f5f5f5', padding: '2px 8px', borderRadius: 12 }}>{tx("Qty: {{qty}}").replace('{{qty}}', String(item.quantity))}</span>
                             </div>
                             {isDelivered && (
                               <div style={{ marginTop: 6 }}>
@@ -561,14 +561,14 @@ export default function ProfilePage() {
                       {parseFloat(order.discount || 0) > 0 && (
                         <>
                           <div style={{ fontSize: 13, color: '#777', marginBottom: 2 }}>
-                            {`Subtotal: ${formatAmount(order.subtotal || orderTotal)}`}
+                            {tx("Subtotal: {{amount}}").replace('{{amount}}', formatAmount(order.subtotal || orderTotal))}
                           </div>
                           <div style={{ fontSize: 13, color: '#27ae60', marginBottom: 4 }}>
-                            {`Coupon${order.coupon_code ? ` (${order.coupon_code})` : ''}: −${formatAmount(order.discount)}`}
+                            {(order.coupon_code ? tx("Coupon ({{code}}): −{{amount}}").replace('{{code}}', order.coupon_code) : tx("Coupon: −{{amount}}")).replace('{{amount}}', formatAmount(order.discount))}
                           </div>
                         </>
                       )}
-                      <div style={{ fontWeight: 'bold' }}>{`Total: ${formatAmount(orderTotal)}`}</div>
+                      <div style={{ fontWeight: 'bold' }}>{tx("Total: {{amount}}").replace('{{amount}}', formatAmount(orderTotal))}</div>
                     </div>
                     {(cancelStatuses[order.id] || returnStatuses[order.id]) && (
                       <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -576,7 +576,7 @@ export default function ProfilePage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: 12, color: '#64748b' }}><TranslatedText text="Cancellation:" /></span>
                             <span style={{ display: 'inline-block', background: { requested: '#ff9800', approved: '#27ae60', rejected: '#e53935' }[cancelStatuses[order.id].status] || '#757575', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
-                              {{ requested: "Pending", approved: "Approved", rejected: "Rejected" }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
+                              {{ requested: tx("Pending"), approved: tx("Approved"), rejected: tx("Rejected") }[cancelStatuses[order.id].status] || cancelStatuses[order.id].status}
                             </span>
                           </div>
                         )}
@@ -584,7 +584,7 @@ export default function ProfilePage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: 12, color: '#64748b' }}><TranslatedText text="Return:" /></span>
                             <span style={{ display: 'inline-block', background: { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' }[returnStatuses[order.id].status] || '#757575', color: '#fff', borderRadius: 12, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>
-                              {{ requested: "Requested", approved: "Approved", rejected: "Rejected", refunded: "Refunded" }[returnStatuses[order.id].status] || returnStatuses[order.id].status}
+                              {{ requested: tx("Requested"), approved: tx("Approved"), rejected: tx("Rejected"), refunded: tx("Refunded") }[returnStatuses[order.id].status] || returnStatuses[order.id].status}
                             </span>
                           </div>
                         )}
@@ -657,7 +657,7 @@ export default function ProfilePage() {
                 <div key={addr.id} style={{ border: `1px solid ${addr.is_default ? '#c8a97e' : '#eee'}`, borderRadius: 8, padding: 20, marginBottom: 15, backgroundColor: addr.is_default ? '#fefcf8' : '#fff', transition: 'box-shadow 0.3s ease' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #eee' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontWeight: 'bold', color: '#333' }}>{addr.label || "Address"}</span>
+                      <span style={{ fontWeight: 'bold', color: '#333' }}>{addr.label ? tx(addr.label) : tx("Address")}</span>
                       {addr.is_default === 1 && <span style={{ backgroundColor: '#c8a97e', color: '#fff', padding: '2px 8px', borderRadius: 12, fontSize: 12 }}><TranslatedText text="Default" /></span>}
                     </div>
                     <div style={{ display: 'flex', gap: 15 }}>
@@ -669,7 +669,7 @@ export default function ProfilePage() {
                     <div>{addr.first_name} {addr.last_name}</div>
                     <div>{addr.house_number}{addr.road_name ? `, ${addr.road_name}` : ''}</div>
                     <div>{addr.city}, {addr.state} - {addr.pin_code}</div>
-                    {addr.phone && <div>{`Phone: ${addr.phone}`}</div>}
+                    {addr.phone && <div>{tx("Phone: {{phone}}").replace('{{phone}}', addr.phone)}</div>}
                   </div>
                 </div>
               ))
@@ -750,7 +750,7 @@ export default function ProfilePage() {
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, color: '#333', fontSize: 14 }}><TranslatedText text="Preferred resolution *" /></label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {[{ value: 'refund', label: "Refund" }, { value: 'replacement', label: "Replacement" }].map(opt => (
+                  {[{ value: 'refund', label: tx("Refund") }, { value: 'replacement', label: tx("Replacement") }].map(opt => (
                     <label key={opt.value} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', padding: '10px 12px', borderRadius: 6, border: `1.5px solid ${returnResolution === opt.value ? '#c8a97e' : '#e0e0e0'}`, background: returnResolution === opt.value ? '#fefcf8' : '#fafafa', textAlign: 'center', transition: 'all 0.15s' }}>
                       <input type="radio" name="returnResolution" value={opt.value} checked={returnResolution === opt.value} onChange={() => setReturnResolution(opt.value)} style={{ accentColor: '#c8a97e' }} />
                       <span style={{ fontSize: 14, color: '#333', fontWeight: returnResolution === opt.value ? 600 : 400 }}>{opt.label}</span>
@@ -869,7 +869,7 @@ export default function ProfilePage() {
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, color: '#333' }}><TranslatedText text="State *" /></label>
               <select value={addressForm.state} onChange={e => handleAddressFieldChange('state', e.target.value)} style={{ width: '100%', padding: 12, border: `1px solid ${addressFieldErrors.state ? '#e74c3c' : '#ddd'}`, borderRadius: 4, fontSize: 14, boxSizing: 'border-box' }}>
                 <option value="">{tx("Select State")}</option>
-                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                {INDIAN_STATES.map(s => <option key={s} value={s}>{tx(s)}</option>)}
               </select>
               {addressFieldErrors.state && <div style={{ color: '#e74c3c', fontSize: 12, marginTop: 4 }}>{addressFieldErrors.state}</div>}
             </div>

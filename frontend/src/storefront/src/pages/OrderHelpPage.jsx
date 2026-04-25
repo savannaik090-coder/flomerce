@@ -48,11 +48,11 @@ export default function OrderHelpPage() {
         setOrder(res.data);
         setLooked(true);
       } else {
-        setError("Order not found. Please check your order number.");
+        setError(tx("Order not found. Please check your order number."));
         setLooked(true);
       }
     } catch {
-      setError("Could not load order details.");
+      setError(tx("Could not load order details."));
       setLooked(true);
     } finally {
       setLoading(false);

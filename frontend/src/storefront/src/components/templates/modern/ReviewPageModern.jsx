@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../../../context/SiteContext.jsx';
 import { apiRequest } from '../../../services/api.js';
 import TranslatedText from '../../TranslatedText';
+import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
 
 const STAR_FULL = '\u2605';
 
@@ -25,6 +26,7 @@ function StarInput({ value, onChange }) {
 }
 
 export default function ReviewPageModern() {
+  const { translate: tx } = useShopperTranslation();
   const { orderId } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
@@ -44,7 +46,7 @@ export default function ReviewPageModern() {
 
   useEffect(() => {
     if (!siteId || !orderId || !token) {
-      setError("Invalid review link");
+      setError(tx("Invalid review link"));
       setLoading(false);
       return;
     }
@@ -64,7 +66,7 @@ export default function ReviewPageModern() {
       setItems(data.items || []);
       setReviewedItems(data.reviewedItems || {});
     } catch (err) {
-      setError(err.message || "Invalid or expired review link");
+      setError(err.message || tx("Invalid or expired review link"));
     } finally {
       setLoading(false);
     }
@@ -89,12 +91,12 @@ export default function ReviewPageModern() {
           customerName: formData.customerName || undefined,
         }),
       });
-      setSubmitMessage({ type: 'success', text: res.message || "Review submitted!" });
+      setSubmitMessage({ type: 'success', text: res.message || tx("Review submitted!") });
       setReviewedItems(prev => ({ ...prev, [activeItem.productId || activeItem.product_id || activeItem.id]: true }));
       setActiveItem(null);
       setFormData({ rating: 0, title: '', content: '', customerName: '' });
     } catch (err) {
-      setSubmitMessage({ type: 'error', text: err.message || "Failed to submit review" });
+      setSubmitMessage({ type: 'error', text: err.message || tx("Failed to submit review") });
     } finally {
       setSubmitting(false);
     }
@@ -145,12 +147,12 @@ export default function ReviewPageModern() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 40, marginBottom: 8 }}>&#11088;</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111', margin: '0 0 8px', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
-            {allReviewed ? "Thank You!" : "How was your order?"}
+            {allReviewed ? tx("Thank You!") : tx("How was your order?")}
           </h1>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0, fontFamily: "'Inter', sans-serif" }}>
             {allReviewed
-              ? "You have reviewed all items from this order."
-              : "Select a product below to leave a review."}
+              ? tx("You have reviewed all items from this order.")
+              : tx("Select a product below to leave a review.")}
           </p>
         </div>
 
@@ -177,7 +179,7 @@ export default function ReviewPageModern() {
                   </div>
                   {!reviewed && (
                     <button type="button" className="mn-write-review-btn" style={{ padding: '8px 16px', fontSize: 13 }}>
-                      {isActive ? "Close" : "Review"}
+                      {isActive ? tx("Close") : tx("Review")}
                     </button>
                   )}
                 </div>
@@ -194,7 +196,7 @@ export default function ReviewPageModern() {
                         type="text"
                         value={formData.customerName}
                         onChange={e => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-                        placeholder={"Your name (optional)"}
+                        placeholder={tx("Your name (optional)")}
                         maxLength={80}
                       />
                     </div>
@@ -204,7 +206,7 @@ export default function ReviewPageModern() {
                         type="text"
                         value={formData.title}
                         onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder={"Summarize your experience"}
+                        placeholder={tx("Summarize your experience")}
                         maxLength={120}
                       />
                     </div>
@@ -213,14 +215,14 @@ export default function ReviewPageModern() {
                       <textarea
                         value={formData.content}
                         onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                        placeholder={"Share your thoughts..."}
+                        placeholder={tx("Share your thoughts...")}
                         rows={3}
                         maxLength={2000}
                       />
                     </div>
                     <div className="mn-review-form-actions">
                       <button type="submit" className="mn-review-submit-btn" disabled={submitting || formData.rating === 0}>
-                        {submitting ? "Submitting..." : "Submit Review"}
+                        {submitting ? tx("Submitting...") : tx("Submit Review")}
                       </button>
                     </div>
                   </form>

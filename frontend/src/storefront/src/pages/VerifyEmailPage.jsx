@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import * as authService from '../services/authService.js';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function VerifyEmailPage() {
+  const { translate: tx } = useShopperTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('verifying');
@@ -15,7 +17,7 @@ export default function VerifyEmailPage() {
 
     if (!token) {
       setStatus('error');
-      setError("Invalid verification link. Missing verification token.");
+      setError(tx("Invalid verification link. Missing verification token."));
       return;
     }
 
@@ -29,7 +31,7 @@ export default function VerifyEmailPage() {
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
       setStatus('error');
-      setError(err.message || "Verification failed. The link may have expired.");
+      setError(err.message || tx("Verification failed. The link may have expired."));
     }
   }
 

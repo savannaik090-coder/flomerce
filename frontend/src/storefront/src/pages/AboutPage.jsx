@@ -4,14 +4,16 @@ import { useSEO } from '../hooks/useSEO.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import TranslatedText from '../components/TranslatedText.jsx';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 import '../styles/about.css';
 
 import { getAboutPageWithBrand } from '../defaults/index.js';
 
 export default function AboutPage() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
   const { isModern } = useTheme();
-  useSEO({ title: "About Us", pageType: 'about' });
+  useSEO({ title: tx("About Us"), pageType: 'about' });
   const brandName = siteConfig?.brandName || siteConfig?.name || 'Our Store';
   const category = siteConfig?.category || '';
 
@@ -60,7 +62,7 @@ export default function AboutPage() {
         <div className="about-hero-overlay" />
         <div className="about-hero-inner">
           <span className="about-hero-label"><TranslatedText text="Our Story" /></span>
-          <h1>{`About ${brandName}`}</h1>
+          <h1>{tx("About {{brand}}").replace('{{brand}}', brandName)}</h1>
           <p><TranslatedText text={heroSubtitle} /></p>
           <div className="about-hero-divider" />
         </div>

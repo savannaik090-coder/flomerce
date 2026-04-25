@@ -5,6 +5,7 @@ import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import TranslatedText from '../TranslatedText';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 function getItemImage(item) {
   return item.product_image || item.thumbnail || item.image_url || (item.images && item.images[0]) || '';
@@ -23,6 +24,7 @@ function getItemProductId(item) {
 }
 
 export default function WishlistPanel({ isOpen, onClose }) {
+  const { translate: tx } = useShopperTranslation();
   const { items, removeFromWishlist } = useContext(WishlistContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
@@ -39,7 +41,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
       <div className={`wishlist-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`wishlist-panel${isOpen ? ' active' : ''}`}>
         <div className="wishlist-panel-header">
-          <h3>{`Your Wishlist (${items.length})`}</h3>
+          <h3>{tx("Your Wishlist ({{count}})").replace('{{count}}', String(items.length))}</h3>
           <button className="close-wishlist-btn" onClick={onClose}>&times;</button>
         </div>
 

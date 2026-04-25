@@ -6,8 +6,11 @@ import { useSEO } from '../hooks/useSEO.js';
 import { apiRequest } from '../services/api.js';
 import '../styles/blog.css';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function BlogPostPage() {
+  const { translate: tx, target, contentLanguage } = useShopperTranslation();
+  const dateLocale = target || contentLanguage || 'en-US';
   const { slug } = useParams();
   const { siteConfig } = useContext(SiteContext);
   const [post, setPost] = useState(null);
@@ -15,7 +18,7 @@ export default function BlogPostPage() {
   const [error, setError] = useState(null);
 
   useSEO({
-    title: post?.meta_title || post?.title || "Blog Post",
+    title: post?.meta_title || post?.title || tx("Blog Post"),
     description: post?.meta_description || post?.excerpt || '',
     pageType: 'article',
   });
@@ -31,7 +34,7 @@ export default function BlogPostPage() {
       const data = await apiRequest(`/api/blog/post/${slug}?siteId=${siteConfig.id}`);
       setPost(data);
     } catch (e) {
-      setError("Blog post not found");
+      setError(tx("Blog post not found"));
     } finally {
       setLoading(false);
     }
@@ -81,7 +84,7 @@ export default function BlogPostPage() {
       )}
 
       <p className="blog-post-meta">
-        {post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
+        {post.published_at ? new Date(post.published_at).toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' }) : ''}
         {post.author ? ` · ${post.author}` : ''}
       </p>
 

@@ -37,7 +37,7 @@ export default function SignupPage() {
         window.history.replaceState({}, '', cleanUrl);
         navigate('/');
       } catch (e) {
-        setError("Google sign-up failed. Please try again.");
+        setError(tx("Google sign-up failed. Please try again."));
       }
     }
   }, [searchParams, login, navigate]);
@@ -85,7 +85,7 @@ export default function SignupPage() {
       }
       setShowVerificationPopup(true);
     } catch (err) {
-      setError(err.message || "Signup failed. Please try again.");
+      setError(err.message || tx("Signup failed. Please try again."));
     } finally {
       setLoading(false);
     }

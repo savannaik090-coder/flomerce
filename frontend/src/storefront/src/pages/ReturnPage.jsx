@@ -40,6 +40,7 @@ export default function ReturnPage() {
   const [lookupEmail, setLookupEmail] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupMessage, setLookupMessage] = useState('');
+  const [lookupSuccess, setLookupSuccess] = useState(false);
 
   const [returnReason, setReturnReason] = useState('');
   const [returnDetail, setReturnDetail] = useState('');
@@ -80,9 +81,11 @@ export default function ReturnPage() {
     setLookupMessage('');
     try {
       await orderService.resendReturnLink(lookupOrderId.trim(), { siteId: siteConfig.id, email: lookupEmail.trim() });
-      setLookupMessage("A return link has been sent to your email. Please check your inbox.");
+      setLookupMessage(tx("A return link has been sent to your email. Please check your inbox."));
+      setLookupSuccess(true);
     } catch (err) {
-      setLookupMessage(err.message || "Could not find this order. Please check your order number and email.");
+      setLookupMessage(err.message || tx("Could not find this order. Please check your order number and email."));
+      setLookupSuccess(false);
     } finally {
       setLookupLoading(false);
     }
@@ -92,7 +95,7 @@ export default function ReturnPage() {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     if (photos.length + files.length > 5) {
-      toast.warning("You can upload a maximum of 5 photos.");
+      toast.warning(tx("You can upload a maximum of 5 photos."));
       return;
     }
     setUploadingPhotos(true);
@@ -112,7 +115,7 @@ export default function ReturnPage() {
       }
       setPhotos(prev => [...prev, ...newPhotos]);
     } catch {
-      toast.error("Failed to upload one or more images. Please try again.");
+      toast.error(tx("Failed to upload one or more images. Please try again."));
     } finally {
       setUploadingPhotos(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -145,7 +148,7 @@ export default function ReturnPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || "Failed to submit return request");
+      setError(err.message || tx("Failed to submit return request"));
     } finally {
       setSubmitting(false);
     }
@@ -153,10 +156,10 @@ export default function ReturnPage() {
 
   const statusColors = { requested: '#ff9800', approved: '#2196f3', rejected: '#e53935', refunded: '#27ae60' };
   const statusLabels = {
-    requested: "Requested",
-    approved: "Approved",
-    rejected: "Rejected",
-    refunded: "Refunded",
+    requested: tx("Requested"),
+    approved: tx("Approved"),
+    rejected: tx("Rejected"),
+    refunded: tx("Refunded"),
   };
 
   return (
@@ -179,7 +182,7 @@ export default function ReturnPage() {
                 <input type="email" value={lookupEmail} onChange={e => setLookupEmail(e.target.value)} placeholder={tx("your@email.com")} style={{ width: '100%', padding: '12px 14px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' }} required />
               </div>
               {lookupMessage && (
-                <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupMessage.includes('sent') ? '#f0fdf4' : '#fef2f2', color: lookupMessage.includes('sent') ? '#166534' : '#991b1b', fontSize: 14 }}>
+                <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 16, background: lookupSuccess ? '#f0fdf4' : '#fef2f2', color: lookupSuccess ? '#166534' : '#991b1b', fontSize: 14 }}>
                   {lookupMessage}
                 </div>
               )}
@@ -267,7 +270,7 @@ export default function ReturnPage() {
 
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 14, color: '#334155' }}>
-                <TranslatedText text="Photos" /> {imageRequired ? "*" : "(optional)"} {photos.length > 0 ? `(${photos.length}/5)` : ''}
+                <TranslatedText text="Photos" /> {imageRequired ? "*" : tx("(optional)")} {photos.length > 0 ? `(${photos.length}/5)` : ''}
               </label>
               {imageRequired && (
                 <p style={{ fontSize: 13, color: '#64748b', marginBottom: 10, lineHeight: 1.5 }}>
@@ -279,7 +282,7 @@ export default function ReturnPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                   {photos.map((url, idx) => (
                     <div key={idx} style={{ position: 'relative', width: 80, height: 80 }}>
-                      <img src={url} alt={`Return photo ${idx + 1}`} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} />
+                      <img src={url} alt={tx("Return photo {{n}}").replace('{{n}}', String(idx + 1))} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }} />
                       <button
                         onClick={() => removePhoto(idx)}
                         style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#e53935', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
@@ -320,8 +323,8 @@ export default function ReturnPage() {
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: 10, fontSize: 14, color: '#334155' }}><TranslatedText text="Preferred resolution *" /></label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {[
-                    { value: 'refund', label: "Refund", icon: 'fa-money-bill-wave', desc: "Get your money back" },
-                    { value: 'replacement', label: "Replacement", icon: 'fa-exchange-alt', desc: "Send me a new item" },
+                    { value: 'refund', label: tx("Refund"), icon: 'fa-money-bill-wave', desc: tx("Get your money back") },
+                    { value: 'replacement', label: tx("Replacement"), icon: 'fa-exchange-alt', desc: tx("Send me a new item") },
                   ].map(opt => (
                     <label
                       key={opt.value}

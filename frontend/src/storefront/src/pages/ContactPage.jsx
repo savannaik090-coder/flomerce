@@ -336,9 +336,10 @@ function ModernContactPage({ siteConfig, brandName, phone, email, address, socia
 }
 
 export default function ContactPage() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
   const { isModern } = useTheme();
-  useSEO({ title: "Contact Us", pageType: 'contact' });
+  useSEO({ title: tx("Contact Us"), pageType: 'contact' });
   const brandName = siteConfig?.brandName || 'Our Store';
   const phone = siteConfig?.phone || '';
   const email = siteConfig?.email || '';

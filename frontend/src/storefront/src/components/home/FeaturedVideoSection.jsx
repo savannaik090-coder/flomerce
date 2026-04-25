@@ -3,8 +3,10 @@ import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 
 import { getFeaturedVideoDefaults } from '../../defaults/index.js';
 import TranslatedText from '../TranslatedText.jsx';
+import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
 export default function FeaturedVideoSection() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useSiteConfig();
 
   const settings = siteConfig?.settings || {};
@@ -21,7 +23,7 @@ export default function FeaturedVideoSection() {
     if (chatLink) {
       window.open(chatLink, '_blank');
     } else if (phone) {
-      const msg = encodeURIComponent("Hi! I'm interested. Can you help me?");
+      const msg = encodeURIComponent(tx("Hi! I'm interested. Can you help me?"));
       window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${msg}`, '_blank');
     }
   };

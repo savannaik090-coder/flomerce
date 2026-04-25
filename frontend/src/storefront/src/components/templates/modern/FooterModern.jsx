@@ -4,9 +4,11 @@ import { SiteContext } from '../../../context/SiteContext.jsx';
 import { PLATFORM_URL } from '../../../config.js';
 import { isPlanAtLeast } from '../../../utils/plan.js';
 import TranslatedText from '../../TranslatedText.jsx';
+import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
 import './modern.css';
 
 export default function FooterModern() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const [openSections, setOpenSections] = useState({});
   const categories = siteConfig?.categories || [];
@@ -142,12 +144,12 @@ export default function FooterModern() {
             <div className="mn-footer-app-buttons">
               {showAppStore && (
                 <a href={appBanner.appStoreUrl || '#'} target="_blank" rel="noopener noreferrer">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt={"App Store"} style={{ height: 36 }} />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt={tx("App Store")} style={{ height: 36 }} />
                 </a>
               )}
               {showPlayStore && (
                 <a href={appBanner.playStoreUrl || '#'} target="_blank" rel="noopener noreferrer">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt={"Google Play"} style={{ height: 36 }} />
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt={tx("Google Play")} style={{ height: 36 }} />
                 </a>
               )}
             </div>

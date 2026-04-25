@@ -3,11 +3,13 @@ import { SiteContext } from '../context/SiteContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import '../styles/faq.css';
 import TranslatedText from '../components/TranslatedText';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 
 export default function FaqPage() {
+  const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
   const [openIndex, setOpenIndex] = useState(null);
-  useSEO({ title: "FAQ", pageType: 'faq' });
+  useSEO({ title: tx("FAQ"), pageType: 'faq' });
 
   let settings = siteConfig?.settings || {};
   if (typeof settings === 'string') {

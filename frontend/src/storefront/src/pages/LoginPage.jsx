@@ -37,12 +37,12 @@ export default function LoginPage() {
         const userData = JSON.parse(googleCustomer);
         setAuthToken(googleToken);
         login(userData, googleToken);
-        setSuccess("Login successful!");
+        setSuccess(tx("Login successful!"));
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
         setTimeout(() => navigate('/'), 500);
       } catch (e) {
-        setError("Google sign-in failed. Please try again.");
+        setError(tx("Google sign-in failed. Please try again."));
       }
     }
   }, [searchParams, login, navigate]);
@@ -61,7 +61,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { setError("Please enter both email and password"); return; }
+    if (!email || !password) { setError(tx("Please enter both email and password")); return; }
     setLoading(true);
     setError('');
     try {
@@ -69,14 +69,14 @@ export default function LoginPage() {
       const userData = result.customer || result.data;
       const token = result.token;
       login(userData, token);
-      setSuccess("Login successful!");
+      setSuccess(tx("Login successful!"));
       setTimeout(() => navigate('/'), 500);
     } catch (err) {
       if (err.code === 'EMAIL_NOT_VERIFIED') {
         setVerificationEmail(email);
         setShowVerificationNotice(true);
       } else {
-        setError(err.message || "Login failed. Please check your credentials.");
+        setError(err.message || tx("Login failed. Please check your credentials."));
       }
     } finally {
       setLoading(false);
@@ -84,15 +84,15 @@ export default function LoginPage() {
   };
 
   const handleForgotPassword = async () => {
-    if (!resetEmail) { setResetError("Please enter your email address"); return; }
+    if (!resetEmail) { setResetError(tx("Please enter your email address")); return; }
     setResetLoading(true);
     setResetError('');
     setResetSuccess('');
     try {
       await authService.requestPasswordReset(resetEmail, siteConfig?.id);
-      setResetSuccess("Password reset email sent! Check your inbox.");
+      setResetSuccess(tx("Password reset email sent! Check your inbox."));
     } catch (err) {
-      setResetError(err.message || "Failed to send reset email");
+      setResetError(err.message || tx("Failed to send reset email"));
     } finally {
       setResetLoading(false);
     }
@@ -103,9 +103,9 @@ export default function LoginPage() {
     setResendSuccess('');
     try {
       await authService.resendVerification(verificationEmail, siteConfig?.id);
-      setResendSuccess("Verification email sent! Check your inbox.");
+      setResendSuccess(tx("Verification email sent! Check your inbox."));
     } catch {
-      setResendSuccess("Failed to resend. Please try again.");
+      setResendSuccess(tx("Failed to resend. Please try again."));
     } finally {
       setResendLoading(false);
     }

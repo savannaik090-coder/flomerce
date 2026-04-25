@@ -13,6 +13,7 @@ import RelatedProducts from '../components/product/RelatedProducts.jsx';
 import ProductReviews from '../components/product/ProductReviews.jsx';
 import ProductReviewsModern from '../components/templates/modern/ProductReviewsModern.jsx';
 import TranslatedText from '../components/TranslatedText.jsx';
+import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
 import '../styles/product-detail.css';
 
 import { getPolicies } from '../defaults/index.js';
@@ -54,6 +55,7 @@ function PolicyItem({ label, value }) {
 }
 
 export default function ProductDetailPage() {
+  const { translate: tx } = useShopperTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { siteConfig } = useContext(SiteContext);
@@ -83,7 +85,7 @@ export default function ProductDetailPage() {
         const result = await productService.getProductById(id, siteConfig?.id);
         const prod = result.data || result.product || result;
         if (!prod || !prod.id) {
-          setError("Product not found");
+          setError(tx("Product not found"));
           return;
         }
 
@@ -109,7 +111,7 @@ export default function ProductDetailPage() {
         setProduct(prod);
       } catch (err) {
         console.error('Failed to load product:', err);
-        setError("Failed to load product");
+        setError(tx("Failed to load product"));
       } finally {
         setLoading(false);
       }
