@@ -738,9 +738,10 @@ async function handlePWAManifest(request, env) {
 async function translateSiteInfoInPlace(env, siteId, lang, data) {
   const slots = [];
 
-  if (typeof data.brand_name === 'string' && data.brand_name) {
-    slots.push({ ref: data, key: 'brand_name', value: data.brand_name });
-  }
+  // brand_name is intentionally NOT translated. Brand names are proper nouns
+  // (logos, packaging, social handles all use the original spelling) and
+  // machine translators routinely mangle short brand strings. If a merchant
+  // wants a localized brand label they can override per-language settings.
 
   // Deep-walk settings JSON, collecting every text-bearing leaf.
   // Keys whose name (case-insensitive) matches a known translatable
