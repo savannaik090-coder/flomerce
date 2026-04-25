@@ -1,6 +1,7 @@
 import { handleAuth } from './platform/auth-worker.js';
 import { handleSites } from './platform/sites-worker.js';
 import { handleTranslateProxy, handleTranslateCachePurge } from './storefront/translate-worker.js';
+import { handleTranslationsBundle, TRANSLATIONS_MANIFEST_HASH } from './storefront/translations-bundle.js';
 import { handleProducts, updateProductStock } from './storefront/products-worker.js';
 import { handleOrders } from './storefront/orders-worker.js';
 import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
@@ -451,6 +452,9 @@ async function handleAPI(request, env, path, ctx) {
         }
         return handleTranslateProxy(request, env, path, ctx);
       }
+      if (pathParts[3] === 'translations') {
+        return handleTranslationsBundle(request, env, path, ctx);
+      }
       return errorResponse('Not found', 404);
 
     case 'i18n':
@@ -598,6 +602,12 @@ async function handleSiteInfo(request, env) {
       pageSEO,
       googleClientId,
       vapidPublicKey,
+      // Bundle URL cache-buster for the storefront's pre-translated chrome
+      // bundle. Embeds the manifest hash (bumped on every code deploy that
+      // adds a literal) plus the merchant's translator config (so toggling
+      // off / changing allowed-languages invalidates immediately).
+      translationsBundleVersion: TRANSLATIONS_MANIFEST_HASH +
+        '.' + (site.translator_enabled ? '1' : '0'),
     };
 
     if (lang && site.id) {

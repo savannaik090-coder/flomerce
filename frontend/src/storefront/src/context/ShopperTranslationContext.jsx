@@ -1,42 +1,43 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { SiteContext } from './SiteContext.jsx';
 import { API_BASE } from '../config.js';
 
 /**
- * System B (per-site shopper translation) client. Wraps the storefront
- * with a lightweight runtime that batches every <TranslatedText> render
- * into one POST per render cycle, caches results in sessionStorage
- * keyed by ${siteId}:${target}:${textHash}, and gracefully falls back
- * to the original on cache miss until the proxy responds.
+ * Pre-translated bundle client.
+ *
+ * On mount (and on language change) this provider does ONE GET to
+ *   /api/storefront/<siteId>/translations/<lang>?v=<bundleVersion>
+ * which returns the entire dictionary of every chrome literal and every
+ * default-content string the storefront could ever render. Once the
+ * dict is in memory, every <TranslatedText> is a synchronous
+ * `dict[hash(text)] || text` lookup — zero per-render network calls,
+ * zero post-mount fetches, zero flicker.
+ *
+ * NO browser-side caching: no Map outside this React state, no
+ * sessionStorage, no localStorage of translations. The Cloudflare edge
+ * is the only cache; URL versioning by `bundleVersion` guarantees a
+ * cold fetch the moment a deploy or a merchant-config change makes the
+ * dict stale.
+ *
+ * Render is BLOCKED behind a small full-page loader during the (one-
+ * time, edge-cached after the first global request) bundle fetch, so
+ * shoppers never see English flash before Hindi appears.
  *
  * Source-of-truth language: localStorage `flomerce_lang`. The
- * LanguageSwitcher writes it and dispatches a `flomerce_lang_change`
- * event so this provider re-renders with the new target language.
+ * LanguageSwitcher writes it and dispatches `flomerce_lang_change` so
+ * this provider re-fetches with the new target.
  */
 
 export const ShopperTranslationContext = createContext(null);
 
-const STORAGE_PREFIX = 'flomerce_xlt_';
-function storageKey(siteId, target, hash) {
-  return `${STORAGE_PREFIX}${siteId}:${target}:${hash}`;
-}
-
 function clientHash(s) {
+  // Must match djb2Hash in backend/workers/storefront/translations-bundle.js
   let h = 5381;
   const str = String(s ?? '');
   for (let i = 0; i < str.length; i++) {
     h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
   }
   return h.toString(36);
-}
-
-function readSessionCache(siteId, target, hash) {
-  try { return sessionStorage.getItem(storageKey(siteId, target, hash)); }
-  catch (e) { return null; }
-}
-function writeSessionCache(siteId, target, hash, value) {
-  try { sessionStorage.setItem(storageKey(siteId, target, hash), value); }
-  catch (e) { /* quota — ignore */ }
 }
 
 function readStoredLanguage(fallback) {
@@ -48,11 +49,43 @@ function readStoredLanguage(fallback) {
   }
 }
 
+function FullPageLoader() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading translations"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          border: '3px solid #e5e7eb',
+          borderTopColor: '#111827',
+          borderRadius: '50%',
+          animation: 'flomerce-xlt-spin 0.8s linear infinite',
+        }}
+      />
+      <style>{`@keyframes flomerce-xlt-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 export function ShopperTranslationProvider({ children }) {
   const { siteConfig } = useContext(SiteContext) || {};
   const siteId = siteConfig?.id || null;
-  const contentLanguage = siteConfig?.contentLanguage || siteConfig?.content_language || 'en';
+  const contentLanguage = (siteConfig?.contentLanguage || siteConfig?.content_language || 'en').toLowerCase();
   const enabled = !!(siteConfig?.translatorEnabled || siteConfig?.translator_enabled);
+  const bundleVersion = siteConfig?.translationsBundleVersion || siteConfig?.translations_bundle_version || null;
+
   const allowedLanguages = useMemo(() => {
     const raw = siteConfig?.translatorLanguages || siteConfig?.translator_languages;
     if (Array.isArray(raw)) return raw;
@@ -82,91 +115,84 @@ export function ShopperTranslationProvider({ children }) {
     };
   }, [contentLanguage]);
 
+  // Resolve the effective target language. Null means "render source as-is."
   const target = useMemo(() => {
+    if (!language) return null;
+    if (language.toLowerCase() === contentLanguage) return null;
     if (!enabled) return null;
-    if (!language || language === contentLanguage) return null;
-    if (!allowedLanguages.includes(language)) return null;
-    return language;
+    if (allowedLanguages.length > 0 && !allowedLanguages.includes(language)) return null;
+    return language.toLowerCase();
   }, [enabled, language, contentLanguage, allowedLanguages]);
 
-  const cacheRef = useRef(new Map());
-  const pendingRef = useRef(new Map());
-  const flushTimerRef = useRef(null);
-  const [, forceTick] = useState(0);
+  // dict: { [hash(source)]: translated }, keyed exclusively by clientHash.
+  const [dict, setDict] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadedKey, setLoadedKey] = useState(null);
+  // Safety net: if SiteContext never resolves siteId (network failure,
+  // backend down, etc.) we MUST NOT block the storefront forever behind
+  // the spinner. After SITE_TIMEOUT_MS we unblock with empty dict so
+  // the shopper at least sees source-language content instead of a
+  // stuck loader.
+  const [siteTimedOut, setSiteTimedOut] = useState(false);
+  useEffect(() => {
+    if (siteId) { setSiteTimedOut(false); return undefined; }
+    const SITE_TIMEOUT_MS = 5000;
+    const t = setTimeout(() => setSiteTimedOut(true), SITE_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [siteId]);
 
   useEffect(() => {
-    cacheRef.current = new Map();
-    pendingRef.current = new Map();
-    if (flushTimerRef.current) {
-      clearTimeout(flushTimerRef.current);
-      flushTimerRef.current = null;
+    // No siteId yet (SiteContext still loading) → wait, render nothing.
+    if (!siteId) {
+      setDict(null);
+      setLoadedKey(null);
+      return undefined;
     }
-    forceTick((n) => n + 1);
-  }, [target, siteId]);
-
-  useEffect(() => () => {
-    if (flushTimerRef.current) {
-      clearTimeout(flushTimerRef.current);
-      flushTimerRef.current = null;
+    // Source-language shopper or translator off → no fetch needed,
+    // unblock render with empty dict.
+    if (!target) {
+      setDict({});
+      setLoadedKey(`${siteId}::${contentLanguage}::source`);
+      setLoading(false);
+      return undefined;
     }
-  }, []);
 
-  const flush = useCallback(async () => {
-    flushTimerRef.current = null;
-    if (!siteId || !target) return;
-    const pending = pendingRef.current;
-    if (pending.size === 0) return;
-    const batch = Array.from(pending.entries());
-    pendingRef.current = new Map();
+    const key = `${siteId}::${target}::${bundleVersion || 'novers'}`;
+    if (loadedKey === key && dict) return undefined;
 
-    const texts = batch.map(([, v]) => v.text);
-    try {
-      const res = await fetch(`${API_BASE}/api/storefront/${siteId}/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texts, target }),
+    let cancelled = false;
+    setLoading(true);
+    const versionParam = bundleVersion ? `?v=${encodeURIComponent(bundleVersion)}` : '';
+    const url = `${API_BASE}/api/storefront/${siteId}/translations/${target}${versionParam}`;
+    fetch(url, { method: 'GET' })
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        const next = (json && json.dict && typeof json.dict === 'object') ? json.dict : {};
+        setDict(next);
+        setLoadedKey(key);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Network failure: unblock render with empty dict so shopper sees
+        // source text instead of an infinite loader. Never throw.
+        setDict({});
+        setLoadedKey(key);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-      const json = await res.json().catch(() => null);
-      const translations = json?.data?.translations;
-      if (Array.isArray(translations) && translations.length === texts.length) {
-        for (let i = 0; i < batch.length; i++) {
-          const [hash, entry] = batch[i];
-          const xlated = translations[i] ?? entry.text;
-          cacheRef.current.set(hash, xlated);
-          writeSessionCache(siteId, target, hash, xlated);
-        }
-      } else {
-        for (const [hash, entry] of batch) cacheRef.current.set(hash, entry.text);
-      }
-    } catch (e) {
-      for (const [hash, entry] of batch) cacheRef.current.set(hash, entry.text);
-    }
-    forceTick((n) => n + 1);
-  }, [siteId, target]);
-
-  const scheduleFlush = useCallback(() => {
-    if (flushTimerRef.current) return;
-    flushTimerRef.current = setTimeout(flush, 30);
-  }, [flush]);
+    return () => { cancelled = true; };
+  }, [siteId, target, bundleVersion, contentLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const translate = useCallback((text) => {
     if (text == null || text === '') return text;
     if (typeof text !== 'string') return text;
-    if (!target) return text;
+    if (!target || !dict) return text;
     const hash = clientHash(text);
-    const mem = cacheRef.current.get(hash);
-    if (mem != null) return mem;
-    const persisted = readSessionCache(siteId, target, hash);
-    if (persisted != null) {
-      cacheRef.current.set(hash, persisted);
-      return persisted;
-    }
-    if (!pendingRef.current.has(hash)) {
-      pendingRef.current.set(hash, { text });
-      scheduleFlush();
-    }
-    return text;
-  }, [target, siteId, scheduleFlush]);
+    const v = dict[hash];
+    return (v != null && v !== '') ? v : text;
+  }, [target, dict]);
 
   const value = useMemo(() => ({
     translate,
@@ -175,15 +201,34 @@ export function ShopperTranslationProvider({ children }) {
     contentLanguage,
     allowedLanguages,
     siteId,
-  }), [translate, target, contentLanguage, allowedLanguages, siteId]);
+    ready: dict != null,
+    loading,
+  }), [translate, target, contentLanguage, allowedLanguages, siteId, dict, loading]);
+
+  // Block render until the dict is in memory. SiteContext is still
+  // resolving (siteId == null) → also show loader. The dict is empty
+  // {} for source-language shoppers — that's still "ready", they
+  // unblock immediately. If SiteContext takes longer than the safety
+  // timeout we unblock anyway with the source language so the storefront
+  // never gets stuck behind a permanent spinner.
+  const ready = (!!siteId && dict != null) || siteTimedOut;
 
   return (
     <ShopperTranslationContext.Provider value={value}>
-      {children}
+      {ready ? children : <FullPageLoader />}
     </ShopperTranslationContext.Provider>
   );
 }
 
 export function useShopperTranslation() {
-  return useContext(ShopperTranslationContext) || { translate: (t) => t, enabled: false, target: null, contentLanguage: 'en', allowedLanguages: [], siteId: null };
+  return useContext(ShopperTranslationContext) || {
+    translate: (t) => t,
+    enabled: false,
+    target: null,
+    contentLanguage: 'en',
+    allowedLanguages: [],
+    siteId: null,
+    ready: true,
+    loading: false,
+  };
 }

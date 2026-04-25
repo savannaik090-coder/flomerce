@@ -56,7 +56,14 @@ async function sha256Hex(text) {
  * Callers should treat `translations` as authoritative regardless of error.
  * Originals are always returned in error paths so the storefront keeps working.
  */
-export async function translateContentBatch(env, siteId, texts, target) {
+export async function translateContentBatch(env, siteId, texts, target, options = {}) {
+  // options.bypassDailyCap: skip the per-site daily char ceiling. Used by
+  // the pre-translated chrome/defaults bundle endpoint, which must be
+  // able to warm a fresh language on cold cache without eating the
+  // merchant's product-translation budget for the day. The bundle is
+  // strictly bounded (~442 strings × allowed-langs, all permanently
+  // D1-cached after one warm) so this is safe.
+  const { bypassDailyCap = false } = options;
   const safeTexts = Array.isArray(texts)
     ? texts.map((t) => (typeof t === 'string' ? t : ''))
     : [];
@@ -122,7 +129,7 @@ export async function translateContentBatch(env, siteId, texts, target) {
     console.error('[server-translator] daily-usage lookup failed:', e.message || e);
   }
 
-  if (dailyUsed >= dailyCap) {
+  if (!bypassDailyCap && dailyUsed >= dailyCap) {
     return { translations: safeTexts, capped: true, error: null, cacheHits: 0, cacheMisses: safeTexts.length, charsBilled: 0 };
   }
 
@@ -176,7 +183,7 @@ export async function translateContentBatch(env, siteId, texts, target) {
     return { translations: out, capped: false, error: null, cacheHits, cacheMisses: 0, charsBilled: 0 };
   }
 
-  const remaining = Math.max(0, dailyCap - dailyUsed);
+  const remaining = bypassDailyCap ? Infinity : Math.max(0, dailyCap - dailyUsed);
   const sliceForApi = [];
   let acc = 0;
   let cutoff = missTexts.length;
