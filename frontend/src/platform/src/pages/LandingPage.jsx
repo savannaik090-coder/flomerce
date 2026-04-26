@@ -32,41 +32,156 @@ function useScrollReveal() {
   }, []);
 }
 
-const ICONS = {
-  themes: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 9h18"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>),
-  customizer: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"/><path d="M2 2l7.6 7.6"/><circle cx="11" cy="11" r="2"/></svg>),
-  currency: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>),
-  translate: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 8h14"/><path d="M9 5v3"/><path d="M11 19l4-9 4 9"/><path d="M12 17h6"/><path d="M5 12c2 4 5 6 8 6"/></svg>),
-  accounts: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>),
-  variants: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>),
-  orders: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>),
-  payments: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>),
-  invoicing: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16l3-2 3 2 3-2 3 2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>),
-  cart: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1.5"/><circle cx="18" cy="21" r="1.5"/><path d="M3 3h2l2.7 12.5a2 2 0 0 0 2 1.5h7.6a2 2 0 0 0 2-1.4L22 7H6"/><path d="M16 3l3 3-3 3"/></svg>),
-  inventory: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 11v10"/></svg>),
-  transfers: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h13l-3-3"/><path d="M21 17H8l3 3"/></svg>),
-  shipping: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>),
-  domain: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>),
-  staff: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg>),
-  push: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>),
-  whatsapp: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3.6-7.2L21 3l-1.8 3.8A9 9 0 0 1 21 12z"/><path d="M8 12c0 2.5 1.5 4 4 4l1-1c-.5-.5-1-1-1-2 0-1 .5-1.5 1-2l-1-1c-2.5 0-4 1.5-4 2z"/></svg>),
-  discounts: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12L12 4H4v8l8 8z"/><circle cx="8" cy="8" r="1.5"/><path d="M9 15l6-6"/></svg>),
-  seo: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>),
-  reviews: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 6.5 7 1-5 4.8 1.2 7-6.2-3.4L5.8 21 7 14.3 2 9.5l7-1z"/></svg>),
-  analytics: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-7"/></svg>),
-  conversion: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9-6-18-3 9H2"/></svg>),
-  reports: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>),
-  geography: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>),
-  attribution: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="M8 8l4 8M16 8l-4 8"/></svg>),
+const FEATURE_CATEGORIES = [
+  { key: 'storefront', accent: 'rose',    items: ['themes', 'currency', 'accounts'] },
+  { key: 'selling',    accent: 'emerald', items: ['payments', 'invoicing', 'variants'] },
+  { key: 'operations', accent: 'blue',    items: ['inventory', 'shipping', 'staff'] },
+  { key: 'marketing',  accent: 'orange',  items: ['whatsapp', 'push', 'reviews'] },
+  { key: 'insights',   accent: 'violet',  items: ['analytics', 'reports', 'attribution'] },
+];
+
+const CATEGORY_ICONS = {
+  storefront: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg>),
+  selling:    (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>),
+  operations: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4"/><path d="M12 11v10"/></svg>),
+  marketing:  (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3.6-7.2L21 3l-1.8 3.8A9 9 0 0 1 21 12z"/><path d="M8 12c0 2.5 1.5 4 4 4"/></svg>),
+  insights:   (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-7"/></svg>),
 };
 
-const FEATURE_CATEGORIES = [
-  { key: 'storefront', items: ['themes', 'customizer', 'currency', 'translate', 'accounts'] },
-  { key: 'selling', items: ['variants', 'orders', 'payments', 'invoicing', 'cart'] },
-  { key: 'operations', items: ['inventory', 'transfers', 'shipping', 'domain', 'staff'] },
-  { key: 'marketing', items: ['push', 'whatsapp', 'discounts', 'seo', 'reviews'] },
-  { key: 'insights', items: ['analytics', 'conversion', 'reports', 'geography', 'attribution'] },
-];
+const CHECK_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6L9 17l-5-5"/>
+  </svg>
+);
+
+function FeatureMock({ kind, t }) {
+  if (kind === 'storefront') {
+    return (
+      <div className="fmock fmock--storefront">
+        <div className="fmock-store">
+          <div className="fmock-store-bar">
+            <div className="fmock-store-dot" />
+            <span className="fmock-store-brand">{t('featureMocks.storefrontBrand')}</span>
+            <div className="fmock-store-pills">
+              <span /><span /><span />
+            </div>
+          </div>
+          <div className="fmock-store-hero">
+            <span className="fmock-store-tag">{t('featureMocks.storefrontTag')}</span>
+          </div>
+          <div className="fmock-store-grid">
+            <div /><div /><div />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'selling') {
+    return (
+      <div className="fmock fmock--selling">
+        <div className="fmock-receipt">
+          <div className="fmock-receipt-head">
+            <div className="fmock-receipt-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            </div>
+            <div className="fmock-receipt-meta">
+              <span className="fmock-receipt-id">{t('featureMocks.orderId')}</span>
+              <span className="fmock-receipt-status">{t('featureMocks.orderStatus')}</span>
+            </div>
+          </div>
+          <div className="fmock-receipt-rows">
+            <div className="fmock-receipt-row"><span className="fmock-bar fmock-bar--lg" /><span className="fmock-amt">{t('featureMocks.orderItem1Amount')}</span></div>
+            <div className="fmock-receipt-row"><span className="fmock-bar fmock-bar--md" /><span className="fmock-amt">{t('featureMocks.orderItem2Amount')}</span></div>
+          </div>
+          <div className="fmock-receipt-total">
+            <span>{t('featureMocks.orderTotal')}</span>
+            <strong>{t('featureMocks.orderTotalAmount')}</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'operations') {
+    return (
+      <div className="fmock fmock--operations">
+        <div className="fmock-board">
+          <div className="fmock-board-head">
+            <span className="fmock-board-title">{t('featureMocks.inventoryHeading')}</span>
+            <span className="fmock-board-filter">{t('featureMocks.inventoryFilter')}</span>
+          </div>
+          {[24, 36, 48].map((n) => (
+            <div key={n} className="fmock-board-row">
+              <span className="fmock-board-thumb" />
+              <span className="fmock-board-bars">
+                <span className="fmock-bar fmock-bar--lg" />
+                <span className="fmock-bar fmock-bar--sm" />
+              </span>
+              <span className="fmock-board-count">{n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'marketing') {
+    return (
+      <div className="fmock fmock--marketing">
+        <div className="fmock-promo">
+          <div className="fmock-promo-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div className="fmock-promo-text">
+            <strong>{t('featureMocks.promoTitle')}</strong>
+            <span>{t('featureMocks.promoDesc')}</span>
+          </div>
+        </div>
+        <div className="fmock-chat">
+          <div className="fmock-bubble fmock-bubble--in">
+            <span className="fmock-bar fmock-bar--lg" />
+            <span className="fmock-bar fmock-bar--md" />
+          </div>
+          <div className="fmock-bubble fmock-bubble--out">
+            <span className="fmock-bar fmock-bar--lg" />
+            <span className="fmock-bar fmock-bar--sm" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'insights') {
+    return (
+      <div className="fmock fmock--insights">
+        <div className="fmock-dash-row">
+          <div className="fmock-dash-card fmock-dash-card--main">
+            <span className="fmock-dash-label">{t('featureMocks.dashRevenueLabel')}</span>
+            <strong className="fmock-dash-value">{t('featureMocks.dashRevenueValue')}</strong>
+            <div className="fmock-dash-bars">
+              {[40, 62, 32, 78, 50, 92, 70].map((h, i) => (
+                <span key={i} className={`fmock-dash-bar${i === 5 ? ' is-peak' : ''}`} style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="fmock-dash-card fmock-dash-card--side">
+            <span className="fmock-dash-label">{t('featureMocks.dashVisitorsLabel')}</span>
+            <strong className="fmock-dash-value">{t('featureMocks.dashVisitorsValue')}</strong>
+            <span className="fmock-dash-trend">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+              {t('featureMocks.dashTrend')}
+            </span>
+          </div>
+        </div>
+        <div className="fmock-dash-meter">
+          <div className="fmock-dash-meter-head">
+            <span>{t('featureMocks.dashMobileLabel')}</span>
+            <strong>{t('featureMocks.dashMobileValue')}</strong>
+          </div>
+          <div className="fmock-dash-meter-track"><div className="fmock-dash-meter-fill" /></div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
 
 const PARTNER_KEYS = ['razorpay', 'stripe', 'shiprocket', 'whatsapp', 'translator', 'gsc'];
 
@@ -188,29 +303,41 @@ export default function LandingPage() {
         </section>
 
         <section id="features" className="landing-section features-section reveal">
-          <div className="section-header">
+          <div className="section-header section-header--features">
             <span className="section-pill">{t('featuresPill')}</span>
-            <h2>{t('featuresTitle')}</h2>
+            <h2 className="features-title">
+              {t('featuresTitleLine1')}{' '}
+              <span className="features-title-accent">{t('featuresTitleAccent')}</span>
+              {t('featuresTitleLine2') ? <> {t('featuresTitleLine2')}</> : null}
+            </h2>
             <p>{t('featuresSubtitle')}</p>
           </div>
-          <div className="features-categories">
-            {FEATURE_CATEGORIES.map((cat) => (
-              <div key={cat.key} className="feature-category">
-                <div className="feature-cat-head">
-                  <span className="feature-cat-label">{t(`features.categories.${cat.key}.label`)}</span>
-                  <p className="feature-cat-intro">{t(`features.categories.${cat.key}.intro`)}</p>
-                </div>
-                <div className="feature-cards">
-                  {cat.items.map((item) => (
-                    <div key={item} className="feature-card">
-                      <div className="feature-icon-wrap">{ICONS[item]}</div>
-                      <h4>{t(`features.categories.${cat.key}.items.${item}.title`)}</h4>
-                      <p>{t(`features.categories.${cat.key}.items.${item}.desc`)}</p>
+          <div className="features-vrow-wrap">
+            <div className="features-vrow">
+              {FEATURE_CATEGORIES.map((cat) => (
+                <article key={cat.key} className={`feature-vcard feature-vcard--${cat.accent}`}>
+                  <div className="feature-vcard__visual">
+                    <FeatureMock kind={cat.key} t={t} />
+                  </div>
+                  <div className="feature-vcard__body">
+                    <div className="feature-vcard__eyebrow">
+                      <span className="feature-vcard__eyebrow-ico" aria-hidden="true">{CATEGORY_ICONS[cat.key]}</span>
+                      {t(`features.categories.${cat.key}.label`)}
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                    <h3 className="feature-vcard__headline">{t(`features.categories.${cat.key}.intro`)}</h3>
+                    <ul className="feature-vcard__bullets">
+                      {cat.items.map((item) => (
+                        <li key={item}>
+                          <span className="feature-vcard__check" aria-hidden="true">{CHECK_ICON}</span>
+                          {t(`features.categories.${cat.key}.items.${item}.title`)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="features-vrow-fade" aria-hidden="true" />
           </div>
         </section>
 

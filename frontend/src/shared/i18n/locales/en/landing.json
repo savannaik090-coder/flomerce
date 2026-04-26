@@ -40,9 +40,34 @@
     "translator": "Microsoft Translator",
     "gsc": "Google Search Console"
   },
-  "featuresPill": "Features",
+  "featuresPill": "The complete commerce platform",
   "featuresTitle": "Everything you need to run a serious online business",
+  "featuresTitleLine1": "Everything you need to run",
+  "featuresTitleAccent": "a serious online business",
+  "featuresTitleLine2": "",
   "featuresSubtitle": "From storefront to fulfilment to marketing — Flomerce covers the full lifecycle so you can focus on the brand, not the plumbing.",
+  "featureMocks": {
+    "storefrontBrand": "Lumen",
+    "storefrontTag": "New drop",
+    "orderId": "Order #4092",
+    "orderStatus": "Paid",
+    "orderTotal": "Total",
+    "orderTotalAmount": "₹1,798",
+    "orderItem1Amount": "₹1,499",
+    "orderItem2Amount": "₹299",
+    "inventoryHeading": "Inventory",
+    "inventoryFilter": "All locations",
+    "inventoryUnit": "in stock",
+    "promoTitle": "Flash sale active",
+    "promoDesc": "Use DIWALI20 for 20% off jewellery",
+    "dashRevenueLabel": "Revenue",
+    "dashRevenueValue": "₹42.5k",
+    "dashVisitorsLabel": "Visitors",
+    "dashVisitorsValue": "1.2k",
+    "dashTrend": "+14%",
+    "dashMobileLabel": "Mobile traffic",
+    "dashMobileValue": "85%"
+  },
   "features": {
     "categories": {
       "storefront": {
