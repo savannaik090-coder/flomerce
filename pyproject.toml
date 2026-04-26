@@ -4,3 +4,16 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = []
+
+# This is a Node.js project — there are no Python packages to install.
+# Without this section, build systems (e.g. Cloudflare Pages) auto-detect
+# `pyproject.toml`, run `pip install .`, and fail because setuptools can't
+# decide which top-level directory (backend, frontend, node_modules, …) is
+# "the package." Declaring an empty package list makes `pip install .` a
+# no-op so the Node build can proceed.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
