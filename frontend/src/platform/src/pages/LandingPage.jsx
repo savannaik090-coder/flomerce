@@ -74,7 +74,9 @@ export default function LandingPage() {
   const { t } = useTranslation('landing');
   const [showPwa, setShowPwa] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
+  const [heroVideoLoaded, setHeroVideoLoaded] = useState(false);
   const videoRef = useRef(null);
+  const heroVideoRef = useRef(null);
   const deferredPromptRef = useRef(null);
 
   useScrollReveal();
@@ -97,6 +99,26 @@ export default function LandingPage() {
     };
     if (vid.readyState >= 2) tryPlay();
     else vid.addEventListener('canplay', tryPlay, { once: true });
+  }, []);
+
+  useEffect(() => {
+    const vid = heroVideoRef.current;
+    if (!vid) return;
+    const onLoaded = () => setHeroVideoLoaded(true);
+    const tryPlay = () => {
+      vid.play().then(() => setHeroVideoLoaded(true)).catch(() => {});
+    };
+    if (vid.readyState >= 2) {
+      onLoaded();
+      tryPlay();
+    } else {
+      vid.addEventListener('loadeddata', onLoaded, { once: true });
+      vid.addEventListener('canplay', tryPlay, { once: true });
+    }
+    return () => {
+      vid.removeEventListener('loadeddata', onLoaded);
+      vid.removeEventListener('canplay', tryPlay);
+    };
   }, []);
 
   const handlePlayVideo = useCallback(() => {
@@ -129,13 +151,20 @@ export default function LandingPage() {
 
         <section className="hero hero--video">
           <div className="hero-video-wrap" aria-hidden="true">
+            <div
+              className="hero-video-poster"
+              style={{ opacity: heroVideoLoaded ? 0 : 1 }}
+            />
             <video
+              ref={heroVideoRef}
               className="hero-video"
               autoPlay
               muted
               loop
               playsInline
               preload="auto"
+              poster="/assets/images/storefront-preview.jpg"
+              style={{ opacity: heroVideoLoaded ? 1 : 0 }}
             >
               <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
             </video>
