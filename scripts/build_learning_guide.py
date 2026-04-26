@@ -333,19 +333,6 @@ CONTENT = r"""
 
 # 1. Welcome to Flomerce
 
-## About the founder
-
-Flomerce was founded by **Savan Naik**, a full-stack developer based in
-Karnataka, India. The platform was built to give small businesses a faster,
-cheaper, and friendlier way to launch their online stores than the
-heavyweight options on the market. Flomerce serves the **Indian e-commerce
-market first**, with first-class support for Razorpay, Shiprocket, WhatsApp
-Business, and the rupee — but the architecture is global from day one, so a
-merchant anywhere in the world can spin up a storefront on the same
-platform. New team members reading this handbook are joining a project with
-that same philosophy: opinionated defaults, lean infrastructure, and a
-sharp focus on the merchant experience.
-
 ## What Flomerce is
 
 Flomerce is a **multi-tenant SaaS platform** that lets a small business owner sign up,
@@ -384,6 +371,19 @@ opinionated defaults that look professional out of the box, India-first integrat
 (Razorpay, Shiprocket, Brevo, WhatsApp), and a single admin panel that a non-technical
 shop owner can actually use. The technology stack is intentionally boring and
 serverless so the team stays small and operating costs stay low even at scale.
+
+## About the founder
+
+Flomerce was founded by **Savan Naik**, a full-stack developer based in
+Karnataka, India. The platform was built to give small businesses a faster,
+cheaper, and friendlier way to launch their online stores than the
+heavyweight options on the market. Flomerce serves the **Indian e-commerce
+market first**, with first-class support for Razorpay, Shiprocket, WhatsApp
+Business, and the rupee — but the architecture is global from day one, so a
+merchant anywhere in the world can spin up a storefront on the same
+platform. New team members reading this handbook are joining a project with
+that same philosophy: opinionated defaults, lean infrastructure, and a
+sharp focus on the merchant experience.
 
 ## How to use this guide
 
