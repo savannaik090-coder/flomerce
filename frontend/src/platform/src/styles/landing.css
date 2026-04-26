@@ -122,6 +122,25 @@
   z-index: 0;
   overflow: hidden;
 }
+.landing-page .hero--video .hero-video,
+.landing-page .hero--video .hero-video-poster {
+  /* Fade the VIDEO/POSTER itself out at the bottom (via mask) so the actual
+     page background shows through directly. This guarantees the bottom of the
+     hero is exactly the same pixels as the section below — no overlay tint. */
+  --video-fade-start: calc(100% - var(--hero-fade-h));
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 var(--video-fade-start),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 var(--video-fade-start),
+    transparent 100%
+  );
+}
 .landing-page .hero--video .hero-video {
   position: absolute;
   inset: 0;
@@ -140,19 +159,10 @@
   transition: opacity 0.5s ease;
   pointer-events: none;
 }
+/* Legacy element kept in DOM but no longer painting an overlay — the video
+   mask above handles the fade-into-bg. */
 .landing-page .hero--video .hero-video-fade {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: var(--hero-fade-h);
-  /* End the fade in the actual page background colour so there is no visible
-     colour seam between the fade and the section that follows. */
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.6) 35%,
-    var(--bg-main, #ffffff) 65%,
-    var(--bg-main, #ffffff) 100%
-  );
+  display: none;
 }
 
 .landing-page .hero--video .hero-content--center {
