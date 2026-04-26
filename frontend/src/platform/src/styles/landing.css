@@ -101,8 +101,8 @@
      - Bottom fade band is anchored to that overlap distance
      - --nav-h is the visible navbar height the video must extend up behind */
   --hero-video-h: clamp(420px, 58vh, 620px);
-  --hero-overlap: 120px;
-  --hero-fade-h: 220px;
+  --hero-overlap: 70px;
+  --hero-fade-h: 90px;
   --nav-h: 88px;
   position: relative;
   padding: 0 0 64px;
@@ -144,12 +144,18 @@
   position: absolute;
   inset: auto 0 0 0;
   height: var(--hero-fade-h);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.55) 45%,
-    rgba(255, 255, 255, 0.92) 80%,
-    #ffffff 100%
+  background: #ffffff;
+  -webkit-clip-path: polygon(
+    0% 28%, 5% 8%, 10% 28%, 15% 8%, 20% 28%, 25% 8%, 30% 28%,
+    35% 8%, 40% 28%, 45% 8%, 50% 28%, 55% 8%, 60% 28%, 65% 8%,
+    70% 28%, 75% 8%, 80% 28%, 85% 8%, 90% 28%, 95% 8%, 100% 28%,
+    100% 100%, 0% 100%
+  );
+  clip-path: polygon(
+    0% 28%, 5% 8%, 10% 28%, 15% 8%, 20% 28%, 25% 8%, 30% 28%,
+    35% 8%, 40% 28%, 45% 8%, 50% 28%, 55% 8%, 60% 28%, 65% 8%,
+    70% 28%, 75% 8%, 80% 28%, 85% 8%, 90% 28%, 95% 8%, 100% 28%,
+    100% 100%, 0% 100%
   );
 }
 
@@ -1189,8 +1195,8 @@
     /* Height tracks the video's native 16:9 aspect against viewport width
        so the entire video is visible with zero cropping. */
     --hero-video-h: 56.25vw;
-    --hero-overlap: 64px;
-    --hero-fade-h: 110px;
+    --hero-overlap: 36px;
+    --hero-fade-h: 50px;
     --nav-h: 72px;
   }
   .landing-page .hero--video .hero-video {
@@ -1276,8 +1282,8 @@
   .landing-page .hero h1 { font-size: 2rem; }
   .landing-page .hero.hero--video {
     --hero-video-h: 56.25vw;
-    --hero-overlap: 52px;
-    --hero-fade-h: 90px;
+    --hero-overlap: 28px;
+    --hero-fade-h: 38px;
   }
   .landing-page .hero-visual-col { min-height: 360px; }
   .landing-page .hero-visual { max-width: 320px; }
