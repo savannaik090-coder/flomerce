@@ -7,7 +7,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { formatPrice } from '../../utils/priceFormatter.js';
 import { COUNTRIES, getStatesForCountry } from '../../utils/countryStates.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
-import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
+import { API_BASE, PLATFORM_DOMAIN, getMerchantBaseUrl } from '../../config.js';
 import { isPlanSufficient } from './FeatureGate.jsx';
 import ShopperLanguageSection from './ShopperLanguageSection.jsx';
 
@@ -27,6 +27,11 @@ export default function SettingsSection() {
   const [address, setAddress] = useState('');
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
   const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
+  const [razorpayWebhookSecret, setRazorpayWebhookSecret] = useState('');
+  const [razorpayWebhookEvents, setRazorpayWebhookEvents] = useState([]);
+  const [razorpayWebhookLoading, setRazorpayWebhookLoading] = useState(false);
+  const [razorpayWebhookRotating, setRazorpayWebhookRotating] = useState(false);
+  const [showRazorpayWebhookSecret, setShowRazorpayWebhookSecret] = useState(false);
   const [codEnabled, setCodEnabled] = useState(true);
   const [defaultCurrency, setDefaultCurrency] = useState('INR');
   const savedCurrencyRef = useRef('INR');
@@ -169,6 +174,66 @@ export default function SettingsSection() {
   useEffect(() => {
     if (siteConfig?.id) loadShiprocketStatus();
   }, [siteConfig?.id]);
+
+  // Lazy-load the per-tenant Razorpay webhook secret only after we know the
+  // merchant has supplied their own Razorpay key (Setup B). For Setup A
+  // merchants — those riding on Flomerce's payments rail — there is no
+  // separate webhook to configure, so we skip the call entirely.
+  useEffect(() => {
+    if (!siteConfig?.id || !razorpayKeyId || razorpayWebhookSecret) return;
+    let aborted = false;
+    (async () => {
+      setRazorpayWebhookLoading(true);
+      try {
+        const token = sessionStorage.getItem('site_admin_token');
+        const res = await fetch(`${API_BASE}/api/payments/webhook-info?siteId=${encodeURIComponent(siteConfig.id)}`, {
+          headers: token ? { 'Authorization': `SiteAdmin ${token}` } : {},
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (aborted) return;
+        const payload = data?.data || data;
+        if (payload?.secret) setRazorpayWebhookSecret(payload.secret);
+        if (Array.isArray(payload?.events)) setRazorpayWebhookEvents(payload.events);
+      } catch (e) {
+        console.error('webhook-info load failed:', e);
+      } finally {
+        if (!aborted) setRazorpayWebhookLoading(false);
+      }
+    })();
+    return () => { aborted = true; };
+  }, [siteConfig?.id, razorpayKeyId, razorpayWebhookSecret]);
+
+  async function rotateRazorpayWebhookSecret() {
+    if (!siteConfig?.id) return;
+    if (!confirm('Rotate the Razorpay webhook secret? Your old secret will stop working immediately. You will need to paste the new secret into your Razorpay dashboard.')) return;
+    setRazorpayWebhookRotating(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/payments/webhook-rotate?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `SiteAdmin ${token}` } : {},
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data?.error || 'Failed to rotate secret';
+        setMessage(msg);
+        setMessageIsError(true);
+        return;
+      }
+      const payload = data?.data || data;
+      if (payload?.secret) setRazorpayWebhookSecret(payload.secret);
+      if (Array.isArray(payload?.events)) setRazorpayWebhookEvents(payload.events);
+      setShowRazorpayWebhookSecret(true);
+      setMessage('New webhook secret generated. Update it in your Razorpay dashboard.');
+      setMessageIsError(false);
+    } catch (e) {
+      setMessage(`Rotate failed: ${e.message || e}`);
+      setMessageIsError(true);
+    } finally {
+      setRazorpayWebhookRotating(false);
+    }
+  }
 
   async function loadShiprocketStatus() {
     setShiprocketLoading(true);
@@ -1852,9 +1917,9 @@ Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsAp
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Webhook URL (configure in your Shiprocket dashboard)</p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all' }}>
-                          {API_BASE}/api/webhooks/shiprocket/{siteConfig?.id}
+                          {getMerchantBaseUrl(siteConfig)}/api/webhooks/shiprocket/{siteConfig?.id}
                         </code>
-                        <button type="button" onClick={() => copyToClipboard(`${API_BASE}/api/webhooks/shiprocket/${siteConfig?.id}`)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
+                        <button type="button" onClick={() => copyToClipboard(`${getMerchantBaseUrl(siteConfig)}/api/webhooks/shiprocket/${siteConfig?.id}`)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
                       </div>
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginTop: 10, marginBottom: 6 }}>X-Api-Key (paste into the webhook auth header)</p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1892,6 +1957,55 @@ Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsAp
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Razorpay Key Secret</label>
               <input type="password" value={razorpayKeySecret} onChange={(e) => setRazorpayKeySecret(e.target.value)} placeholder="Leave empty to keep current secret" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
             </div>
+
+            {razorpayKeyId && (
+              <div style={{ marginTop: 20, padding: 14, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Webhook (recommended)</div>
+                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                      Add this in your Razorpay dashboard so paid orders are confirmed even if the customer's browser disconnects.
+                    </div>
+                  </div>
+                  {razorpayWebhookLoading && <span style={{ fontSize: 11, color: '#64748b' }}>Loading…</span>}
+                </div>
+
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginTop: 10, marginBottom: 6 }}>Webhook URL</p>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all' }}>
+                    {getMerchantBaseUrl(siteConfig)}/api/webhooks/razorpay/{siteConfig?.id}
+                  </code>
+                  <button type="button" onClick={() => copyToClipboard(`${getMerchantBaseUrl(siteConfig)}/api/webhooks/razorpay/${siteConfig?.id}`)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
+                </div>
+
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginTop: 10, marginBottom: 6 }}>Webhook Secret</p>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all', fontFamily: 'ui-monospace, monospace' }}>
+                    {razorpayWebhookSecret
+                      ? (showRazorpayWebhookSecret ? razorpayWebhookSecret : '•'.repeat(Math.min(48, razorpayWebhookSecret.length)))
+                      : (razorpayWebhookLoading ? 'Generating…' : '(unavailable)')}
+                  </code>
+                  {razorpayWebhookSecret && (
+                    <button type="button" onClick={() => setShowRazorpayWebhookSecret(v => !v)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>
+                      {showRazorpayWebhookSecret ? 'Hide' : 'Show'}
+                    </button>
+                  )}
+                  {razorpayWebhookSecret && (
+                    <button type="button" onClick={() => copyToClipboard(razorpayWebhookSecret)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
+                  )}
+                  <button type="button" onClick={rotateRazorpayWebhookSecret} disabled={razorpayWebhookRotating} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>
+                    {razorpayWebhookRotating ? 'Rotating…' : 'Rotate'}
+                  </button>
+                </div>
+
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginTop: 12, marginBottom: 6 }}>Subscribe to these events</p>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569' }}>
+                  {(razorpayWebhookEvents.length ? razorpayWebhookEvents : ['payment.captured', 'payment.failed', 'order.paid', 'refund.processed']).map(ev => (
+                    <li key={ev}><code style={{ background: '#fff', padding: '1px 6px', borderRadius: 3, border: '1px solid #e2e8f0' }}>{ev}</code></li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>}
         </div>
 

@@ -1,5 +1,6 @@
-import { generateId, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
+import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
+import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
 import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
@@ -26,6 +27,10 @@ export async function handlePayments(request, env, path, ctx) {
       return getPublicPlans(request, env);
     case 'webhook':
       return handleRazorpayWebhook(request, env);
+    case 'webhook-info':
+      return handleRazorpayWebhookInfo(request, env);
+    case 'webhook-rotate':
+      return handleRazorpayWebhookRotate(request, env);
     default:
       return errorResponse('Not found', 404);
   }
@@ -1350,4 +1355,311 @@ async function handleOverageInvoicePaid(env, paymentEntity) {
   ).run();
 
   console.log('Overage invoice paid via webhook:', invoice.id, 'payment:', paymentEntity.id);
+}
+
+// ============================================================
+// Per-tenant Razorpay webhook (Setup B: merchant uses own Razorpay)
+// ------------------------------------------------------------
+// Customers normally confirm payments via /api/payments/verify after the
+// Razorpay checkout returns. If the browser dies between Razorpay's success
+// callback and the verify call (network drop, page close, refresh),
+// the customer is charged but our order stays in `pending_payment` and
+// gets cancelled by the 30-min cleanup cron.
+//
+// To close that gap, merchants who use their own Razorpay account paste a
+// per-tenant webhook URL+secret (shown in Settings -> Payments) into their
+// Razorpay dashboard. Razorpay then POSTs payment events here, and we
+// finalize the order independently of the browser.
+// ============================================================
+
+const RAZORPAY_WEBHOOK_EVENTS = [
+  'payment.captured',
+  'payment.failed',
+  'order.paid',
+  'refund.processed',
+];
+
+// Read the merchant's webhook secret from site_config.settings; auto-generate
+// and persist one on first read. Returns { secret, generated }.
+async function getOrCreateRazorpayWebhookSecret(env, siteId) {
+  const config = await getSiteConfig(env, siteId);
+  if (!config) return null;
+  let settings = {};
+  try {
+    if (config.settings) {
+      settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
+    }
+  } catch {}
+  if (settings.razorpayWebhookSecret) {
+    return { secret: settings.razorpayWebhookSecret, generated: false };
+  }
+  const secret = generateToken(48);
+  const siteDB = await resolveSiteDBById(env, siteId);
+  // json_set targets only $.razorpayWebhookSecret so concurrent writes to
+  // unrelated settings keys (shiprocket, payments, etc.) cannot clobber it.
+  await siteDB.prepare(
+    `UPDATE site_config
+        SET settings = json_set(
+              COALESCE(settings, '{}'),
+              '$.razorpayWebhookSecret',
+              ?
+            ),
+            updated_at = datetime('now')
+      WHERE site_id = ?`
+  ).bind(secret, siteId).run();
+  return { secret, generated: true };
+}
+
+// Force-regenerate the secret. Invalidates the previous secret immediately.
+async function rotateRazorpayWebhookSecretForSite(env, siteId) {
+  const secret = generateToken(48);
+  const siteDB = await resolveSiteDBById(env, siteId);
+  const res = await siteDB.prepare(
+    `UPDATE site_config
+        SET settings = json_set(
+              COALESCE(settings, '{}'),
+              '$.razorpayWebhookSecret',
+              ?
+            ),
+            updated_at = datetime('now')
+      WHERE site_id = ?`
+  ).bind(secret, siteId).run();
+  if (!res?.success && res?.meta?.changes === 0) {
+    return null;
+  }
+  return secret;
+}
+
+// GET /api/payments/webhook-info?siteId=...
+async function handleRazorpayWebhookInfo(request, env) {
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get('siteId');
+  if (!siteId) return errorResponse('siteId is required', 400);
+  const admin = await validateSiteAdmin(request, env, siteId);
+  if (!admin) return errorResponse('Unauthorized', 401);
+  const config = await getSiteConfig(env, siteId);
+  if (!config || !config.site_id) return errorResponse('Site not found', 404);
+  const result = await getOrCreateRazorpayWebhookSecret(env, siteId);
+  if (!result) return errorResponse('Site not found', 404);
+  return successResponse({
+    secret: result.secret,
+    events: RAZORPAY_WEBHOOK_EVENTS,
+    generated: result.generated,
+  });
+}
+
+// POST /api/payments/webhook-rotate?siteId=...
+async function handleRazorpayWebhookRotate(request, env) {
+  if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
+  const url = new URL(request.url);
+  const siteId = url.searchParams.get('siteId');
+  if (!siteId) return errorResponse('siteId is required', 400);
+  const admin = await validateSiteAdmin(request, env, siteId);
+  if (!admin) return errorResponse('Unauthorized', 401);
+  const secret = await rotateRazorpayWebhookSecretForSite(env, siteId);
+  if (!secret) return errorResponse('Site not found', 404);
+  return successResponse({ secret, events: RAZORPAY_WEBHOOK_EVENTS });
+}
+
+// Find a (guest_)order in this site's shard by razorpay_order_id and mark it
+// paid if still pending. Returns the updated row, or null if no match / no-op.
+async function markStorefrontOrderPaidIfPending(env, siteId, razorpayOrderId, razorpayPaymentId) {
+  const siteDB = await resolveSiteDBById(env, siteId);
+  if (!siteDB) return null;
+
+  // Try the registered orders table first.
+  const order = await siteDB.prepare(
+    `SELECT * FROM orders WHERE razorpay_order_id = ?`
+  ).bind(razorpayOrderId).first();
+  if (order) {
+    if (order.payment_status === 'paid') {
+      return { order, table: 'orders', alreadyPaid: true };
+    }
+    const oldBytes = order.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE orders
+          SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay',
+              razorpay_payment_id = ?, updated_at = datetime('now')
+        WHERE id = ? AND payment_status != 'paid'`
+    ).bind(razorpayPaymentId, order.id).run();
+    const updated = await siteDB.prepare('SELECT * FROM orders WHERE id = ?').bind(order.id).first();
+    if (updated) {
+      const newBytes = estimateRowBytes(updated);
+      await siteDB.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newBytes, order.id).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    return { order: updated || order, table: 'orders', alreadyPaid: false };
+  }
+
+  // Fall back to guest_orders.
+  const guest = await siteDB.prepare(
+    `SELECT * FROM guest_orders WHERE razorpay_order_id = ?`
+  ).bind(razorpayOrderId).first();
+  if (guest) {
+    if (guest.payment_status === 'paid') {
+      return { order: guest, table: 'guest_orders', alreadyPaid: true };
+    }
+    const oldBytes = guest.row_size_bytes || 0;
+    await siteDB.prepare(
+      `UPDATE guest_orders
+          SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay',
+              razorpay_payment_id = ?, updated_at = datetime('now')
+        WHERE id = ? AND payment_status != 'paid'`
+    ).bind(razorpayPaymentId, guest.id).run();
+    const updated = await siteDB.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(guest.id).first();
+    if (updated) {
+      const newBytes = estimateRowBytes(updated);
+      await siteDB.prepare('UPDATE guest_orders SET row_size_bytes = ? WHERE id = ?').bind(newBytes, guest.id).run();
+      await trackD1Update(env, siteId, oldBytes, newBytes);
+    }
+    return { order: updated || guest, table: 'guest_orders', alreadyPaid: false };
+  }
+
+  return null;
+}
+
+// Best-effort log of refund metadata. The current schema does not have a
+// dedicated refund column on orders/guest_orders, so we just record the event
+// in the platform logs for now — merchants can correlate via their Razorpay
+// dashboard. (When a proper refunds table is added we can persist here.)
+async function recordRazorpayRefund(env, siteId, refundEntity) {
+  if (!refundEntity?.payment_id) return;
+  console.log('[razorpay refund]',
+    'site', siteId,
+    'payment', refundEntity.payment_id,
+    'refund', refundEntity.id,
+    'amount', refundEntity.amount,
+    'status', refundEntity.status);
+}
+
+// POST /api/webhooks/razorpay/:siteId
+// Body is Razorpay's webhook payload; signature in x-razorpay-signature is
+// HMAC-SHA256(body, secret).
+export async function handleStorefrontRazorpayWebhook(request, env, siteId, ctx) {
+  if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
+  if (!siteId) return errorResponse('Site id required', 400);
+
+  const config = await getSiteConfig(env, siteId);
+  // getSiteConfig returns `{}` (not null) for missing sites — distinguish by
+  // checking for the site_id column it would otherwise carry.
+  if (!config || !config.site_id) return errorResponse('Site not found', 404);
+
+  let settings = {};
+  try {
+    if (config.settings) {
+      settings = typeof config.settings === 'string' ? JSON.parse(config.settings) : config.settings;
+    }
+  } catch {}
+  const secret = settings.razorpayWebhookSecret;
+  if (!secret) {
+    console.warn('[razorpay tenant webhook] no secret configured for site', siteId);
+    return errorResponse('Webhook not configured for this site', 503);
+  }
+
+  const body = await request.text();
+  const signature = request.headers.get('x-razorpay-signature');
+  if (!signature) return errorResponse('Missing signature', 401);
+
+  const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
+  // Constant-time compare to prevent timing oracles on the secret.
+  let sigOk = false;
+  try {
+    const a = Buffer.from(expected, 'hex');
+    const b = Buffer.from(signature, 'hex');
+    sigOk = a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch {
+    sigOk = false;
+  }
+  if (!sigOk) {
+    console.warn('[razorpay tenant webhook] signature mismatch for site', siteId);
+    return errorResponse('Invalid webhook signature', 401);
+  }
+
+  let payload;
+  try { payload = JSON.parse(body); } catch { return errorResponse('Invalid JSON payload', 400); }
+  const event = payload.event;
+  const paymentEntity = payload.payload?.payment?.entity;
+  const orderEntity = payload.payload?.order?.entity;
+  const refundEntity = payload.payload?.refund?.entity;
+  const primaryEntity = paymentEntity || orderEntity || refundEntity;
+  // Scope event_id by site so two tenants who happen to forward the same
+  // Razorpay event id never collide in the global processed_webhooks table.
+  const baseEventId = request.headers.get('x-razorpay-event-id')
+    || payload.id
+    || `${event}:${primaryEntity?.id || ''}:${payload.created_at || ''}`;
+  const eventId = `tenant:${siteId}:${baseEventId}`;
+
+  let claimed = false;
+  try {
+    const insertRes = await env.DB.prepare(
+      `INSERT OR IGNORE INTO processed_webhooks (event_id, event_type, processed_at) VALUES (?, ?, datetime('now'))`
+    ).bind(eventId, event || null).run();
+    const changes = insertRes?.meta?.changes ?? insertRes?.changes ?? 0;
+    if (!changes) {
+      return jsonResponse({ status: 'ok', duplicate: true });
+    }
+    claimed = true;
+  } catch (e) {
+    // If the idempotency table is unavailable for some reason, continue but
+    // log — at-least-once delivery is acceptable since downstream operations
+    // are themselves guarded with `payment_status != 'paid'`.
+    console.error('[razorpay tenant webhook] idempotency claim failed:', e.message || e);
+  }
+
+  try {
+    switch (event) {
+      case 'payment.captured':
+      case 'order.paid': {
+        const rzpOrderId = paymentEntity?.order_id || orderEntity?.id;
+        const rzpPaymentId = paymentEntity?.id
+          || orderEntity?.payments?.[0]?.id
+          || null;
+        if (!rzpOrderId) {
+          console.warn('[razorpay tenant webhook] no order_id on event', event);
+          break;
+        }
+        const result = await markStorefrontOrderPaidIfPending(env, siteId, rzpOrderId, rzpPaymentId);
+        if (!result) {
+          // Order may not yet exist (race with create-order) or belongs to a
+          // different tenant. Releasing the claim lets Razorpay retry.
+          if (claimed) {
+            try {
+              await env.DB.prepare(`DELETE FROM processed_webhooks WHERE event_id = ?`).bind(eventId).run();
+            } catch {}
+          }
+          console.warn('[razorpay tenant webhook] no matching order for', rzpOrderId, 'site', siteId);
+          return jsonResponse({ status: 'ok', matched: false });
+        }
+        if (!result.alreadyPaid && result.order) {
+          await processPostPaymentActions(env, result.order, ctx);
+        }
+        break;
+      }
+      case 'payment.failed': {
+        // Cleanup cron will cancel the pending order after 30 min — we just
+        // log so merchants can correlate failures in their Razorpay dashboard.
+        console.log('[razorpay tenant webhook] payment.failed site', siteId,
+          'order', paymentEntity?.order_id, 'reason', paymentEntity?.error_description);
+        break;
+      }
+      case 'refund.processed': {
+        await recordRazorpayRefund(env, siteId, refundEntity);
+        break;
+      }
+      default:
+        // Unknown event type — ack to stop Razorpay retries.
+        console.log('[razorpay tenant webhook] ignored event', event);
+    }
+  } catch (e) {
+    // Release the idempotency claim so Razorpay retries can re-process.
+    if (claimed) {
+      try {
+        await env.DB.prepare(`DELETE FROM processed_webhooks WHERE event_id = ?`).bind(eventId).run();
+      } catch {}
+    }
+    console.error('[razorpay tenant webhook] handler error:', e.message || e);
+    return errorResponse('Webhook handler failed', 500);
+  }
+
+  return jsonResponse({ status: 'ok' });
 }

@@ -7,7 +7,7 @@ import { handleOrders } from './storefront/orders-worker.js';
 import { handleShipping, handleShiprocketWebhook } from './storefront/shipping-worker.js';
 import { handleCart, mergeCarts, clearCart } from './storefront/cart-worker.js';
 import { handleWishlist } from './storefront/wishlist-worker.js';
-import { handlePayments, activateSubscription } from './platform/payments-worker.js';
+import { handlePayments, activateSubscription, handleStorefrontRazorpayWebhook } from './platform/payments-worker.js';
 import { handleEmail } from './platform/email-worker.js';
 import { handleCategories } from './storefront/categories-worker.js';
 import { handleUsers } from './platform/users-worker.js';
@@ -387,9 +387,13 @@ async function handleAPI(request, env, path, ctx) {
       return handlePayments(request, env, path, ctx);
 
     case 'webhooks':
-      // Alias for Razorpay's configured webhook URL: /api/webhooks/razorpay
-      // Rewrite to the path shape handlePayments expects (/api/payments/webhook)
-      // so handleRazorpayWebhook is invoked.
+      // Per-tenant Razorpay webhook (Setup B — merchant uses own Razorpay):
+      // /api/webhooks/razorpay/:siteId
+      if (pathParts[2] === 'razorpay' && pathParts[3]) {
+        return handleStorefrontRazorpayWebhook(request, env, pathParts[3], ctx);
+      }
+      // Alias for the platform's global Razorpay webhook URL (subscriptions
+      // and overage payments): /api/webhooks/razorpay → /api/payments/webhook
       if (pathParts[2] === 'razorpay') {
         return handlePayments(request, env, '/api/payments/webhook', ctx);
       }
