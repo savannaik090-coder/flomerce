@@ -17,7 +17,7 @@ export async function handlePayments(request, env, path, ctx) {
     case 'create-order':
       return createRazorpayOrder(request, env);
     case 'verify':
-      return verifyPayment(request, env);
+      return verifyPayment(request, env, ctx);
     case 'subscription':
       return handleSubscription(request, env);
     case 'cancel-subscription':
@@ -206,7 +206,7 @@ async function createRazorpayOrder(request, env) {
   }
 }
 
-async function verifyPayment(request, env) {
+async function verifyPayment(request, env, ctx) {
   if (request.method !== 'POST') {
     return errorResponse('Method not allowed', 405);
   }

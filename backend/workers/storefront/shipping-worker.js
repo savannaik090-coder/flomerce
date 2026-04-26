@@ -70,15 +70,27 @@ async function readShiprocketSettings(env, siteId) {
   return { siteDB, config, settings, sr };
 }
 
+// Updates ONLY the $.shiprocket subtree of site_config.settings via SQLite
+// json_set, so a concurrent save in another admin section (general, payments,
+// abandoned cart, etc.) cannot clobber the shiprocket block — and vice versa.
+// (Within-section concurrency on shiprocket itself is still last-writer-wins,
+// which is acceptable because all writes go through this single helper.)
 async function writeShiprocketSettings(env, siteId, mutator) {
   const ctx = await readShiprocketSettings(env, siteId);
   if (!ctx) throw new Error('Site config not found');
-  const { siteDB, settings, sr } = ctx;
+  const { siteDB, sr } = ctx;
   const newSr = await mutator(sr);
-  settings.shiprocket = newSr;
+  const newSrJson = JSON.stringify(newSr);
   await siteDB.prepare(
-    `UPDATE site_config SET settings = ?, updated_at = datetime('now') WHERE site_id = ?`
-  ).bind(JSON.stringify(settings), siteId).run();
+    `UPDATE site_config
+        SET settings = json_set(
+              COALESCE(settings, '{}'),
+              '$.shiprocket',
+              json(?)
+            ),
+            updated_at = datetime('now')
+      WHERE site_id = ?`
+  ).bind(newSrJson, siteId).run();
   return newSr;
 }
 
@@ -397,9 +409,72 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
       awb: order.shiprocket_awb,
       shipmentId: order.shiprocket_shipment_id,
       labelUrl: order.shiprocket_label_url,
+      shiprocket_order_id: order.shiprocket_order_id,
+      shiprocket_shipment_id: order.shiprocket_shipment_id,
+      shiprocket_awb: order.shiprocket_awb,
+      shiprocket_courier: order.shiprocket_courier,
+      shiprocket_label_url: order.shiprocket_label_url,
+      shiprocket_status: order.shiprocket_status || 'awb_assigned',
     };
   }
 
+  // Resume from where the last attempt left off. If a previous attempt
+  // already created the Shiprocket order/shipment but failed at AWB assign,
+  // skip the create step to avoid duplicate orders in Shiprocket.
+  let shiprocketOrderId = order.shiprocket_order_id || '';
+  let shipmentId = order.shiprocket_shipment_id || '';
+  const needsCreate = !shipmentId;
+
+  // Claim the appropriate step BEFORE we touch Shiprocket (including the
+  // login API). Two concurrent callers race on a single conditional UPDATE
+  // and the loser exits early without making any external API calls.
+  if (needsCreate) {
+    const claim = await siteDB.prepare(
+      `UPDATE ${table}
+          SET shiprocket_status = 'creating',
+              shiprocket_error = NULL,
+              updated_at = datetime('now')
+        WHERE id = ?
+          AND shiprocket_shipment_id IS NULL
+          AND (shiprocket_status IS NULL
+               OR shiprocket_status IN ('failed', 'awb_failed', 'cancelled'))`
+    ).bind(orderId).run();
+
+    if (!claim.meta?.changes) {
+      const cur = await siteDB.prepare(
+        `SELECT shiprocket_status, shiprocket_shipment_id FROM ${table} WHERE id = ?`
+      ).bind(orderId).first();
+      if (cur?.shiprocket_shipment_id) {
+        return { ok: false, code: 'ALREADY_SHIPPED', message: 'Shipment already created for this order' };
+      }
+      return { ok: false, code: 'IN_PROGRESS', message: 'Another ship operation is already in progress for this order' };
+    }
+  } else {
+    // Resume path: only AWB assign + pickup + label remain. Claim the AWB
+    // step before login so a concurrent retry doesn't double-assign AWBs.
+    const awbClaim = await siteDB.prepare(
+      `UPDATE ${table}
+          SET shiprocket_status = 'awb_assigning',
+              shiprocket_error = NULL,
+              updated_at = datetime('now')
+        WHERE id = ?
+          AND shiprocket_awb IS NULL
+          AND (shiprocket_status IS NULL
+               OR shiprocket_status IN ('order_created', 'failed', 'awb_failed'))`
+    ).bind(orderId).run();
+
+    if (!awbClaim.meta?.changes) {
+      const cur = await siteDB.prepare(
+        `SELECT shiprocket_status, shiprocket_awb FROM ${table} WHERE id = ?`
+      ).bind(orderId).first();
+      if (cur?.shiprocket_awb) {
+        return { ok: false, code: 'ALREADY_SHIPPED', message: 'Order already has an AWB assigned' };
+      }
+      return { ok: false, code: 'IN_PROGRESS', message: 'AWB assignment already in progress for this order' };
+    }
+  }
+
+  // Now that we hold the claim, acquire the Shiprocket token (may call login).
   let token;
   try {
     token = await ensureShiprocketToken(env, siteId, ctx.sr);
@@ -409,13 +484,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
     return { ok: false, code: e?.code || 'AUTH_FAILED', message: msg };
   }
 
-  // Resume from where the last attempt left off. If a previous attempt
-  // already created the Shiprocket order/shipment but failed at AWB assign,
-  // skip the create step to avoid duplicate orders in Shiprocket.
-  let shiprocketOrderId = order.shiprocket_order_id || '';
-  let shipmentId = order.shiprocket_shipment_id || '';
-
-  if (!shipmentId) {
+  if (needsCreate) {
     const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config);
 
     let createRes;
@@ -436,9 +505,11 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
       return { ok: false, code: 'NO_SHIPMENT_ID', message: msg };
     }
 
-    // Persist what we have so far in case the next steps fail.
+    // Persist what we have so far in case the next steps fail. We bump the
+    // status to 'awb_assigning' here (not 'order_created') because we already
+    // hold the AWB claim for this caller — no need to re-claim below.
     await siteDB.prepare(
-      `UPDATE ${table} SET shiprocket_order_id = ?, shiprocket_shipment_id = ?, shiprocket_status = 'order_created', shiprocket_error = NULL WHERE id = ?`
+      `UPDATE ${table} SET shiprocket_order_id = ?, shiprocket_shipment_id = ?, shiprocket_status = 'awb_assigning', shiprocket_error = NULL WHERE id = ?`
     ).bind(String(shiprocketOrderId || ''), String(shipmentId), orderId).run();
   }
 
@@ -499,6 +570,12 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
     awb: awbCode,
     courier: courierName,
     labelUrl,
+    shiprocket_order_id: String(shiprocketOrderId || ''),
+    shiprocket_shipment_id: String(shipmentId || ''),
+    shiprocket_awb: awbCode,
+    shiprocket_courier: courierName,
+    shiprocket_label_url: labelUrl,
+    shiprocket_status: 'awb_assigned',
   };
 }
 
@@ -553,7 +630,7 @@ async function handleCancelShipment(env, siteId, orderId) {
     `UPDATE ${table} SET shiprocket_status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
   ).bind(orderId).run();
 
-  return successResponse({ cancelled: true });
+  return successResponse({ cancelled: true, shiprocket_status: 'cancelled' });
 }
 
 // ---------- Endpoint: get/regenerate label ----------
@@ -568,7 +645,7 @@ async function handleGetLabel(env, siteId, orderId) {
   if (!order.shiprocket_shipment_id) return errorResponse('No shipment for this order', 400, 'NOT_SHIPPED');
 
   if (order.shiprocket_label_url) {
-    return successResponse({ labelUrl: order.shiprocket_label_url, cached: true });
+    return successResponse({ labelUrl: order.shiprocket_label_url, shiprocket_label_url: order.shiprocket_label_url, cached: true });
   }
 
   let token;
@@ -581,7 +658,7 @@ async function handleGetLabel(env, siteId, orderId) {
     if (labelUrl) {
       await siteDB.prepare(`UPDATE ${table} SET shiprocket_label_url = ? WHERE id = ?`).bind(labelUrl, orderId).run();
     }
-    return successResponse({ labelUrl });
+    return successResponse({ labelUrl, shiprocket_label_url: labelUrl });
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
     return errorResponse(`Failed to generate label: ${msg}`, 502, e?.code || 'LABEL_FAILED');
