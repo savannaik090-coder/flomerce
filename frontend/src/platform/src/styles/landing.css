@@ -101,8 +101,8 @@
      - Bottom fade band is anchored to that overlap distance
      - --nav-h is the visible navbar height the video must extend up behind */
   --hero-video-h: clamp(420px, 58vh, 620px);
-  --hero-overlap: 70px;
-  --hero-fade-h: 90px;
+  --hero-overlap: 120px;
+  --hero-fade-h: 220px;
   --nav-h: 88px;
   position: relative;
   padding: 0 0 64px;
@@ -144,17 +144,25 @@
   position: absolute;
   inset: auto 0 0 0;
   height: var(--hero-fade-h);
-  background: #ffffff;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0.92) 80%,
+    #ffffff 100%
+  );
+  /* Zigzag top edge — the gradient still fades smoothly inside,
+     but the visible top boundary is a subtle saw-tooth instead of straight. */
   -webkit-clip-path: polygon(
-    0% 28%, 5% 8%, 10% 28%, 15% 8%, 20% 28%, 25% 8%, 30% 28%,
-    35% 8%, 40% 28%, 45% 8%, 50% 28%, 55% 8%, 60% 28%, 65% 8%,
-    70% 28%, 75% 8%, 80% 28%, 85% 8%, 90% 28%, 95% 8%, 100% 28%,
+    0% 6%, 5% 0%, 10% 6%, 15% 0%, 20% 6%, 25% 0%, 30% 6%,
+    35% 0%, 40% 6%, 45% 0%, 50% 6%, 55% 0%, 60% 6%, 65% 0%,
+    70% 6%, 75% 0%, 80% 6%, 85% 0%, 90% 6%, 95% 0%, 100% 6%,
     100% 100%, 0% 100%
   );
   clip-path: polygon(
-    0% 28%, 5% 8%, 10% 28%, 15% 8%, 20% 28%, 25% 8%, 30% 28%,
-    35% 8%, 40% 28%, 45% 8%, 50% 28%, 55% 8%, 60% 28%, 65% 8%,
-    70% 28%, 75% 8%, 80% 28%, 85% 8%, 90% 28%, 95% 8%, 100% 28%,
+    0% 6%, 5% 0%, 10% 6%, 15% 0%, 20% 6%, 25% 0%, 30% 6%,
+    35% 0%, 40% 6%, 45% 0%, 50% 6%, 55% 0%, 60% 6%, 65% 0%,
+    70% 6%, 75% 0%, 80% 6%, 85% 0%, 90% 6%, 95% 0%, 100% 6%,
     100% 100%, 0% 100%
   );
 }
@@ -1195,8 +1203,8 @@
     /* Height tracks the video's native 16:9 aspect against viewport width
        so the entire video is visible with zero cropping. */
     --hero-video-h: 56.25vw;
-    --hero-overlap: 36px;
-    --hero-fade-h: 50px;
+    --hero-overlap: 64px;
+    --hero-fade-h: 110px;
     --nav-h: 72px;
   }
   .landing-page .hero--video .hero-video {
@@ -1282,8 +1290,8 @@
   .landing-page .hero h1 { font-size: 2rem; }
   .landing-page .hero.hero--video {
     --hero-video-h: 56.25vw;
-    --hero-overlap: 28px;
-    --hero-fade-h: 38px;
+    --hero-overlap: 52px;
+    --hero-fade-h: 90px;
   }
   .landing-page .hero-visual-col { min-height: 360px; }
   .landing-page .hero-visual { max-width: 320px; }
