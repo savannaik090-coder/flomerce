@@ -70,73 +70,6 @@ const FEATURE_CATEGORIES = [
 
 const PARTNER_KEYS = ['razorpay', 'stripe', 'shiprocket', 'whatsapp', 'translator', 'gsc'];
 
-function HeroVisual({ t }) {
-  return (
-    <div className="hero-visual" aria-hidden="true">
-      <div className="hero-visual-glow" />
-      <div className="hero-dashboard">
-        <div className="hd-top">
-          <div className="hd-dot-row">
-            <span className="hd-dot" /><span className="hd-dot" /><span className="hd-dot" />
-          </div>
-          <span className="hd-pill">{t('heroVisual.dashboardDomain')}</span>
-        </div>
-        <div className="hd-body">
-          <div className="hd-header">
-            <span className="hd-label">{t('heroVisual.dashboardLabel')}</span>
-            <div className="hd-amount-row">
-              <span className="hd-amount">{t('heroVisual.dashboardAmount')}</span>
-              <span className="hd-change">{t('heroVisual.dashboardChange')}</span>
-            </div>
-          </div>
-          <div className="hd-chart">
-            {[42, 58, 36, 70, 54, 82, 64].map((h, i) => (
-              <span key={i} className="hd-bar" style={{ height: `${h}%` }} />
-            ))}
-            <span className="hd-chart-label">{t('heroVisual.chartLabel')}</span>
-          </div>
-          <div className="hd-kpis">
-            <div className="hd-kpi">
-              <span className="hd-kpi-label">{t('heroVisual.kpiOrdersLabel')}</span>
-              <span className="hd-kpi-value">{t('heroVisual.kpiOrdersValue')}</span>
-            </div>
-            <div className="hd-kpi">
-              <span className="hd-kpi-label">{t('heroVisual.kpiVisitorsLabel')}</span>
-              <span className="hd-kpi-value">{t('heroVisual.kpiVisitorsValue')}</span>
-            </div>
-            <div className="hd-kpi">
-              <span className="hd-kpi-label">{t('heroVisual.kpiCartsLabel')}</span>
-              <span className="hd-kpi-value">{t('heroVisual.kpiCartsValue')}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="hero-toast">
-        <div className="ht-dot">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-        </div>
-        <div className="ht-text">
-          <span className="ht-title">{t('heroVisual.toastTitle')}</span>
-          <span className="ht-desc">{t('heroVisual.toastDesc')}</span>
-        </div>
-      </div>
-
-      <div className="hero-storefront">
-        <div className="hs-image" />
-        <div className="hs-meta">
-          <span className="hs-brand">{t('heroVisual.storefrontBrand')}</span>
-          <span className="hs-product">{t('heroVisual.storefrontProduct')}</span>
-          <div className="hs-bottom">
-            <span className="hs-price">{t('heroVisual.storefrontPrice')}</span>
-            <span className="hs-tag">{t('heroVisual.storefrontTag')}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function LandingPage() {
   const { t } = useTranslation('landing');
   const [showPwa, setShowPwa] = useState(false);
@@ -194,35 +127,45 @@ export default function LandingPage() {
         </div>
         <Navbar showMenu={true} />
 
-        <section className="hero">
-          <div className="hero-grid">
-            <div className="hero-content reveal">
-              <div className="hero-badge">{t('heroBadge')}</div>
-              <h1>
-                {t('heroTitleLine1')} <span className="hero-accent">{t('heroTitleLine2')}</span> {t('heroTitleLine3')}
-              </h1>
-              <p className="hero-desc">{t('heroDesc')}</p>
-              <div className="hero-buttons">
-                <Link to="/signup" className="btn btn-hero-primary">
-                  {t('heroCtaPrimary')}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                </Link>
-                <a href="#demo" className="btn btn-hero-ghost" onClick={scrollToDemo}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                  {t('heroCtaSecondary')}
-                </a>
-              </div>
-              <ul className="hero-trust">
-                <li>{t('heroTrust.rating')}</li>
-                <li className="hero-trust-sep" aria-hidden="true">·</li>
-                <li>{t('heroTrust.noCard')}</li>
-                <li className="hero-trust-sep" aria-hidden="true">·</li>
-                <li>{t('heroTrust.cancel')}</li>
-              </ul>
+        <section className="hero hero--video">
+          <div className="hero-video-wrap" aria-hidden="true">
+            <video
+              className="hero-video"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+            >
+              <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
+            </video>
+            <div className="hero-video-tint" />
+            <div className="hero-video-fade" />
+          </div>
+
+          <div className="hero-content hero-content--center reveal">
+            <div className="hero-badge hero-badge--onvideo">{t('heroBadge')}</div>
+            <h1>
+              {t('heroTitleLine1')} <span className="hero-accent">{t('heroTitleLine2')}</span> {t('heroTitleLine3')}
+            </h1>
+            <p className="hero-desc">{t('heroDesc')}</p>
+            <div className="hero-buttons hero-buttons--center">
+              <Link to="/signup" className="btn btn-hero-primary">
+                {t('heroCtaPrimary')}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </Link>
+              <a href="#demo" className="btn btn-hero-ghost" onClick={scrollToDemo}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                {t('heroCtaSecondary')}
+              </a>
             </div>
-            <div className="hero-visual-col reveal">
-              <HeroVisual t={t} />
-            </div>
+            <ul className="hero-trust hero-trust--center">
+              <li>{t('heroTrust.rating')}</li>
+              <li className="hero-trust-sep" aria-hidden="true">·</li>
+              <li>{t('heroTrust.noCard')}</li>
+              <li className="hero-trust-sep" aria-hidden="true">·</li>
+              <li>{t('heroTrust.cancel')}</li>
+            </ul>
           </div>
         </section>
 
@@ -254,7 +197,7 @@ export default function LandingPage() {
                 <span className="demo-bar-spacer" />
               </div>
               <div className="demo-video-container">
-                <video ref={videoRef} className="demo-video" muted loop playsInline preload="auto">
+                <video ref={videoRef} className="demo-video" muted loop playsInline preload="metadata">
                   <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
                 </video>
                 {!videoPlaying && (
