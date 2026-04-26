@@ -46,6 +46,10 @@ import {
   cancelOrder as srCancelOrder,
   listAllCouriers,
   ShiprocketError,
+  constantTimeEqual,
+  parseShiprocketTimestamp,
+  formatISTOrderDate,
+  hmacSha256B64u,
 } from '../../utils/shiprocket.js';
 import { sendShiprocketStatusNotification } from '../../utils/shiprocket-notifications.js';
 
@@ -115,11 +119,13 @@ async function persistTokenCache(env, siteId, token, expiresAt) {
 }
 
 // Returns a usable Shiprocket token, refreshing via login if missing/expired.
-// Throws ShiprocketError on failure.
-async function ensureShiprocketToken(env, siteId, sr) {
+// Throws ShiprocketError on failure. Pass `forceRefresh=true` to bypass the
+// cache (used by the 401-retry helper below when a previously-good token
+// has been invalidated mid-call by Shiprocket).
+async function ensureShiprocketToken(env, siteId, sr, forceRefresh = false) {
   const cache = sr?._tokenCache;
   const now = Date.now();
-  if (cache?.token && cache.expiresAt) {
+  if (!forceRefresh && cache?.token && cache.expiresAt) {
     const expMs = new Date(cache.expiresAt).getTime();
     if (Number.isFinite(expMs) && expMs - now > TOKEN_REFRESH_BUFFER_MIN * 60 * 1000) {
       return cache.token;
@@ -134,7 +140,33 @@ async function ensureShiprocketToken(env, siteId, sr) {
   // Shiprocket tokens are valid for 240 hours (10 days).
   const expiresAt = new Date(now + 240 * 60 * 60 * 1000).toISOString();
   await persistTokenCache(env, siteId, login.token, expiresAt);
+  // Mutate the in-memory `sr` object so subsequent reads in the same request
+  // see the fresh token without re-querying the DB.
+  if (sr) sr._tokenCache = { token: login.token, expiresAt };
   return login.token;
+}
+
+// Run a Shiprocket API call with automatic 401-retry. If the inner fn throws
+// a `ShiprocketError` with code `SHIPROCKET_AUTH` (HTTP 401), we force a
+// token refresh and retry once. All other errors propagate immediately.
+//
+// Usage:
+//   const result = await srCall(env, siteId, sr, (token) => srCreateOrder(token, payload));
+//
+// This sits in front of every wrapper in utils/shiprocket.js so any single
+// in-flight token expiry recovers transparently instead of bubbling up to
+// the merchant as "Shiprocket auth failed".
+async function srCall(env, siteId, sr, fn) {
+  let token = await ensureShiprocketToken(env, siteId, sr, false);
+  try {
+    return await fn(token);
+  } catch (e) {
+    if (e instanceof ShiprocketError && e.code === 'SHIPROCKET_AUTH') {
+      token = await ensureShiprocketToken(env, siteId, sr, true);
+      return await fn(token);
+    }
+    throw e;
+  }
 }
 
 // Build a public-safe settings view (masked creds, no token).
@@ -379,8 +411,7 @@ async function handlePickupLocations(env, siteId) {
     return errorResponse('Shiprocket not connected', 400, 'NOT_CONNECTED');
   }
   try {
-    const token = await ensureShiprocketToken(env, siteId, ctx.sr);
-    const list = await getPickupLocations(token);
+    const list = await srCall(env, siteId, ctx.sr, (t) => getPickupLocations(t));
     return successResponse({ pickupLocations: list });
   } catch (e) {
     if (e instanceof ShiprocketError) {
@@ -439,12 +470,31 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
   try { shipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
 
   let billing = shipping;
+  let billingExplicit = false;
   try {
     if (order.billing_address) {
       const b = typeof order.billing_address === 'string' ? JSON.parse(order.billing_address) : order.billing_address;
-      if (b && Object.keys(b).length) billing = b;
+      if (b && Object.keys(b).length) {
+        billing = b;
+        billingExplicit = true;
+      }
     }
   } catch {}
+
+  // Deep-equal address comparison so `shipping_is_billing` flips to false
+  // whenever the merchant captured a distinct billing address (even if it
+  // happens to share a few fields with shipping). The previous `billing ===
+  // shipping` reference check returned false the moment we parsed the JSON
+  // even when both addresses were identical, and true only when billing was
+  // missing — so Shiprocket got the wrong flag in both directions.
+  const sameAddress = !billingExplicit || (
+    String(billing.line1 || billing.address || billing.street || '') === String(shipping.line1 || shipping.address || shipping.street || '') &&
+    String(billing.line2 || billing.address2 || '') === String(shipping.line2 || shipping.address2 || '') &&
+    String(billing.city || '') === String(shipping.city || '') &&
+    String(billing.postalCode || billing.pincode || billing.pin || billing.zip || '') === String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '') &&
+    String(billing.state || '') === String(shipping.state || '') &&
+    String(billing.country || 'India') === String(shipping.country || 'India')
+  );
 
   // Split full name into first/last for Shiprocket.
   const fullName = (order.customer_name || '').trim();
@@ -483,9 +533,19 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
   const orderRef = String(order.order_number || order.id);
   const shiprocketOrderRef = sitePrefix ? `${sitePrefix}-${orderRef}` : orderRef;
 
+  // Subtotal: use `??` so a legitimately free order (₹0) still serializes as 0
+  // instead of falling through to `order.total`. Same trick on the dimension
+  // defaults so a merchant who set `defaultLength: 0` (i.e. an unset value)
+  // still gets the 10cm fallback rather than NaN.
+  const subTotal = Number(order.subtotal ?? order.total ?? 0);
+
   return {
     order_id: shiprocketOrderRef,
-    order_date: (order.created_at || new Date().toISOString()).replace('T', ' ').slice(0, 19),
+    // Shiprocket expects the order_date in IST in the form "YYYY-MM-DD HH:mm".
+    // Our DB stores UTC ISO strings — converting them via simple string
+    // truncation produced a UTC-clock timestamp tagged as IST, mis-dating
+    // every order by 5h30m for analytics + label QR codes.
+    order_date: formatISTOrderDate(order.created_at || new Date().toISOString()),
     pickup_location: sr.pickupLocationNickname || 'Primary',
     channel_id: '',
     comment: order.notes || '',
@@ -499,7 +559,7 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
     billing_country: String(billing.country || 'India'),
     billing_email: order.customer_email || '',
     billing_phone: normalizePhone(order.customer_phone, billing.country),
-    shipping_is_billing: billing === shipping,
+    shipping_is_billing: sameAddress,
     shipping_customer_name: firstName,
     shipping_last_name: lastName,
     shipping_address: String(shipping.line1 || shipping.address || shipping.street || '').slice(0, 100),
@@ -516,10 +576,10 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
     giftwrap_charges: 0,
     transaction_charges: 0,
     total_discount: Number(order.discount || 0),
-    sub_total: Number(order.subtotal || order.total || 0),
-    length: Number(sr?.defaultLength || 10),
-    breadth: Number(sr?.defaultBreadth || 10),
-    height: Number(sr?.defaultHeight || 10),
+    sub_total: subTotal,
+    length: Number(sr?.defaultLength ?? 10) || 10,
+    breadth: Number(sr?.defaultBreadth ?? 10) || 10,
+    height: Number(sr?.defaultHeight ?? 10) || 10,
     weight: totalWeight,
   };
 }
@@ -531,7 +591,7 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
 //
 // `available` is the raw `available_courier_companies` array — surfaced for
 // the picker modal endpoint so it can avoid a duplicate Shiprocket call.
-async function pickCourierForOrder({ token, sr, order, totalWeightKg, pickupPincode }) {
+async function pickCourierForOrder({ env, siteId, sr, order, totalWeightKg, pickupPincode }) {
   let shipping = {};
   try { shipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
   const deliveryPincode = String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '').trim();
@@ -543,12 +603,12 @@ async function pickCourierForOrder({ token, sr, order, totalWeightKg, pickupPinc
 
   let resp;
   try {
-    resp = await getServiceability(token, {
+    resp = await srCall(env, siteId, sr, (t) => getServiceability(t, {
       pickup_postcode: pickupPincode,
       delivery_postcode: deliveryPincode,
       weight: Number(totalWeightKg) || 0.5,
       cod: codFlag,
-    });
+    }));
   } catch (e) {
     console.warn('[Shiprocket] picker serviceability failed:', e?.message || e);
     return { courierId: null, courierName: '', available: [] };
@@ -576,7 +636,10 @@ async function pickCourierForOrder({ token, sr, order, totalWeightKg, pickupPinc
   }
 
   // 2) Shiprocket's own recommendation (if it points at an available one).
-  const recommendedId = Number(data?.recommended_courier_id);
+  // The current Shiprocket payload field is `recommended_courier_company_id`;
+  // older accounts still expose the legacy alias `recommended_courier_id`,
+  // so we read both.
+  const recommendedId = Number(data?.recommended_courier_company_id ?? data?.recommended_courier_id);
   if (Number.isFinite(recommendedId) && byId.has(recommendedId)) {
     const c = byId.get(recommendedId);
     return { courierId: recommendedId, courierName: String(c.courier_name || ''), available };
@@ -624,7 +687,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
     };
   }
 
-  if (order.shiprocket_awb && !options.force) {
+  if (order.shiprocket_awb) {
     return {
       ok: true,
       alreadyShipped: true,
@@ -647,20 +710,28 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   let shipmentId = order.shiprocket_shipment_id || '';
   const needsCreate = !shipmentId;
 
-  // Claim the appropriate step BEFORE we touch Shiprocket (including the
-  // login API). Two concurrent callers race on a single conditional UPDATE
-  // and the loser exits early without making any external API calls.
+  // Lease-based claim: write `shiprocket_claimed_at` together with the
+  // working status so a stuck/crashed worker doesn't permanently block the
+  // order. Other callers can re-claim once the lease expires (10 min).
+  // The previous claim allowed re-entry only when status was already
+  // failed/cancelled — so a worker crash mid-`creating` left the row
+  // wedged forever and the merchant had to manually flip the status in DB.
+  const STALE_LEASE_MIN = 10;
   if (needsCreate) {
     const claim = await siteDB.prepare(
       `UPDATE ${table}
           SET shiprocket_status = 'creating',
               shiprocket_error = NULL,
+              shiprocket_claimed_at = datetime('now'),
               updated_at = datetime('now')
         WHERE id = ?
           AND shiprocket_shipment_id IS NULL
           AND (shiprocket_status IS NULL
-               OR shiprocket_status IN ('failed', 'awb_failed', 'cancelled'))`
-    ).bind(orderId).run();
+               OR shiprocket_status IN ('failed', 'awb_failed', 'cancelled')
+               OR (shiprocket_status IN ('creating', 'awb_assigning')
+                   AND (shiprocket_claimed_at IS NULL
+                        OR shiprocket_claimed_at < datetime('now', '-' || ? || ' minutes'))))`
+    ).bind(orderId, STALE_LEASE_MIN).run();
 
     if (!claim.meta?.changes) {
       const cur = await siteDB.prepare(
@@ -680,12 +751,16 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
       `UPDATE ${table}
           SET shiprocket_status = 'awb_assigning',
               shiprocket_error = NULL,
+              shiprocket_claimed_at = datetime('now'),
               updated_at = datetime('now')
         WHERE id = ?
           AND shiprocket_awb IS NULL
           AND (shiprocket_status IS NULL
-               OR shiprocket_status IN ('order_created', 'courier_pending', 'failed', 'awb_failed'))`
-    ).bind(orderId).run();
+               OR shiprocket_status IN ('order_created', 'courier_pending', 'failed', 'awb_failed')
+               OR (shiprocket_status = 'awb_assigning'
+                   AND (shiprocket_claimed_at IS NULL
+                        OR shiprocket_claimed_at < datetime('now', '-' || ? || ' minutes'))))`
+    ).bind(orderId, STALE_LEASE_MIN).run();
 
     if (!awbClaim.meta?.changes) {
       const cur = await siteDB.prepare(
@@ -698,22 +773,12 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
     }
   }
 
-  // Now that we hold the claim, acquire the Shiprocket token (may call login).
-  let token;
-  try {
-    token = await ensureShiprocketToken(env, siteId, ctx.sr);
-  } catch (e) {
-    const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
-    await siteDB.prepare(`UPDATE ${table} SET shiprocket_status = 'failed', shiprocket_error = ? WHERE id = ?`).bind(msg, orderId).run();
-    return { ok: false, code: e?.code || 'AUTH_FAILED', message: msg };
-  }
-
   if (needsCreate) {
     const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config, siteId, totalWeightKg);
 
     let createRes;
     try {
-      createRes = await srCreateOrder(token, payload);
+      createRes = await srCall(env, siteId, ctx.sr, (t) => srCreateOrder(t, payload));
     } catch (e) {
       const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
       await siteDB.prepare(`UPDATE ${table} SET shiprocket_status = 'failed', shiprocket_error = ? WHERE id = ?`).bind(msg, orderId).run();
@@ -778,7 +843,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
     }
     try {
       const picked = await pickCourierForOrder({
-        token, sr, order, totalWeightKg, pickupPincode: pickupPin,
+        env, siteId, sr, order, totalWeightKg, pickupPincode: pickupPin,
       });
       if (picked.courierId) chosenCourierId = picked.courierId;
     } catch (e) {
@@ -789,7 +854,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   // Assign AWB (with the chosen courier_id, or null = Shiprocket auto-pick).
   let awbInfo = null;
   try {
-    const awbRes = await assignAwb(token, shipmentId, chosenCourierId || undefined);
+    const awbRes = await srCall(env, siteId, ctx.sr, (t) => assignAwb(t, shipmentId, chosenCourierId || undefined));
     awbInfo = awbRes?.response?.data || awbRes?.data || null;
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
@@ -802,7 +867,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
 
   // Schedule pickup (best-effort; failure here doesn't fail the whole flow).
   try {
-    await generatePickup(token, shipmentId);
+    await srCall(env, siteId, ctx.sr, (t) => generatePickup(t, shipmentId));
   } catch (e) {
     console.warn(`[Shiprocket] pickup schedule failed for shipment ${shipmentId}:`, e.message || e);
   }
@@ -810,7 +875,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   // Generate label (best-effort).
   let labelUrl = '';
   try {
-    const labelRes = await generateLabel(token, shipmentId);
+    const labelRes = await srCall(env, siteId, ctx.sr, (t) => generateLabel(t, shipmentId));
     labelUrl = labelRes?.label_url || '';
   } catch (e) {
     console.warn(`[Shiprocket] label generation failed for shipment ${shipmentId}:`, e.message || e);
@@ -867,7 +932,7 @@ async function handleShipNow(request, env, siteId, orderId) {
     }
   } catch { /* body optional */ }
 
-  const opts = { force: false };
+  const opts = {};
   if (courierId != null && String(courierId).trim() !== '') {
     const n = Number(courierId);
     if (Number.isFinite(n) && n > 0 && Number.isInteger(n)) {
@@ -924,10 +989,6 @@ async function handleListServiceableCouriers(env, siteId, orderId) {
     );
   }
 
-  let token;
-  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-  catch (e) { return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED'); }
-
   // Resolve pickup pincode (cached in settings after the first call).
   let pickupPin = ctx.sr.pickupLocationPincode || null;
   if (!pickupPin) {
@@ -952,20 +1013,23 @@ async function handleListServiceableCouriers(env, siteId, orderId) {
 
   let resp;
   try {
-    resp = await getServiceability(token, {
+    resp = await srCall(env, siteId, ctx.sr, (t) => getServiceability(t, {
       pickup_postcode: pickupPin,
       delivery_postcode: deliveryPincode,
       weight: totalWeightKg,
       cod: codFlag,
-    });
+    }));
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
-    return errorResponse(`Failed to fetch serviceable couriers: ${msg}`, 502, e?.code || 'UPSTREAM_ERROR');
+    const status = (e instanceof ShiprocketError && e.status === 401) ? 401 : 502;
+    return errorResponse(`Failed to fetch serviceable couriers: ${msg}`, status, e?.code || 'UPSTREAM_ERROR');
   }
 
   const data = resp?.data || resp || {};
   const available = Array.isArray(data?.available_courier_companies) ? data.available_courier_companies : [];
-  const recommendedId = Number(data?.recommended_courier_id) || null;
+  // Shiprocket's documented field is `recommended_courier_company_id`;
+  // some older accounts still serve `recommended_courier_id`.
+  const recommendedId = Number(data?.recommended_courier_company_id ?? data?.recommended_courier_id) || null;
   const preferred = sanitizeCourierIds(ctx.sr.preferredCourierIds);
   const preferredRank = new Map(preferred.map((id, i) => [id, i]));
 
@@ -1018,16 +1082,13 @@ async function handleListAllCouriers(env, siteId) {
   if (!ctx.sr?.emailEncrypted) {
     return errorResponse('Shiprocket not connected', 400, 'NOT_CONNECTED');
   }
-  let token;
-  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-  catch (e) { return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED'); }
-
   try {
-    const list = await listAllCouriers(token);
+    const list = await srCall(env, siteId, ctx.sr, (t) => listAllCouriers(t));
     return successResponse({ couriers: list });
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
-    return errorResponse(`Failed to fetch courier list: ${msg}`, 502, e?.code || 'UPSTREAM_ERROR');
+    const status = (e instanceof ShiprocketError && e.status === 401) ? 401 : 502;
+    return errorResponse(`Failed to fetch courier list: ${msg}`, status, e?.code || 'UPSTREAM_ERROR');
   }
 }
 
@@ -1047,21 +1108,29 @@ async function handleCancelShipment(env, siteId, orderId) {
     return errorResponse('No Shiprocket shipment to cancel for this order', 400, 'NOT_SHIPPED');
   }
 
-  let token;
-  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-  catch (e) {
-    return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED');
-  }
-
   try {
+    // Cancel the AWB first (releases the courier slot). Then ALSO cancel the
+    // parent Shiprocket order so the manifest doesn't auto-generate a label
+    // for it the next morning. Per Shiprocket support — calling only
+    // `cancel/shipment` leaves the order in 'NEW'/'PROCESSING' and a
+    // background sweep will eventually try to re-pick a courier.
     if (awb) {
-      await cancelShipment(token, awb);
-    } else if (shiprocketOrderId) {
-      await srCancelOrder(token, shiprocketOrderId);
+      await srCall(env, siteId, ctx.sr, (t) => cancelShipment(t, awb));
+    }
+    if (shiprocketOrderId) {
+      try {
+        await srCall(env, siteId, ctx.sr, (t) => srCancelOrder(t, shiprocketOrderId));
+      } catch (e) {
+        // Non-fatal: AWB is already cancelled, so the buyer is safe. Log and
+        // continue so the merchant sees the shipment marked cancelled even
+        // if the parent-order cancel call hits an "already cancelled" 4xx.
+        console.warn(`[Shiprocket] cancelOrder for SR order ${shiprocketOrderId} failed (non-fatal):`, e?.message || e);
+      }
     }
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
-    return errorResponse(`Shiprocket rejected the cancellation: ${msg}`, 502, e?.code || 'CANCEL_FAILED');
+    const status = (e instanceof ShiprocketError && e.status === 401) ? 401 : 502;
+    return errorResponse(`Shiprocket rejected the cancellation: ${msg}`, status, e?.code || 'CANCEL_FAILED');
   }
 
   await siteDB.prepare(
@@ -1086,12 +1155,8 @@ async function handleGetLabel(env, siteId, orderId) {
     return successResponse({ labelUrl: order.shiprocket_label_url, shiprocket_label_url: order.shiprocket_label_url, cached: true });
   }
 
-  let token;
-  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-  catch (e) { return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED'); }
-
   try {
-    const labelRes = await generateLabel(token, order.shiprocket_shipment_id);
+    const labelRes = await srCall(env, siteId, ctx.sr, (t) => generateLabel(t, order.shiprocket_shipment_id));
     const labelUrl = labelRes?.label_url || '';
     if (labelUrl) {
       await siteDB.prepare(`UPDATE ${table} SET shiprocket_label_url = ? WHERE id = ?`).bind(labelUrl, orderId).run();
@@ -1099,7 +1164,8 @@ async function handleGetLabel(env, siteId, orderId) {
     return successResponse({ labelUrl, shiprocket_label_url: labelUrl });
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
-    return errorResponse(`Failed to generate label: ${msg}`, 502, e?.code || 'LABEL_FAILED');
+    const status = (e instanceof ShiprocketError && e.status === 401) ? 401 : 502;
+    return errorResponse(`Failed to generate label: ${msg}`, status, e?.code || 'LABEL_FAILED');
   }
 }
 
@@ -1114,16 +1180,13 @@ async function handleTrack(env, siteId, orderId) {
   if (!order) return errorResponse('Order not found', 404);
   if (!order.shiprocket_awb) return errorResponse('No AWB for this order', 400, 'NO_AWB');
 
-  let token;
-  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-  catch (e) { return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED'); }
-
   try {
-    const tr = await trackShipment(token, order.shiprocket_awb);
+    const tr = await srCall(env, siteId, ctx.sr, (t) => trackShipment(t, order.shiprocket_awb));
     return successResponse({ tracking: tr });
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
-    return errorResponse(`Failed to fetch tracking: ${msg}`, 502, e?.code || 'TRACK_FAILED');
+    const status = (e instanceof ShiprocketError && e.status === 401) ? 401 : 502;
+    return errorResponse(`Failed to fetch tracking: ${msg}`, status, e?.code || 'TRACK_FAILED');
   }
 }
 
@@ -1156,7 +1219,22 @@ const SERVICEABILITY_MAX_TOTAL_WEIGHT_KG = 100;
 // Shiprocket. Workers spread requests across isolates so this is only a
 // partial mitigation, but it eliminates the worst stampedes within an
 // isolate without the operational weight of a Durable Object.
+//
+// Bounded by INFLIGHT_SERVICEABILITY_MAX. Map iteration order is insertion
+// order in V8, so once the map is at capacity we drop the oldest entry —
+// which is almost always already settled (the .finally() handler usually
+// removes it within milliseconds; the cap is a safety net against runaway
+// promises from a misbehaving upstream + an attacker spraying unique cache
+// keys to grow the map without bound).
+const INFLIGHT_SERVICEABILITY_MAX = 500;
 const INFLIGHT_SERVICEABILITY = new Map();
+function setInflightServiceability(key, promise) {
+  if (INFLIGHT_SERVICEABILITY.size >= INFLIGHT_SERVICEABILITY_MAX) {
+    const oldestKey = INFLIGHT_SERVICEABILITY.keys().next().value;
+    if (oldestKey !== undefined) INFLIGHT_SERVICEABILITY.delete(oldestKey);
+  }
+  INFLIGHT_SERVICEABILITY.set(key, promise);
+}
 
 // Look up the merchant's pickup pincode. Cached in site_config.settings.shiprocket
 // after the first lookup so subsequent serviceability calls don't hit
@@ -1168,13 +1246,12 @@ async function resolvePickupPincode(env, siteId, ctx) {
   const nickname = String(ctx.sr?.pickupLocationNickname || '').trim();
   if (!nickname) return null;
 
-  let token;
-  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-  catch { return null; }
-
   let list;
-  try { list = await getPickupLocations(token); }
-  catch { return null; }
+  try {
+    list = await srCall(env, siteId, ctx.sr, (t) => getPickupLocations(t));
+  } catch {
+    return null;
+  }
 
   const match = (Array.isArray(list) ? list : []).find(
     (l) => String(l?.pickup_location || '').trim().toLowerCase() === nickname.toLowerCase()
@@ -1288,8 +1365,9 @@ function pickQuotableRate(srData, sr) {
     if (hit) return hit.rate;
   }
   // Same key as `pickCourierForOrder` uses elsewhere in this file — keep
-  // them in lockstep so quote and ship-time selection match.
-  const recId = Number(srData?.recommended_courier_id);
+  // them in lockstep so quote and ship-time selection match. Read both the
+  // current and legacy field names.
+  const recId = Number(srData?.recommended_courier_company_id ?? srData?.recommended_courier_id);
   if (Number.isFinite(recId) && recId > 0) {
     const hit = byId.get(recId);
     if (hit) return hit.rate;
@@ -1449,20 +1527,18 @@ async function handlePublicServiceability(request, env, siteId, reqCtx) {
     let inflight = INFLIGHT_SERVICEABILITY.get(cacheKeyStr);
     if (!inflight) {
       inflight = (async () => {
-        let token;
-        try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
-        catch (e) {
-          return { reason: 'AUTH_FAILED', srData: null };
-        }
         try {
-          const resp = await getServiceability(token, {
+          const resp = await srCall(env, siteId, ctx.sr, (t) => getServiceability(t, {
             pickup_postcode: pickupPincode,
             delivery_postcode: deliveryPincode,
             weight: totalKg,
             cod: codRequested ? 1 : 0,
-          });
+          }));
           return { reason: null, srData: resp?.data || resp || {} };
         } catch (e) {
+          if (e instanceof ShiprocketError && (e.code === 'SHIPROCKET_AUTH' || e.code === 'NOT_CONNECTED')) {
+            return { reason: 'AUTH_FAILED', srData: null };
+          }
           console.warn('Shiprocket serviceability call failed:', e?.message || e);
           return { reason: 'UPSTREAM_ERROR', srData: null };
         }
@@ -1472,7 +1548,7 @@ async function handlePublicServiceability(request, env, siteId, reqCtx) {
         // a stale promise.
         INFLIGHT_SERVICEABILITY.delete(cacheKeyStr);
       });
-      INFLIGHT_SERVICEABILITY.set(cacheKeyStr, inflight);
+      setInflightServiceability(cacheKeyStr, inflight);
     }
     const { reason, srData: fetched } = await inflight;
     if (reason) {
@@ -1512,6 +1588,25 @@ async function handlePublicServiceability(request, env, siteId, reqCtx) {
   // the same response. Returns `null` when any gate fails — the storefront
   // then falls back to the static delivery config.
   const dynamicShippingFee = view.serviceable ? computeDynamicShippingFee(srData, ctx.sr) : null;
+  // Phase 5: HMAC-signed quote. The buyer's cart shows `dynamicShippingFee`
+  // and posts back the matching `signedQuote` at checkout — orders-worker
+  // verifies the signature + 5-minute freshness before charging it. If the
+  // sig is missing/stale/tampered, orders-worker falls back to a fresh
+  // server-side quote so we never charge less than the true rate.
+  let signedQuote = null;
+  if (dynamicShippingFee != null) {
+    try {
+      signedQuote = await signShippingQuote(env, siteId, {
+        rate: dynamicShippingFee,
+        pickupPincode,
+        deliveryPincode,
+        weightKg: totalKg,
+        codRequested: !!codRequested,
+      });
+    } catch (e) {
+      console.warn('[Shipping] signShippingQuote failed:', e?.message || e);
+    }
+  }
   return successResponse({
     ok: true,
     ...view,
@@ -1520,7 +1615,85 @@ async function handlePublicServiceability(request, env, siteId, reqCtx) {
     weightKg: totalKg,
     cached: cacheHit,
     dynamicShippingFee,
+    signedQuote,
   });
+}
+
+// ---------- Quote signing (T11) ----------
+//
+// Per-site HMAC over the shipping quote so the buyer's cart can show the
+// dynamic rate AND have orders-worker trust that exact rate at checkout
+// without re-running serviceability. Domain-separated by siteId so a leaked
+// signature from site A can't be replayed on site B.
+//
+// Signed payload includes the pickup/delivery/weight/cod context so an
+// attacker can't take a quote signed for one cart and re-use it on a heavier
+// cart with the same rate (the verify-side recomputes the cart context and
+// requires it to match exactly).
+const QUOTE_TTL_SECONDS = 5 * 60;
+
+async function _quoteSecret(env, siteId) {
+  const base = String(env?.SHIPPING_QUOTE_SECRET || env?.SHIPROCKET_QUOTE_SECRET || 'flomerce-quote-v1');
+  return `${base}:${siteId}`;
+}
+
+export async function signShippingQuote(env, siteId, payload) {
+  const exp = Math.floor(Date.now() / 1000) + QUOTE_TTL_SECONDS;
+  const body = {
+    rate: Number(payload.rate),
+    pickupPincode: String(payload.pickupPincode || ''),
+    deliveryPincode: String(payload.deliveryPincode || ''),
+    weightKg: Number(payload.weightKg) || 0,
+    codRequested: !!payload.codRequested,
+    exp,
+  };
+  const secret = await _quoteSecret(env, siteId);
+  // Stable JSON ordering — sign exactly the bytes we send so verify can
+  // reproduce them deterministically.
+  const data = JSON.stringify(body);
+  const sig = await hmacSha256B64u(secret, data);
+  return { ...body, sig };
+}
+
+// Verify a signed quote sent by the buyer at checkout. Returns the trusted
+// `rate` (in INR rupees) on success, or `null` on any failure (missing,
+// stale, tampered, or context mismatch). The caller MUST re-quote the rate
+// when null is returned — never silently free-shipping.
+export async function verifyShippingQuote(env, siteId, quote, context) {
+  if (!quote || typeof quote !== 'object') return null;
+  const sig = String(quote.sig || '');
+  if (!sig) return null;
+  const exp = Number(quote.exp);
+  if (!Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000)) return null;
+  const rate = Number(quote.rate);
+  if (!Number.isFinite(rate) || rate < 0) return null;
+
+  // Context must match what the buyer's cart originally signed: the same
+  // pickup/delivery pincodes, the same weight (within rounding), and the
+  // same COD flag. A different cart can't use the same signature.
+  const ctxPickup = String(context.pickupPincode || '');
+  const ctxDelivery = String(context.deliveryPincode || '');
+  const ctxWeight = Number(context.weightKg) || 0;
+  const ctxCod = !!context.codRequested;
+  if (String(quote.pickupPincode || '') !== ctxPickup) return null;
+  if (String(quote.deliveryPincode || '') !== ctxDelivery) return null;
+  // Weight tolerance: accept ±5g / 0.005 kg to absorb floating-point round-trip.
+  if (Math.abs(Number(quote.weightKg || 0) - ctxWeight) > 0.005) return null;
+  if (!!quote.codRequested !== ctxCod) return null;
+
+  const body = {
+    rate,
+    pickupPincode: String(quote.pickupPincode || ''),
+    deliveryPincode: String(quote.deliveryPincode || ''),
+    weightKg: Number(quote.weightKg) || 0,
+    codRequested: !!quote.codRequested,
+    exp,
+  };
+  const secret = await _quoteSecret(env, siteId);
+  const data = JSON.stringify(body);
+  const expected = await hmacSha256B64u(secret, data);
+  if (!constantTimeEqual(sig, expected)) return null;
+  return rate;
 }
 
 // ---------- Top-level dispatcher (mixed public + admin) ----------
@@ -1570,6 +1743,12 @@ export async function handleShipping(request, env, path, ctx) {
     if (action === 'pickup-locations' && method === 'GET') {
       return await handlePickupLocations(env, siteId);
     }
+    if (action === 'webhook' && parts[3] === 'rotate' && method === 'POST') {
+      // Admin-only token rotation. Returns the new token once for paste-back
+      // into Shiprocket's webhook config; never returned again after that.
+      if (!hasPermission(admin, 'settings')) return errorResponse('Forbidden: settings permission required', 403, 'FORBIDDEN');
+      return await handleRotateWebhookToken(env, siteId);
+    }
     if (action === 'couriers' && method === 'GET') {
       // Full courier list for the Settings → Shipping preference picker.
       // Gated by the same permission as the rest of Settings.
@@ -1594,6 +1773,89 @@ export async function handleShipping(request, env, path, ctx) {
   }
 }
 
+// ---------- Webhook status mapping ----------
+//
+// Shiprocket exposes a stable numeric `current_status_id` (well-known IDs
+// from their API docs) plus a free-text `current_status` label. The numeric
+// ID is the source of truth — text labels drift across account types and
+// localizations. Map by ID first, fall back to text-pattern when missing.
+//
+// The map returns `{ orderStatus, group }`:
+//   - `orderStatus` is the value we stamp onto the `status` column for the
+//     buyer-facing order — only set for transitions buyers care about
+//     (shipped / delivered). Leave null for internal/back-office events
+//     (manifest, NDR, RTO, lost, damaged) so the merchant sees the rich
+//     `shiprocket_status` text without the order moving in the buyer's
+//     order list.
+//   - `group` is a coarse category used for the dedupe key + observability.
+const SHIPROCKET_STATUS_BY_ID = {
+  1:  { orderStatus: null,        group: 'new' },
+  2:  { orderStatus: null,        group: 'awb_assigned' },
+  3:  { orderStatus: null,        group: 'label_generated' },
+  4:  { orderStatus: null,        group: 'pickup_scheduled' },
+  5:  { orderStatus: null,        group: 'pickup_queued' },
+  6:  { orderStatus: 'shipped',   group: 'in_transit' },
+  7:  { orderStatus: 'delivered', group: 'delivered' },
+  8:  { orderStatus: null,        group: 'cancelled' },
+  9:  { orderStatus: 'shipped',   group: 'picked_up' },
+  10: { orderStatus: 'shipped',   group: 'out_for_delivery' },
+  11: { orderStatus: null,        group: 'ndr' },
+  12: { orderStatus: null,        group: 'rto_initiated' },
+  13: { orderStatus: null,        group: 'rto_delivered' },
+  14: { orderStatus: null,        group: 'lost' },
+  15: { orderStatus: null,        group: 'damaged' },
+  17: { orderStatus: null,        group: 'out_for_pickup' },
+  18: { orderStatus: null,        group: 'pickup_generated' },
+  19: { orderStatus: null,        group: 'manifest_generated' },
+  21: { orderStatus: null,        group: 'undelivered' },
+  22: { orderStatus: null,        group: 'pickup_rescheduled' },
+  24: { orderStatus: 'shipped',   group: 'in_transit' },
+  27: { orderStatus: 'shipped',   group: 'reached_destination_hub' },
+  38: { orderStatus: null,        group: 'rto_in_transit' },
+  39: { orderStatus: null,        group: 'rto_out_for_delivery' },
+  42: { orderStatus: null,        group: 'pickup_error' },
+};
+
+function mapShiprocketStatus(statusId, statusText) {
+  const idNum = Number(statusId);
+  if (Number.isFinite(idNum) && SHIPROCKET_STATUS_BY_ID[idNum]) {
+    return { ...SHIPROCKET_STATUS_BY_ID[idNum], statusId: idNum };
+  }
+  // Text fallback for older webhooks or accounts that omit current_status_id.
+  const sl = String(statusText || '').toLowerCase();
+  if (/(delivered)/.test(sl) && !/rto|undeliv|not.?deliv/.test(sl)) {
+    return { orderStatus: 'delivered', group: 'delivered', statusId: null };
+  }
+  if (/(out.?for.?delivery)/.test(sl)) {
+    return { orderStatus: 'shipped', group: 'out_for_delivery', statusId: null };
+  }
+  if (/(in.?transit|shipped|picked.?up|reached)/.test(sl)) {
+    return { orderStatus: 'shipped', group: 'in_transit', statusId: null };
+  }
+  if (/(pickup.?scheduled|pickup.?generated|pickup.?completed|out.?for.?pickup)/.test(sl)) {
+    return { orderStatus: null, group: 'pickup', statusId: null };
+  }
+  if (/(manifest)/.test(sl)) {
+    return { orderStatus: null, group: 'manifest_generated', statusId: null };
+  }
+  if (/(ndr|undeliv)/.test(sl)) {
+    return { orderStatus: null, group: 'ndr', statusId: null };
+  }
+  if (/(rto|return)/.test(sl)) {
+    return { orderStatus: null, group: 'rto', statusId: null };
+  }
+  if (/(cancell?ed)/.test(sl)) {
+    return { orderStatus: null, group: 'cancelled', statusId: null };
+  }
+  if (/(lost)/.test(sl)) {
+    return { orderStatus: null, group: 'lost', statusId: null };
+  }
+  if (/(damaged)/.test(sl)) {
+    return { orderStatus: null, group: 'damaged', statusId: null };
+  }
+  return { orderStatus: null, group: 'unknown', statusId: null };
+}
+
 // ---------- Webhook dispatcher ----------
 // Path: /api/webhooks/shiprocket/:siteId
 // Auth: X-Api-Key header must match site_config.settings.shiprocket.webhookToken.
@@ -1613,20 +1875,36 @@ export async function handleShiprocketWebhook(request, env, path) {
   }
   if (!ctx) return errorResponse('Site not found', 404, 'SITE_NOT_FOUND');
 
-  const expectedToken = ctx.sr?.webhookToken;
-  const provided = request.headers.get('X-Api-Key') || request.headers.get('x-api-key') || '';
-  if (!expectedToken || !provided || provided !== expectedToken) {
+  const expectedToken = String(ctx.sr?.webhookToken || '');
+  const provided = String(request.headers.get('X-Api-Key') || request.headers.get('x-api-key') || '');
+  // Constant-time compare so an attacker can't time-attack the token byte by
+  // byte. `constantTimeEqual` short-circuits when lengths differ but does so
+  // *before* iterating, which is fine — token length is public knowledge in
+  // every webhook system anyway.
+  if (!expectedToken || !provided || !constantTimeEqual(provided, expectedToken)) {
     return errorResponse('Invalid webhook token', 401, 'BAD_WEBHOOK_TOKEN');
   }
 
   let payload;
   try { payload = await request.json(); } catch { return errorResponse('Invalid JSON', 400); }
 
-  // Shiprocket webhook payload typically contains awb, current_status, order_id (the merchant's order_id we sent).
+  // Shiprocket webhook payload typically contains awb, current_status,
+  // current_status_id (numeric — preferred), order_id (the merchant's
+  // order_id we sent), and current_timestamp.
   const awb = String(payload.awb || payload.awb_code || '').trim();
   const merchantOrderId = String(payload.order_id || payload.merchant_order_id || '').trim();
   const currentStatus = String(payload.current_status || payload.status || '').trim();
-  const eventTime = payload.current_timestamp || payload.event_time || new Date().toISOString();
+  const currentStatusIdRaw = payload.current_status_id ?? payload.shipment_status_id ?? null;
+  const eventTimeRaw = payload.current_timestamp || payload.event_time || new Date().toISOString();
+  // Parse to numeric epoch in IST so out-of-order webhooks (which arrive with
+  // identical text labels but earlier timestamps) are correctly suppressed
+  // and "newer wins" comparisons don't collapse on string-sorting quirks
+  // (e.g. "26 04 2026 09:00:00" sorts before "ISO 2026-04-26T09:00:00Z").
+  const eventEpochMs = parseShiprocketTimestamp(eventTimeRaw);
+  // Fall back to wall-clock when Shiprocket sends an unparseable timestamp
+  // (very rare — they've sent us at least one bad payload), so the dedupe
+  // key still has a usable monotonic component.
+  const eventEpoch = Number.isFinite(eventEpochMs) ? eventEpochMs : Date.now();
 
   if (!awb && !merchantOrderId) {
     return errorResponse('Webhook missing awb and order_id', 400, 'MISSING_IDENTIFIER');
@@ -1665,50 +1943,49 @@ export async function handleShiprocketWebhook(request, env, path) {
   };
 
   const found = (await findInTable('orders')) || (await findInTable('guest_orders'));
-  if (!found) return errorResponse('Order not found for AWB', 404, 'ORDER_NOT_FOUND');
+  if (!found) {
+    // Return 200 OK so Shiprocket stops retrying. The order genuinely doesn't
+    // exist on our side (test webhooks, deleted orders, or webhooks meant for
+    // a different account routed to ours by mistake) — retrying won't help
+    // and the retry storm just wastes both sides' compute.
+    return successResponse({ ok: true, ignored: 'order_not_found' });
+  }
 
   const { row, table } = found;
 
-  // Idempotency: skip if we already processed an event at >= this timestamp.
-  if (row.shiprocket_last_event_at && row.shiprocket_last_event_at >= eventTime) {
-    return successResponse({ deduped: true });
-  }
+  // Map status (prefer numeric ID, fall back to text).
+  const mapped = mapShiprocketStatus(currentStatusIdRaw, currentStatus);
 
-  // Map Shiprocket statuses to our internal order statuses. (Note: 'PICKED UP'
-  // is a real first-mile event — without it the customer's "shipped" email is
-  // delayed until 'IN TRANSIT' arrives, which can be hours later.)
-  const sl = currentStatus.toLowerCase();
-  let newStatus = null;
-  if (/(in.?transit|shipped|out.?for.?pickup|picked.?up|pickup.?scheduled|pickup.?generated|pickup.?completed)/.test(sl)) {
-    newStatus = 'shipped';
-  } else if (/(out.?for.?delivery)/.test(sl)) {
-    newStatus = 'shipped'; // keep as shipped, customer-facing label still says shipped
-  } else if (/(delivered)/.test(sl)) {
-    newStatus = 'delivered';
-  } else if (/(cancell?ed|rto|return)/.test(sl)) {
-    newStatus = null; // don't auto-cancel customer-side; just record shiprocket_status
-  }
-
-  // Idempotency-gated update of the shiprocket_* meta columns. If a duplicate
-  // or out-of-order webhook arrives, the WHERE clause prevents overwriting a
-  // newer event and the meta.changes count tells us we should de-dupe.
+  // Store the dedupe key as `<status_group>:<epoch_ms>` — newer events
+  // overwrite older ones, and a stale repeat of the same `<group, epoch>`
+  // pair short-circuits without writing.
+  const dedupeKey = `${mapped.group}:${eventEpoch}`;
+  // Idempotency-gated update of the shiprocket_* meta columns. The compare
+  // is on the stored `shiprocket_last_event_at` (which is the dedupe key).
+  // Since the key embeds epoch ms, lexicographic SQLite text comparison
+  // sorts correctly within the same group; cross-group transitions don't
+  // need ordering — they're driven by Shiprocket's monotonic timeline.
   const metaUpdate = await siteDB.prepare(
     `UPDATE ${table}
         SET shiprocket_status = ?,
             shiprocket_last_event_at = ?,
             updated_at = datetime('now')
       WHERE id = ?
-        AND (shiprocket_last_event_at IS NULL OR shiprocket_last_event_at < ?)`
-  ).bind(currentStatus, eventTime, row.id, eventTime).run();
+        AND (shiprocket_last_event_at IS NULL
+             OR shiprocket_last_event_at < ?
+             OR shiprocket_last_event_at NOT LIKE ?)`
+  ).bind(currentStatus || mapped.group, dedupeKey, row.id, dedupeKey, `${mapped.group}:%`).run();
 
   if (!metaUpdate.meta?.changes) {
-    return successResponse({ deduped: true });
+    return successResponse({ ok: true, deduped: true });
   }
 
-  // Conditional status flip — only fires when this caller actually changes the
-  // value. meta.changes === 1 here means THIS caller flipped status, so it
-  // owns the customer notification (no risk of two concurrent webhooks both
-  // emailing the customer for the same transition).
+  // Conditional status flip — only fires when this caller actually changes
+  // the buyer-visible `status` column. `meta.changes === 1` here means THIS
+  // caller flipped status, so it owns the customer notification (no risk of
+  // two concurrent webhooks both emailing the customer for the same
+  // transition).
+  const newStatus = mapped.orderStatus;
   let didFlip = false;
   if (newStatus) {
     let stmt;
@@ -1716,7 +1993,7 @@ export async function handleShiprocketWebhook(request, env, path) {
       stmt = siteDB.prepare(
         `UPDATE ${table}
             SET status = ?, shipped_at = COALESCE(shipped_at, datetime('now'))
-          WHERE id = ? AND status != ?`
+          WHERE id = ? AND status != ? AND status NOT IN ('delivered', 'cancelled')`
       ).bind(newStatus, row.id, newStatus);
     } else if (newStatus === 'delivered') {
       stmt = siteDB.prepare(
@@ -1741,7 +2018,36 @@ export async function handleShiprocketWebhook(request, env, path) {
     }
   }
 
-  return successResponse({ ok: true, newStatus, shiprocketStatus: currentStatus, flipped: didFlip });
+  return successResponse({
+    ok: true,
+    newStatus,
+    shiprocketStatus: currentStatus,
+    statusGroup: mapped.group,
+    flipped: didFlip,
+  });
+}
+
+// ---------- Endpoint: rotate webhook token ----------
+//
+// Generates a fresh webhook token, persists it into settings, and returns it
+// once to the admin. The merchant must paste the new token back into
+// Shiprocket's "Webhook Token" field within the dashboard. Old token stops
+// working immediately on rotation.
+async function handleRotateWebhookToken(env, siteId) {
+  const ctx = await readShiprocketSettings(env, siteId);
+  if (!ctx) return errorResponse('Site not found', 404);
+  if (!ctx.sr?.emailEncrypted) return errorResponse('Shiprocket not connected', 400, 'NOT_CONNECTED');
+
+  const newToken = generateToken(48);
+  await writeShiprocketSettings(env, siteId, (sr) => ({
+    ...sr,
+    webhookToken: newToken,
+  }));
+
+  return successResponse({
+    webhookToken: newToken,
+    message: 'New token generated. Paste it into Shiprocket → Settings → Webhooks. The previous token stops working immediately.',
+  });
 }
 
 // ---------- Phase 4: server-side quote (used by orders-worker.createOrder) ----------
@@ -1808,6 +2114,25 @@ export async function quoteDynamicShipping(env, siteId, order) {
 
     const codRequested = order.paymentMethod === 'cod';
 
+    // T11: if the buyer presented a signed quote (issued earlier by the
+    // public serviceability endpoint), trust it when valid. The verify
+    // function returns the signed `rate` only when ALL of (sig fresh,
+    // pickup/delivery/weight/cod context match) pass — otherwise null and
+    // we fall through to a fresh server-side quote. Never silently free.
+    if (order.signedQuote && typeof order.signedQuote === 'object') {
+      try {
+        const verified = await verifyShippingQuote(env, siteId, order.signedQuote, {
+          pickupPincode,
+          deliveryPincode,
+          weightKg: totalKg,
+          codRequested,
+        });
+        if (verified != null) return verified;
+      } catch (e) {
+        console.warn('[quoteDynamicShipping] verifyShippingQuote failed (will re-quote):', e?.message || e);
+      }
+    }
+
     // Same cache-key shape as handlePublicServiceability so we get free
     // hits when the storefront just queried the same route.
     const cacheKeyStr =
@@ -1824,19 +2149,13 @@ export async function quoteDynamicShipping(env, siteId, order) {
     }
 
     if (!srData) {
-      let token;
-      try { token = await ensureShiprocketToken(env, siteId, sr); }
-      catch (e) {
-        console.warn('[quoteDynamicShipping] token fetch failed:', e?.message || e);
-        return null;
-      }
       try {
-        const resp = await getServiceability(token, {
+        const resp = await srCall(env, siteId, sr, (t) => getServiceability(t, {
           pickup_postcode: pickupPincode,
           delivery_postcode: deliveryPincode,
           weight: totalKg,
           cod: codRequested ? 1 : 0,
-        });
+        }));
         srData = resp?.data || resp || {};
       } catch (e) {
         console.warn('[quoteDynamicShipping] serviceability fetch failed:', e?.message || e);

@@ -104,7 +104,9 @@ export async function createOrder(token, payload) {
 /**
  * Check serviceability + recommended courier for a shipment.
  * params: { pickup_postcode, delivery_postcode, weight, cod, declared_value }
- * Returns the full data block; we typically pick recommended_courier_id.
+ * Returns the full data block; we typically pick recommended_courier_company_id
+ * (Shiprocket's documented field name; the older alias `recommended_courier_id`
+ * is read as a fallback for accounts still on the legacy response shape).
  *
  * Not currently called by the live ship flow (AWB is assigned with auto-pick),
  * but kept available for surfacing pre-shipment ETAs / serviceability checks
@@ -218,4 +220,104 @@ export async function cancelOrder(token, shiprocketOrderIds) {
     method: 'POST',
     body: { ids: list.map(Number) },
   });
+}
+
+// ---------- Helpers (pure — no IO) ----------
+
+/**
+ * Constant-time string compare. Returns true iff `a` and `b` are the same
+ * UTF-16 string. Length is intentionally compared first so we never iterate
+ * past the shorter input — but the loop below ALWAYS runs to `len` so the
+ * branch path doesn't leak which prefix matched. Used for webhook tokens.
+ */
+export function constantTimeEqual(a, b) {
+  const sa = typeof a === 'string' ? a : '';
+  const sb = typeof b === 'string' ? b : '';
+  if (sa.length !== sb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sa.length; i++) {
+    diff |= sa.charCodeAt(i) ^ sb.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * Parse a Shiprocket webhook timestamp into milliseconds-since-epoch (UTC).
+ * Shiprocket's `current_timestamp` field is documented as
+ * `"DD MM YYYY HH:MM:SS"` (Indian Standard Time, UTC+5:30) but the platform
+ * has historically also sent `"YYYY-MM-DD HH:MM:SS"` and full ISO-8601 in
+ * different webhook generations. We normalise all three so the dedupe key
+ * stays comparable regardless of the wire format.
+ *
+ * Returns `Number.NaN` when the input cannot be parsed — callers should
+ * fall back to `Date.now()` in that case so the event is still recorded.
+ */
+export function parseShiprocketTimestamp(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return Number.NaN;
+
+  // Try the documented "DD MM YYYY HH:MM:SS" form first (IST).
+  const m1 = s.match(/^(\d{2})\s+(\d{2})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  if (m1) {
+    const [, dd, mm, yyyy, hh, mi, ss] = m1;
+    const utcMs = Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi, +ss);
+    if (Number.isFinite(utcMs)) return utcMs - 5.5 * 60 * 60 * 1000;
+  }
+
+  // SQLite-style "YYYY-MM-DD HH:MM:SS" — Shiprocket sends this in IST too.
+  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+  if (m2) {
+    const [, yyyy, mm, dd, hh, mi, ss] = m2;
+    const utcMs = Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi, +ss);
+    if (Number.isFinite(utcMs)) return utcMs - 5.5 * 60 * 60 * 1000;
+  }
+
+  // Fall back to the JS parser for ISO-8601 with explicit Z/offset.
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : Number.NaN;
+}
+
+/**
+ * Format a JS-parseable date into the `YYYY-MM-DD HH:MM` shape Shiprocket
+ * expects in `order_date`, converted to Indian Standard Time. SQLite UTC
+ * naive timestamps (e.g. "2026-04-26 08:00:00") are accepted as well as
+ * ISO-8601 strings. Falls back to "now" in IST on unparseable input.
+ */
+export function formatISTOrderDate(raw) {
+  const candidate = String(raw || '').trim();
+  let t = Number.NaN;
+  if (candidate) {
+    // Treat naked SQLite timestamps as UTC (which they are — datetime('now')
+    // returns UTC) by tagging them with Z before parsing.
+    const tagged = /[zZ]|[+-]\d{2}:?\d{2}$/.test(candidate)
+      ? candidate.replace(' ', 'T')
+      : candidate.replace(' ', 'T') + 'Z';
+    t = Date.parse(tagged);
+  }
+  if (!Number.isFinite(t)) t = Date.now();
+  const ist = new Date(t + 5.5 * 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${ist.getUTCFullYear()}-${pad(ist.getUTCMonth() + 1)}-${pad(ist.getUTCDate())} ${pad(ist.getUTCHours())}:${pad(ist.getUTCMinutes())}`;
+}
+
+/**
+ * HMAC-SHA256 a payload with the given secret using SubtleCrypto and return
+ * a URL-safe base64 string. Available everywhere because Workers, Node 18+,
+ * and Cloudflare runtimes all expose `crypto.subtle`.
+ */
+export async function hmacSha256B64u(secret, payload) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(String(secret || '')),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(String(payload || '')));
+  // Base64URL encode without padding.
+  let bin = '';
+  const bytes = new Uint8Array(sig);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

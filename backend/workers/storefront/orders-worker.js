@@ -373,7 +373,7 @@ async function getOrder(env, user, orderId, request, preResolvedDb) {
 async function createOrder(request, env, user, ctx) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency, whatsappOptIn } = data;
+    const { siteId, items, shippingAddress, billingAddress, customerName, customerEmail, customerPhone, paymentMethod, notes, couponCode, currency: orderCurrency, whatsappOptIn, signedQuote } = data;
     const orderUrl = new URL(request.url);
     const placedInLang = (orderUrl.searchParams.get('lang') || data.lang || '').trim() || null;
 
@@ -623,10 +623,14 @@ async function createOrder(request, env, user, ctx) {
       } catch {}
       if (!freeAboveActive) {
         const { quoteDynamicShipping } = await import('./shipping-worker.js');
+        // Pass through the buyer's HMAC-signed quote (when present). The
+        // helper verifies sig + freshness + cart-context match and returns
+        // the trusted rate, or recomputes server-side on any mismatch.
         const dyn = await quoteDynamicShipping(env, siteId, {
           processedItems,
           shippingAddress,
           paymentMethod,
+          signedQuote,
         });
         if (typeof dyn === 'number' && Number.isFinite(dyn) && dyn >= 0) {
           shippingCost = dyn;
@@ -1182,7 +1186,7 @@ async function handleGuestOrder(request, env, method, orderId, ctx) {
 async function createGuestOrder(request, env, ctx) {
   try {
     const data = await request.json();
-    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency, whatsappOptIn } = data;
+    const { siteId, items, shippingAddress, customerName, customerEmail, customerPhone, paymentMethod, currency: guestOrderCurrency, whatsappOptIn, signedQuote } = data;
     const guestOrderUrl = new URL(request.url);
     const guestPlacedInLang = (guestOrderUrl.searchParams.get('lang') || data.lang || '').trim() || null;
 
@@ -1367,6 +1371,7 @@ async function createGuestOrder(request, env, ctx) {
           processedItems,
           shippingAddress,
           paymentMethod,
+          signedQuote,
         });
         if (typeof dyn === 'number' && Number.isFinite(dyn) && dyn >= 0) {
           guestShippingCost = dyn;

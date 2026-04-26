@@ -196,6 +196,38 @@ export default function OrdersSection() {
     }
   }
 
+  async function handleRefundBuyer(order) {
+    if (!order?.id) return;
+    const amountStr = (order.total != null) ? `₹${Number(order.total).toFixed(2)}` : 'the full order total';
+    if (!window.confirm(
+      `Refund ${amountStr} to the buyer via Razorpay?\n\n` +
+      `This is irreversible. The buyer will receive the refund in 5–7 working days.`
+    )) return;
+    setShipActionLoading(true);
+    try {
+      const res = await apiRequest(
+        `/api/payments/orders/${order.id}/refund?siteId=${siteConfig.id}`,
+        { method: 'POST' }
+      );
+      const data = res.data || res;
+      applyOrderUpdate(order.id, {
+        payment_status: 'refunded',
+        refund_id: data.refundId,
+        refund_amount: data.refundAmount,
+        refunded_at: data.refundedAt,
+      });
+      if (data.alreadyRefunded) {
+        toast.success('This order was already refunded.');
+      } else {
+        toast.success(`Refund initiated (${data.status || 'processing'}). Razorpay ref: ${data.refundId}`);
+      }
+    } catch (err) {
+      toast.error(`Refund failed: ${err.message}`);
+    } finally {
+      setShipActionLoading(false);
+    }
+  }
+
   async function handleReprintLabel(order) {
     if (order?.shiprocket_label_url) {
       window.open(order.shiprocket_label_url, '_blank', 'noopener');
@@ -1648,6 +1680,41 @@ export default function OrdersSection() {
                   )}
                 </>
               )}
+              {/* T13: Refund Buyer — only shown when payment is Razorpay/paid AND
+                  there's no active shipment that could still deliver. We hide
+                  it once a refund has been recorded so admins can't double-refund. */}
+              {(() => {
+                const pm = String(order.payment_method || '').toLowerCase();
+                const ps = String(order.payment_status || '').toLowerCase();
+                const sr = String(order.shiprocket_status || '').toLowerCase();
+                const noShipment = !order.shiprocket_awb;
+                const shipmentCancelled = sr.includes('cancel');
+                const alreadyRefunded = !!order.refund_id || ps === 'refunded';
+                const canRefund = pm === 'razorpay'
+                  && ps === 'paid'
+                  && (noShipment || shipmentCancelled)
+                  && !alreadyRefunded;
+                if (!canRefund) return null;
+                return (
+                  <button
+                    onClick={() => handleRefundBuyer(order)}
+                    disabled={shipActionLoading}
+                    style={{
+                      padding: '9px 20px',
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#dc2626',
+                      color: '#fff',
+                      cursor: shipActionLoading ? 'not-allowed' : 'pointer',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      opacity: shipActionLoading ? 0.6 : 1,
+                    }}
+                  >
+                    💸 Refund Buyer
+                  </button>
+                );
+              })()}
               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
                 <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: "Confirm this order?" }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Confirm</button>
               )}

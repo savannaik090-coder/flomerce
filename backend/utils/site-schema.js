@@ -601,6 +601,7 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE orders ADD COLUMN shiprocket_status TEXT',
     'ALTER TABLE orders ADD COLUMN shiprocket_last_event_at TEXT',
     'ALTER TABLE orders ADD COLUMN shiprocket_error TEXT',
+    'ALTER TABLE orders ADD COLUMN shiprocket_claimed_at TEXT',
     'ALTER TABLE guest_orders ADD COLUMN shiprocket_order_id TEXT',
     'ALTER TABLE guest_orders ADD COLUMN shiprocket_shipment_id TEXT',
     'ALTER TABLE guest_orders ADD COLUMN shiprocket_awb TEXT',
@@ -609,6 +610,16 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE guest_orders ADD COLUMN shiprocket_status TEXT',
     'ALTER TABLE guest_orders ADD COLUMN shiprocket_last_event_at TEXT',
     'ALTER TABLE guest_orders ADD COLUMN shiprocket_error TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN shiprocket_claimed_at TEXT',
+    // T13: Razorpay refund tracking. We persist the Razorpay refund_id +
+    // timestamp on the order itself so the admin UI can show "Refunded" and
+    // the refund endpoint can be idempotent (skip when refund_id already set).
+    'ALTER TABLE orders ADD COLUMN refund_id TEXT',
+    'ALTER TABLE orders ADD COLUMN refund_amount REAL',
+    'ALTER TABLE orders ADD COLUMN refunded_at TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN refund_id TEXT',
+    'ALTER TABLE guest_orders ADD COLUMN refund_amount REAL',
+    'ALTER TABLE guest_orders ADD COLUMN refunded_at TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

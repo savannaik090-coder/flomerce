@@ -1,6 +1,6 @@
 import { generateId, generateToken, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth } from '../../utils/auth.js';
-import { validateSiteAdmin } from '../storefront/site-admin-worker.js';
+import { validateSiteAdmin, hasPermission } from '../storefront/site-admin-worker.js';
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
 import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
@@ -31,6 +31,16 @@ export async function handlePayments(request, env, path, ctx) {
       return handleRazorpayWebhookInfo(request, env);
     case 'webhook-rotate':
       return handleRazorpayWebhookRotate(request, env);
+    case 'orders': {
+      // POST /api/payments/orders/:id/refund — admin-only buyer refund.
+      // Path: ['api','payments','orders',':id','refund']
+      const orderId = pathParts[3];
+      const op = pathParts[4];
+      if (orderId && op === 'refund' && request.method === 'POST') {
+        return handleRefundOrder(request, env, orderId);
+      }
+      return errorResponse('Not found', 404);
+    }
     default:
       return errorResponse('Not found', 404);
   }
@@ -1518,10 +1528,12 @@ async function markStorefrontOrderPaidIfPending(env, siteId, razorpayOrderId, ra
   return null;
 }
 
-// Best-effort log of refund metadata. The current schema does not have a
-// dedicated refund column on orders/guest_orders, so we just record the event
-// in the platform logs for now — merchants can correlate via their Razorpay
-// dashboard. (When a proper refunds table is added we can persist here.)
+// Best-effort log of refund metadata + persistence on the matching order.
+// Webhooks deliver `refund.created` / `refund.processed` events both for
+// admin-initiated refunds (handleRefundOrder) and for refunds the merchant
+// triggered directly from the Razorpay dashboard. Either way we want the
+// order row to reflect the refund so the admin UI hides the refund button
+// and the customer's order page shows "Refunded".
 async function recordRazorpayRefund(env, siteId, refundEntity) {
   if (!refundEntity?.payment_id) return;
   console.log('[razorpay refund]',
@@ -1530,6 +1542,264 @@ async function recordRazorpayRefund(env, siteId, refundEntity) {
     'refund', refundEntity.id,
     'amount', refundEntity.amount,
     'status', refundEntity.status);
+
+  if (!siteId) return;
+  try {
+    const siteDB = await resolveSiteDBById(env, siteId);
+    if (!siteDB) return;
+    const refundAmount = Number(refundEntity.amount || 0) / 100; // paise -> rupees
+    const refundedAt = new Date().toISOString();
+    // Stamp both tables; only the row matching this razorpay_payment_id will
+    // actually flip. Idempotent — we only update when refund_id is unset, so
+    // re-deliveries of the same webhook are a no-op.
+    for (const table of ['orders', 'guest_orders']) {
+      try {
+        await siteDB.prepare(
+          `UPDATE ${table}
+              SET refund_id = ?, refund_amount = ?, refunded_at = ?,
+                  payment_status = 'refunded', updated_at = datetime('now')
+            WHERE site_id = ? AND razorpay_payment_id = ? AND (refund_id IS NULL OR refund_id = '')`
+        ).bind(refundEntity.id, refundAmount, refundedAt, siteId, refundEntity.payment_id).run();
+      } catch (e) {
+        console.warn(`[razorpay refund] ${table} update failed (column may be missing):`, e?.message || e);
+      }
+    }
+  } catch (e) {
+    console.warn('[razorpay refund] persistence failed:', e?.message || e);
+  }
+}
+
+// POST /api/payments/orders/:id/refund?siteId=...
+//
+// Admin-only buyer refund. Calls Razorpay's POST /v1/payments/:id/refund and
+// stamps the result onto the order row. Idempotent: returns 200 with the
+// existing refund_id when one is already recorded for this order.
+async function handleRefundOrder(request, env, orderId) {
+  try {
+    const url = new URL(request.url);
+    const siteId = url.searchParams.get('siteId');
+    if (!siteId) return errorResponse('siteId is required', 400, 'MISSING_SITE_ID');
+    if (!orderId) return errorResponse('orderId is required', 400, 'MISSING_ORDER_ID');
+
+    const admin = await validateSiteAdmin(request, env, siteId);
+    if (!admin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
+
+    // Permission gate — re-use the 'orders' admin permission since refunds
+    // are an order-management action. (Avoid creating a new permission until
+    // we have a real role-design need to split it from cancel/ship.)
+    if (!hasPermission(admin, 'orders')) {
+      return errorResponse('Forbidden: orders permission required', 403, 'FORBIDDEN');
+    }
+
+    const siteDB = await resolveSiteDBById(env, siteId);
+    if (!siteDB) return errorResponse('Site database unavailable', 500);
+
+    // Find the order in either table.
+    let table = 'orders';
+    let order = await siteDB.prepare(
+      `SELECT id, total, currency, payment_method, payment_status, razorpay_payment_id,
+              shiprocket_status, refund_id, refund_amount, refunded_at
+         FROM orders WHERE id = ? AND site_id = ? LIMIT 1`
+    ).bind(orderId, siteId).first();
+    if (!order) {
+      table = 'guest_orders';
+      order = await siteDB.prepare(
+        `SELECT id, total, currency, payment_method, payment_status, razorpay_payment_id,
+                shiprocket_status, refund_id, refund_amount, refunded_at
+           FROM guest_orders WHERE id = ? AND site_id = ? LIMIT 1`
+      ).bind(orderId, siteId).first();
+    }
+    if (!order) return errorResponse('Order not found', 404, 'ORDER_NOT_FOUND');
+
+    // Defense-in-depth: even though `table` is set internally to one of two
+    // string literals above, we whitelist before interpolating into any SQL
+    // (no parameterized identifier support in D1) so no future refactor can
+    // ever land an injection on this path.
+    if (table !== 'orders' && table !== 'guest_orders') {
+      return errorResponse('Internal error: invalid table', 500);
+    }
+
+    // Idempotency: if a refund_id is already on the row, return it without
+    // calling Razorpay again. This is the safe behaviour for retries (network
+    // glitch on the admin's first click) and for the case where a webhook
+    // already recorded a dashboard-initiated refund. We treat the sentinel
+    // value `pending:*` as "in progress, retry shortly" so two simultaneous
+    // admin clicks don't race past this check.
+    if (order.refund_id) {
+      if (String(order.refund_id).startsWith('pending:')) {
+        return errorResponse(
+          'A refund is already in progress for this order — please wait a few seconds and refresh.',
+          409,
+          'REFUND_IN_PROGRESS'
+        );
+      }
+      return successResponse({
+        ok: true,
+        alreadyRefunded: true,
+        refundId: order.refund_id,
+        refundAmount: order.refund_amount,
+        refundedAt: order.refunded_at,
+      });
+    }
+
+    if ((order.payment_method || '').toLowerCase() !== 'razorpay') {
+      return errorResponse('Only Razorpay orders can be refunded through this flow', 400, 'NOT_RAZORPAY');
+    }
+    if ((order.payment_status || '').toLowerCase() !== 'paid') {
+      return errorResponse('Order is not in a refundable state (must be paid)', 409, 'NOT_PAID');
+    }
+    if (!order.razorpay_payment_id) {
+      return errorResponse('Order has no Razorpay payment id on file', 409, 'NO_PAYMENT_ID');
+    }
+
+    // Soft policy: if a Shiprocket shipment exists and is NOT cancelled, we
+    // refuse the refund — the merchant should cancel the shipment first so
+    // they don't ship a parcel they've already refunded. The frontend hides
+    // the button in this case, but enforce it here too.
+    const sr = String(order.shiprocket_status || '').toLowerCase();
+    const hasActiveShipment = sr && !sr.includes('cancel');
+    if (hasActiveShipment) {
+      return errorResponse(
+        'Cancel the Shiprocket shipment before refunding the buyer',
+        409,
+        'SHIPMENT_ACTIVE'
+      );
+    }
+
+    const { keyId, keySecret } = await getRazorpayCredentials(env, siteId);
+    if (!keyId || !keySecret) {
+      return errorResponse('Razorpay credentials are not configured for this store', 500, 'NO_CREDENTIALS');
+    }
+
+    const amountInPaise = Math.round(Number(order.total || 0) * 100);
+    if (!amountInPaise || amountInPaise <= 0) {
+      return errorResponse('Order has no refundable amount', 400, 'NO_AMOUNT');
+    }
+
+    // Pre-claim the row with a sentinel `refund_id = 'pending:<token>'` BEFORE
+    // calling Razorpay. Conditional UPDATE on (refund_id IS NULL OR '') is
+    // SQLite-atomic (single-row write under D1's serialized writer), so two
+    // concurrent admin clicks land exactly one claim. The loser sees 0
+    // changes and gets the standard "in progress" 409 above on retry.
+    //
+    // The X-Razorpay-Idempotency header in the actual API call below is the
+    // belt-and-braces second layer — even if our local lock somehow fails,
+    // Razorpay's idempotency cache returns the same refund record for the
+    // same key instead of creating a duplicate.
+    const claimToken = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const sentinel = `pending:${claimToken}`;
+    const claimRes = await siteDB.prepare(
+      `UPDATE ${table}
+          SET refund_id = ?, updated_at = datetime('now')
+        WHERE id = ? AND site_id = ? AND (refund_id IS NULL OR refund_id = '')`
+    ).bind(sentinel, orderId, siteId).run();
+    if (!(claimRes.meta?.changes)) {
+      return errorResponse(
+        'A refund is already in progress for this order — please wait a few seconds and refresh.',
+        409,
+        'REFUND_IN_PROGRESS'
+      );
+    }
+
+    // Helper: clear our sentinel back to NULL so the admin can retry. Only
+    // clears OUR sentinel (matches by exact value) so a webhook that landed
+    // a real refund_id between claim and clear isn't clobbered.
+    const releaseClaim = async () => {
+      try {
+        await siteDB.prepare(
+          `UPDATE ${table} SET refund_id = NULL, updated_at = datetime('now')
+            WHERE id = ? AND site_id = ? AND refund_id = ?`
+        ).bind(orderId, siteId, sentinel).run();
+      } catch (e) {
+        console.error('[refund] releaseClaim failed:', e?.message || e);
+      }
+    };
+
+    // Razorpay refund call. Idempotency-Key keeps a duplicate request safe at
+    // their end too — same key returns the same refund record instead of
+    // creating a second one.
+    const idemKey = `flomerce-refund-${siteId}-${orderId}`;
+    let rzpResp;
+    try {
+      rzpResp = await fetch(
+        `https://api.razorpay.com/v1/payments/${encodeURIComponent(order.razorpay_payment_id)}/refund`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + btoa(`${keyId}:${keySecret}`),
+            'Content-Type': 'application/json',
+            'X-Razorpay-Idempotency': idemKey,
+          },
+          body: JSON.stringify({
+            amount: amountInPaise,
+            speed: 'normal',
+            notes: {
+              order_id: orderId,
+              site_id: siteId,
+              initiated_by: admin.email || admin.id || 'admin',
+            },
+          }),
+        }
+      );
+    } catch (netErr) {
+      // Network/DNS failure before Razorpay processed the request — safe to
+      // release the claim so the admin can retry.
+      await releaseClaim();
+      console.error('[refund] Razorpay fetch failed:', netErr?.message || netErr);
+      return errorResponse('Could not reach Razorpay — please try again', 502, 'RAZORPAY_UNREACHABLE');
+    }
+
+    if (!rzpResp.ok) {
+      let detail = '';
+      try {
+        const j = await rzpResp.json();
+        detail = j?.error?.description || JSON.stringify(j?.error || j);
+      } catch {
+        detail = await rzpResp.text();
+      }
+      // Release the claim — the refund didn't happen, so the admin should be
+      // able to fix the underlying issue (insufficient balance, etc.) and try
+      // again.
+      await releaseClaim();
+      console.error('[refund] Razorpay rejected', rzpResp.status, detail);
+      return errorResponse(`Refund failed: ${detail || 'Razorpay rejected the request'}`, 502, 'RAZORPAY_REJECTED');
+    }
+
+    const refundEntity = await rzpResp.json();
+
+    // Replace sentinel with real refund_id. Match the sentinel exactly so a
+    // concurrent webhook stamping the real refund id doesn't get clobbered.
+    const refundAmountRupees = Number(refundEntity.amount || amountInPaise) / 100;
+    const refundedAt = new Date().toISOString();
+    try {
+      const stampRes = await siteDB.prepare(
+        `UPDATE ${table}
+            SET refund_id = ?, refund_amount = ?, refunded_at = ?,
+                payment_status = 'refunded', updated_at = datetime('now')
+          WHERE id = ? AND site_id = ? AND refund_id = ?`
+      ).bind(refundEntity.id, refundAmountRupees, refundedAt, orderId, siteId, sentinel).run();
+      if (!(stampRes.meta?.changes)) {
+        // Webhook beat us to it — that's fine, the row already has the real
+        // refund_id. No-op.
+        console.log('[refund] sentinel was overwritten by webhook (benign)');
+      }
+    } catch (e) {
+      console.error('[refund] DB stamp failed (refund still went through at Razorpay):', e?.message || e);
+      // Don't fail the request — the refund is real at Razorpay. The webhook
+      // will retry the stamp shortly.
+    }
+
+    return successResponse({
+      ok: true,
+      refundId: refundEntity.id,
+      refundAmount: refundAmountRupees,
+      refundedAt,
+      status: refundEntity.status,
+    });
+  } catch (err) {
+    console.error('[refund] handler error:', err);
+    return errorResponse(`Refund error: ${err.message || 'Unknown'}`, 500);
+  }
 }
 
 // POST /api/webhooks/razorpay/:siteId
