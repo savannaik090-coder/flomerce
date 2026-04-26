@@ -1187,19 +1187,24 @@
   .landing-page .hero.hero--video {
     padding: 0 0 40px;
     /* Height tracks the video's native 16:9 aspect against viewport width
-       so the video fills horizontally with no horizontal cropping. */
-    --hero-video-h: min(calc(100vw * 9 / 16), 360px);
+       so the entire video is visible with zero cropping. */
+    --hero-video-h: 56.25vw;
     --hero-overlap: 64px;
     --hero-fade-h: 110px;
     --nav-h: 72px;
   }
   .landing-page .hero--video .hero-video {
-    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
     object-position: center center;
+    background: #000;
   }
   .landing-page .hero--video .hero-video-poster {
     background-position: center center;
-    background-size: cover;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-color: #000;
   }
   .landing-page .hero--video .hero-buttons--center .btn-hero-primary {
     flex: 0 1 auto;
@@ -1270,7 +1275,7 @@
 @media (max-width: 480px) {
   .landing-page .hero h1 { font-size: 2rem; }
   .landing-page .hero.hero--video {
-    --hero-video-h: calc(100vw * 9 / 16);
+    --hero-video-h: 56.25vw;
     --hero-overlap: 52px;
     --hero-fade-h: 90px;
   }
