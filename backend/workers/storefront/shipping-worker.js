@@ -37,6 +37,7 @@ import {
   loginShiprocket,
   getPickupLocations,
   createOrder as srCreateOrder,
+  getServiceability,
   assignAwb,
   generatePickup,
   generateLabel,
@@ -821,13 +822,32 @@ export async function handleShiprocketWebhook(request, env, path) {
   }
 
   const { siteDB } = ctx;
+  // buildShiprocketOrderPayload prefixes order_id with an 8-char hex site
+  // slice + '-' for collision-safety. Shiprocket echoes that value back in
+  // webhooks, so when matching by merchant order_id we need to try both the
+  // exact value (for orders shipped before the prefix was introduced) and
+  // the stripped suffix (the real order_number).
+  const stripSitePrefix = (id) => {
+    const m = String(id || '').match(/^[a-f0-9]{8}-(.+)$/i);
+    return m ? m[1] : null;
+  };
   const findInTable = async (table) => {
     if (awb) {
       const row = await siteDB.prepare(`SELECT id, status, shiprocket_last_event_at FROM ${table} WHERE site_id = ? AND shiprocket_awb = ? LIMIT 1`).bind(siteId, awb).first();
       if (row) return { row, table };
     }
     if (merchantOrderId) {
-      const row = await siteDB.prepare(`SELECT id, status, shiprocket_last_event_at FROM ${table} WHERE site_id = ? AND order_number = ? LIMIT 1`).bind(siteId, merchantOrderId).first();
+      let row = await siteDB.prepare(`SELECT id, status, shiprocket_last_event_at FROM ${table} WHERE site_id = ? AND order_number = ? LIMIT 1`).bind(siteId, merchantOrderId).first();
+      if (!row) {
+        const stripped = stripSitePrefix(merchantOrderId);
+        if (stripped) {
+          row = await siteDB.prepare(`SELECT id, status, shiprocket_last_event_at FROM ${table} WHERE site_id = ? AND order_number = ? LIMIT 1`).bind(siteId, stripped).first();
+        }
+      }
+      if (!row) {
+        // Last-resort: Shiprocket's own numeric order id (we store it on the row).
+        row = await siteDB.prepare(`SELECT id, status, shiprocket_last_event_at FROM ${table} WHERE site_id = ? AND shiprocket_order_id = ? LIMIT 1`).bind(siteId, merchantOrderId).first();
+      }
       if (row) return { row, table };
     }
     return null;
