@@ -324,16 +324,32 @@ async function verifyPayment(request, env, ctx) {
 
       if (order && orderDb) {
         const oldOrderBytes = order.row_size_bytes || 0;
-        await orderDb.prepare(
-          `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+        // BUG FIX (race): the previous unguarded UPDATE always reported a
+        // row change, so when the storefront verify call AND the tenant
+        // razorpay webhook (`payment.captured` / `order.paid`) both landed
+        // for the same payment we ran processPostPaymentActions twice — the
+        // customer received two confirmation emails and Shiprocket auto-
+        // ship fired twice. Adding `WHERE payment_status != 'paid'` makes
+        // exactly one caller observe meta.changes === 1 (the winner) and
+        // gate side-effects on that.
+        const flipRes = await orderDb.prepare(
+          // BUG FIX (replay protection): use an explicit allowed-from set
+          // rather than `!= 'paid'`. The old guard would happily flip a
+          // 'refunded' or 'failed' row back to 'paid' on a delayed/replayed
+          // Razorpay webhook. Only orders we're still expecting payment for
+          // are eligible.
+          `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ? AND (payment_status IS NULL OR payment_status IN ('pending','unpaid','pending_payment','authorized'))`
         ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+        const flipChanges = flipRes.meta?.changes || 0;
         const updatedOrder = await orderDb.prepare('SELECT * FROM orders WHERE id = ?').bind(dbOrderId).first();
         if (updatedOrder && orderSiteId) {
           const newOrderBytes = estimateRowBytes(updatedOrder);
           await orderDb.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newOrderBytes, dbOrderId).run();
           await trackD1Update(env, orderSiteId, oldOrderBytes, newOrderBytes);
         }
-        await processPostPaymentActions(env, order, ctx);
+        if (flipChanges === 1) {
+          await processPostPaymentActions(env, updatedOrder || order, ctx);
+        }
       } else {
         if (orderSiteId) {
           orderDb = orderDb || await resolveSiteDBById(env, orderSiteId);
@@ -362,9 +378,15 @@ async function verifyPayment(request, env, ctx) {
 
           if (guestOrder && guestDb) {
             const oldGuestBytes = guestOrder.row_size_bytes || 0;
-            await guestDb.prepare(
-              `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ?`
+            // BUG FIX (race): same conditional UPDATE pattern as the auth
+            // path above — only the caller that actually flips
+            // payment_status owns the post-payment side-effects.
+            const guestFlipRes = await guestDb.prepare(
+              // BUG FIX (replay protection): explicit allowed-from set.
+              // See matching comment on the orders UPDATE above.
+              `UPDATE guest_orders SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay', razorpay_order_id = ?, razorpay_payment_id = ?, updated_at = datetime('now') WHERE id = ? AND (payment_status IS NULL OR payment_status IN ('pending','unpaid','pending_payment','authorized'))`
             ).bind(razorpay_order_id, razorpay_payment_id, dbOrderId).run();
+            const guestFlipChanges = guestFlipRes.meta?.changes || 0;
             const updatedGuestOrder = await guestDb.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(dbOrderId).first();
             if (updatedGuestOrder) {
               const newGuestBytes = estimateRowBytes(updatedGuestOrder);
@@ -374,7 +396,9 @@ async function verifyPayment(request, env, ctx) {
                 await trackD1Update(env, guestSiteId, oldGuestBytes, newGuestBytes);
               }
             }
-            await processPostPaymentActions(env, guestOrder, ctx);
+            if (guestFlipChanges === 1) {
+              await processPostPaymentActions(env, updatedGuestOrder || guestOrder, ctx);
+            }
           }
         } catch (guestUpdateErr) {
           console.error('Failed to update guest order status:', guestUpdateErr);
@@ -1492,19 +1516,23 @@ async function markStorefrontOrderPaidIfPending(env, siteId, razorpayOrderId, ra
       return { order, table: 'orders', alreadyPaid: true };
     }
     const oldBytes = order.row_size_bytes || 0;
-    await siteDB.prepare(
+    // Replay-safe paid flip: only orders we're still expecting payment
+    // for are eligible. The conditional WHERE means concurrent webhook
+    // deliveries see meta.changes === 1 for exactly one caller.
+    const flipRes = await siteDB.prepare(
       `UPDATE orders
           SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay',
               razorpay_payment_id = ?, updated_at = datetime('now')
-        WHERE id = ? AND payment_status != 'paid'`
+        WHERE id = ? AND (payment_status IS NULL OR payment_status IN ('pending','unpaid','pending_payment','authorized'))`
     ).bind(razorpayPaymentId, order.id).run();
+    const flipped = (flipRes.meta?.changes || 0) === 1;
     const updated = await siteDB.prepare('SELECT * FROM orders WHERE id = ?').bind(order.id).first();
     if (updated) {
       const newBytes = estimateRowBytes(updated);
       await siteDB.prepare('UPDATE orders SET row_size_bytes = ? WHERE id = ?').bind(newBytes, order.id).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
-    return { order: updated || order, table: 'orders', alreadyPaid: false };
+    return { order: updated || order, table: 'orders', alreadyPaid: !flipped, flipped };
   }
 
   // Fall back to guest_orders.
@@ -1516,19 +1544,20 @@ async function markStorefrontOrderPaidIfPending(env, siteId, razorpayOrderId, ra
       return { order: guest, table: 'guest_orders', alreadyPaid: true };
     }
     const oldBytes = guest.row_size_bytes || 0;
-    await siteDB.prepare(
+    const flipRes = await siteDB.prepare(
       `UPDATE guest_orders
           SET status = 'paid', payment_status = 'paid', payment_method = 'razorpay',
               razorpay_payment_id = ?, updated_at = datetime('now')
-        WHERE id = ? AND payment_status != 'paid'`
+        WHERE id = ? AND (payment_status IS NULL OR payment_status IN ('pending','unpaid','pending_payment','authorized'))`
     ).bind(razorpayPaymentId, guest.id).run();
+    const flipped = (flipRes.meta?.changes || 0) === 1;
     const updated = await siteDB.prepare('SELECT * FROM guest_orders WHERE id = ?').bind(guest.id).first();
     if (updated) {
       const newBytes = estimateRowBytes(updated);
       await siteDB.prepare('UPDATE guest_orders SET row_size_bytes = ? WHERE id = ?').bind(newBytes, guest.id).run();
       await trackD1Update(env, siteId, oldBytes, newBytes);
     }
-    return { order: updated || guest, table: 'guest_orders', alreadyPaid: false };
+    return { order: updated || guest, table: 'guest_orders', alreadyPaid: !flipped, flipped };
   }
 
   return null;
@@ -1561,10 +1590,14 @@ async function recordRazorpayRefund(env, siteId, refundEntity) {
     for (const table of ['orders', 'guest_orders']) {
       try {
         await siteDB.prepare(
+          // BUG FIX: only flip a row to 'refunded' when it was actually
+          // 'paid'. Without this guard, a webhook for a refund of an
+          // already-cancelled or unpaid order would still stamp the row
+          // 'refunded' and confuse the admin UI.
           `UPDATE ${table}
               SET refund_id = ?, refund_amount = ?, refunded_at = ?,
                   payment_status = 'refunded', updated_at = datetime('now')
-            WHERE site_id = ? AND razorpay_payment_id = ? AND (refund_id IS NULL OR refund_id = '')`
+            WHERE site_id = ? AND razorpay_payment_id = ? AND (refund_id IS NULL OR refund_id = '') AND payment_status = 'paid'`
         ).bind(refundEntity.id, refundAmount, refundedAt, siteId, refundEntity.payment_id).run();
       } catch (e) {
         console.warn(`[razorpay refund] ${table} update failed (column may be missing):`, e?.message || e);
@@ -1906,7 +1939,12 @@ export async function handleStorefrontRazorpayWebhook(request, env, siteId, ctx)
           console.warn('[razorpay tenant webhook] no matching order for', rzpOrderId, 'site', siteId);
           return jsonResponse({ status: 'ok', matched: false });
         }
-        if (!result.alreadyPaid && result.order) {
+        // Gate post-payment side-effects on the actual conditional UPDATE
+        // affecting a row (`flipped === true`). The previous gate of
+        // `!result.alreadyPaid` only checked the pre-UPDATE snapshot, so a
+        // concurrent webhook that lost the race (changes === 0) would still
+        // re-fire emails + auto-ship.
+        if (result.flipped && result.order) {
           await processPostPaymentActions(env, result.order, ctx);
         }
         break;

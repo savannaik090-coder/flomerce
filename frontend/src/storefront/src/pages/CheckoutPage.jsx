@@ -437,6 +437,15 @@ export default function CheckoutPage() {
       paymentMethod,
       currency: siteDefaultCurrency,
       whatsappOptIn: whatsappNotificationsAvailable && whatsappOptIn,
+      // BUG FIX: forward the HMAC-signed shipping quote we received from
+      // /api/shipping/serviceability so the backend's quoteDynamicShipping
+      // helper can verify + reuse the exact rate the buyer was shown.
+      // Without this the server re-quotes Shiprocket on every order
+      // (a) defeating the point of signing, (b) burning the merchant's
+      // Shiprocket quota, and (c) risking a stale-rate mismatch where the
+      // checkout total differs from the actual charge. Falsy when there
+      // is no quote (Shiprocket disabled, non-IN, or static rate path).
+      signedQuote: serviceability?.signedQuote || null,
     };
 
     if (paymentMethod === 'razorpay') {

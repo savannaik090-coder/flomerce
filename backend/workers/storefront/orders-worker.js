@@ -1,7 +1,7 @@
 import { generateId, generateOrderNumber, jsonResponse, errorResponse, successResponse, handleCORS } from '../../utils/helpers.js';
 import { validateAuth, validateAnyAuth } from '../../utils/auth.js';
 import { updateProductStock } from './products-worker.js';
-import { deductStockByLocation } from './inventory-locations-worker.js';
+import { deductStockByLocation, restockLocationDebits } from './inventory-locations-worker.js';
 import { sendEmail, getOwnerRecipients, buildOrderConfirmationEmail, buildOwnerNotificationEmail, buildCancellationCustomerEmail, buildCancellationOwnerEmail, buildDeliveryCustomerEmail, buildDeliveryOwnerEmail, buildNewOrderReviewEmail, buildOrderPackedEmail, buildOrderShippedEmail, buildCancellationRequestNotifyEmail, buildCancellationStatusEmail } from '../../utils/email.js';
 import { sendOrderWhatsApp, buildOrderConfirmationWA, buildOrderShippedWA, buildOrderDeliveredWA, buildOrderCancelledWA, buildOrderPackedWA, isWhatsAppConfigured } from '../../utils/whatsapp.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Update } from '../../utils/usage-tracker.js';
@@ -497,6 +497,14 @@ async function createOrder(request, env, user, ctx) {
 
     let discount = 0;
     let appliedCouponCode = null;
+    // BUG FIX: previously the coupon `used_count` was incremented BEFORE the
+    // order INSERT — a downstream failure (storage limit, weight check,
+    // shipping quote crash, INSERT error) would leave the coupon counter
+    // bumped without a corresponding order, draining the merchant's usage
+    // limit on every failed checkout. We now defer the bump until AFTER the
+    // INSERT succeeds; `couponDbRow` carries the row through to the post-
+    // INSERT block below.
+    let couponDbRow = null;
     if (couponCode) {
       let coupon = null;
       try {
@@ -520,17 +528,9 @@ async function createOrder(request, env, user, ctx) {
           discount = coupon.value;
         }
         appliedCouponCode = couponCode.toUpperCase();
-        const oldCouponRow = await db.prepare('SELECT row_size_bytes FROM coupons WHERE id = ?').bind(coupon.id).first();
-        const oldCouponBytes = oldCouponRow?.row_size_bytes || 0;
-        await db.prepare(
-          'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
-        ).bind(coupon.id).run();
-        const updatedCoupon = await db.prepare('SELECT * FROM coupons WHERE id = ?').bind(coupon.id).first();
-        if (updatedCoupon) {
-          const newCouponBytes = estimateRowBytes(updatedCoupon);
-          await db.prepare('UPDATE coupons SET row_size_bytes = ? WHERE id = ?').bind(newCouponBytes, coupon.id).run();
-          await trackD1Update(env, siteId, oldCouponBytes, newCouponBytes);
-        }
+        // Defer the used_count increment until after the order row is
+        // persisted. Capture the coupon now so we don't have to re-query.
+        couponDbRow = coupon;
       } else {
         try {
           const siteConfig = await getSiteConfig(env, siteId);
@@ -698,11 +698,106 @@ async function createOrder(request, env, user, ctx) {
 
     await trackD1Write(env, siteId, rowBytes);
 
+    // Stock deduction runs BEFORE coupon bump so a stock-race failure
+    // doesn't burn the buyer's coupon use. For each item we try the
+    // location-aware path first; if the site has no locations we fall
+    // back to global updateProductStock. Each successful deduction is
+    // tracked with the exact path + debit details so we can compensate
+    // precisely on later failure.
     const orderDb = await resolveSiteDBById(env, siteId);
+    const deductedItems = [];
+    let stockFailedItem = null;
     for (const item of processedItems) {
-      const locationDeducted = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
-      if (!locationDeducted) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+      const locResult = await deductStockByLocation(orderDb, siteId, item.productId, item.quantity);
+      if (locResult.success) {
+        deductedItems.push({ productId: item.productId, quantity: item.quantity, viaLocation: true, debits: locResult.debits });
+        continue;
+      }
+      // Only fall back to global stock when there are no locations
+      // configured. Other failures (insufficient location stock, no
+      // levels for this product, errors) are real out-of-stock signals
+      // and must surface to the buyer.
+      if (locResult.noLocations) {
+        const globalOk = await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+        if (!globalOk) { stockFailedItem = item; break; }
+        deductedItems.push({ productId: item.productId, quantity: item.quantity, viaLocation: false });
+        continue;
+      }
+      stockFailedItem = item;
+      break;
+    }
+    if (stockFailedItem) {
+      // Compensate via the path we used: location debits restore the
+      // exact level rows; global decrements restore products.stock.
+      for (const d of deductedItems) {
+        try {
+          if (d.viaLocation) {
+            await restockLocationDebits(orderDb, siteId, d.productId, d.debits);
+          } else {
+            await updateProductStock(env, d.productId, d.quantity, 'increment', siteId);
+          }
+        } catch (compErr) {
+          console.error('Compensating restock failed for product', d.productId, compErr?.message || compErr);
+        }
+      }
+      try {
+        await db.prepare(
+          `UPDATE orders SET status = 'cancelled', cancellation_reason = 'stock_unavailable', updated_at = datetime('now') WHERE id = ?`
+        ).bind(orderId).run();
+      } catch (cancelErr) {
+        console.error('Failed to mark order cancelled after stock failure:', cancelErr?.message || cancelErr);
+      }
+      return errorResponse(
+        `Sorry — ${stockFailedItem.name} just sold out while you were checking out. Your order was not placed.`,
+        409,
+        'STOCK_RACE'
+      );
+    }
+
+    // Persist deduction provenance onto each item in the order's items
+    // snapshot so cancellation restock can later reverse exactly what
+    // was deducted (per-location debits → restockLocationDebits;
+    // global → updateProductStock increment). Without this, cancelling
+    // a location-managed order would only restore products.stock and
+    // let inventory_levels drift permanently down.
+    try {
+      // Position-aligned mapping (NOT find-by-productId): the loop
+      // above pushes one entry into deductedItems for each iteration
+      // over processedItems and short-circuits on the first failure,
+      // so when we reach this point indices match 1:1. Using
+      // find(productId === ...) would alias multiple line items that
+      // share a productId (e.g. same product, different variants) to
+      // the first deduction record, causing double-restock of the
+      // first debit and missing-restock of the rest on cancellation.
+      const itemsWithProvenance = processedItems.map((it, idx) => {
+        const d = deductedItems[idx];
+        return d ? { ...it, stock_debits: d.viaLocation ? d.debits : null, deducted_via: d.viaLocation ? 'location' : 'global' } : it;
+      });
+      await db.prepare(
+        `UPDATE orders SET items = ? WHERE id = ?`
+      ).bind(JSON.stringify(itemsWithProvenance), orderId).run();
+    } catch (provErr) {
+      console.error('Failed to persist stock-debit provenance for order', orderId, ':', provErr?.message || provErr);
+    }
+
+    // Coupon used_count bump runs only after both INSERT and stock
+    // deduction succeed — failed checkouts (validation/INSERT errors
+    // above OR stock race below) leave the counter untouched.
+    if (couponDbRow) {
+      try {
+        const oldCouponRow = await db.prepare('SELECT row_size_bytes FROM coupons WHERE id = ?').bind(couponDbRow.id).first();
+        const oldCouponBytes = oldCouponRow?.row_size_bytes || 0;
+        await db.prepare(
+          'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
+        ).bind(couponDbRow.id).run();
+        const updatedCoupon = await db.prepare('SELECT * FROM coupons WHERE id = ?').bind(couponDbRow.id).first();
+        if (updatedCoupon) {
+          const newCouponBytes = estimateRowBytes(updatedCoupon);
+          await db.prepare('UPDATE coupons SET row_size_bytes = ? WHERE id = ?').bind(newCouponBytes, couponDbRow.id).run();
+          await trackD1Update(env, siteId, oldCouponBytes, newCouponBytes);
+        }
+      } catch (couponBumpErr) {
+        console.error('Coupon used_count bump failed for coupon', couponDbRow.id, 'order', orderId, ':', couponBumpErr?.message || couponBumpErr);
       }
     }
 
@@ -832,6 +927,40 @@ async function updateOrderStatus(request, env, user, orderId) {
     const isRegularOrder = await db.prepare('SELECT id FROM orders WHERE id = ?').bind(orderId).first();
     const tableName = isRegularOrder ? 'orders' : 'guest_orders';
 
+    // BUG FIX (state machine): previously any status string the admin sent
+    // was written through verbatim — `delivered → pending`, `cancelled →
+    // shipped`, even arbitrary garbage like `status: 'banana'`. Reject
+    // illegal transitions up-front so the order's lifecycle stays
+    // monotonic. Terminal states (`cancelled`, `refunded`) cannot be
+    // moved out of via this endpoint.
+    if (status) {
+      const fromStatus = String(order.status || '').toLowerCase();
+      const toStatus = String(status).toLowerCase();
+      const ALLOWED_TRANSITIONS = {
+        pending:         new Set(['confirmed', 'packed', 'shipped', 'delivered', 'cancelled']),
+        pending_payment: new Set(['paid', 'cancelled']),
+        paid:            new Set(['confirmed', 'packed', 'shipped', 'delivered', 'cancelled', 'refunded']),
+        confirmed:       new Set(['packed', 'shipped', 'delivered', 'cancelled', 'refunded']),
+        packed:          new Set(['shipped', 'delivered', 'cancelled', 'refunded']),
+        shipped:         new Set(['delivered', 'refunded']),
+        delivered:       new Set(['refunded']),
+        cancelled:       new Set(),
+        refunded:        new Set(),
+      };
+      // No-op transitions (status === current) are allowed and intentionally
+      // fall through — the rest of this handler is idempotent and the admin
+      // UI sometimes resends the same status as a way to re-trigger emails.
+      if (fromStatus !== toStatus) {
+        const allowed = ALLOWED_TRANSITIONS[fromStatus];
+        if (!allowed) {
+          return errorResponse(`Order is in unknown status '${fromStatus}' — cannot transition`, 400, 'INVALID_FROM_STATUS');
+        }
+        if (!allowed.has(toStatus)) {
+          return errorResponse(`Invalid status transition: ${fromStatus} → ${toStatus}`, 400, 'INVALID_TRANSITION');
+        }
+      }
+    }
+
     if (status) {
       updates.push('status = ?');
       values.push(status);
@@ -900,8 +1029,16 @@ async function updateOrderStatus(request, env, user, orderId) {
           }
           if (cancelledOrder) {
             const cancelItems = typeof cancelledOrder.items === 'string' ? JSON.parse(cancelledOrder.items) : cancelledOrder.items;
+            const cancelDb = await resolveSiteDBById(env, cancelledOrder.site_id);
             for (const item of cancelItems) {
-              await updateProductStock(env, item.productId, item.quantity, 'increment', cancelledOrder.site_id);
+              // Reverse via the same path the deduction took. Items
+              // placed before the provenance feature lack stock_debits/
+              // deducted_via and fall back to the global path.
+              if (item.deducted_via === 'location' && Array.isArray(item.stock_debits) && item.stock_debits.length > 0) {
+                await restockLocationDebits(cancelDb, cancelledOrder.site_id, item.productId, item.stock_debits);
+              } else {
+                await updateProductStock(env, item.productId, item.quantity, 'increment', cancelledOrder.site_id);
+              }
             }
           }
         } catch (stockRestoreErr) {
@@ -1431,12 +1568,68 @@ async function createGuestOrder(request, env, ctx) {
 
     await trackD1Write(env, siteId, rowBytes);
 
+    // Guest path mirrors the auth-path stock-integrity logic: per-item
+    // location-aware deduction with precise compensating restock when
+    // any item fails. (Guest orders don't use coupons today, so no
+    // counter to defer here.)
     const guestOrderDb = await resolveSiteDBById(env, siteId);
+    const guestDeductedItems = [];
+    let guestStockFailedItem = null;
     for (const item of processedItems) {
-      const locationDeducted = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
-      if (!locationDeducted) {
-        await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+      const locResult = await deductStockByLocation(guestOrderDb, siteId, item.productId, item.quantity);
+      if (locResult.success) {
+        guestDeductedItems.push({ productId: item.productId, quantity: item.quantity, viaLocation: true, debits: locResult.debits });
+        continue;
       }
+      if (locResult.noLocations) {
+        const globalOk = await updateProductStock(env, item.productId, item.quantity, 'decrement', siteId, ctx);
+        if (!globalOk) { guestStockFailedItem = item; break; }
+        guestDeductedItems.push({ productId: item.productId, quantity: item.quantity, viaLocation: false });
+        continue;
+      }
+      guestStockFailedItem = item;
+      break;
+    }
+    if (guestStockFailedItem) {
+      for (const d of guestDeductedItems) {
+        try {
+          if (d.viaLocation) {
+            await restockLocationDebits(guestOrderDb, siteId, d.productId, d.debits);
+          } else {
+            await updateProductStock(env, d.productId, d.quantity, 'increment', siteId);
+          }
+        } catch (compErr) {
+          console.error('Guest compensating restock failed for product', d.productId, compErr?.message || compErr);
+        }
+      }
+      try {
+        await db.prepare(
+          `UPDATE guest_orders SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`
+        ).bind(orderId).run();
+      } catch (cancelErr) {
+        console.error('Failed to mark guest order cancelled after stock failure:', cancelErr?.message || cancelErr);
+      }
+      return errorResponse(
+        `Sorry — ${guestStockFailedItem.name} just sold out while you were checking out. Your order was not placed.`,
+        409,
+        'STOCK_RACE'
+      );
+    }
+
+    // Persist deduction provenance (see auth-path comment above).
+    try {
+      // Position-aligned (see auth-path comment) — must NOT use
+      // find-by-productId since multiple variants of the same product
+      // share productId and would alias to the first deduction record.
+      const guestItemsWithProvenance = processedItems.map((it, idx) => {
+        const d = guestDeductedItems[idx];
+        return d ? { ...it, stock_debits: d.viaLocation ? d.debits : null, deducted_via: d.viaLocation ? 'location' : 'global' } : it;
+      });
+      await db.prepare(
+        `UPDATE guest_orders SET items = ? WHERE id = ?`
+      ).bind(JSON.stringify(guestItemsWithProvenance), orderId).run();
+    } catch (provErr) {
+      console.error('Failed to persist stock-debit provenance for guest order', orderId, ':', provErr?.message || provErr);
     }
 
     if (!isPendingPayment) {
@@ -2234,14 +2427,37 @@ async function handleCancellationUpdate(request, env, cancelId) {
         if (order) {
           const reason = req.reason || adminNote || 'Cancellation approved';
           try { await db.prepare(`ALTER TABLE ${table} ADD COLUMN cancellation_reason TEXT`).run(); } catch (e) {}
-          await db.prepare(`UPDATE ${table} SET status = 'cancelled', cancellation_reason = ? WHERE id = ?`).bind(reason, req.order_id).run();
+          // Conditional flip: only mark cancelled if not already cancelled/refunded
+          // (terminal states). meta.changes === 1 means THIS caller owns the
+          // restock + email side-effects, so a duplicate approval webhook can't
+          // restock twice or double-email the customer.
+          const flipRes = await db.prepare(
+            `UPDATE ${table}
+                SET status = 'cancelled', cancellation_reason = ?, cancelled_at = datetime('now')
+              WHERE id = ? AND status NOT IN ('cancelled', 'refunded')`
+          ).bind(reason, req.order_id).run();
+          const didFlip = (flipRes.meta?.changes || 0) === 1;
+          if (!didFlip) {
+            console.warn('[cancel-approve] order', req.order_id, 'already terminal — skipping restock + emails');
+            return successResponse(null, 'Cancellation request updated');
+          }
 
           let items = [];
           try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (e) {}
+          const cancelApproveDb = await resolveSiteDBById(env, siteId);
           for (const item of items) {
             const pid = item.productId || item.product_id;
-            if (pid) {
-              try { await updateProductStock(db, pid, item.quantity, 'increment', siteId); } catch (e) {}
+            if (!pid) continue;
+            try {
+              // Reverse via the same path the deduction used. Pre-
+              // provenance orders fall back to global restock.
+              if (item.deducted_via === 'location' && Array.isArray(item.stock_debits) && item.stock_debits.length > 0) {
+                await restockLocationDebits(cancelApproveDb, siteId, pid, item.stock_debits);
+              } else {
+                await updateProductStock(env, pid, item.quantity, 'increment', siteId);
+              }
+            } catch (stockErr) {
+              console.error('[cancel-approve] restock failed for product', pid, 'order', req.order_id, ':', stockErr?.message || stockErr);
             }
           }
 

@@ -798,9 +798,26 @@ export async function updateProductStock(env, productId, quantity, operation = '
     const oldStock = oldRow?.stock ?? null;
 
     if (operation === 'decrement') {
-      await db.prepare(
+      // BUG FIX (silent stock underflow): the conditional UPDATE includes
+      // `AND stock >= ?` so it will affect 0 rows when there isn't enough
+      // inventory. Previously we ignored the result and returned `true`,
+      // letting an order commit with no stock backing. Now we surface the
+      // 0-changes case as a hard failure so callers can compensate (cancel
+      // the order, restock anything we already debited, surface to user).
+      const decRes = await db.prepare(
         'UPDATE products SET stock = stock - ?, updated_at = datetime("now") WHERE id = ? AND stock >= ?'
       ).bind(quantity, productId, quantity).run();
+      if ((decRes.meta?.changes || 0) === 0) {
+        // Distinguish "product has no tracked stock (NULL)" from
+        // "insufficient stock". When stock IS NULL the WHERE never matches
+        // because NULL >= ? is unknown — treat that as success (untracked
+        // inventory). Otherwise it's a real underflow.
+        const cur = await db.prepare('SELECT stock FROM products WHERE id = ?').bind(productId).first();
+        if (cur && cur.stock !== null) {
+          console.error('Stock underflow refused for product', productId, 'requested', quantity, 'available', cur.stock);
+          return false;
+        }
+      }
     } else {
       await db.prepare(
         'UPDATE products SET stock = stock + ?, updated_at = datetime("now") WHERE id = ?'

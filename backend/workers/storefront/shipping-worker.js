@@ -670,6 +670,23 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   const { siteDB, table, order } = await loadOrderForShipping(env, siteId, orderId);
   if (!order) return { ok: false, code: 'ORDER_NOT_FOUND', message: 'Order not found' };
 
+  // BUG FIX: refuse to ship orders in any terminal state. We check BOTH
+  // `status` (which can be 'cancelled' or 'refunded') AND `payment_status`
+  // (which can be 'refunded' even when status is still 'paid' — e.g. when
+  // a refund webhook arrived but the order-status hasn't been moved yet).
+  // Without this gate the merchant could (re-)trigger Shiprocket from the
+  // admin UI on a refunded order, mint a fresh AWB, and ship a parcel
+  // they've already refunded the buyer for.
+  const orderStatusLc = String(order.status || '').toLowerCase();
+  const paymentStatusLc = String(order.payment_status || '').toLowerCase();
+  if (orderStatusLc === 'cancelled' || orderStatusLc === 'refunded' || paymentStatusLc === 'refunded') {
+    return {
+      ok: false,
+      code: 'ORDER_TERMINAL',
+      message: `Cannot ship an order in '${orderStatusLc}' status (payment '${paymentStatusLc}')`,
+    };
+  }
+
   // Compute total parcel weight from the per-item snapshot taken at order
   // creation. If any item is missing weight, refuse to ship — sending a
   // default value here would cause Shiprocket to charge weight-discrepancy
@@ -1101,6 +1118,25 @@ async function handleCancelShipment(env, siteId, orderId) {
 
   const { siteDB, table, order } = await loadOrderForShipping(env, siteId, orderId);
   if (!order) return errorResponse('Order not found', 404);
+
+  // Refuse cancel-shipment for any terminal-state order:
+  //   * delivered — buyer has the parcel; "cancel" is meaningless
+  //   * cancelled / refunded — order's lifecycle is closed; the
+  //     cancel-AWB call should have been made at cancellation time,
+  //     not as a separate later admin action
+  // Per task acceptance criteria, ship/cancel are gated identically.
+  const cancelOrderStatusLc = String(order.status || '').toLowerCase();
+  const cancelPaymentStatusLc = String(order.payment_status || '').toLowerCase();
+  if (cancelOrderStatusLc === 'delivered') {
+    return errorResponse('Cannot cancel shipment: order has already been delivered', 400, 'ORDER_DELIVERED');
+  }
+  if (cancelOrderStatusLc === 'cancelled' || cancelOrderStatusLc === 'refunded' || cancelPaymentStatusLc === 'refunded') {
+    return errorResponse(
+      `Cannot cancel shipment: order is in '${cancelOrderStatusLc}' status (payment '${cancelPaymentStatusLc}')`,
+      400,
+      'ORDER_TERMINAL'
+    );
+  }
 
   const awb = order.shiprocket_awb;
   const shiprocketOrderId = order.shiprocket_order_id;
@@ -1990,20 +2026,28 @@ export async function handleShiprocketWebhook(request, env, path) {
   if (newStatus) {
     let stmt;
     if (newStatus === 'shipped') {
+      // BUG FIX: also exclude 'refunded' so a delayed Shiprocket shipped/
+      // in-transit webhook can't resurrect a refunded order back to
+      // 'shipped' (which would re-trigger a "your order is on its way"
+      // notification to a buyer who already got their money back).
       stmt = siteDB.prepare(
         `UPDATE ${table}
             SET status = ?, shipped_at = COALESCE(shipped_at, datetime('now'))
-          WHERE id = ? AND status != ? AND status NOT IN ('delivered', 'cancelled')`
+          WHERE id = ? AND status != ? AND status NOT IN ('delivered', 'cancelled', 'refunded')`
       ).bind(newStatus, row.id, newStatus);
     } else if (newStatus === 'delivered') {
+      // BUG FIX: previously this UPDATE had no terminal-state guard, so a
+      // late `delivered` webhook for a cancelled/refunded order would flip
+      // status back to 'delivered' and email the customer "your order has
+      // been delivered" after we'd already cancelled & refunded them.
       stmt = siteDB.prepare(
         `UPDATE ${table}
             SET status = ?, delivered_at = COALESCE(delivered_at, datetime('now'))
-          WHERE id = ? AND status != ?`
+          WHERE id = ? AND status != ? AND status NOT IN ('cancelled', 'refunded')`
       ).bind(newStatus, row.id, newStatus);
     } else {
       stmt = siteDB.prepare(
-        `UPDATE ${table} SET status = ? WHERE id = ? AND status != ?`
+        `UPDATE ${table} SET status = ? WHERE id = ? AND status != ? AND status NOT IN ('cancelled', 'refunded')`
       ).bind(newStatus, row.id, newStatus);
     }
     const flipRes = await stmt.run();

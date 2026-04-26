@@ -387,13 +387,22 @@ async function syncProductStock(db, siteId, url) {
   }
 }
 
+// Atomic, all-or-nothing deduction across active inventory locations.
+// Returns { success: true, debits: [{ levelId, qty }] } on success so the
+// caller can later compensate-restock the exact same rows. Returns
+// { success: false } when the request can't be fully satisfied (any
+// partial debits made during the attempt are rolled back before return).
+// Returns { success: false, noLocations: true } when the site has no
+// active locations — caller should fall through to global stock path.
 export async function deductStockByLocation(db, siteId, productId, quantity) {
   try {
     const hasLocations = await db.prepare(
       'SELECT COUNT(*) as count FROM inventory_locations WHERE site_id = ? AND is_active = 1'
     ).bind(siteId).first();
 
-    if (!hasLocations || hasLocations.count === 0) return false;
+    if (!hasLocations || hasLocations.count === 0) {
+      return { success: false, noLocations: true };
+    }
 
     const levels = await db.prepare(
       `SELECT il.*, loc.priority, loc.name as location_name
@@ -405,26 +414,68 @@ export async function deductStockByLocation(db, siteId, productId, quantity) {
 
     const rows = levels.results || [];
     if (rows.length === 0) {
-      await db.prepare(
-        `UPDATE products SET stock = MAX(0, stock - ?), updated_at = datetime('now') WHERE id = ? AND site_id = ?`
-      ).bind(quantity, productId, siteId).run();
-      return true;
+      // Active locations exist but no level row tracks this product. We
+      // refuse to silently under-deduct via products.stock here — that
+      // path was the source of the oversell bug. Caller should treat as
+      // failure and surface "out of stock" upstream.
+      return { success: false, noLevels: true };
     }
 
     let remaining = quantity;
+    const debits = [];
     for (const row of rows) {
       if (remaining <= 0) break;
       const deduct = Math.min(remaining, row.stock);
-      await db.prepare(
-        `UPDATE inventory_levels SET stock = stock - ?, updated_at = datetime('now') WHERE id = ?`
-      ).bind(deduct, row.id).run();
-      remaining -= deduct;
+      // Conditional WHERE so a concurrent deduction can't take us
+      // negative — if someone beat us to this row, meta.changes === 0
+      // and we record nothing for it.
+      const r = await db.prepare(
+        `UPDATE inventory_levels SET stock = stock - ?, updated_at = datetime('now') WHERE id = ? AND stock >= ?`
+      ).bind(deduct, row.id, deduct).run();
+      if ((r.meta?.changes || 0) === 1) {
+        debits.push({ levelId: row.id, qty: deduct });
+        remaining -= deduct;
+      }
+    }
+
+    if (remaining > 0) {
+      // Roll back every per-location debit we just made.
+      for (const d of debits) {
+        try {
+          await db.prepare(
+            `UPDATE inventory_levels SET stock = stock + ?, updated_at = datetime('now') WHERE id = ?`
+          ).bind(d.qty, d.levelId).run();
+        } catch (rbErr) {
+          console.error('[deductStockByLocation] rollback failed for level', d.levelId, rbErr?.message || rbErr);
+        }
+      }
+      try { await syncProductStockFromLevels(db, siteId, productId); } catch {}
+      console.warn('[deductStockByLocation] insufficient location stock for product', productId,
+        'site', siteId, '— needed', quantity, ', available', quantity - remaining, '. Rolled back.');
+      return { success: false };
     }
 
     await syncProductStockFromLevels(db, siteId, productId);
-    return true;
+    return { success: true, debits };
   } catch (e) {
     console.error('Deduct stock by location error:', e);
-    return false;
+    return { success: false, error: true };
   }
+}
+
+// Compensating restock: reverse a prior `deductStockByLocation` success
+// by adding each previously-deducted quantity back to the same level row,
+// then re-syncing the cached product stock. Best-effort per row.
+export async function restockLocationDebits(db, siteId, productId, debits) {
+  if (!Array.isArray(debits) || debits.length === 0) return;
+  for (const d of debits) {
+    try {
+      await db.prepare(
+        `UPDATE inventory_levels SET stock = stock + ?, updated_at = datetime('now') WHERE id = ?`
+      ).bind(d.qty, d.levelId).run();
+    } catch (e) {
+      console.error('[restockLocationDebits] failed for level', d.levelId, 'qty', d.qty, e?.message || e);
+    }
+  }
+  try { await syncProductStockFromLevels(db, siteId, productId); } catch {}
 }
