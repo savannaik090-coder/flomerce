@@ -18,3 +18,9 @@ id = "6E7PHc4GC2WiNjuY37bEe"
 uri = "file://.local/I18N_HANDOFF.md"
 type = "text"
 title = "Flomerce i18n — Handoff Doc"
+
+[[outputs]]
+id = "zQk51izjl2uekohSafGvL"
+uri = "file://Flomerce_Starter_Learning_Guide.pdf"
+type = "pdf"
+title = "Flomerce Starter Learning Guide"
