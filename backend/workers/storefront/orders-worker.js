@@ -1013,10 +1013,13 @@ async function updateOrderStatus(request, env, user, orderId) {
 
             if (status === 'confirmed' && statusSettings.gstInvoiceEmailEnabled) {
               try {
-                const invoiceToken = generateReturnToken();
                 try { await db.prepare(`ALTER TABLE orders ADD COLUMN invoice_token TEXT`).run(); } catch (e) {}
                 try { await db.prepare(`ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT`).run(); } catch (e) {}
-                await db.prepare(`UPDATE ${tableName} SET invoice_token = ? WHERE id = ?`).bind(invoiceToken, orderId).run();
+                let invoiceToken = fullOrder.invoice_token || null;
+                if (!invoiceToken) {
+                  invoiceToken = generateReturnToken();
+                  await db.prepare(`UPDATE ${tableName} SET invoice_token = ? WHERE id = ?`).bind(invoiceToken, orderId).run();
+                }
                 emailOptions.invoiceUrl = `https://${domain}/invoice?order=${fullOrder.order_number}&t=${invoiceToken}&subdomain=${encodeURIComponent(site?.subdomain || '')}`;
               } catch (e) {
                 console.error('Invoice token generation error:', e);
@@ -1407,9 +1410,14 @@ async function createGuestOrder(request, env, ctx) {
     const resolvedGuestCurrency = guestOrderCurrency || guestSiteDefaultCurrency;
     try { await db.prepare('ALTER TABLE guest_orders ADD COLUMN whatsapp_opted_in INTEGER DEFAULT 0').run(); } catch (e) {}
     try { await db.prepare('ALTER TABLE guest_orders ADD COLUMN placed_in_language TEXT').run(); } catch (e) {}
+    // Issue the per-order `invoice_token` up-front so the placing browser
+    // (and the customer's email links) can re-fetch the order via the
+    // guest endpoint without exposing PII to anyone with just the order id.
+    try { await db.prepare('ALTER TABLE guest_orders ADD COLUMN invoice_token TEXT').run(); } catch (e) {}
+    const guestInvoiceToken = generateReturnToken();
     await db.prepare(
-      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, whatsapp_opted_in, placed_in_language, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO guest_orders (id, site_id, order_number, items, subtotal, shipping_cost, tax, total, currency, payment_method, status, shipping_address, customer_name, customer_email, customer_phone, whatsapp_opted_in, placed_in_language, invoice_token, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       orderId, siteId, orderNumber, JSON.stringify(processedItems), subtotal, guestShippingCost, guestTax, total,
       resolvedGuestCurrency,
@@ -1417,6 +1425,7 @@ async function createGuestOrder(request, env, ctx) {
       JSON.stringify(shippingAddress), customerName, customerEmail || null, customerPhone,
       whatsappOptIn ? 1 : 0,
       guestPlacedInLang,
+      guestInvoiceToken,
       rowBytes
     ).run();
 
@@ -1445,6 +1454,9 @@ async function createGuestOrder(request, env, ctx) {
       orderNumber,
       total,
       items: processedItems,
+      // Returned so the placing browser can re-fetch this order via the
+      // guest endpoint (which now requires the token to defeat IDOR).
+      invoiceToken: guestInvoiceToken,
     }, 'Guest order created successfully');
   } catch (error) {
     console.error('Create guest order error:', error.message || error, error.stack || '');
@@ -1453,20 +1465,47 @@ async function createGuestOrder(request, env, ctx) {
 }
 
 async function getGuestOrder(env, orderId, request) {
+  // Guest orders contain customer PII (name, email, phone, full shipping
+  // address). Order numbers are sequential and enumerable, so this endpoint
+  // must NOT return a row based only on `siteId + id/order_number` — that's
+  // an IDOR letting anyone scrape a store's full customer list.
+  //
+  // Proof-of-ownership: require the per-row `invoice_token` (same pattern
+  // used by the public-invoice route below). The token is generated when
+  // the guest order is created and returned to the placing browser in the
+  // create-order response (and embedded in the customer's email links), so
+  // legitimate post-checkout / email-link flows still work; an attacker
+  // with only the order id/number cannot guess the 48-byte random token.
   try {
     const url = new URL(request.url);
     const siteId = url.searchParams.get('siteId');
-    const db = await resolveSiteDBById(env, siteId);
+    const token = (
+      url.searchParams.get('token') ||
+      url.searchParams.get('invoice_token') ||
+      url.searchParams.get('t') ||
+      request.headers.get('X-Invoice-Token') ||
+      ''
+    ).trim();
 
-    let query = 'SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?)';
-    const bindings = [orderId, orderId];
-
-    if (siteId) {
-      query += ' AND site_id = ?';
-      bindings.push(siteId);
+    if (!siteId || !orderId || !token) {
+      return errorResponse('Order not found', 404, 'NOT_FOUND');
     }
 
-    const order = await db.prepare(query).bind(...bindings).first();
+    const db = await resolveSiteDBById(env, siteId);
+
+    // The invoice_token column is created lazily on first use elsewhere in
+    // this worker. If the column doesn't exist yet (fresh shard, no orders
+    // ever issued a token), the SELECT throws — treat that as "not found"
+    // rather than 500.
+    let order = null;
+    try {
+      order = await db.prepare(
+        'SELECT * FROM guest_orders WHERE (id = ? OR order_number = ?) AND site_id = ? AND invoice_token = ?'
+      ).bind(orderId, orderId, siteId, token).first();
+    } catch (e) {
+      console.warn('Guest order lookup failed (likely missing invoice_token column):', e?.message || e);
+      order = null;
+    }
 
     if (!order) {
       return errorResponse('Order not found', 404, 'NOT_FOUND');

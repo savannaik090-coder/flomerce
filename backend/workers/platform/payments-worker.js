@@ -124,22 +124,28 @@ async function createRazorpayOrder(request, env) {
     let serverCurrency = null;
     try {
       const orderDb = await resolveSiteDBById(env, siteId);
+      // The orders / guest_orders schema stores the payable amount in the
+      // `total` column (see backend/utils/site-schema.js). Earlier code here
+      // referenced a non-existent `total_amount` column, which caused the
+      // SELECT to throw on every Razorpay create-order call and return a 404
+      // "Order not found or has no payable amount" — making online payments
+      // completely broken. Read from `total` instead.
       const order = await orderDb.prepare(
-        `SELECT total_amount, currency, payment_status, status FROM orders WHERE id = ? AND site_id = ?`
+        `SELECT total, currency, payment_status, status FROM orders WHERE id = ? AND site_id = ?`
       ).bind(orderId, siteId).first();
       if (!order) {
         const guest = await orderDb.prepare(
-          `SELECT total_amount, currency, payment_status, status FROM guest_orders WHERE id = ? AND site_id = ?`
+          `SELECT total, currency, payment_status, status FROM guest_orders WHERE id = ? AND site_id = ?`
         ).bind(orderId, siteId).first();
         if (guest) {
-          serverAmount = Number(guest.total_amount);
+          serverAmount = Number(guest.total);
           serverCurrency = guest.currency || 'INR';
           if (guest.payment_status === 'paid') {
             return errorResponse('This order is already paid', 409);
           }
         }
       } else {
-        serverAmount = Number(order.total_amount);
+        serverAmount = Number(order.total);
         serverCurrency = order.currency || 'INR';
         if (order.payment_status === 'paid') {
           return errorResponse('This order is already paid', 409);
