@@ -304,11 +304,11 @@ CONTENT = r"""
 
 <div class="cover">
   <div class="cover-eyebrow">FLOMERCE</div>
-  <h1 class="cover-title">Flomerce<br/>Starter Learning Guide</h1>
-  <div class="cover-sub">&amp; Employee Onboarding Handbook</div>
+  <h1 class="cover-title">Flomerce<br/>Employee Onboarding Handbook</h1>
+  <div class="cover-sub">A friendly tour of the codebase for new team members</div>
   <div class="cover-meta">
     Version 1.0 &nbsp;·&nbsp; April 2026<br/>
-    A friendly tour of the codebase for owners and new team members
+    Founded by Savan Naik &nbsp;·&nbsp; Karnataka, India
   </div>
 </div>
 
@@ -332,6 +332,19 @@ CONTENT = r"""
 <div class="page-break"></div>
 
 # 1. Welcome to Flomerce
+
+## A note from the founder
+
+Hi, I'm **Savan Naik** — a full-stack developer based in Karnataka, India,
+and the founder of Flomerce. I built this platform to give small businesses
+in India (and eventually around the world) a faster, cheaper, and friendlier
+way to launch their online stores than the heavyweight options on the market.
+Flomerce serves the **Indian e-commerce market first**, with first-class
+support for Razorpay, Shiprocket, WhatsApp Business, and the rupee — but the
+architecture is global from day one, so a merchant anywhere in the world can
+spin up a storefront on the same platform. Whether you've just joined the
+team or you're reading this to understand the codebase you're about to work
+on, welcome — this handbook is for you.
 
 ## What Flomerce is
 
@@ -374,9 +387,9 @@ serverless so the team stays small and operating costs stay low even at scale.
 
 ## How to use this guide
 
-This is both a **personal learning guide** for the platform owner and an
-**onboarding handbook** for new team members. It is meant to be read top-to-bottom
-the first time, then dipped back into when something specific comes up.
+This is the **onboarding handbook** for new team members joining Flomerce. It
+is meant to be read top-to-bottom the first time, then dipped back into when
+something specific comes up on the job.
 
 A few promises:
 
@@ -394,7 +407,6 @@ the order below — you can always read the rest later.
 
 | If you are... | Start with |
 |---------------|------------|
-| **The platform owner** (technical refresher) | Sections 1 → 2 → 5 → 6 → 8 → 10 |
 | **A new developer** | Sections 2 → 4 → 5 → 6 → 7 → 9 |
 | **A new support / customer-success teammate** | Sections 1 → 3 → 7 → 8 → 10 |
 | **A new content / SEO teammate** | Sections 1 → 3 → 5 (frontend folders only) → 8 → 10 |
@@ -1434,9 +1446,8 @@ templates need pre-approval — if you change the wording, expect a 24h review.
 
 # 9. 90-day learning roadmap
 
-This is a recommended 12-week study plan for a new technical hire (or a
-non-developer owner who wants to read code confidently). Each week is roughly
-4–6 hours of study + reading the codebase. Adjust freely.
+This is a recommended 12-week study plan for a new technical hire. Each week
+is roughly 4–6 hours of study + reading the codebase. Adjust freely.
 
 ## Phase 1 — Web fundamentals (weeks 1–3)
 
