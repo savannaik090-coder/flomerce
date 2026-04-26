@@ -183,7 +183,150 @@ function FeatureMock({ kind, t }) {
   return null;
 }
 
-const PARTNER_KEYS = ['razorpay', 'stripe', 'shiprocket', 'whatsapp', 'translator', 'gsc'];
+const INDUSTRY_TILES = [
+  { key: 'fashion', accent: 'rose' },
+  { key: 'beauty',  accent: 'violet' },
+  { key: 'general', accent: 'emerald' },
+];
+
+const INDUSTRY_ICONS = {
+  jewellery: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M11 3 8 9l4 12"/><path d="M13 3l3 6-4 12"/><path d="M2 9h20"/></svg>),
+  fashion:   (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4l-2 2-2 1-2-1-2-2-5 4 3 4 2-1v11h8V11l2 1 3-4z"/></svg>),
+  beauty:    (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M19 14l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"/><path d="M5 16l.7 1.5L7 18l-1.3.5L5 20l-.7-1.5L3 18l1.3-.5z"/></svg>),
+  general:   (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>),
+};
+
+const ARROW_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="5" y1="12" x2="19" y2="12"/>
+    <polyline points="12 5 19 12 12 19"/>
+  </svg>
+);
+
+const STAR_ICON = (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2l3 6.5 7 .9-5.1 4.7 1.4 7.1L12 17.8 5.7 21.2 7.1 14.1 2 9.4l7-.9z"/>
+  </svg>
+);
+
+function PhoneJewelleryMock({ t }) {
+  return (
+    <div className="industry-phone" aria-hidden="true">
+      <div className="industry-phone-notch" />
+      <div className="industry-phone-screen">
+        <div className="industry-phone-status">
+          <span>9:41</span>
+          <span className="industry-phone-status-icons">
+            <span className="ipsi-signal" />
+            <span className="ipsi-wifi" />
+            <span className="ipsi-batt" />
+          </span>
+        </div>
+        <div className="industry-phone-store">
+          <div className="ips-bar">
+            <span className="ips-brand">{t('industries.jewellery.brand')}</span>
+            <span className="ips-icons" aria-hidden="true">
+              <span className="ips-ico" />
+              <span className="ips-ico" />
+              <span className="ips-ico" />
+            </span>
+          </div>
+          <div className="ips-banner">
+            <span className="ips-banner-eyebrow">{t('industries.jewellery.bannerEyebrow')}</span>
+            <span className="ips-banner-title">{t('industries.jewellery.bannerTitle')}</span>
+          </div>
+          <div className="ips-grid">
+            <div className="ips-tile ips-tile--gold"><span className="ips-badge">BIS</span></div>
+            <div className="ips-tile ips-tile--rose" />
+            <div className="ips-tile ips-tile--amber" />
+            <div className="ips-tile ips-tile--blush" />
+          </div>
+          <div className="ips-product">
+            <div className="ips-product-name">{t('industries.jewellery.productName')}</div>
+            <div className="ips-product-row">
+              <span className="ips-product-price">{t('industries.jewellery.productPrice')}</span>
+              <span className="ips-product-emi">{t('industries.jewellery.productEmi')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IndustryTileMock({ kind, t }) {
+  if (kind === 'fashion') {
+    return (
+      <div className="itile-mock itile-mock--fashion" aria-hidden="true">
+        <div className="itm-card">
+          <div className="itm-card-banner"><span>{t('industries.fashion.mockBanner')}</span></div>
+          <div className="itm-card-body">
+            <div className="itm-card-row">
+              <span className="itm-card-name">{t('industries.fashion.mockProduct')}</span>
+              <span className="itm-card-price">{t('industries.fashion.mockPrice')}</span>
+            </div>
+            <div className="itm-swatches">
+              <span className="itm-swatch itm-swatch--rose" />
+              <span className="itm-swatch itm-swatch--emerald" />
+              <span className="itm-swatch itm-swatch--ink" />
+              <span className="itm-swatch itm-swatch--amber" />
+            </div>
+            <div className="itm-sizes">
+              <span className="itm-size">XS</span>
+              <span className="itm-size itm-size--active">S</span>
+              <span className="itm-size">M</span>
+              <span className="itm-size">L</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'beauty') {
+    return (
+      <div className="itile-mock itile-mock--beauty" aria-hidden="true">
+        <div className="itm-card">
+          <div className="itm-card-bar">
+            <span>{t('industries.beauty.mockBrand')}</span>
+            <span>SHOP</span>
+          </div>
+          <div className="itm-card-body">
+            <div className="itm-beauty-hero">
+              <div className="itm-beauty-bottle" />
+              <span className="itm-beauty-tag">NEW</span>
+            </div>
+            <div className="itm-card-name">{t('industries.beauty.mockProduct')}</div>
+            <div className="itm-card-row">
+              <span className="itm-stars">★★★★★</span>
+              <span className="itm-card-price">{t('industries.beauty.mockPrice')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'general') {
+    return (
+      <div className="itile-mock itile-mock--general" aria-hidden="true">
+        <div className="itm-card">
+          <div className="itm-card-bar itm-card-bar--general">
+            <span>{t('industries.general.mockBrand')}</span>
+            <span>FREE SHIP</span>
+          </div>
+          <div className="itm-general-grid">
+            <div className="itm-gen-cell itm-gen-cell--em" />
+            <div className="itm-gen-cell itm-gen-cell--or" />
+            <div className="itm-gen-cell itm-gen-cell--bl" />
+            <div className="itm-gen-cell itm-gen-cell--pk" />
+            <div className="itm-gen-cell itm-gen-cell--vi" />
+            <div className="itm-gen-cell itm-gen-cell--am" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
 
 export default function LandingPage() {
   const { t } = useTranslation('landing');
@@ -292,14 +435,98 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="trusted-strip reveal" aria-label={t('trustedTitle')}>
-          <span className="trusted-pill">{t('trustedPill')}</span>
-          <h3 className="trusted-title">{t('trustedTitle')}</h3>
-          <ul className="trusted-logos">
-            {PARTNER_KEYS.map((p) => (
-              <li key={p} className="trusted-logo">{t(`trustedPartners.${p}`)}</li>
+        <section id="industries" className="landing-section industry-section reveal" aria-label={t('industries.titleAccent')}>
+          <div className="section-header">
+            <span className="section-pill">{t('industries.pill')}</span>
+            <h2 className="industry-headline">
+              {t('industries.titleLine1')}{' '}
+              <span className="industry-headline-accent">{t('industries.titleAccent')}</span>
+            </h2>
+            <p>{t('industries.subtitle')}</p>
+          </div>
+
+          <div className="industry-spotlight">
+            <div className="industry-spotlight-glow" aria-hidden="true" />
+            <div className="industry-spotlight-grid">
+              <div className="industry-spotlight-copy">
+                <span className="industry-spotlight-featured">
+                  <span className="industry-star" aria-hidden="true">{STAR_ICON}</span>
+                  {t('industries.spotlight.featured')}
+                </span>
+                <span className="industry-spotlight-eyebrow">
+                  <span className="industry-spotlight-eyebrow-ico" aria-hidden="true">{INDUSTRY_ICONS.jewellery}</span>
+                  {t('industries.jewellery.label')}
+                </span>
+                <h3 className="industry-spotlight-title">
+                  {t('industries.spotlight.titleLine1')}{' '}
+                  <span className="industry-spotlight-title-accent">{t('industries.spotlight.titleAccent')}</span>
+                  {t('industries.spotlight.titleLine2')}
+                </h3>
+                <p className="industry-spotlight-desc">{t('industries.spotlight.desc')}</p>
+                <div className="industry-spotlight-proof">
+                  <span className="industry-spotlight-stars" aria-hidden="true">
+                    {STAR_ICON}{STAR_ICON}{STAR_ICON}{STAR_ICON}{STAR_ICON}
+                  </span>
+                  <span>{t('industries.spotlight.proof')}</span>
+                </div>
+                <Link to="/signup" className="industry-spotlight-cta">
+                  {t('industries.spotlight.cta')}
+                  <span className="industry-cta-arrow" aria-hidden="true">{ARROW_ICON}</span>
+                </Link>
+              </div>
+
+              <div className="industry-spotlight-phone-wrap">
+                <PhoneJewelleryMock t={t} />
+              </div>
+
+              <div className="industry-spotlight-cards">
+                {['preloaded', 'proof', 'payments'].map((k) => (
+                  <div key={k} className="industry-support-card">
+                    <span className="industry-support-eyebrow">{t(`industries.spotlight.cards.${k}.eyebrow`)}</span>
+                    <p>{t(`industries.spotlight.cards.${k}.body`)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="industry-divider">
+            <div>
+              <span className="industry-divider-eyebrow">{t('industries.dividerEyebrow')}</span>
+              <h3 className="industry-divider-title">{t('industries.dividerTitle')}</h3>
+            </div>
+            <p className="industry-divider-note">{t('industries.dividerNote')}</p>
+          </div>
+
+          <div className="industry-tiles-grid">
+            {INDUSTRY_TILES.map((ind) => (
+              <article key={ind.key} className={`industry-tile industry-tile--${ind.accent}`}>
+                <div className="industry-tile-visual">
+                  <IndustryTileMock kind={ind.key} t={t} />
+                </div>
+                <div className="industry-tile-body">
+                  <span className="industry-tile-eyebrow">
+                    <span className="industry-tile-eyebrow-ico" aria-hidden="true">{INDUSTRY_ICONS[ind.key]}</span>
+                    {t(`industries.${ind.key}.label`)}
+                  </span>
+                  <h4 className="industry-tile-title">{t(`industries.${ind.key}.title`)}</h4>
+                  <p className="industry-tile-desc">{t(`industries.${ind.key}.desc`)}</p>
+                  <ul className="industry-tile-perks">
+                    {['p1', 'p2', 'p3'].map((p) => (
+                      <li key={p}>
+                        <span className="industry-tile-check" aria-hidden="true">{CHECK_ICON}</span>
+                        {t(`industries.${ind.key}.perks.${p}`)}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to="/signup" className="industry-tile-cta">
+                    <span>{t(`industries.${ind.key}.cta`)}</span>
+                    <span className="industry-cta-arrow" aria-hidden="true">{ARROW_ICON}</span>
+                  </Link>
+                </div>
+              </article>
             ))}
-          </ul>
+          </div>
         </section>
 
         <section id="features" className="landing-section features-section reveal">

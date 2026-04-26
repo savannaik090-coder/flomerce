@@ -30,15 +30,77 @@
     "storefrontPrice": "₹3,200",
     "storefrontTag": "Bestseller"
   },
-  "trustedPill": "Powers your stack",
-  "trustedTitle": "Built on the tools you already trust",
-  "trustedPartners": {
-    "razorpay": "Razorpay",
-    "stripe": "Stripe",
-    "shiprocket": "Shiprocket",
-    "whatsapp": "WhatsApp Business",
-    "translator": "Microsoft Translator",
-    "gsc": "Google Search Console"
+  "industries": {
+    "pill": "Made for your kind of business",
+    "titleLine1": "Whatever you sell,",
+    "titleAccent": "we have a starter ready",
+    "subtitle": "Pick your category and your store wakes up with the right pages, badges, and payment flows already in place.",
+    "spotlight": {
+      "featured": "Featured industry",
+      "titleLine1": "Built for",
+      "titleAccent": "jewellers",
+      "titleLine2": ".",
+      "desc": "From heirloom collections to daily wear, show every karat in the right light. Hallmark badges, GST invoices, and 360° galleries shipped on day one.",
+      "proof": "Trusted by 1,400+ jewellers",
+      "cta": "Start a jewellery store",
+      "cards": {
+        "preloaded": { "eyebrow": "PRELOADED", "body": "Bridal, daily wear, gifting categories & SEO copy already written" },
+        "proof":     { "eyebrow": "PROOF",     "body": "BIS hallmark badges, certifications & 360° spin gallery built in" },
+        "payments":  { "eyebrow": "PAYMENTS",  "body": "UPI, cards, COD, GST invoices & EMI ready on day one" }
+      }
+    },
+    "dividerEyebrow": "Other categories we love",
+    "dividerTitle": "Pick the one that's yours.",
+    "dividerNote": "Each category ships with its own templates, payment flows, and copy.",
+    "jewellery": {
+      "label": "Jewellery",
+      "brand": "AURELIA",
+      "bannerEyebrow": "BRIDAL EDIT",
+      "bannerTitle": "Heirlooms for the moment",
+      "productName": "Sitara Necklace",
+      "productPrice": "₹4.2L",
+      "productEmi": "EMI from ₹3,499"
+    },
+    "fashion": {
+      "label": "Fashion",
+      "title": "Built for boutiques",
+      "desc": "Drop new collections in minutes. Sizes, swatches, and seasonal sales without the headache.",
+      "perks": {
+        "p1": "Size + colour variants",
+        "p2": "Lookbook layouts",
+        "p3": "Returns + exchanges"
+      },
+      "cta": "Start a fashion store",
+      "mockBanner": "SS '26 Collection",
+      "mockProduct": "Linen Wrap Dress",
+      "mockPrice": "₹2,499"
+    },
+    "beauty": {
+      "label": "Beauty",
+      "title": "Built for beauty brands",
+      "desc": "Make every shade swatchable. Build a glow-up funnel from first visit to repeat order.",
+      "perks": {
+        "p1": "Shade + tone pickers",
+        "p2": "Ingredient drawers",
+        "p3": "Subscribe & save"
+      },
+      "cta": "Start a beauty store",
+      "mockBrand": "GLOW & CO",
+      "mockProduct": "Velvet Lip Tint",
+      "mockPrice": "₹599"
+    },
+    "general": {
+      "label": "Anything else",
+      "title": "Built for whatever you sell",
+      "desc": "Electronics, snacks, services, plants, art — if you can ship it or schedule it, you can sell it.",
+      "perks": {
+        "p1": "Unlimited categories",
+        "p2": "Service + product mix",
+        "p3": "COD on day one"
+      },
+      "cta": "Start any kind of store",
+      "mockBrand": "Marketplace"
+    }
   },
   "featuresPill": "The complete commerce platform",
   "featuresTitle": "Everything you need to run a serious online business",
