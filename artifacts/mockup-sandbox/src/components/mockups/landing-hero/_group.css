@@ -1,0 +1,369 @@
+/* ==========================================================================
+   Flomerce Landing — Hero with Video Backdrop (mockup)
+   Scoped to .lp-page
+   ========================================================================== */
+.lp-page {
+  --lp-ink: #0b0d17;
+  --lp-ink-2: #1f2433;
+  --lp-text: #4b5266;
+  --lp-muted: #7b8094;
+  --lp-faint: #b8bdcc;
+  --lp-surface: #ffffff;
+  --lp-surface-1: #fafbfc;
+  --lp-surface-2: #f3f4f8;
+  --lp-line: rgba(13, 17, 35, 0.06);
+  --lp-line-strong: rgba(13, 17, 35, 0.10);
+  --lp-brand: #4f46e5;
+  --lp-brand-2: #6366f1;
+  --lp-brand-soft: rgba(79, 70, 229, 0.08);
+  --lp-accent-grad: linear-gradient(120deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+
+  position: relative;
+  background: #ffffff;
+  color: var(--lp-text);
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+/* ===== Nav ===== */
+.lp-nav {
+  position: relative;
+  z-index: 30;
+  padding: 18px 32px 0;
+}
+.lp-nav-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 6px 24px -12px rgba(13, 17, 35, 0.18);
+}
+.lp-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: var(--lp-ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+.lp-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--lp-accent-grad);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+}
+.lp-brand-name { font-size: 1rem; }
+.lp-nav-links {
+  display: flex;
+  gap: 1.5rem;
+}
+.lp-nav-links a {
+  color: var(--lp-ink-2);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+.lp-nav-links a:hover { color: var(--lp-brand); }
+.lp-nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.lp-nav-login {
+  color: var(--lp-ink-2);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.lp-nav-start {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--lp-ink);
+  color: #fff;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.lp-nav-start:hover { background: var(--lp-ink-2); transform: translateY(-1px); }
+
+/* ===== Hero ===== */
+.lp-hero {
+  /* Deterministic seam math:
+     - Video block has a fixed height
+     - Headline starts a fixed distance above the video bottom
+     - Fade band is anchored to that same overlap distance */
+  --hero-video-h: clamp(420px, 58vh, 620px);
+  --hero-overlap: 120px; /* how far the headline overlaps the lower edge of the video */
+  --hero-fade-h: 220px;  /* size of the bottom fade band on the video */
+  position: relative;
+  z-index: 1;
+  padding: 56px 32px 72px;
+  isolation: isolate;
+}
+
+/* Video wrap is a partial full-bleed at the top.
+   - Top: aligns with the section top
+   - Bottom: a fixed pixel height, then fades into the page */
+.lp-hero-video-wrap {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--hero-video-h);
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+  border-bottom-left-radius: 32px;
+  border-bottom-right-radius: 32px;
+}
+.lp-hero-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(1.05) contrast(1.02);
+}
+/* Soft brand tint so text stays readable when overlapping the video edge */
+.lp-hero-video-tint {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 80% 0%, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(11, 13, 23, 0.35) 0%, rgba(11, 13, 23, 0.10) 35%, rgba(255, 255, 255, 0) 65%);
+}
+/* Bottom fade — anchored band that turns the video into a backdrop where the headline overlaps it */
+.lp-hero-video-fade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--hero-fade-h);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0.92) 80%,
+    #ffffff 100%
+  );
+}
+
+.lp-hero-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 880px;
+  margin: 0 auto;
+  /* Headline starts exactly --hero-overlap pixels above the video's bottom edge,
+     so the top of the headline overlaps the lower band of the video as a backdrop. */
+  padding-top: calc(var(--hero-video-h) - var(--hero-overlap));
+  text-align: center;
+}
+
+.lp-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #ffffff;
+  background: rgba(13, 17, 35, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  letter-spacing: -0.005em;
+  margin-bottom: 1.6rem;
+  box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.3);
+}
+
+.lp-hero-title {
+  font-size: clamp(2.4rem, 5.4vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  margin: 0 0 1.4rem;
+  color: var(--lp-ink);
+  /* Slight white halo so the upper edge that overlaps the video edge stays crisp */
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.lp-hero-accent {
+  background: var(--lp-accent-grad);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lp-hero-desc {
+  font-size: 1.12rem;
+  color: var(--lp-text);
+  max-width: 620px;
+  margin: 0 auto 2rem;
+  line-height: 1.65;
+}
+
+.lp-hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.lp-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.6rem;
+  background: var(--lp-ink);
+  color: #fff;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 0.98rem;
+  font-weight: 600;
+  box-shadow: 0 12px 28px -12px rgba(79, 70, 229, 0.7), 0 1px 2px rgba(13, 17, 35, 0.2);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.lp-btn-primary:hover {
+  background: var(--lp-ink-2);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 34px -12px rgba(79, 70, 229, 0.85), 0 2px 6px rgba(13, 17, 35, 0.18);
+}
+.lp-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.4rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--lp-ink-2);
+  border: 1px solid var(--lp-line-strong);
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.lp-btn-ghost:hover {
+  background: #fff;
+  border-color: rgba(13, 17, 35, 0.18);
+  transform: translateY(-1px);
+}
+.lp-btn-ghost svg { color: var(--lp-brand); }
+
+.lp-hero-trust {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 0.7rem;
+  font-size: 0.82rem;
+  color: var(--lp-muted);
+  align-items: center;
+}
+.lp-hero-trust li:first-child { color: var(--lp-ink-2); font-weight: 600; }
+.lp-trust-sep { color: var(--lp-faint); }
+
+/* ===== Trusted strip ===== */
+.lp-trusted {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 32px;
+  text-align: center;
+}
+.lp-trusted-pill {
+  display: inline-block;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--lp-muted);
+  margin-bottom: 1rem;
+  background: var(--lp-surface-1);
+}
+.lp-trusted-logos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.4rem 2.5rem;
+  color: var(--lp-ink-2);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  opacity: 0.78;
+}
+
+/* ===== Features teaser ===== */
+.lp-features {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 32px 80px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.lp-feature {
+  padding: 28px 24px;
+  border: 1px solid var(--lp-line);
+  border-radius: 18px;
+  background: var(--lp-surface);
+  box-shadow: 0 1px 2px rgba(13, 17, 35, 0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.lp-feature:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px -16px rgba(13, 17, 35, 0.18);
+}
+.lp-feature h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--lp-ink);
+  letter-spacing: -0.01em;
+}
+.lp-feature p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--lp-text);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .lp-nav { padding: 14px 16px 0; }
+  .lp-nav-inner { padding: 10px 14px; }
+  .lp-nav-links { display: none; }
+  .lp-hero {
+    padding: 40px 16px 56px;
+    --hero-video-h: clamp(320px, 52vh, 460px);
+    --hero-overlap: 96px;
+    --hero-fade-h: 180px;
+  }
+  .lp-features {
+    grid-template-columns: 1fr;
+    padding: 32px 16px 64px;
+  }
+}
