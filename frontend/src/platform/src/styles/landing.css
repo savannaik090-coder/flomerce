@@ -187,43 +187,11 @@
   justify-content: center;
 }
 
-/* ----- Navbar overlay treatment when sitting on top of the hero video ----- */
+/* Keep the navbar above the full-bleed video without overriding its colors */
 .landing-page .nav {
   position: relative;
   z-index: 30;
   border-bottom: none;
-  padding: 1.25rem 0;
-}
-.landing-page .nav .nav-link {
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-.landing-page .nav .nav-link:hover {
-  color: #ffffff;
-}
-.landing-page .nav .btn-primary {
-  background: #ffffff;
-  color: var(--lp-ink, #0b0d17);
-  box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.35);
-}
-.landing-page .nav .btn-primary:hover {
-  background: #f3f4f8;
-  transform: translateY(-1px);
-}
-.landing-page .nav .btn-outline {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(6px);
-}
-.landing-page .nav .btn-outline:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-.landing-page .nav .logo-img {
-  filter: brightness(0) invert(1);
-}
-.landing-page .nav .nav-hamburger span {
-  background: #ffffff;
 }
 
 .landing-page .hero-badge {
