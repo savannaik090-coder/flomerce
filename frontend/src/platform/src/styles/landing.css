@@ -193,6 +193,14 @@
   box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.3);
 }
 
+/* Price badge sits directly above the "New ·" badge with a tighter
+   bottom margin so the two read as a stacked pair. */
+.landing-page .hero--video .hero-badge--price {
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 .landing-page .hero--video .hero-content--center h1 {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }

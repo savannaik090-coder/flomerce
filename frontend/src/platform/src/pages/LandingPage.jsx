@@ -160,6 +160,7 @@ export default function LandingPage() {
           </div>
 
           <div className="hero-content hero-content--center reveal">
+            <div className="hero-badge hero-badge--onvideo hero-badge--price">{t('heroBadgePrice')}</div>
             <div className="hero-badge hero-badge--onvideo">{t('heroBadge')}</div>
             <h1>
               {t('heroTitleLine1')} <span className="hero-accent">{t('heroTitleLine2')}</span> {t('heroTitleLine3')}
