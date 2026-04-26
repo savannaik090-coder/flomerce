@@ -4,5 +4,8 @@ export const modules: ModuleMap = {
   "./components/mockups/feature-cards-vertical/EditorialPastels.tsx": () => import("../components/mockups/feature-cards-vertical/EditorialPastels.tsx"),
   "./components/mockups/feature-cards-vertical/ShowcaseUITiles.tsx": () => import("../components/mockups/feature-cards-vertical/ShowcaseUITiles.tsx"),
   "./components/mockups/feature-cards-vertical/SpotlightDarkLux.tsx": () => import("../components/mockups/feature-cards-vertical/SpotlightDarkLux.tsx"),
+  "./components/mockups/industry-showcase/EditorialTabs.tsx": () => import("../components/mockups/industry-showcase/EditorialTabs.tsx"),
+  "./components/mockups/industry-showcase/PhonePreview.tsx": () => import("../components/mockups/industry-showcase/PhonePreview.tsx"),
+  "./components/mockups/industry-showcase/VibrantTiles.tsx": () => import("../components/mockups/industry-showcase/VibrantTiles.tsx"),
   "./components/mockups/landing-hero/VideoBackdrop.tsx": () => import("../components/mockups/landing-hero/VideoBackdrop.tsx")
 };
