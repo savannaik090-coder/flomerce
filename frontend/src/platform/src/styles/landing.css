@@ -98,24 +98,29 @@
   /* Deterministic seam math:
      - Video block has a fixed pixel height
      - Headline starts a fixed distance above the video bottom
-     - Bottom fade band is anchored to that overlap distance */
+     - Bottom fade band is anchored to that overlap distance
+     - --nav-h is the visible navbar height the video must extend up behind */
   --hero-video-h: clamp(420px, 58vh, 620px);
   --hero-overlap: 120px;
   --hero-fade-h: 220px;
+  --nav-h: 88px;
   position: relative;
-  padding: 0 24px 64px;
+  padding: 0 0 64px;
   isolation: isolate;
 }
 
+/* Video wrap breaks out of the container both vertically (up behind the nav)
+   and horizontally (edge-to-edge of the viewport). */
 .landing-page .hero--video .hero-video-wrap {
   position: absolute;
-  inset: 0 0 auto 0;
-  height: var(--hero-video-h);
+  top: calc(-1 * var(--nav-h));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: calc(var(--hero-video-h) + var(--nav-h));
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
-  border-bottom-left-radius: 32px;
-  border-bottom-right-radius: 32px;
 }
 .landing-page .hero--video .hero-video {
   position: absolute;
@@ -190,6 +195,45 @@
 }
 .landing-page .hero--video .hero-trust--center {
   justify-content: center;
+}
+
+/* ----- Navbar overlay treatment when sitting on top of the hero video ----- */
+.landing-page .nav {
+  position: relative;
+  z-index: 30;
+  border-bottom: none;
+  padding: 1.25rem 0;
+}
+.landing-page .nav .nav-link {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.landing-page .nav .nav-link:hover {
+  color: #ffffff;
+}
+.landing-page .nav .btn-primary {
+  background: #ffffff;
+  color: var(--lp-ink, #0b0d17);
+  box-shadow: 0 6px 20px -10px rgba(0, 0, 0, 0.35);
+}
+.landing-page .nav .btn-primary:hover {
+  background: #f3f4f8;
+  transform: translateY(-1px);
+}
+.landing-page .nav .btn-outline {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+}
+.landing-page .nav .btn-outline:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.landing-page .nav .logo-img {
+  filter: brightness(0) invert(1);
+}
+.landing-page .nav .nav-hamburger span {
+  background: #ffffff;
 }
 
 .landing-page .hero-badge {
@@ -1255,10 +1299,11 @@
     padding: 56px 0 40px;
   }
   .landing-page .hero.hero--video {
-    padding: 0 16px 40px;
+    padding: 0 0 40px;
     --hero-video-h: clamp(320px, 52vh, 460px);
     --hero-overlap: 96px;
     --hero-fade-h: 180px;
+    --nav-h: 72px;
   }
   .landing-page .hero--video .hero-buttons--center .btn-hero-primary,
   .landing-page .hero--video .hero-buttons--center .btn-hero-ghost {
