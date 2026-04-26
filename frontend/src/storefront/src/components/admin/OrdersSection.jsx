@@ -79,9 +79,74 @@ export default function OrdersSection() {
 
   const shiprocketEnabled = !!siteConfig?.settings?.shiprocketEnabled;
 
+  // Phase 3: per-order courier picker. Modal state is intentionally global to
+  // OrdersSection (not per-order) because only one picker is open at a time.
+  // `pickerOrder` holds the order being acted on; `pickerCouriers` is the
+  // serviceable list returned by /api/shipping/orders/:id/couriers.
+  const [pickerOrder, setPickerOrder] = useState(null);
+  const [pickerCouriers, setPickerCouriers] = useState([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerSubmitting, setPickerSubmitting] = useState(false);
+
   function applyOrderUpdate(orderId, patch) {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...patch } : o));
     setOrderDetailModal(prev => (prev && prev.id === orderId) ? { ...prev, ...patch } : prev);
+  }
+
+  // Persists the success patch from a /ship POST. Extracted so both auto-mode
+  // Ship Now and the picker submit path produce identical local state.
+  function applyShipSuccess(orderId, data, fallbackTracking) {
+    applyOrderUpdate(orderId, {
+      status: data.status || 'shipped',
+      shiprocket_order_id: data.shiprocket_order_id,
+      shiprocket_shipment_id: data.shiprocket_shipment_id,
+      shiprocket_awb: data.shiprocket_awb,
+      shiprocket_courier: data.shiprocket_courier,
+      shiprocket_label_url: data.shiprocket_label_url,
+      shiprocket_status: data.shiprocket_status || 'shipped',
+      tracking_number: data.shiprocket_awb || fallbackTracking,
+    });
+  }
+
+  async function openCourierPicker(order) {
+    if (!order?.id) return;
+    setPickerOrder(order);
+    setPickerCouriers([]);
+    setPickerLoading(true);
+    try {
+      const res = await apiRequest(`/api/shipping/orders/${order.id}/couriers?siteId=${siteConfig.id}`);
+      const data = res.data || res;
+      setPickerCouriers(Array.isArray(data?.couriers) ? data.couriers : []);
+    } catch (err) {
+      toast.error(`Couldn't load couriers: ${err.message}`);
+    } finally {
+      setPickerLoading(false);
+    }
+  }
+
+  async function handlePickCourier(courierId) {
+    if (!pickerOrder?.id || !courierId) return;
+    setPickerSubmitting(true);
+    try {
+      const res = await apiRequest(
+        `/api/shipping/orders/${pickerOrder.id}/ship?siteId=${siteConfig.id}&courierId=${encodeURIComponent(courierId)}`,
+        { method: 'POST' }
+      );
+      const data = res.data || res;
+      // If the backend still bails out (e.g. weight missing), surface and stay open.
+      if (data?.code === 'COURIER_PICK_REQUIRED' || data?.pickerRequired) {
+        toast.error('Backend still needs a courier — please pick again.');
+        return;
+      }
+      applyShipSuccess(pickerOrder.id, data, pickerOrder.tracking_number);
+      toast.success('Shipment created successfully');
+      setPickerOrder(null);
+      setPickerCouriers([]);
+    } catch (err) {
+      toast.error(`Ship failed: ${err.message}`);
+    } finally {
+      setPickerSubmitting(false);
+    }
   }
 
   async function handleShipNow(order) {
@@ -90,16 +155,21 @@ export default function OrdersSection() {
     try {
       const res = await apiRequest(`/api/shipping/orders/${order.id}/ship?siteId=${siteConfig.id}`, { method: 'POST' });
       const data = res.data || res;
-      applyOrderUpdate(order.id, {
-        status: data.status || 'shipped',
-        shiprocket_order_id: data.shiprocket_order_id,
-        shiprocket_shipment_id: data.shiprocket_shipment_id,
-        shiprocket_awb: data.shiprocket_awb,
-        shiprocket_courier: data.shiprocket_courier,
-        shiprocket_label_url: data.shiprocket_label_url,
-        shiprocket_status: data.shiprocket_status || 'shipped',
-        tracking_number: data.shiprocket_awb || order.tracking_number,
-      });
+      // Manual-courier-mode: backend created the Shiprocket order but stopped
+      // before assigning AWB. Open the picker so the merchant can choose.
+      if (data?.code === 'COURIER_PICK_REQUIRED' || data?.pickerRequired) {
+        // Reflect the courier_pending status locally so the banner shows even
+        // before the next list refresh.
+        applyOrderUpdate(order.id, {
+          shiprocket_order_id: data.shiprocket_order_id || order.shiprocket_order_id,
+          shiprocket_shipment_id: data.shiprocket_shipment_id || order.shiprocket_shipment_id,
+          shiprocket_status: data.shiprocket_status || 'courier_pending',
+        });
+        const merged = { ...order, ...data };
+        await openCourierPicker(merged);
+        return;
+      }
+      applyShipSuccess(order.id, data, order.tracking_number);
       toast.success('Shipment created successfully');
     } catch (err) {
       toast.error(`Ship Now failed: ${err.message}`);
@@ -1544,9 +1614,21 @@ export default function OrdersSection() {
               </div>
             )}
 
+            {/* Phase 3: surface manual-mode orders that need a courier pick. */}
+            {shiprocketEnabled && !isCancelled && order.shiprocket_status === 'courier_pending' && !order.shiprocket_awb && (
+              <div style={{ marginBottom: 16, padding: '10px 12px', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 13, color: '#78350f' }}>
+                  <strong>AWB pending</strong> — shipment created in Shiprocket but no courier has been assigned yet.
+                </div>
+                <button onClick={() => openCourierPicker(order)} disabled={pickerLoading} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#fff', cursor: pickerLoading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  {pickerLoading ? 'Loading…' : 'Pick Courier'}
+                </button>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button onClick={() => setOrderDetailModal(null)} style={{ padding: '9px 20px', borderRadius: 6, border: '1px solid #ddd', background: '#f5f5f5', cursor: 'pointer', fontSize: 14 }}>Close</button>
-              {shiprocketEnabled && !isCancelled && !order.shiprocket_awb && (
+              {shiprocketEnabled && !isCancelled && !order.shiprocket_awb && order.shiprocket_status !== 'courier_pending' && (
                 <button onClick={() => handleShipNow(order)} disabled={shipActionLoading} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#0ea5e9', color: '#fff', cursor: shipActionLoading ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, opacity: shipActionLoading ? 0.6 : 1 }}>
                   {shipActionLoading ? 'Working...' : '🚚 Ship Now'}
                 </button>
@@ -1690,6 +1772,73 @@ export default function OrdersSection() {
               siteId={siteConfig?.id}
               onClose={() => setInvoiceOrderId(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Phase 3: Courier picker modal. Driven by `pickerOrder` (the order
+          being shipped/resumed) and `pickerCouriers` (the serviceable list
+          from /api/shipping/orders/:id/couriers). Couriers are pre-sorted
+          server-side: preferred (by rank) → recommended → cheapest. */}
+      {pickerOrder && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 10000, overflowY: 'auto', padding: '20px 16px' }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: '100%', maxWidth: 720, boxShadow: '0 10px 40px rgba(0,0,0,0.2)', marginTop: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Pick a courier</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Order #{pickerOrder.order_number || pickerOrder.id}</div>
+              </div>
+              <button
+                onClick={() => { if (!pickerSubmitting) { setPickerOrder(null); setPickerCouriers([]); } }}
+                disabled={pickerSubmitting}
+                style={{ padding: '4px 10px', border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, cursor: pickerSubmitting ? 'not-allowed' : 'pointer', fontSize: 13 }}
+              >
+                Close
+              </button>
+            </div>
+
+            {pickerLoading ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 14 }}>Loading serviceable couriers…</div>
+            ) : pickerCouriers.length === 0 ? (
+              <div style={{ padding: 24, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#991b1b', fontSize: 13 }}>
+                No couriers are serviceable for this order. Check the customer pincode, parcel weight, and your Shiprocket pickup location.
+              </div>
+            ) : (
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+                {pickerCouriers.map((c) => {
+                  const chips = [];
+                  // Backend keys: isPreferred, recommended, codSupport, etaDays
+                  // (preferredRank is 0-based; show 1-based in the chip).
+                  if (c.isPreferred) chips.push({ label: `Preferred${typeof c.preferredRank === 'number' ? ` #${c.preferredRank + 1}` : ''}`, bg: '#dbeafe', fg: '#1e40af' });
+                  if (c.recommended) chips.push({ label: 'Recommended', bg: '#dcfce7', fg: '#166534' });
+                  if (c.codSupport) chips.push({ label: 'COD', bg: '#fef3c7', fg: '#854d0e' });
+                  return (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: '1px solid #f1f5f9', gap: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>{c.name}</span>
+                          {chips.map((ch, i) => (
+                            <span key={i} style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10, background: ch.bg, color: ch.fg, textTransform: 'uppercase', letterSpacing: 0.4 }}>{ch.label}</span>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                          {c.rate != null && <>Rate: <strong>₹{Number(c.rate).toFixed(2)}</strong></>}
+                          {c.etd && <> · ETA: <strong>{c.etd}</strong></>}
+                          {c.etaDays != null && <> · {c.etaDays} days</>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handlePickCourier(c.id)}
+                        disabled={pickerSubmitting}
+                        style={{ padding: '8px 16px', border: 'none', background: pickerSubmitting ? '#94a3b8' : '#0ea5e9', color: '#fff', borderRadius: 6, cursor: pickerSubmitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
+                      >
+                        {pickerSubmitting ? 'Shipping…' : 'Ship with this'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

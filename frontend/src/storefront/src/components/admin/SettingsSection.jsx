@@ -99,6 +99,14 @@ export default function SettingsSection() {
   const [shiprocketDefaultHeight, setShiprocketDefaultHeight] = useState(10);
   const [shiprocketAutoOnPay, setShiprocketAutoOnPay] = useState(false);
   const [shiprocketAutoOnCod, setShiprocketAutoOnCod] = useState(false);
+  // Phase 3: courier-pick configuration. `mode` is 'auto' (server picks from
+  // preference chain → recommended) or 'manual' (server stops after creating
+  // the Shiprocket order; merchant picks per-order in the picker modal).
+  const [shiprocketCourierMode, setShiprocketCourierMode] = useState('auto');
+  const [shiprocketPreferredIds, setShiprocketPreferredIds] = useState([]); // ordered list of {id, name}
+  const [allCouriers, setAllCouriers] = useState(null); // null = not loaded; [] = loaded but empty
+  const [allCouriersLoading, setAllCouriersLoading] = useState(false);
+  const [showCourierPicker, setShowCourierPicker] = useState(false);
   const [pickupLocationsRefreshing, setPickupLocationsRefreshing] = useState(false);
 
   const defaultOpenSections = { storeUrl: true, customDomain: true, brand: true, contact: true };
@@ -254,6 +262,13 @@ export default function SettingsSection() {
         setShiprocketDefaultLength(d.defaultLength || 10);
         setShiprocketDefaultBreadth(d.defaultBreadth || 10);
         setShiprocketDefaultHeight(d.defaultHeight || 10);
+        setShiprocketCourierMode(d.courierPickMode === 'manual' ? 'manual' : 'auto');
+        setShiprocketPreferredIds(Array.isArray(d.preferredCourierIds)
+          ? d.preferredCourierIds
+              .map((id) => Number(id))
+              .filter((id) => Number.isInteger(id) && id > 0)
+              .map((id) => ({ id, name: '' })) // names hydrated lazily when picker opens
+          : []);
         setShiprocketAutoOnPay(!!d.autoShipOnPayment);
         setShiprocketAutoOnCod(!!d.autoShipOnConfirmCod);
         if (d.connected) refreshPickupLocations();
@@ -278,6 +293,58 @@ export default function SettingsSection() {
       }
     } catch (e) { console.error('refreshPickupLocations error:', e); }
     finally { setPickupLocationsRefreshing(false); }
+  }
+
+  // Lazy-load the merchant's full courier list (only when they open the
+  // picker). Hydrates names for any preferred IDs the status endpoint
+  // returned without names. We cache the result on `allCouriers` for the
+  // session — if the merchant rarely opens this picker we save a Shiprocket
+  // call on every Settings page load.
+  async function loadAllCouriersIfNeeded() {
+    if (allCouriers !== null || allCouriersLoading) return;
+    setAllCouriersLoading(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/shipping/couriers?siteId=${encodeURIComponent(siteConfig.id)}`, {
+        headers: token ? { 'Authorization': `SiteAdmin ${token}` } : {},
+      });
+      const json = await res.json();
+      const list = (res.ok && json.success && Array.isArray(json.data?.couriers)) ? json.data.couriers : [];
+      setAllCouriers(list);
+      // Hydrate names on any preferred IDs that came back nameless.
+      if (list.length) {
+        setShiprocketPreferredIds((prev) => prev.map((c) => {
+          if (c.name) return c;
+          const match = list.find((x) => Number(x.id) === Number(c.id));
+          return match ? { id: c.id, name: match.name } : c;
+        }));
+      }
+    } catch (e) {
+      console.error('loadAllCouriers error:', e);
+      setAllCouriers([]);
+    } finally {
+      setAllCouriersLoading(false);
+    }
+  }
+
+  function moveCourier(idx, delta) {
+    setShiprocketPreferredIds((prev) => {
+      const next = [...prev];
+      const target = idx + delta;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  }
+  function removeCourier(idx) {
+    setShiprocketPreferredIds((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function addCourier(courier) {
+    setShiprocketPreferredIds((prev) =>
+      prev.some((c) => Number(c.id) === Number(courier.id))
+        ? prev
+        : [...prev, { id: Number(courier.id), name: String(courier.name || '') }]
+    );
   }
 
   async function handleShiprocketConnect() {
@@ -343,6 +410,8 @@ export default function SettingsSection() {
           defaultHeight: Number(shiprocketDefaultHeight) || 10,
           autoShipOnPayment: !!shiprocketAutoOnPay,
           autoShipOnConfirmCod: !!shiprocketAutoOnCod,
+          courierPickMode: shiprocketCourierMode === 'manual' ? 'manual' : 'auto',
+          preferredCourierIds: shiprocketPreferredIds.map((c) => c.id),
         }),
       });
       const json = await res.json();
@@ -1911,6 +1980,97 @@ Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsAp
                     <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
                       <input id="sr-auto-cod" type="checkbox" checked={shiprocketAutoOnCod} onChange={(e) => setShiprocketAutoOnCod(e.target.checked)} />
                       <label htmlFor="sr-auto-cod" style={{ fontSize: 13 }}>Auto-ship COD orders on placement</label>
+                    </div>
+
+                    {/* ----- Phase 3: Courier selection mode + preference chain ----- */}
+                    <div style={{ marginBottom: 14, padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Courier selection</label>
+                      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="sr-courier-mode"
+                            value="auto"
+                            checked={shiprocketCourierMode === 'auto'}
+                            onChange={() => setShiprocketCourierMode('auto')}
+                          />
+                          Auto-pick (use my preferences)
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="sr-courier-mode"
+                            value="manual"
+                            checked={shiprocketCourierMode === 'manual'}
+                            onChange={() => setShiprocketCourierMode('manual')}
+                          />
+                          Manual (pick a courier per order)
+                        </label>
+                      </div>
+                      <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px 0' }}>
+                        {shiprocketCourierMode === 'auto'
+                          ? 'On Ship Now, we try your preferred couriers in order, then Shiprocket\u2019s recommendation. Auto-ship hooks fully complete the AWB.'
+                          : 'On Ship Now (and on auto-ship hooks), we create the Shiprocket order but stop before assigning an AWB \u2014 open the order to pick a courier.'}
+                      </p>
+
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Preferred couriers (in order)</label>
+                      {shiprocketPreferredIds.length === 0 ? (
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 8px 0' }}>None set — we’ll fall back to Shiprocket’s recommendation.</p>
+                      ) : (
+                        <ol style={{ listStyle: 'none', padding: 0, margin: '0 0 10px 0' }}>
+                          {shiprocketPreferredIds.map((c, i) => (
+                            <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, marginBottom: 6 }}>
+                              <span style={{ fontSize: 12, color: '#64748b', minWidth: 20 }}>{i + 1}.</span>
+                              <span style={{ flex: 1, fontSize: 13 }}>{c.name || `Courier #${c.id}`}</span>
+                              <button type="button" onClick={() => moveCourier(i, -1)} disabled={i === 0} style={{ padding: '2px 8px', fontSize: 12, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, cursor: i === 0 ? 'not-allowed' : 'pointer', opacity: i === 0 ? 0.4 : 1 }}>↑</button>
+                              <button type="button" onClick={() => moveCourier(i, 1)} disabled={i === shiprocketPreferredIds.length - 1} style={{ padding: '2px 8px', fontSize: 12, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, cursor: i === shiprocketPreferredIds.length - 1 ? 'not-allowed' : 'pointer', opacity: i === shiprocketPreferredIds.length - 1 ? 0.4 : 1 }}>↓</button>
+                              <button type="button" onClick={() => removeCourier(i)} style={{ padding: '2px 8px', fontSize: 12, border: '1px solid #fecaca', color: '#b91c1c', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+
+                      {!showCourierPicker ? (
+                        <button
+                          type="button"
+                          onClick={() => { setShowCourierPicker(true); loadAllCouriersIfNeeded(); }}
+                          disabled={!shiprocketConnected}
+                          className="btn btn-outline"
+                          style={{ fontSize: 12, padding: '6px 12px' }}
+                          title={shiprocketConnected ? '' : 'Connect Shiprocket first'}
+                        >
+                          + Add courier
+                        </button>
+                      ) : (
+                        <div style={{ marginTop: 4, padding: 10, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                              {allCouriersLoading ? 'Loading couriers\u2026' : (allCouriers && allCouriers.length === 0 ? 'No couriers available in your Shiprocket account.' : 'Pick a courier to add:')}
+                            </span>
+                            <button type="button" onClick={() => setShowCourierPicker(false)} style={{ padding: '2px 8px', fontSize: 12, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, cursor: 'pointer' }}>Done</button>
+                          </div>
+                          {!allCouriersLoading && allCouriers && allCouriers.length > 0 && (
+                            <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 4 }}>
+                              {allCouriers.map((c) => {
+                                const already = shiprocketPreferredIds.some((p) => Number(p.id) === Number(c.id));
+                                return (
+                                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: '1px solid #f1f5f9', fontSize: 13 }}>
+                                    <span style={{ color: already ? '#94a3b8' : '#0f172a' }}>{c.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => addCourier(c)}
+                                      disabled={already}
+                                      style={{ padding: '2px 10px', fontSize: 12, border: '1px solid', borderColor: already ? '#cbd5e1' : '#0ea5e9', background: already ? '#f1f5f9' : '#0ea5e9', color: already ? '#94a3b8' : '#fff', borderRadius: 4, cursor: already ? 'not-allowed' : 'pointer' }}
+                                    >
+                                      {already ? 'Added' : 'Add'}
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ marginBottom: 14, padding: 12, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 6 }}>

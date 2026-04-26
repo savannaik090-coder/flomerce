@@ -44,6 +44,7 @@ import {
   trackShipment,
   cancelShipment,
   cancelOrder as srCancelOrder,
+  listAllCouriers,
   ShiprocketError,
 } from '../../utils/shiprocket.js';
 import { sendShiprocketStatusNotification } from '../../utils/shiprocket-notifications.js';
@@ -150,7 +151,32 @@ function publicShiprocketView(sr, emailPlain) {
     autoShipOnPayment: !!sr?.autoShipOnPayment,
     autoShipOnConfirmCod: !!sr?.autoShipOnConfirmCod,
     webhookToken: sr?.webhookToken || '',
+    // Courier-pick configuration. `auto` lets the server pick a courier from
+    // the merchant's preference chain (falling back to Shiprocket's
+    // recommended courier). `manual` makes the server stop after creating
+    // the Shiprocket order — the merchant must open the order's courier
+    // picker modal in the admin and choose explicitly.
+    courierPickMode: sr?.courierPickMode === 'manual' ? 'manual' : 'auto',
+    preferredCourierIds: sanitizeCourierIds(sr?.preferredCourierIds),
   };
+}
+
+// Strip out anything that isn't a positive integer, de-dupe while preserving
+// order, and cap the chain so the server never iterates a pathological list.
+const PREFERRED_COURIERS_MAX = 25;
+function sanitizeCourierIds(arr) {
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const v of arr) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) continue;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+    if (out.length >= PREFERRED_COURIERS_MAX) break;
+  }
+  return out;
 }
 
 // ---------- Endpoint: connect ----------
@@ -203,6 +229,8 @@ async function handleConnect(request, env, siteId) {
     defaultHeight: current.defaultHeight || 10,
     autoShipOnPayment: !!current.autoShipOnPayment,
     autoShipOnConfirmCod: !!current.autoShipOnConfirmCod,
+    courierPickMode: current.courierPickMode === 'manual' ? 'manual' : 'auto',
+    preferredCourierIds: sanitizeCourierIds(current.preferredCourierIds),
     _tokenCache: { token: login.token, expiresAt },
   }));
 
@@ -233,6 +261,11 @@ async function handleDisconnect(env, siteId) {
     defaultBreadth: current.defaultBreadth || 10,
     defaultHeight: current.defaultHeight || 10,
     webhookToken: current.webhookToken || '',
+    // Preserve the merchant's saved courier preferences so re-connecting
+    // doesn't force them to rebuild the chain. Mode resets to 'auto' so a
+    // disabled tenant doesn't surprise-block on reconnect.
+    courierPickMode: 'auto',
+    preferredCourierIds: sanitizeCourierIds(current.preferredCourierIds),
     // Wipe credentials and token cache.
   }));
   return successResponse(null, 'Shiprocket disconnected');
@@ -285,6 +318,14 @@ async function handleSaveSettings(request, env, siteId) {
     defaultHeight: num(body.defaultHeight, current.defaultHeight || 10),
     autoShipOnPayment: !!body.autoShipOnPayment,
     autoShipOnConfirmCod: !!body.autoShipOnConfirmCod,
+    courierPickMode: body.courierPickMode === 'manual' ? 'manual'
+      : body.courierPickMode === 'auto' ? 'auto'
+      : (current.courierPickMode === 'manual' ? 'manual' : 'auto'),
+    // Sanitize so we never persist non-numeric / negative / duplicate IDs
+    // — the picker logic later iterates this list verbatim.
+    preferredCourierIds: 'preferredCourierIds' in body
+      ? sanitizeCourierIds(body.preferredCourierIds)
+      : sanitizeCourierIds(current.preferredCourierIds),
   }));
 
   return successResponse(publicShiprocketView(newSr, newSr?.emailMasked), 'Shipping settings saved');
@@ -444,6 +485,68 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
   };
 }
 
+// Pick the best courier_company_id for an order honoring the merchant's
+// preference chain. Returns `{ courierId, courierName, available }`. If no
+// preference matches and Shiprocket gives no recommendation, courierId is
+// `null` and we let Shiprocket auto-pick (current pre-Phase-3 behavior).
+//
+// `available` is the raw `available_courier_companies` array — surfaced for
+// the picker modal endpoint so it can avoid a duplicate Shiprocket call.
+async function pickCourierForOrder({ token, sr, order, totalWeightKg, pickupPincode }) {
+  let shipping = {};
+  try { shipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
+  const deliveryPincode = String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '').trim();
+  if (!/^\d{6}$/.test(deliveryPincode) || !pickupPincode) {
+    return { courierId: null, courierName: '', available: [] };
+  }
+  const codFlag = ((order.payment_method || '').toLowerCase() === 'cod' ||
+                   (order.payment_method || '').toLowerCase() === 'cash_on_delivery') ? 1 : 0;
+
+  let resp;
+  try {
+    resp = await getServiceability(token, {
+      pickup_postcode: pickupPincode,
+      delivery_postcode: deliveryPincode,
+      weight: Number(totalWeightKg) || 0.5,
+      cod: codFlag,
+    });
+  } catch (e) {
+    console.warn('[Shiprocket] picker serviceability failed:', e?.message || e);
+    return { courierId: null, courierName: '', available: [] };
+  }
+
+  const data = resp?.data || resp || {};
+  const available = Array.isArray(data?.available_courier_companies)
+    ? data.available_courier_companies
+    : [];
+  if (available.length === 0) {
+    return { courierId: null, courierName: '', available: [] };
+  }
+
+  const byId = new Map();
+  for (const c of available) {
+    const id = Number(c?.courier_company_id);
+    if (Number.isFinite(id) && id > 0) byId.set(id, c);
+  }
+
+  // 1) Walk the merchant's preferred chain in order.
+  const preferred = sanitizeCourierIds(sr?.preferredCourierIds);
+  for (const id of preferred) {
+    const c = byId.get(id);
+    if (c) return { courierId: id, courierName: String(c.courier_name || ''), available };
+  }
+
+  // 2) Shiprocket's own recommendation (if it points at an available one).
+  const recommendedId = Number(data?.recommended_courier_id);
+  if (Number.isFinite(recommendedId) && byId.has(recommendedId)) {
+    const c = byId.get(recommendedId);
+    return { courierId: recommendedId, courierName: String(c.courier_name || ''), available };
+  }
+
+  // 3) No specific pick — let Shiprocket auto-assign at AWB time.
+  return { courierId: null, courierName: '', available };
+}
+
 // ---------- Internal: full ship-now flow (used by manual + auto-ship) ----------
 
 export async function shipOrderViaShiprocket(env, siteId, orderId, options = {}) {
@@ -532,6 +635,8 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   } else {
     // Resume path: only AWB assign + pickup + label remain. Claim the AWB
     // step before login so a concurrent retry doesn't double-assign AWBs.
+    // `courier_pending` is allowed here so the picker modal can resume an
+    // order that was stopped after create-order in manual courier-pick mode.
     const awbClaim = await siteDB.prepare(
       `UPDATE ${table}
           SET shiprocket_status = 'awb_assigning',
@@ -540,7 +645,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
         WHERE id = ?
           AND shiprocket_awb IS NULL
           AND (shiprocket_status IS NULL
-               OR shiprocket_status IN ('order_created', 'failed', 'awb_failed'))`
+               OR shiprocket_status IN ('order_created', 'courier_pending', 'failed', 'awb_failed'))`
     ).bind(orderId).run();
 
     if (!awbClaim.meta?.changes) {
@@ -593,10 +698,59 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
     ).bind(String(shiprocketOrderId || ''), String(shipmentId), orderId).run();
   }
 
-  // Assign AWB (auto-pick recommended courier).
+  // ---------- Courier selection (Phase 3) ----------
+  // Three sources, in priority order:
+  //   1. `options.courierId` — explicit pick (the courier-picker modal POSTs
+  //      `?courierId=N` for this case and also sets `manualOverride: true`).
+  //   2. Merchant's preferred-courier chain → Shiprocket's `recommended_courier_id`.
+  //   3. Nothing — let Shiprocket auto-assign at AWB time.
+  // In `manual` mode without an explicit pick we STOP here, leave the order
+  // created in Shiprocket, and return `COURIER_PICK_REQUIRED` so the admin
+  // can open the picker modal. The order row is parked at status
+  // `courier_pending`; the resume path above whitelists that state.
+  let chosenCourierId = null;
+  if (options.courierId) {
+    const n = Number(options.courierId);
+    if (Number.isFinite(n) && n > 0 && Number.isInteger(n)) chosenCourierId = n;
+  }
+  const sr = ctx.sr || {};
+  if (!chosenCourierId && sr.courierPickMode === 'manual' && !options.manualOverride) {
+    await siteDB.prepare(
+      `UPDATE ${table} SET shiprocket_status = 'courier_pending', shiprocket_error = NULL, updated_at = datetime('now') WHERE id = ?`
+    ).bind(orderId).run();
+    return {
+      ok: false,
+      code: 'COURIER_PICK_REQUIRED',
+      message: 'Order created in Shiprocket. Open this order to pick a courier.',
+      shiprocketOrderId,
+      shipmentId,
+      shiprocket_order_id: String(shiprocketOrderId || ''),
+      shiprocket_shipment_id: String(shipmentId || ''),
+      shiprocket_status: 'courier_pending',
+    };
+  }
+  if (!chosenCourierId) {
+    let pickupPin = sr.pickupLocationPincode || null;
+    if (!pickupPin) {
+      // resolvePickupPincode reads `ctx.sr` for the cached pin / nickname; it
+      // does its own token bootstrapping so we don't pass `token` here.
+      try { pickupPin = await resolvePickupPincode(env, siteId, { sr }); }
+      catch (e) { console.warn('[Shiprocket] resolvePickupPincode for ship failed:', e?.message || e); }
+    }
+    try {
+      const picked = await pickCourierForOrder({
+        token, sr, order, totalWeightKg, pickupPincode: pickupPin,
+      });
+      if (picked.courierId) chosenCourierId = picked.courierId;
+    } catch (e) {
+      console.warn('[Shiprocket] courier auto-pick failed, falling back to Shiprocket default:', e?.message || e);
+    }
+  }
+
+  // Assign AWB (with the chosen courier_id, or null = Shiprocket auto-pick).
   let awbInfo = null;
   try {
-    const awbRes = await assignAwb(token, shipmentId);
+    const awbRes = await assignAwb(token, shipmentId, chosenCourierId || undefined);
     awbInfo = awbRes?.response?.data || awbRes?.data || null;
   } catch (e) {
     const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
@@ -662,8 +816,40 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
 // ---------- Endpoint: manual Ship Now ----------
 
 async function handleShipNow(request, env, siteId, orderId) {
-  const result = await shipOrderViaShiprocket(env, siteId, orderId, { force: false });
+  // The picker modal POSTs `?courierId=N` to ship with an explicit courier.
+  // Body is also accepted (and overrides query) so callers can send JSON.
+  const url = new URL(request.url);
+  let courierId = url.searchParams.get('courierId') || null;
+  try {
+    const ct = (request.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('application/json')) {
+      const body = await request.json();
+      if (body && body.courierId != null) courierId = body.courierId;
+    }
+  } catch { /* body optional */ }
+
+  const opts = { force: false };
+  if (courierId != null && String(courierId).trim() !== '') {
+    const n = Number(courierId);
+    if (Number.isFinite(n) && n > 0 && Number.isInteger(n)) {
+      opts.courierId = n;
+      // An explicit courier pick from the admin UI bypasses the manual-mode
+      // bail-out (the merchant has just made the choice the bail-out asks
+      // for).
+      opts.manualOverride = true;
+    }
+  }
+
+  const result = await shipOrderViaShiprocket(env, siteId, orderId, opts);
   if (!result.ok) {
+    // COURIER_PICK_REQUIRED is a real, expected outcome in manual mode — it
+    // means we successfully created the Shiprocket order but stopped before
+    // AWB so the admin can pick. Surface it as 200 with `pickerRequired:true`
+    // so the frontend can open the picker modal in one step instead of
+    // treating it as an error.
+    if (result.code === 'COURIER_PICK_REQUIRED') {
+      return successResponse({ ...result, pickerRequired: true }, result.message || 'Pick a courier');
+    }
     const status = result.code === 'NOT_CONNECTED' ? 400
       : result.code === 'ORDER_NOT_FOUND' ? 404
       : result.code === 'AUTH_FAILED' || result.code === 'SHIPROCKET_AUTH' ? 401
@@ -671,6 +857,139 @@ async function handleShipNow(request, env, siteId, orderId) {
     return errorResponse(result.message || 'Ship-now failed', status, result.code || 'SHIP_FAILED');
   }
   return successResponse(result, result.alreadyShipped ? 'Order already shipped via Shiprocket' : 'Order shipped via Shiprocket');
+}
+
+// ---------- Endpoint: per-order serviceable couriers (for picker modal) ----------
+
+async function handleListServiceableCouriers(env, siteId, orderId) {
+  const ctx = await readShiprocketSettings(env, siteId);
+  if (!ctx) return errorResponse('Site not found', 404);
+  if (!ctx.sr?.enabled || !ctx.sr?.emailEncrypted) {
+    return errorResponse('Shiprocket not connected', 400, 'NOT_CONNECTED');
+  }
+
+  const { order } = await loadOrderForShipping(env, siteId, orderId);
+  if (!order) return errorResponse('Order not found', 404);
+
+  // Need the order's parcel weight to ask Shiprocket which couriers can carry
+  // it. Fail fast if the order is missing per-item weights — same posture as
+  // shipOrderViaShiprocket so the merchant gets a clear error in the modal.
+  let parsedItems = [];
+  try { parsedItems = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch {}
+  const totalWeightKg = sumItemsWeightKgStrict(parsedItems);
+  if (!totalWeightKg) {
+    return errorResponse(
+      'One or more items in this order are missing shipping weight. Set the weight in Products → Edit, then retry.',
+      400,
+      'NO_ITEM_WEIGHT'
+    );
+  }
+
+  let token;
+  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
+  catch (e) { return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED'); }
+
+  // Resolve pickup pincode (cached in settings after the first call).
+  let pickupPin = ctx.sr.pickupLocationPincode || null;
+  if (!pickupPin) {
+    // resolvePickupPincode expects the full ctx ({ sr }), not the unwrapped
+    // settings object — passing `ctx.sr` made the function read no nickname
+    // and always return null on cold caches, blocking the picker.
+    try { pickupPin = await resolvePickupPincode(env, siteId, ctx); }
+    catch (e) { console.warn('[Shiprocket] resolvePickupPincode for picker failed:', e?.message || e); }
+  }
+  if (!pickupPin) {
+    return errorResponse('Could not resolve pickup pincode. Re-select your pickup location in Settings.', 400, 'NO_PICKUP_LOCATION');
+  }
+
+  let shipping = {};
+  try { shipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
+  const deliveryPincode = String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '').trim();
+  if (!/^\d{6}$/.test(deliveryPincode)) {
+    return errorResponse("Order's shipping address has no valid 6-digit pincode.", 400, 'BAD_DELIVERY_PINCODE');
+  }
+  const codFlag = ((order.payment_method || '').toLowerCase() === 'cod' ||
+                   (order.payment_method || '').toLowerCase() === 'cash_on_delivery') ? 1 : 0;
+
+  let resp;
+  try {
+    resp = await getServiceability(token, {
+      pickup_postcode: pickupPin,
+      delivery_postcode: deliveryPincode,
+      weight: totalWeightKg,
+      cod: codFlag,
+    });
+  } catch (e) {
+    const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
+    return errorResponse(`Failed to fetch serviceable couriers: ${msg}`, 502, e?.code || 'UPSTREAM_ERROR');
+  }
+
+  const data = resp?.data || resp || {};
+  const available = Array.isArray(data?.available_courier_companies) ? data.available_courier_companies : [];
+  const recommendedId = Number(data?.recommended_courier_id) || null;
+  const preferred = sanitizeCourierIds(ctx.sr.preferredCourierIds);
+  const preferredRank = new Map(preferred.map((id, i) => [id, i]));
+
+  const couriers = available.map((c) => {
+    const id = Number(c?.courier_company_id);
+    const name = String(c?.courier_name || '');
+    const rate = Number(c?.rate);
+    const etaDays = Number(c?.estimated_delivery_days);
+    const codSupport = Number(c?.cod) === 1 || c?.cod === true;
+    const rank = preferredRank.has(id) ? preferredRank.get(id) : null;
+    return {
+      id,
+      name,
+      rate: Number.isFinite(rate) ? rate : null,
+      etaDays: Number.isFinite(etaDays) ? etaDays : null,
+      etd: c?.etd || null,
+      codSupport,
+      recommended: id === recommendedId,
+      isPreferred: rank !== null,
+      preferredRank: rank,
+    };
+  })
+  // Show preferred first (in their merchant-defined order), then recommended,
+  // then everything else. Within each group keep cheapest first as a sane
+  // default tiebreaker.
+  .sort((a, b) => {
+    if (a.isPreferred !== b.isPreferred) return a.isPreferred ? -1 : 1;
+    if (a.isPreferred && b.isPreferred) return (a.preferredRank ?? 0) - (b.preferredRank ?? 0);
+    if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+    return (a.rate ?? Infinity) - (b.rate ?? Infinity);
+  });
+
+  return successResponse({
+    couriers,
+    recommendedId,
+    preferredCourierIds: preferred,
+    pickupPincode: pickupPin,
+    deliveryPincode,
+    weightKg: totalWeightKg,
+    codRequested: !!codFlag,
+    courierPickMode: ctx.sr.courierPickMode === 'manual' ? 'manual' : 'auto',
+  });
+}
+
+// ---------- Endpoint: full courier list (for Settings preference picker) ----------
+
+async function handleListAllCouriers(env, siteId) {
+  const ctx = await readShiprocketSettings(env, siteId);
+  if (!ctx) return errorResponse('Site not found', 404);
+  if (!ctx.sr?.emailEncrypted) {
+    return errorResponse('Shiprocket not connected', 400, 'NOT_CONNECTED');
+  }
+  let token;
+  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
+  catch (e) { return errorResponse(e.message || 'Auth failed', 401, e.code || 'AUTH_FAILED'); }
+
+  try {
+    const list = await listAllCouriers(token);
+    return successResponse({ couriers: list });
+  } catch (e) {
+    const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
+    return errorResponse(`Failed to fetch courier list: ${msg}`, 502, e?.code || 'UPSTREAM_ERROR');
+  }
 }
 
 // ---------- Endpoint: cancel shipment ----------
@@ -1136,11 +1455,18 @@ export async function handleShipping(request, env, path, ctx) {
     if (action === 'pickup-locations' && method === 'GET') {
       return await handlePickupLocations(env, siteId);
     }
+    if (action === 'couriers' && method === 'GET') {
+      // Full courier list for the Settings → Shipping preference picker.
+      // Gated by the same permission as the rest of Settings.
+      if (!hasPermission(admin, 'settings')) return errorResponse('Forbidden: settings permission required', 403, 'FORBIDDEN');
+      return await handleListAllCouriers(env, siteId);
+    }
     if (action === 'orders' && parts[3]) {
       if (!hasPermission(admin, 'orders')) return errorResponse('Forbidden: orders permission required', 403, 'FORBIDDEN');
       const orderId = parts[3];
       const op = parts[4];
       if (op === 'ship' && method === 'POST') return await handleShipNow(request, env, siteId, orderId);
+      if (op === 'couriers' && method === 'GET') return await handleListServiceableCouriers(env, siteId, orderId);
       if (op === 'cancel' && method === 'POST') return await handleCancelShipment(env, siteId, orderId);
       if (op === 'label' && method === 'GET') return await handleGetLabel(env, siteId, orderId);
       if (op === 'track' && method === 'GET') return await handleTrack(env, siteId, orderId);

@@ -174,6 +174,42 @@ export async function cancelShipment(token, awbs) {
 }
 
 /**
+ * Fetch the merchant's full courier list (everything they have enabled in
+ * their Shiprocket panel — not just couriers serviceable for a specific
+ * route). Used by the admin Settings UI to let the merchant build their
+ * preferred-courier fallback chain.
+ *
+ * Returns an array of `{ id, name }`. Shiprocket's response shape varies
+ * between accounts so we normalize defensively.
+ */
+export async function listAllCouriers(token) {
+  const res = await srFetch(token, '/courier/courierListWithCounts');
+  // Shiprocket returns either `{ courier_data: [...] }` or `{ data: { courier_data: [...] } }`
+  // depending on account type. Normalize.
+  const arr = Array.isArray(res?.courier_data)
+    ? res.courier_data
+    : Array.isArray(res?.data?.courier_data)
+      ? res.data.courier_data
+      : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+          ? res
+          : [];
+  const out = [];
+  const seen = new Set();
+  for (const c of arr) {
+    const id = Number(c?.id ?? c?.courier_company_id ?? c?.courier_id);
+    const name = String(c?.name ?? c?.courier_name ?? '').trim();
+    if (!Number.isFinite(id) || id <= 0 || !name || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name });
+  }
+  // Stable alphabetical order for predictable UI.
+  out.sort((a, b) => a.name.localeCompare(b.name));
+  return out;
+}
+
+/**
  * Cancel a Shiprocket order (only valid before AWB assignment).
  */
 export async function cancelOrder(token, shiprocketOrderIds) {
