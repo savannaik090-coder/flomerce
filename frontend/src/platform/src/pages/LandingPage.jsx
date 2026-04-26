@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from '../components/Navbar.jsx';
@@ -6,7 +6,7 @@ import LandingPricing from '../components/LandingPricing.jsx';
 import ContactForm from '../components/ContactForm.jsx';
 import '../styles/landing.css';
 import '../styles/legal.css';
-import { PLATFORM_DOMAIN, SUPPORT_EMAIL } from '../config.js';
+import { SUPPORT_EMAIL } from '../config.js';
 
 function useScrollReveal() {
   useEffect(() => {
@@ -73,9 +73,7 @@ const PARTNER_KEYS = ['razorpay', 'stripe', 'shiprocket', 'whatsapp', 'translato
 export default function LandingPage() {
   const { t } = useTranslation('landing');
   const [showPwa, setShowPwa] = useState(false);
-  const [videoPlaying, setVideoPlaying] = useState(false);
   const [heroVideoLoaded, setHeroVideoLoaded] = useState(false);
-  const videoRef = useRef(null);
   const heroVideoRef = useRef(null);
   const deferredPromptRef = useRef(null);
 
@@ -92,18 +90,19 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    const tryPlay = () => {
-      vid.play().then(() => setVideoPlaying(true)).catch(() => {});
-    };
-    if (vid.readyState >= 2) tryPlay();
-    else vid.addEventListener('canplay', tryPlay, { once: true });
-  }, []);
-
-  useEffect(() => {
     const vid = heroVideoRef.current;
     if (!vid) return;
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      try {
+        vid.removeAttribute('autoplay');
+        vid.pause();
+      } catch {}
+      return;
+    }
     const onLoaded = () => setHeroVideoLoaded(true);
     const tryPlay = () => {
       vid.play().then(() => setHeroVideoLoaded(true)).catch(() => {});
@@ -119,17 +118,6 @@ export default function LandingPage() {
       vid.removeEventListener('loadeddata', onLoaded);
       vid.removeEventListener('canplay', tryPlay);
     };
-  }, []);
-
-  const handlePlayVideo = useCallback(() => {
-    const vid = videoRef.current;
-    if (!vid) return;
-    vid.play().then(() => setVideoPlaying(true)).catch(() => {});
-  }, []);
-
-  const scrollToDemo = useCallback((e) => {
-    e.preventDefault();
-    document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   const handleInstall = async () => {
@@ -182,10 +170,6 @@ export default function LandingPage() {
                 {t('heroCtaPrimary')}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </Link>
-              <a href="#demo" className="btn btn-hero-ghost" onClick={scrollToDemo}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                {t('heroCtaSecondary')}
-              </a>
             </div>
             <ul className="hero-trust hero-trust--center">
               <li>{t('heroTrust.rating')}</li>
@@ -205,37 +189,6 @@ export default function LandingPage() {
               <li key={p} className="trusted-logo">{t(`trustedPartners.${p}`)}</li>
             ))}
           </ul>
-        </section>
-
-        <section id="demo" className="landing-section demo-section reveal">
-          <div className="section-header">
-            <span className="section-pill">{t('demoPill')}</span>
-            <h2>{t('demoTitle')}</h2>
-            <p>{t('demoSubtitle')}</p>
-          </div>
-          <div className="demo-wrapper">
-            <div className="demo-frame">
-              <div className="demo-frame-bar">
-                <div className="demo-dots">
-                  <span className="demo-dot red" />
-                  <span className="demo-dot yellow" />
-                  <span className="demo-dot green" />
-                </div>
-                <span className="demo-url">{PLATFORM_DOMAIN}</span>
-                <span className="demo-bar-spacer" />
-              </div>
-              <div className="demo-video-container">
-                <video ref={videoRef} className="demo-video" muted loop playsInline preload="metadata">
-                  <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
-                </video>
-                {!videoPlaying && (
-                  <button className="demo-play-btn" onClick={handlePlayVideo} aria-label={t('playVideo')}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
         </section>
 
         <section id="features" className="landing-section features-section reveal">

@@ -5,7 +5,6 @@
   "heroTitleLine3": "for growing brands",
   "heroDesc": "Sell anywhere with Flomerce — multi-currency storefronts, integrated payments, multi-location inventory, and built-in marketing in one quietly powerful dashboard.",
   "heroCtaPrimary": "Get Started Free",
-  "heroCtaSecondary": "Watch demo",
   "heroTrust": {
     "rating": "★ 4.8 from 200+ stores",
     "noCard": "No credit card required",
@@ -40,10 +39,6 @@
     "translator": "Microsoft Translator",
     "gsc": "Google Search Console"
   },
-  "demoPill": "Demo",
-  "demoTitle": "See Flomerce in action",
-  "demoSubtitle": "Watch how easy it is to build and run your online store.",
-  "playVideo": "Play video",
   "featuresPill": "Features",
   "featuresTitle": "Everything you need to run a serious online business",
   "featuresSubtitle": "From storefront to fulfilment to marketing — Flomerce covers the full lifecycle so you can focus on the brand, not the plumbing.",
