@@ -124,21 +124,37 @@
 }
 .landing-page .hero--video .hero-video,
 .landing-page .hero--video .hero-video-poster {
-  /* Fade the VIDEO/POSTER itself out at the bottom (via mask) so the actual
-     page background shows through directly. This guarantees the bottom of the
-     hero is exactly the same pixels as the section below — no overlay tint. */
+  /* Stepped fade — video visibility drops in 4 discrete bands across the
+     fade region: 100% (above fade) → 75% → 50% → 25% → 0% (page bg). */
   --video-fade-start: calc(100% - var(--hero-fade-h));
+  --video-fade-q1: calc(100% - var(--hero-fade-h) * 0.75);
+  --video-fade-q2: calc(100% - var(--hero-fade-h) * 0.50);
+  --video-fade-q3: calc(100% - var(--hero-fade-h) * 0.25);
   -webkit-mask-image: linear-gradient(
     180deg,
     #000 0%,
     #000 var(--video-fade-start),
-    transparent 100%
+    rgba(0, 0, 0, 0.75) var(--video-fade-start),
+    rgba(0, 0, 0, 0.75) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    100%
   );
   mask-image: linear-gradient(
     180deg,
     #000 0%,
     #000 var(--video-fade-start),
-    transparent 100%
+    rgba(0, 0, 0, 0.75) var(--video-fade-start),
+    rgba(0, 0, 0, 0.75) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    100%
   );
 }
 .landing-page .hero--video .hero-video {

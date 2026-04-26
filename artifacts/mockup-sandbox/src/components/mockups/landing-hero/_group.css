@@ -137,21 +137,37 @@
 }
 .lp-hero-video,
 .lp-hero-video-tint {
-  /* Fade the VIDEO/TINT itself out at the bottom so the actual page bg shows
-     through directly — bottom of the hero is literally the same pixels as the
-     section below (no overlay tint creating a colour seam). */
+  /* Stepped fade — visibility drops in 4 discrete bands across the fade
+     region: 100% (above fade) → 75% → 50% → 25% → 0% (page bg). */
   --video-fade-start: calc(100% - var(--hero-fade-h));
+  --video-fade-q1: calc(100% - var(--hero-fade-h) * 0.75);
+  --video-fade-q2: calc(100% - var(--hero-fade-h) * 0.50);
+  --video-fade-q3: calc(100% - var(--hero-fade-h) * 0.25);
   -webkit-mask-image: linear-gradient(
     180deg,
     #000 0%,
     #000 var(--video-fade-start),
-    transparent 100%
+    rgba(0, 0, 0, 0.75) var(--video-fade-start),
+    rgba(0, 0, 0, 0.75) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    100%
   );
   mask-image: linear-gradient(
     180deg,
     #000 0%,
     #000 var(--video-fade-start),
-    transparent 100%
+    rgba(0, 0, 0, 0.75) var(--video-fade-start),
+    rgba(0, 0, 0, 0.75) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q1),
+    rgba(0, 0, 0, 0.50) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q2),
+    rgba(0, 0, 0, 0.25) var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    var(--video-fade-q3),
+    rgba(0, 0, 0, 0)    100%
   );
 }
 .lp-hero-video {
