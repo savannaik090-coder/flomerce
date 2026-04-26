@@ -397,16 +397,19 @@ async function createOrder(request, env, user, ctx) {
     await ensureProductOptionsColumn(db, siteId);
 
     let siteDefaultCurrency = 'INR';
+    let shiprocketEnabledForOrder = false;
     try {
       const siteConf = await getSiteConfig(env, siteId);
       if (siteConf?.settings) {
         const s = typeof siteConf.settings === 'string' ? JSON.parse(siteConf.settings) : siteConf.settings;
         if (s.defaultCurrency) siteDefaultCurrency = s.defaultCurrency;
+        shiprocketEnabledForOrder = !!s?.shiprocket?.enabled;
       }
     } catch (e) {}
 
     let subtotal = 0;
     const processedItems = [];
+    const itemsMissingWeight = [];
 
     for (const item of items) {
       const itemProductId = item.productId || item.product_id;
@@ -414,8 +417,16 @@ async function createOrder(request, env, user, ctx) {
         return errorResponse('Invalid item: missing product ID', 400);
       }
 
+      // Reject malformed quantities up front — without this a 0/negative/NaN
+      // qty would persist into the items snapshot and break weight summing
+      // and pricing downstream.
+      const qNum = Number(item.quantity);
+      if (!Number.isFinite(qNum) || qNum <= 0 || !Number.isInteger(qNum)) {
+        return errorResponse('Invalid item: quantity must be a positive integer', 400);
+      }
+
       const product = await db.prepare(
-        'SELECT id, name, price, stock, thumbnail_url, options, gst_rate, hsn_code FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, name, price, stock, thumbnail_url, options, gst_rate, hsn_code, weight FROM products WHERE id = ? AND site_id = ?'
       ).bind(itemProductId, siteId).first();
 
       if (!product) {
@@ -424,6 +435,11 @@ async function createOrder(request, env, user, ctx) {
 
       if (product.stock !== null && product.stock < item.quantity) {
         return errorResponse(`Insufficient stock for ${product.name}`, 400, 'INSUFFICIENT_STOCK');
+      }
+
+      const productWeightG = Number(product.weight || 0);
+      if (shiprocketEnabledForOrder && !(productWeightG > 0)) {
+        itemsMissingWeight.push(product.name);
       }
 
       let effectivePrice = product.price;
@@ -467,7 +483,16 @@ async function createOrder(request, env, user, ctx) {
         selectedOptions: validatedSelectedOptions,
         gst_rate: product.gst_rate || 0,
         hsn_code: product.hsn_code || '',
+        weight: productWeightG || null,
       });
+    }
+
+    if (itemsMissingWeight.length > 0) {
+      return errorResponse(
+        `Cannot place order: shipping weight is missing for ${itemsMissingWeight.join(', ')}. Ask the merchant to set weights in the admin Products section.`,
+        400,
+        'CART_ITEM_MISSING_WEIGHT'
+      );
     }
 
     let discount = 0;
@@ -1161,6 +1186,15 @@ async function createGuestOrder(request, env, ctx) {
 
     let subtotal = 0;
     const processedItems = [];
+    const itemsMissingWeightGuest = [];
+    let shiprocketEnabledForGuestOrder = false;
+    try {
+      const siteConfGuest = await getSiteConfig(env, siteId);
+      if (siteConfGuest?.settings) {
+        const sg = typeof siteConfGuest.settings === 'string' ? JSON.parse(siteConfGuest.settings) : siteConfGuest.settings;
+        shiprocketEnabledForGuestOrder = !!sg?.shiprocket?.enabled;
+      }
+    } catch (e) {}
 
     for (const item of items) {
       const itemProductId = item.productId || item.product_id;
@@ -1168,12 +1202,24 @@ async function createGuestOrder(request, env, ctx) {
         return errorResponse('Invalid item: missing product ID', 400);
       }
 
+      // Mirror the auth path: a malformed quantity must not leak into the
+      // snapshot or it'll break weight summing and pricing later.
+      const qNumGuest = Number(item.quantity);
+      if (!Number.isFinite(qNumGuest) || qNumGuest <= 0 || !Number.isInteger(qNumGuest)) {
+        return errorResponse('Invalid item: quantity must be a positive integer', 400);
+      }
+
       const product = await db.prepare(
-        'SELECT id, name, price, stock, thumbnail_url, options, gst_rate, hsn_code FROM products WHERE id = ? AND site_id = ?'
+        'SELECT id, name, price, stock, thumbnail_url, options, gst_rate, hsn_code, weight FROM products WHERE id = ? AND site_id = ?'
       ).bind(itemProductId, siteId).first();
 
       if (!product) {
         return errorResponse(`Product not found: ${itemProductId}`, 400);
+      }
+
+      const productWeightG = Number(product.weight || 0);
+      if (shiprocketEnabledForGuestOrder && !(productWeightG > 0)) {
+        itemsMissingWeightGuest.push(product.name);
       }
 
       let effectivePrice = product.price;
@@ -1216,7 +1262,16 @@ async function createGuestOrder(request, env, ctx) {
         selectedOptions: validatedSelectedOptions,
         gst_rate: product.gst_rate || 0,
         hsn_code: product.hsn_code || '',
+        weight: productWeightG || null,
       });
+    }
+
+    if (itemsMissingWeightGuest.length > 0) {
+      return errorResponse(
+        `Cannot place order: shipping weight is missing for ${itemsMissingWeightGuest.join(', ')}. Ask the merchant to set weights in the admin Products section.`,
+        400,
+        'CART_ITEM_MISSING_WEIGHT'
+      );
     }
 
     let guestShippingCost = 0;

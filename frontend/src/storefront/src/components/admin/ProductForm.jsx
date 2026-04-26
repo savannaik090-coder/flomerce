@@ -19,6 +19,10 @@ const DEFAULT_FORM = {
   mainImageIndex: 0,
   hsn_code: '',
   gst_rate: '',
+  weight: '',
+  length: '',
+  breadth: '',
+  height: '',
 };
 
 const DEFAULT_OPTIONS = {
@@ -171,6 +175,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
       if (product.images) {
         imgs = Array.isArray(product.images) ? product.images : JSON.parse(product.images || '[]');
       }
+      let dims = {};
+      if (product.dimensions) {
+        try {
+          dims = typeof product.dimensions === 'string' ? JSON.parse(product.dimensions) : product.dimensions;
+        } catch { dims = {}; }
+      }
       setForm({
         name: product.name || '',
         price: product.price || '',
@@ -182,6 +192,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
         mainImageIndex: product.main_image_index || 0,
         hsn_code: product.hsn_code || '',
         gst_rate: product.gst_rate != null ? String(product.gst_rate) : '',
+        weight: product.weight != null ? String(product.weight) : '',
+        length: dims?.length != null ? String(dims.length) : '',
+        breadth: dims?.breadth != null ? String(dims.breadth) : '',
+        height: dims?.height != null ? String(dims.height) : '',
       });
       if (product.options && typeof product.options === 'object') {
         const opts = {
@@ -248,6 +262,15 @@ export default function ProductForm({ product, onSave, onCancel }) {
     if (!form.category_id) errs.category_id = "Please select a category.";
     if (!form.description.trim()) errs.description = "Description is required.";
     if (!form.images || form.images.length === 0) errs.images = "At least one product image is required.";
+    // Weight is mandatory when Shiprocket is on — we use it to compute
+    // accurate courier rates and ETAs and to avoid weight-discrepancy
+    // charges from the courier.
+    if (siteConfig?.settings?.shiprocket?.enabled) {
+      const w = parseFloat(form.weight);
+      if (!form.weight || !Number.isFinite(w) || w <= 0) {
+        errs.weight = "Shipping weight is required when Shiprocket is enabled.";
+      }
+    }
     return errs;
   }
 
@@ -275,6 +298,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
       const totalStock = hasLocs
         ? Object.values(locationStocks).reduce((sum, v) => sum + (parseInt(v) || 0), 0)
         : parseInt(form.stock);
+      const dimsPayload = {};
+      if (form.length !== '' && Number.isFinite(parseFloat(form.length))) dimsPayload.length = parseFloat(form.length);
+      if (form.breadth !== '' && Number.isFinite(parseFloat(form.breadth))) dimsPayload.breadth = parseFloat(form.breadth);
+      if (form.height !== '' && Number.isFinite(parseFloat(form.height))) dimsPayload.height = parseFloat(form.height);
       const payload = {
         siteId: siteConfig.id,
         name: form.name.trim(),
@@ -288,6 +315,8 @@ export default function ProductForm({ product, onSave, onCancel }) {
         options: cleanedOptions,
         hsnCode: form.hsn_code.trim() || null,
         gstRate: form.gst_rate !== '' ? parseFloat(form.gst_rate) : 0,
+        weight: form.weight !== '' && Number.isFinite(parseFloat(form.weight)) ? parseFloat(form.weight) : null,
+        dimensions: Object.keys(dimsPayload).length > 0 ? dimsPayload : null,
       };
       let savedProductId = product?.id;
       if (isEdit) {
@@ -590,6 +619,67 @@ export default function ProductForm({ product, onSave, onCancel }) {
                     ))}
                   </select>
                   <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Tax rate applied on this product</p>
+                </div>
+              </div>
+            </div>
+            )}
+
+            {siteConfig?.settings?.shiprocket?.enabled && (
+            <div style={{ marginTop: 16, padding: '14px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: '#166534', marginBottom: 4 }}>Shipping Details</div>
+              <p style={{ fontSize: 11, color: '#475569', marginTop: 0, marginBottom: 10 }}>
+                Used to calculate courier rates and delivery dates. Weight is required while Shiprocket is enabled.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+                    Weight (g) <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={form.weight}
+                    onChange={e => setForm(p => ({ ...p, weight: e.target.value }))}
+                    placeholder="e.g., 250"
+                    style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.weight ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                  />
+                  {errors.weight
+                    ? <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.weight}</p>
+                    : <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Total weight of one packed unit, in grams</p>}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Dimensions (cm)</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={form.length}
+                      onChange={e => setForm(p => ({ ...p, length: e.target.value }))}
+                      placeholder="L"
+                      style={{ width: '100%', padding: '10px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={form.breadth}
+                      onChange={e => setForm(p => ({ ...p, breadth: e.target.value }))}
+                      placeholder="B"
+                      style={{ width: '100%', padding: '10px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={form.height}
+                      onChange={e => setForm(p => ({ ...p, height: e.target.value }))}
+                      placeholder="H"
+                      style={{ width: '100%', padding: '10px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Optional — uses your default box if blank</p>
                 </div>
               </div>
             </div>

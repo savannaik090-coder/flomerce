@@ -3,9 +3,24 @@ import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update, removeMediaFile } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn } from '../../utils/site-db.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn, getSiteConfig } from '../../utils/site-db.js';
 import { triggerAutoNotification } from './notifications-worker.js';
 import { translateContentBatch, isTargetSupported } from '../../utils/server-translator.js';
+
+// Returns true when the merchant has Shiprocket switched on. Used to enforce
+// the per-product shipping-weight requirement only for stores that actually
+// hand orders off to a courier integration.
+//
+// Intentionally fail-closed: errors propagate to the caller's outer try/catch
+// (returning a 500). Swallowing errors here would silently disable the
+// weight-required gate on a transient config-read glitch, allowing a merchant
+// to save weightless products and only discovering the problem at ship time.
+async function siteHasShiprocketEnabled(env, siteId) {
+  const cfg = await getSiteConfig(env, siteId);
+  if (!cfg?.settings) return false;
+  const s = typeof cfg.settings === 'string' ? JSON.parse(cfg.settings) : cfg.settings;
+  return !!s?.shiprocket?.enabled;
+}
 
 /**
  * Walk a list of products and collect every translatable string into a flat
@@ -359,6 +374,20 @@ async function createProduct(request, env, user, ctx) {
       return errorResponse('Site ID, name and price are required');
     }
 
+    // When Shiprocket is enabled the per-product weight (in grams) is required
+    // — there's no safe default: courier rates and ETAs are weight-driven and
+    // the wrong weight at hand-off causes weight-discrepancy charges.
+    if (await siteHasShiprocketEnabled(env, siteId)) {
+      const w = Number(weight);
+      if (!Number.isFinite(w) || w <= 0) {
+        return errorResponse(
+          'Shipping weight (in grams) is required for every product while Shiprocket is enabled.',
+          400,
+          'WEIGHT_REQUIRED'
+        );
+      }
+    }
+
     if (await checkMigrationLock(env, siteId)) {
       return errorResponse('Site is currently being migrated. Please try again shortly.', 423, 'SITE_MIGRATING');
     }
@@ -525,6 +554,20 @@ async function updateProduct(request, env, user, productId, ctx) {
 
     const updates = await request.json();
     const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'subcategory_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options', 'hsn_code', 'gst_rate'];
+
+    // If the merchant tries to clear weight while Shiprocket is on, reject —
+    // the product would become un-shippable. Updates that don't touch weight
+    // are allowed (handled at order-placement time as the safety net).
+    if ('weight' in updates && await siteHasShiprocketEnabled(env, resolvedSiteId)) {
+      const w = Number(updates.weight);
+      if (!Number.isFinite(w) || w <= 0) {
+        return errorResponse(
+          'Shipping weight (in grams) is required for every product while Shiprocket is enabled.',
+          400,
+          'WEIGHT_REQUIRED'
+        );
+      }
+    }
 
     let oldProductData = null;
     const needsOldData = updates.price !== undefined || updates.stock !== undefined;

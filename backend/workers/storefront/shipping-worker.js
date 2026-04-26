@@ -332,8 +332,26 @@ function normalizePhone(raw, country) {
   return isIndia ? digits.slice(-10) : digits;
 }
 
+// Sum item weights (snapshotted in the order's items JSON at order-create time)
+// into kilograms. Returns null if any line item is missing weight — callers must
+// fail-fast in that case rather than silently fall back to a default that would
+// cause weight-discrepancy charges from the courier.
+function sumItemsWeightKgStrict(items) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  let totalG = 0;
+  for (const it of items) {
+    const w = Number(it?.weight || 0);
+    // Use ?? not || so a quantity of 0 is treated as invalid rather than
+    // silently coerced to 1.
+    const q = Number(it?.quantity ?? it?.units ?? 1);
+    if (!(w > 0) || !Number.isFinite(q) || q <= 0) return null;
+    totalG += w * q;
+  }
+  return totalG > 0 ? totalG / 1000 : null;
+}
+
 // Build the Shiprocket "create custom order" payload from our internal order row.
-function buildShiprocketOrderPayload(order, sr, brandConfig, siteId) {
+function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeightKg) {
   let items = [];
   try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch {}
 
@@ -364,10 +382,13 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId) {
     hsn: it.hsn_code || '',
   }));
 
-  const totalWeight = (() => {
-    // Use stored default; if items have per-item weight in future, sum those.
-    return Number(sr?.defaultWeight || 500) / 1000; // grams → kg
-  })();
+  // Weight is computed by the caller (shipOrderViaShiprocket) from the
+  // per-item snapshot stored on the order. We trust that value here — if it
+  // arrived missing/zero, the caller should have already returned a clear
+  // NO_ITEM_WEIGHT error before we got here.
+  const totalWeight = Number(totalWeightKg) > 0
+    ? Number(totalWeightKg)
+    : Number(sr?.defaultWeight || 500) / 1000;
 
   const paymentMethod = (() => {
     const pm = (order.payment_method || '').toLowerCase();
@@ -443,6 +464,23 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
 
   const { siteDB, table, order } = await loadOrderForShipping(env, siteId, orderId);
   if (!order) return { ok: false, code: 'ORDER_NOT_FOUND', message: 'Order not found' };
+
+  // Compute total parcel weight from the per-item snapshot taken at order
+  // creation. If any item is missing weight, refuse to ship — sending a
+  // default value here would cause Shiprocket to charge weight-discrepancy
+  // fees once the courier physically weighs the parcel.
+  let parsedItemsForWeight = [];
+  try {
+    parsedItemsForWeight = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+  } catch {}
+  const totalWeightKg = sumItemsWeightKgStrict(parsedItemsForWeight);
+  if (!totalWeightKg) {
+    return {
+      ok: false,
+      code: 'NO_ITEM_WEIGHT',
+      message: 'One or more items in this order are missing shipping weight. Set the weight in Products → Edit, then retry.',
+    };
+  }
 
   if (order.shiprocket_awb && !options.force) {
     return {
@@ -527,7 +565,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   }
 
   if (needsCreate) {
-    const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config, siteId);
+    const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config, siteId, totalWeightKg);
 
     let createRes;
     try {
