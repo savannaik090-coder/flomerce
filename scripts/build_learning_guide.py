@@ -359,9 +359,9 @@ Two very different groups use Flomerce, and the codebase is organised around tha
   to browse and buy. They never visit `flomerce.com` directly — they only see the
   merchant's branded subdomain (or custom domain).
 
-There is also a **platform owner** (you, plus future internal staff) who can see across
-all sites via the **owner admin** views and resolve cross-tenant issues — billing
-disputes, abuse, infrastructure incidents.
+There is also the **platform owner** role — the founder and internal Flomerce staff —
+who can see across all sites via the **owner admin** views and resolve cross-tenant
+issues such as billing disputes, abuse, and infrastructure incidents.
 
 ## The product vision in one paragraph
 
