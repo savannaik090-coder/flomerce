@@ -102,20 +102,6 @@ export async function createOrder(token, payload) {
 }
 
 /**
- * Check serviceability + recommended courier for a shipment.
- * params: { pickup_postcode, delivery_postcode, weight, cod, declared_value }
- * Returns the full data block; we typically pick recommended_courier_id.
- */
-export async function getServiceability(token, params) {
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v == null) continue;
-    qs.set(k, String(v));
-  }
-  return srFetch(token, `/courier/serviceability/?${qs.toString()}`);
-}
-
-/**
  * Assign an AWB (waybill number) to a shipment, optionally for a specific courier.
  * Returns { awb_assign_status, response: { data: { awb_code, courier_name, ... } } }
  */

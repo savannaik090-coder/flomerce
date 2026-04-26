@@ -37,7 +37,6 @@ import {
   loginShiprocket,
   getPickupLocations,
   createOrder as srCreateOrder,
-  getServiceability,
   assignAwb,
   generatePickup,
   generateLabel,
@@ -46,6 +45,7 @@ import {
   cancelOrder as srCancelOrder,
   ShiprocketError,
 } from '../../utils/shiprocket.js';
+import { sendShiprocketStatusNotification } from '../../utils/shiprocket-notifications.js';
 
 // Re-login if token expires within this many minutes.
 const TOKEN_REFRESH_BUFFER_MIN = 60 * 24; // 1 day buffer (token lasts ~10 days).
@@ -256,6 +256,22 @@ async function handleSaveSettings(request, env, siteId) {
     return Number.isFinite(n) && n > 0 ? n : def;
   };
 
+  // If the merchant is enabling Shiprocket they must pick a registered
+  // pickup-location nickname. Otherwise create-order calls will be rejected
+  // by Shiprocket with a 422 once an order actually tries to ship.
+  const requestedNickname = typeof body.pickupLocationNickname === 'string' ? body.pickupLocationNickname.trim() : '';
+  if (body.enabled === true) {
+    const ctx = await readShiprocketSettings(env, siteId);
+    const effectiveNickname = requestedNickname || (ctx?.sr?.pickupLocationNickname || '').trim();
+    if (!effectiveNickname) {
+      return errorResponse(
+        'Choose a pickup location before enabling Shiprocket.',
+        400,
+        'NO_PICKUP_LOCATION'
+      );
+    }
+  }
+
   const newSr = await writeShiprocketSettings(env, siteId, async (current) => ({
     ...current,
     enabled: typeof body.enabled === 'boolean' ? body.enabled : !!current.enabled,
@@ -306,8 +322,17 @@ async function loadOrderForShipping(env, siteId, orderId) {
   return { siteDB, table, order };
 }
 
+// Indian Shiprocket accounts require billing_phone/shipping_phone to be a
+// 10-digit number; for any other country we keep the full digit sequence so
+// couriers can actually reach the buyer.
+function normalizePhone(raw, country) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  const isIndia = /^(india|in|bharat)$/i.test(String(country || 'India').trim());
+  return isIndia ? digits.slice(-10) : digits;
+}
+
 // Build the Shiprocket "create custom order" payload from our internal order row.
-function buildShiprocketOrderPayload(order, sr, brandConfig) {
+function buildShiprocketOrderPayload(order, sr, brandConfig, siteId) {
   let items = [];
   try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch {}
 
@@ -349,8 +374,15 @@ function buildShiprocketOrderPayload(order, sr, brandConfig) {
     return 'Prepaid';
   })();
 
+  // Prefix the Shiprocket order_id with a short site-id slice so two Flomerce
+  // sites that happen to share one Shiprocket account can't collide on the
+  // same merchant order_number (Shiprocket de-dupes order_id account-wide).
+  const sitePrefix = String(siteId || '').replace(/-/g, '').slice(0, 8);
+  const orderRef = String(order.order_number || order.id);
+  const shiprocketOrderRef = sitePrefix ? `${sitePrefix}-${orderRef}` : orderRef;
+
   return {
-    order_id: String(order.order_number || order.id),
+    order_id: shiprocketOrderRef,
     order_date: (order.created_at || new Date().toISOString()).replace('T', ' ').slice(0, 19),
     pickup_location: sr.pickupLocationNickname || 'Primary',
     channel_id: '',
@@ -364,7 +396,7 @@ function buildShiprocketOrderPayload(order, sr, brandConfig) {
     billing_state: String(billing.state || ''),
     billing_country: String(billing.country || 'India'),
     billing_email: order.customer_email || '',
-    billing_phone: String(order.customer_phone || '').replace(/\D/g, '').slice(-10),
+    billing_phone: normalizePhone(order.customer_phone, billing.country),
     shipping_is_billing: billing === shipping,
     shipping_customer_name: firstName,
     shipping_last_name: lastName,
@@ -375,7 +407,7 @@ function buildShiprocketOrderPayload(order, sr, brandConfig) {
     shipping_country: String(shipping.country || 'India'),
     shipping_state: String(shipping.state || ''),
     shipping_email: order.customer_email || '',
-    shipping_phone: String(order.customer_phone || '').replace(/\D/g, '').slice(-10),
+    shipping_phone: normalizePhone(order.customer_phone, shipping.country),
     order_items: orderItems,
     payment_method: paymentMethod,
     shipping_charges: Number(order.shipping_cost || 0),
@@ -397,6 +429,15 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   if (!ctx) return { ok: false, code: 'SITE_NOT_FOUND', message: 'Site not found' };
   if (!ctx.sr?.enabled || !ctx.sr?.emailEncrypted) {
     return { ok: false, code: 'NOT_CONNECTED', message: 'Shiprocket not connected' };
+  }
+  // Refuse to call Shiprocket without a confirmed pickup-location nickname —
+  // otherwise the create-order request returns a 422 with a confusing message.
+  if (!String(ctx.sr?.pickupLocationNickname || '').trim()) {
+    return {
+      ok: false,
+      code: 'NO_PICKUP_LOCATION',
+      message: 'No Shiprocket pickup location selected. Choose one in Settings → Shipping.',
+    };
   }
 
   const { siteDB, table, order } = await loadOrderForShipping(env, siteId, orderId);
@@ -485,7 +526,7 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   }
 
   if (needsCreate) {
-    const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config);
+    const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config, siteId);
 
     let createRes;
     try {
@@ -802,10 +843,12 @@ export async function handleShiprocketWebhook(request, env, path) {
     return successResponse({ deduped: true });
   }
 
-  // Map Shiprocket statuses to our internal order statuses.
+  // Map Shiprocket statuses to our internal order statuses. (Note: 'PICKED UP'
+  // is a real first-mile event — without it the customer's "shipped" email is
+  // delayed until 'IN TRANSIT' arrives, which can be hours later.)
   const sl = currentStatus.toLowerCase();
   let newStatus = null;
-  if (/(in.?transit|shipped|out.?for.?pickup|pickup.?scheduled|pickup.?generated|pickup.?completed)/.test(sl)) {
+  if (/(in.?transit|shipped|out.?for.?pickup|picked.?up|pickup.?scheduled|pickup.?generated|pickup.?completed)/.test(sl)) {
     newStatus = 'shipped';
   } else if (/(out.?for.?delivery)/.test(sl)) {
     newStatus = 'shipped'; // keep as shipped, customer-facing label still says shipped
@@ -815,31 +858,57 @@ export async function handleShiprocketWebhook(request, env, path) {
     newStatus = null; // don't auto-cancel customer-side; just record shiprocket_status
   }
 
-  // Update the row (status fields + shiprocket meta).
-  const setClauses = ['shiprocket_status = ?', 'shiprocket_last_event_at = ?', 'updated_at = datetime("now")'];
-  const values = [currentStatus, eventTime];
-  if (newStatus && row.status !== newStatus) {
-    setClauses.push('status = ?');
-    values.push(newStatus);
-    if (newStatus === 'shipped') setClauses.push('shipped_at = COALESCE(shipped_at, datetime("now"))');
-    if (newStatus === 'delivered') setClauses.push('delivered_at = COALESCE(delivered_at, datetime("now"))');
-  }
-  values.push(row.id);
-  await siteDB.prepare(`UPDATE ${table} SET ${setClauses.join(', ')} WHERE id = ?`).bind(...values).run();
+  // Idempotency-gated update of the shiprocket_* meta columns. If a duplicate
+  // or out-of-order webhook arrives, the WHERE clause prevents overwriting a
+  // newer event and the meta.changes count tells us we should de-dupe.
+  const metaUpdate = await siteDB.prepare(
+    `UPDATE ${table}
+        SET shiprocket_status = ?,
+            shiprocket_last_event_at = ?,
+            updated_at = datetime('now')
+      WHERE id = ?
+        AND (shiprocket_last_event_at IS NULL OR shiprocket_last_event_at < ?)`
+  ).bind(currentStatus, eventTime, row.id, eventTime).run();
 
-  // If status flipped to shipped/delivered, fire customer notifications via the
-  // existing path. We do this by importing the email helper directly so we
-  // don't have to fake an admin auth header.
-  if (newStatus && row.status !== newStatus) {
+  if (!metaUpdate.meta?.changes) {
+    return successResponse({ deduped: true });
+  }
+
+  // Conditional status flip — only fires when this caller actually changes the
+  // value. meta.changes === 1 here means THIS caller flipped status, so it
+  // owns the customer notification (no risk of two concurrent webhooks both
+  // emailing the customer for the same transition).
+  let didFlip = false;
+  if (newStatus) {
+    let stmt;
+    if (newStatus === 'shipped') {
+      stmt = siteDB.prepare(
+        `UPDATE ${table}
+            SET status = ?, shipped_at = COALESCE(shipped_at, datetime('now'))
+          WHERE id = ? AND status != ?`
+      ).bind(newStatus, row.id, newStatus);
+    } else if (newStatus === 'delivered') {
+      stmt = siteDB.prepare(
+        `UPDATE ${table}
+            SET status = ?, delivered_at = COALESCE(delivered_at, datetime('now'))
+          WHERE id = ? AND status != ?`
+      ).bind(newStatus, row.id, newStatus);
+    } else {
+      stmt = siteDB.prepare(
+        `UPDATE ${table} SET status = ? WHERE id = ? AND status != ?`
+      ).bind(newStatus, row.id, newStatus);
+    }
+    const flipRes = await stmt.run();
+    didFlip = (flipRes.meta?.changes || 0) === 1;
+  }
+
+  if (didFlip) {
     try {
-      const { sendShiprocketStatusNotification } = await import('./orders-worker.js');
-      if (typeof sendShiprocketStatusNotification === 'function') {
-        await sendShiprocketStatusNotification(env, siteId, row.id, newStatus, table);
-      }
+      await sendShiprocketStatusNotification(env, siteId, row.id, newStatus, table);
     } catch (e) {
       console.warn('[Shiprocket webhook] notification trigger failed:', e.message || e);
     }
   }
 
-  return successResponse({ ok: true, newStatus, shiprocketStatus: currentStatus });
+  return successResponse({ ok: true, newStatus, shiprocketStatus: currentStatus, flipped: didFlip });
 }
