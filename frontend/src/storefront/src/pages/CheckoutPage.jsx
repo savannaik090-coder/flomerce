@@ -212,20 +212,28 @@ export default function CheckoutPage() {
     const handle = setTimeout(async () => {
       setServiceabilityLoading(true);
       try {
+        // Phase 4: query against the COD-filter that matches the shopper's
+        // *selected* payment method, not the merchant's COD capability. If
+        // they picked COD we want COD-supporting couriers (smaller, often
+        // pricier set); if they picked Razorpay we want the broader set so
+        // the dynamic-quote we show matches what the server will charge.
+        // We still defer to merchant `codEnabled` as the upper bound — if
+        // COD is disabled merchant-wide the cart can't be COD anyway.
+        const codFlag = (paymentMethod === 'cod' && codEnabled) ? 1 : 0;
         const url = getApiUrl(
           `/api/shipping/serviceability?siteId=${encodeURIComponent(siteConfig.id)}` +
-          `&pincode=${pin}&items=${encodeURIComponent(itemsSig)}&cod=${codEnabled ? 1 : 0}`
+          `&pincode=${pin}&items=${encodeURIComponent(itemsSig)}&cod=${codFlag}`
         );
         const resp = await fetch(url, { method: 'GET' });
         const body = await resp.json().catch(() => null);
         if (cancelled) return;
         // The shared `successResponse` helper wraps payloads as
         // { success, message, data } — the actual serviceability fields
-        // (serviceable, etaMin/MaxDays, codAvailable, ...) live under .data.
-        // The endpoint always returns ok:true with serviceable:false on any
-        // soft failure (auth/cache/upstream), so we can trust .data verbatim.
-        // A network failure or non-JSON response means we hide the badge
-        // and never block checkout.
+        // (serviceable, etaMin/MaxDays, codAvailable, dynamicShippingFee,
+        // ...) live under .data. The endpoint always returns ok:true with
+        // serviceable:false on any soft failure (auth/cache/upstream), so
+        // we can trust .data verbatim. A network failure or non-JSON
+        // response means we hide the badge and never block checkout.
         const svc = body && typeof body === 'object' ? (body.data ?? null) : null;
         setServiceability(svc && typeof svc === 'object' ? svc : null);
       } catch (e) {
@@ -236,7 +244,7 @@ export default function CheckoutPage() {
     }, 350);
 
     return () => { cancelled = true; clearTimeout(handle); };
-  }, [shiprocketEnabled, siteConfig?.id, address.country, address.pinCode, itemsSig, codEnabled]);
+  }, [shiprocketEnabled, siteConfig?.id, address.country, address.pinCode, itemsSig, codEnabled, paymentMethod]);
 
   // If COD ends up unavailable for the entered pincode, auto-switch any
   // already-selected COD payment to Razorpay so the customer doesn't try
@@ -277,7 +285,25 @@ export default function CheckoutPage() {
   }, [deliveryConfig]);
 
   const subtotalAfterCoupon = Math.max(0, subtotal - couponDiscount);
-  const shippingCost = computeShippingCost(subtotalAfterCoupon, address.country, address.state);
+  const staticShippingCost = computeShippingCost(subtotalAfterCoupon, address.country, address.state);
+  // Phase 4: prefer the dynamic carrier-quoted fee from serviceability, but
+  // a) free-above always wins (don't undercut a free-shipping promise) and
+  // b) we still fall back to the static fee on any failure / null response.
+  const freeAboveActive = !!(
+    deliveryConfig.enabled &&
+    deliveryConfig.freeAboveEnabled &&
+    deliveryConfig.freeAbove > 0 &&
+    subtotalAfterCoupon >= deliveryConfig.freeAbove
+  );
+  const dynamicQuote = (
+    !freeAboveActive &&
+    serviceability?.serviceable &&
+    typeof serviceability?.dynamicShippingFee === 'number' &&
+    Number.isFinite(serviceability.dynamicShippingFee) &&
+    serviceability.dynamicShippingFee >= 0
+  ) ? serviceability.dynamicShippingFee : null;
+  const shippingCost = dynamicQuote != null ? dynamicQuote : staticShippingCost;
+  const isCarrierQuoted = dynamicQuote != null;
   const finalTotal = subtotalAfterCoupon + shippingCost;
   const hasRegionOverrides = deliveryConfig.enabled && Array.isArray(deliveryConfig.regionRates) && deliveryConfig.regionRates.length > 0;
   const hasFullLocation = !!address.country && (statesForCountry.length === 0 || !!address.state);
@@ -784,6 +810,9 @@ export default function CheckoutPage() {
               {showShippingNote && (
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, textAlign: 'end' }}><TranslatedText text="May vary based on your location" /></div>
               )}
+              {isCarrierQuoted && shippingCost > 0 && (
+                <div style={{ fontSize: 11, color: '#475569', marginTop: 3, textAlign: 'end' }}><TranslatedText text="Quoted by carrier" /></div>
+              )}
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
                 <div style={{ fontSize: 11, color: '#16a34a', marginTop: 3, textAlign: 'end' }}><TranslatedText text="Free shipping on orders above" /> {formatAmount(deliveryConfig.freeAbove)}</div>
               )}
@@ -1000,6 +1029,9 @@ export default function CheckoutPage() {
                   {shippingCost > 0 ? formatAmount(shippingCost) : <TranslatedText text="Free" />}
                 </span>
               </div>
+              {isCarrierQuoted && shippingCost > 0 && (
+                <div style={{ fontSize: 11, color: '#475569', marginTop: 2, textAlign: 'end' }}><TranslatedText text="Quoted by carrier" /></div>
+              )}
               {deliveryConfig.enabled && deliveryConfig.freeAboveEnabled && deliveryConfig.freeAbove > 0 && shippingCost > 0 && (
                 <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, textAlign: 'end' }}><TranslatedText text="Free shipping on orders above {{amount}}" vars={{ amount: formatAmount(deliveryConfig.freeAbove) }} /></div>
               )}

@@ -606,6 +606,36 @@ async function createOrder(request, env, user, ctx) {
     } catch (e) {
       console.error('Shipping config error:', e);
     }
+
+    // Phase 4: dynamic Shiprocket re-quote. Overrides static `shippingCost`
+    // when the merchant has opted in AND the courier rate quote succeeds.
+    // Static fallback is preserved if the dynamic path returns null.
+    // Free-above (when configured + crossed) wins over the dynamic quote
+    // so a merchant promise of "free shipping over X" is never undercut.
+    try {
+      const orderSubtotalAfterDiscount = Math.max(0, subtotal - discount);
+      let freeAboveActive = false;
+      try {
+        const sConf = await getSiteConfig(env, siteId);
+        const sJson = sConf?.settings ? (typeof sConf.settings === 'string' ? JSON.parse(sConf.settings) : sConf.settings) : {};
+        const dcCheck = sJson?.deliveryConfig || {};
+        freeAboveActive = !!(dcCheck.enabled && dcCheck.freeAboveEnabled && dcCheck.freeAbove > 0 && orderSubtotalAfterDiscount >= dcCheck.freeAbove);
+      } catch {}
+      if (!freeAboveActive) {
+        const { quoteDynamicShipping } = await import('./shipping-worker.js');
+        const dyn = await quoteDynamicShipping(env, siteId, {
+          processedItems,
+          shippingAddress,
+          paymentMethod,
+        });
+        if (typeof dyn === 'number' && Number.isFinite(dyn) && dyn >= 0) {
+          shippingCost = dyn;
+        }
+      }
+    } catch (e) {
+      console.warn('Dynamic shipping quote failed (auth path), using static:', e?.message || e);
+    }
+
     let tax = 0;
     for (const pi of processedItems) {
       const rate = Number(pi.gst_rate) || 0;
@@ -1320,6 +1350,32 @@ async function createGuestOrder(request, env, ctx) {
     } catch (e) {
       console.error('Guest shipping config error:', e);
     }
+
+    // Phase 4: dynamic Shiprocket re-quote — same gates as the auth path.
+    // Free-above wins; any failure silently keeps the static guest fee.
+    try {
+      let freeAboveActive = false;
+      try {
+        const sConfG = await getSiteConfig(env, siteId);
+        const sJsonG = sConfG?.settings ? (typeof sConfG.settings === 'string' ? JSON.parse(sConfG.settings) : sConfG.settings) : {};
+        const dcG = sJsonG?.deliveryConfig || {};
+        freeAboveActive = !!(dcG.enabled && dcG.freeAboveEnabled && dcG.freeAbove > 0 && subtotal >= dcG.freeAbove);
+      } catch {}
+      if (!freeAboveActive) {
+        const { quoteDynamicShipping } = await import('./shipping-worker.js');
+        const dyn = await quoteDynamicShipping(env, siteId, {
+          processedItems,
+          shippingAddress,
+          paymentMethod,
+        });
+        if (typeof dyn === 'number' && Number.isFinite(dyn) && dyn >= 0) {
+          guestShippingCost = dyn;
+        }
+      }
+    } catch (e) {
+      console.warn('Dynamic shipping quote failed (guest path), using static:', e?.message || e);
+    }
+
     let guestTax = 0;
     for (const pi of processedItems) {
       const rate = Number(pi.gst_rate) || 0;

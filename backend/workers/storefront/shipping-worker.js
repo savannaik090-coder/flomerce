@@ -158,6 +158,30 @@ function publicShiprocketView(sr, emailPlain) {
     // picker modal in the admin and choose explicitly.
     courierPickMode: sr?.courierPickMode === 'manual' ? 'manual' : 'auto',
     preferredCourierIds: sanitizeCourierIds(sr?.preferredCourierIds),
+    // ---- Phase 4: dynamic shipping markup ----
+    // When `dynamicShippingEnabled` is on AND `courierPickMode === 'auto'`,
+    // the storefront/checkout will quote shipping as the cheapest available
+    // (preferred → recommended → cheapest) courier rate plus the merchant's
+    // markup. Honored only in auto mode because in manual mode we cannot
+    // commit to a courier rate before the merchant picks per-order.
+    ...sanitizeMarkup(sr),
+  };
+}
+
+// Sanitize the dynamic-pricing settings into a single object, used by both
+// the public view and the save handler so the wire shape never drifts.
+// `markupPercent` is clamped to 0–200 (anything above effectively triples
+// the rate — beyond that is almost certainly a typo). `markupFlat` is
+// clamped to 0–100000 paise-equivalent rupees.
+function sanitizeMarkup(sr) {
+  const pct = Number(sr?.markupPercent);
+  const flat = Number(sr?.markupFlat);
+  const mode = sr?.roundingMode;
+  return {
+    dynamicShippingEnabled: !!sr?.dynamicShippingEnabled,
+    markupPercent: Number.isFinite(pct) ? Math.max(0, Math.min(200, pct)) : 0,
+    markupFlat: Number.isFinite(flat) ? Math.max(0, Math.min(100000, flat)) : 0,
+    roundingMode: (mode === 'nearest5' || mode === 'nearest10') ? mode : 'none',
   };
 }
 
@@ -231,6 +255,8 @@ async function handleConnect(request, env, siteId) {
     autoShipOnConfirmCod: !!current.autoShipOnConfirmCod,
     courierPickMode: current.courierPickMode === 'manual' ? 'manual' : 'auto',
     preferredCourierIds: sanitizeCourierIds(current.preferredCourierIds),
+    // Preserve any markup config a previously-disconnected merchant had set.
+    ...sanitizeMarkup(current),
     _tokenCache: { token: login.token, expiresAt },
   }));
 
@@ -266,6 +292,8 @@ async function handleDisconnect(env, siteId) {
     // disabled tenant doesn't surprise-block on reconnect.
     courierPickMode: 'auto',
     preferredCourierIds: sanitizeCourierIds(current.preferredCourierIds),
+    // Preserve markup config too — merchant likely re-enables soon.
+    ...sanitizeMarkup(current),
     // Wipe credentials and token cache.
   }));
   return successResponse(null, 'Shiprocket disconnected');
@@ -326,6 +354,17 @@ async function handleSaveSettings(request, env, siteId) {
     preferredCourierIds: 'preferredCourierIds' in body
       ? sanitizeCourierIds(body.preferredCourierIds)
       : sanitizeCourierIds(current.preferredCourierIds),
+    // Phase 4: dynamic-pricing fields. Pull from body when present, otherwise
+    // keep current. sanitizeMarkup clamps + defaults so an absent/garbage
+    // value reduces to the safe defaults (disabled, 0, 0, 'none').
+    ...sanitizeMarkup({
+      dynamicShippingEnabled: 'dynamicShippingEnabled' in body
+        ? !!body.dynamicShippingEnabled
+        : !!current.dynamicShippingEnabled,
+      markupPercent: 'markupPercent' in body ? body.markupPercent : current.markupPercent,
+      markupFlat: 'markupFlat' in body ? body.markupFlat : current.markupFlat,
+      roundingMode: 'roundingMode' in body ? body.roundingMode : current.roundingMode,
+    }),
   }));
 
   return successResponse(publicShiprocketView(newSr, newSr?.emailMasked), 'Shipping settings saved');
@@ -1205,6 +1244,76 @@ function aggregateServiceability(srData, merchantCodEnabled) {
   };
 }
 
+// ---------- Phase 4: dynamic shipping quote ----------
+
+// Apply the merchant's percent + flat markup to a raw courier rate, then
+// round per `roundingMode`. Always returns a non-negative number rounded to
+// 2 dp at minimum.
+function applyMarkup(baseRate, sr) {
+  const m = sanitizeMarkup(sr);
+  const raw = (Number(baseRate) || 0) * (1 + m.markupPercent / 100) + m.markupFlat;
+  const positive = Math.max(0, raw);
+  if (m.roundingMode === 'nearest5') return Math.round(positive / 5) * 5;
+  if (m.roundingMode === 'nearest10') return Math.round(positive / 10) * 10;
+  return Math.round(positive * 100) / 100;
+}
+
+// Pick the courier rate to quote for the customer. Honors the same
+// preference chain as `pickCourierForOrder` (preferred[0..n] → recommended →
+// cheapest available) so the price the shopper sees matches what we'll
+// actually use to ship. Returns `null` if no usable rate is found, which
+// signals the caller to fall back to the static delivery config.
+function pickQuotableRate(srData, sr) {
+  const couriers = Array.isArray(srData?.available_courier_companies)
+    ? srData.available_courier_companies
+    : [];
+  if (couriers.length === 0) return null;
+
+  // Index couriers by id for O(1) preference lookups.
+  const byId = new Map();
+  for (const c of couriers) {
+    const id = Number(c?.courier_company_id);
+    const rate = Number(c?.rate);
+    if (Number.isFinite(id) && id > 0 && Number.isFinite(rate) && rate >= 0) {
+      // If Shiprocket somehow returns the same courier twice, keep the
+      // cheaper one — shopper-friendly default.
+      const existing = byId.get(id);
+      if (!existing || rate < existing.rate) byId.set(id, { id, rate });
+    }
+  }
+  if (byId.size === 0) return null;
+
+  for (const id of sanitizeCourierIds(sr?.preferredCourierIds)) {
+    const hit = byId.get(id);
+    if (hit) return hit.rate;
+  }
+  // Same key as `pickCourierForOrder` uses elsewhere in this file — keep
+  // them in lockstep so quote and ship-time selection match.
+  const recId = Number(srData?.recommended_courier_id);
+  if (Number.isFinite(recId) && recId > 0) {
+    const hit = byId.get(recId);
+    if (hit) return hit.rate;
+  }
+  // Cheapest-overall as the final fallback so we don't return null when
+  // there's _some_ serviceable courier — the shopper still gets a quote.
+  let cheapest = Infinity;
+  for (const { rate } of byId.values()) if (rate < cheapest) cheapest = rate;
+  return Number.isFinite(cheapest) ? cheapest : null;
+}
+
+// Compute the dynamic shipping quote a checkout/order should charge.
+// Returns a number ≥ 0 when all gates are satisfied, otherwise null so the
+// caller falls back to the static delivery config. Never throws.
+function computeDynamicShippingFee(srData, sr) {
+  if (!sr?.dynamicShippingEnabled) return null;
+  // Manual courier mode means we cannot commit to a courier (or its rate)
+  // until the merchant picks per-order — quoting now would be a lie.
+  if (sr?.courierPickMode === 'manual') return null;
+  const baseRate = pickQuotableRate(srData, sr);
+  if (baseRate == null) return null;
+  return applyMarkup(baseRate, sr);
+}
+
 async function handlePublicServiceability(request, env, siteId, reqCtx) {
   const url = new URL(request.url);
   const deliveryPincode = (url.searchParams.get('pincode') || '').trim();
@@ -1398,6 +1507,11 @@ async function handlePublicServiceability(request, env, siteId, reqCtx) {
   }
 
   const view = aggregateServiceability(srData, merchantCodEnabled);
+  // Phase 4: dynamic shipping quote. Computed off the same `srData` we just
+  // resolved (live or cached) so it always matches the ETA/COD signals on
+  // the same response. Returns `null` when any gate fails — the storefront
+  // then falls back to the static delivery config.
+  const dynamicShippingFee = view.serviceable ? computeDynamicShippingFee(srData, ctx.sr) : null;
   return successResponse({
     ok: true,
     ...view,
@@ -1405,6 +1519,7 @@ async function handlePublicServiceability(request, env, siteId, reqCtx) {
     deliveryPincode,
     weightKg: totalKg,
     cached: cacheHit,
+    dynamicShippingFee,
   });
 }
 
@@ -1627,4 +1742,121 @@ export async function handleShiprocketWebhook(request, env, path) {
   }
 
   return successResponse({ ok: true, newStatus, shiprocketStatus: currentStatus, flipped: didFlip });
+}
+
+// ---------- Phase 4: server-side quote (used by orders-worker.createOrder) ----------
+
+// Quote a dynamic shipping fee for an order being placed. Returns a
+// non-negative number when all gates succeed, otherwise `null` so the
+// caller silently falls back to the static `deliveryConfig`-derived cost.
+//
+// Design contract:
+//   - NEVER throws. Network/auth/serviceability failures all return null.
+//   - Fail-closed on any signal we can't trust: missing pincode, missing
+//     weight, manual courier mode, opt-out, Shiprocket disabled.
+//   - Honors the same preference chain as the customer-facing storefront
+//     quote (preferred → recommended → cheapest), so the price the buyer
+//     was shown will match what we charge here.
+//   - Reuses the same edge cache (`caches.default`) as the public
+//     serviceability endpoint when warm — same key shape (`/srv?...`).
+//
+// Args:
+//   env, siteId — standard.
+//   order: { processedItems, shippingAddress, paymentMethod }
+//     - processedItems entries must include `weight` (grams) — Phase 1
+//       enforces this at order placement when Shiprocket is on.
+//     - shippingAddress.pincode (or .zip) must be a 6-digit Indian PIN.
+//     - paymentMethod === 'cod' filters to COD-supporting couriers.
+export async function quoteDynamicShipping(env, siteId, order) {
+  try {
+    if (!order || !Array.isArray(order.processedItems) || order.processedItems.length === 0) return null;
+
+    const ctx = await readShiprocketSettings(env, siteId);
+    if (!ctx) return null;
+    const sr = ctx.sr || {};
+
+    // Gates: Shiprocket on, opted-in, auto-mode, credentials present.
+    if (!sr.enabled) return null;
+    if (!sr.dynamicShippingEnabled) return null;
+    if (sr.courierPickMode === 'manual') return null;
+    if (!sr.emailEncrypted) return null;
+
+    // Delivery pincode — accept any of the field names the storefront and
+    // admin paths use (Checkout sends `pinCode` camelCase; older paths use
+    // `pincode`/`zip`/`postalCode`/`pin`). Pick the first defined one.
+    const addr = order.shippingAddress || {};
+    const rawPin = addr.pinCode ?? addr.pincode ?? addr.postalCode ?? addr.pin ?? addr.zip ?? '';
+    const deliveryPincode = String(rawPin).trim();
+    if (!/^\d{6}$/.test(deliveryPincode)) return null;
+
+    const pickupPincode = await resolvePickupPincode(env, siteId, ctx);
+    if (!pickupPincode) return null;
+
+    // Sum weights — every line must carry one. processedItems already had
+    // weight enforced by Phase 1 when Shiprocket is enabled; bail if any
+    // is missing rather than under-quote.
+    let totalG = 0;
+    for (const it of order.processedItems) {
+      const w = Number(it?.weight);
+      const q = Number(it?.quantity);
+      if (!Number.isFinite(w) || w <= 0) return null;
+      if (!Number.isFinite(q) || q <= 0) return null;
+      totalG += w * q;
+    }
+    const totalKg = Math.max(0.01, Number((totalG / 1000).toFixed(3)));
+    if (totalKg > SERVICEABILITY_MAX_TOTAL_WEIGHT_KG) return null;
+
+    const codRequested = order.paymentMethod === 'cod';
+
+    // Same cache-key shape as handlePublicServiceability so we get free
+    // hits when the storefront just queried the same route.
+    const cacheKeyStr =
+      `https://flomerce-cache.invalid/srv?site=${encodeURIComponent(siteId)}&p=${pickupPincode}&d=${deliveryPincode}&w=${totalKg}&cod=${codRequested ? 1 : 0}`;
+    const cacheKey = new Request(cacheKeyStr, { method: 'GET' });
+    const cache = caches.default;
+
+    let srData = null;
+    try {
+      const cached = await cache.match(cacheKey);
+      if (cached) srData = await cached.json();
+    } catch (e) {
+      console.warn('[quoteDynamicShipping] cache read failed:', e?.message || e);
+    }
+
+    if (!srData) {
+      let token;
+      try { token = await ensureShiprocketToken(env, siteId, sr); }
+      catch (e) {
+        console.warn('[quoteDynamicShipping] token fetch failed:', e?.message || e);
+        return null;
+      }
+      try {
+        const resp = await getServiceability(token, {
+          pickup_postcode: pickupPincode,
+          delivery_postcode: deliveryPincode,
+          weight: totalKg,
+          cod: codRequested ? 1 : 0,
+        });
+        srData = resp?.data || resp || {};
+      } catch (e) {
+        console.warn('[quoteDynamicShipping] serviceability fetch failed:', e?.message || e);
+        return null;
+      }
+      // Warm the cache for the next hit (best-effort, fire-and-forget).
+      try {
+        cache.put(cacheKey, new Response(JSON.stringify(srData), {
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': `public, max-age=${SERVICEABILITY_CACHE_TTL_S}`,
+          },
+        })).catch(() => {});
+      } catch {}
+    }
+
+    const fee = computeDynamicShippingFee(srData, sr);
+    return (typeof fee === 'number' && Number.isFinite(fee) && fee >= 0) ? fee : null;
+  } catch (e) {
+    console.warn('[quoteDynamicShipping] unexpected error:', e?.message || e);
+    return null;
+  }
 }

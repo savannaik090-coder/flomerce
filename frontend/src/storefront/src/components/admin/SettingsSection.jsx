@@ -104,6 +104,13 @@ export default function SettingsSection() {
   // the Shiprocket order; merchant picks per-order in the picker modal).
   const [shiprocketCourierMode, setShiprocketCourierMode] = useState('auto');
   const [shiprocketPreferredIds, setShiprocketPreferredIds] = useState([]); // ordered list of {id, name}
+  // Phase 4: dynamic-pricing markup. Only honored server-side when
+  // courier mode is 'auto' (we can't quote a courier rate before the
+  // merchant picks one in manual mode).
+  const [shiprocketDynamicEnabled, setShiprocketDynamicEnabled] = useState(false);
+  const [shiprocketMarkupPercent, setShiprocketMarkupPercent] = useState(0);
+  const [shiprocketMarkupFlat, setShiprocketMarkupFlat] = useState(0);
+  const [shiprocketRoundingMode, setShiprocketRoundingMode] = useState('none');
   const [allCouriers, setAllCouriers] = useState(null); // null = not loaded; [] = loaded but empty
   const [allCouriersLoading, setAllCouriersLoading] = useState(false);
   const [showCourierPicker, setShowCourierPicker] = useState(false);
@@ -269,6 +276,14 @@ export default function SettingsSection() {
               .filter((id) => Number.isInteger(id) && id > 0)
               .map((id) => ({ id, name: '' })) // names hydrated lazily when picker opens
           : []);
+        // Phase 4: dynamic-pricing settings — server clamps and defaults,
+        // we just trust the round-trip view here.
+        setShiprocketDynamicEnabled(!!d.dynamicShippingEnabled);
+        setShiprocketMarkupPercent(Number.isFinite(Number(d.markupPercent)) ? Number(d.markupPercent) : 0);
+        setShiprocketMarkupFlat(Number.isFinite(Number(d.markupFlat)) ? Number(d.markupFlat) : 0);
+        setShiprocketRoundingMode(
+          d.roundingMode === 'nearest5' || d.roundingMode === 'nearest10' ? d.roundingMode : 'none'
+        );
         setShiprocketAutoOnPay(!!d.autoShipOnPayment);
         setShiprocketAutoOnCod(!!d.autoShipOnConfirmCod);
         if (d.connected) refreshPickupLocations();
@@ -412,6 +427,13 @@ export default function SettingsSection() {
           autoShipOnConfirmCod: !!shiprocketAutoOnCod,
           courierPickMode: shiprocketCourierMode === 'manual' ? 'manual' : 'auto',
           preferredCourierIds: shiprocketPreferredIds.map((c) => c.id),
+          // Phase 4: dynamic-pricing markup (server clamps to safe ranges).
+          dynamicShippingEnabled: !!shiprocketDynamicEnabled,
+          markupPercent: Number(shiprocketMarkupPercent) || 0,
+          markupFlat: Number(shiprocketMarkupFlat) || 0,
+          roundingMode: shiprocketRoundingMode === 'nearest5' || shiprocketRoundingMode === 'nearest10'
+            ? shiprocketRoundingMode
+            : 'none',
         }),
       });
       const json = await res.json();
@@ -2071,6 +2093,75 @@ Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsAp
                           )}
                         </div>
                       )}
+                    </div>
+
+                    {/* ----- Phase 4: Dynamic shipping pricing (markup over carrier rate) ----- */}
+                    <div style={{ marginBottom: 14, padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, opacity: shiprocketCourierMode === 'manual' ? 0.6 : 1 }}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Dynamic shipping pricing</label>
+                      {shiprocketCourierMode === 'manual' && (
+                        <p style={{ fontSize: 12, color: '#b45309', background: '#fef3c7', padding: '6px 10px', borderRadius: 4, margin: '0 0 10px 0' }}>
+                          Available only with auto-pick courier mode. Switch above to enable.
+                        </p>
+                      )}
+                      <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input
+                          id="sr-dyn-enabled"
+                          type="checkbox"
+                          checked={shiprocketDynamicEnabled}
+                          disabled={shiprocketCourierMode === 'manual'}
+                          onChange={(e) => setShiprocketDynamicEnabled(e.target.checked)}
+                        />
+                        <label htmlFor="sr-dyn-enabled" style={{ fontSize: 13 }}>
+                          Quote shipping at the carrier rate plus a markup
+                        </label>
+                      </div>
+                      <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px 0' }}>
+                        When enabled, the checkout shows live carrier rates instead of your flat/regional fee. Your static delivery rules still apply as a fallback (carrier down, pincode unserviceable, etc.) and free-shipping thresholds always win.
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 8 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, color: '#475569', marginBottom: 4 }}>Markup %</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="200"
+                            step="1"
+                            value={shiprocketMarkupPercent}
+                            disabled={shiprocketCourierMode === 'manual' || !shiprocketDynamicEnabled}
+                            onChange={(e) => setShiprocketMarkupPercent(e.target.value)}
+                            style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, color: '#475569', marginBottom: 4 }}>Flat add-on (₹)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100000"
+                            step="1"
+                            value={shiprocketMarkupFlat}
+                            disabled={shiprocketCourierMode === 'manual' || !shiprocketDynamicEnabled}
+                            onChange={(e) => setShiprocketMarkupFlat(e.target.value)}
+                            style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 13 }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: 12, color: '#475569', marginBottom: 4 }}>Round to</label>
+                          <select
+                            value={shiprocketRoundingMode}
+                            disabled={shiprocketCourierMode === 'manual' || !shiprocketDynamicEnabled}
+                            onChange={(e) => setShiprocketRoundingMode(e.target.value)}
+                            style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: 13, background: '#fff' }}
+                          >
+                            <option value="none">No rounding</option>
+                            <option value="nearest5">Nearest ₹5</option>
+                            <option value="nearest10">Nearest ₹10</option>
+                          </select>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>
+                        Final fee = carrier rate × (1 + markup% / 100) + flat, then rounded.
+                      </p>
                     </div>
 
                     <div style={{ marginBottom: 14, padding: 12, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 6 }}>
