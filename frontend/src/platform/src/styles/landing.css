@@ -144,25 +144,29 @@
   position: absolute;
   inset: auto 0 0 0;
   height: var(--hero-fade-h);
+  /* Fade the video into the page using the actual page background colour
+     so there is no visible colour seam between the fade and the section. */
   background: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.55) 45%,
-    rgba(255, 255, 255, 0.92) 80%,
-    #ffffff 100%
+    rgba(255, 255, 255, 0.35) 35%,
+    rgba(255, 255, 255, 0.75) 65%,
+    rgba(255, 255, 255, 0.96) 88%,
+    var(--bg-main, #ffffff) 100%
   );
-  /* Zigzag top edge — the gradient still fades smoothly inside,
-     but the visible top boundary is a subtle saw-tooth instead of straight. */
+  /* Irregular, random-looking saw-tooth top edge (varying spacing and amplitude) */
   -webkit-clip-path: polygon(
-    0% 6%, 5% 0%, 10% 6%, 15% 0%, 20% 6%, 25% 0%, 30% 6%,
-    35% 0%, 40% 6%, 45% 0%, 50% 6%, 55% 0%, 60% 6%, 65% 0%,
-    70% 6%, 75% 0%, 80% 6%, 85% 0%, 90% 6%, 95% 0%, 100% 6%,
+    0% 14%, 3% 4%, 7% 18%, 11% 6%, 15% 22%, 19% 3%, 23% 16%, 27% 8%,
+    31% 24%, 36% 5%, 40% 17%, 44% 10%, 49% 22%, 53% 4%, 57% 19%, 61% 7%,
+    66% 25%, 70% 11%, 74% 18%, 78% 5%, 83% 21%, 87% 9%, 91% 16%, 95% 4%,
+    100% 18%,
     100% 100%, 0% 100%
   );
   clip-path: polygon(
-    0% 6%, 5% 0%, 10% 6%, 15% 0%, 20% 6%, 25% 0%, 30% 6%,
-    35% 0%, 40% 6%, 45% 0%, 50% 6%, 55% 0%, 60% 6%, 65% 0%,
-    70% 6%, 75% 0%, 80% 6%, 85% 0%, 90% 6%, 95% 0%, 100% 6%,
+    0% 14%, 3% 4%, 7% 18%, 11% 6%, 15% 22%, 19% 3%, 23% 16%, 27% 8%,
+    31% 24%, 36% 5%, 40% 17%, 44% 10%, 49% 22%, 53% 4%, 57% 19%, 61% 7%,
+    66% 25%, 70% 11%, 74% 18%, 78% 5%, 83% 21%, 87% 9%, 91% 16%, 95% 4%,
+    100% 18%,
     100% 100%, 0% 100%
   );
 }
