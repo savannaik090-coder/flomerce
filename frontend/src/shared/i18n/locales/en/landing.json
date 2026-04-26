@@ -1,20 +1,113 @@
 {
-  "heroBadge": "Launch Your E-Commerce Store for Less Than ₹10/Day",
-  "heroTitleLine1": "Build Your",
-  "heroTitleLine2": "Online Store",
-  "heroTitleLine3": "No Code Needed",
-  "heroDesc": "Flomerce helps small businesses and entrepreneurs create professional e-commerce websites with product management, order processing, and secure payments — all from one dashboard.",
+  "heroBadge": "New · WhatsApp marketing + AI translation in 60+ languages",
+  "heroTitleLine1": "The complete commerce",
+  "heroTitleLine2": "platform",
+  "heroTitleLine3": "for growing brands",
+  "heroDesc": "Sell anywhere with Flomerce — multi-currency storefronts, integrated payments, multi-location inventory, and built-in marketing in one quietly powerful dashboard.",
   "heroCtaPrimary": "Get Started Free",
-  "heroCtaSecondary": "Learn More",
+  "heroCtaSecondary": "Watch demo",
+  "heroTrust": {
+    "rating": "★ 4.8 from 200+ stores",
+    "noCard": "No credit card required",
+    "cancel": "Cancel anytime"
+  },
+  "heroVisual": {
+    "dashboardDomain": "flomerce.app",
+    "dashboardLabel": "Today's revenue",
+    "dashboardAmount": "₹84,290",
+    "dashboardChange": "+12.4% vs yesterday",
+    "kpiOrdersLabel": "Orders",
+    "kpiOrdersValue": "238",
+    "kpiVisitorsLabel": "Visitors",
+    "kpiVisitorsValue": "5,412",
+    "kpiCartsLabel": "Carts recovered",
+    "kpiCartsValue": "47",
+    "chartLabel": "Last 7 days",
+    "toastTitle": "New order received",
+    "toastDesc": "Aria · Mumbai · ₹2,499",
+    "storefrontBrand": "Lumen Studio",
+    "storefrontProduct": "Linen co-ord set",
+    "storefrontPrice": "₹3,200",
+    "storefrontTag": "Bestseller"
+  },
+  "trustedPill": "Powers your stack",
+  "trustedTitle": "Built on the tools you already trust",
+  "trustedPartners": {
+    "razorpay": "Razorpay",
+    "stripe": "Stripe",
+    "shiprocket": "Shiprocket",
+    "whatsapp": "WhatsApp Business",
+    "translator": "Microsoft Translator",
+    "gsc": "Google Search Console"
+  },
   "demoPill": "Demo",
-  "demoTitle": "See Flomerce in Action",
-  "demoSubtitle": "Watch how easy it is to build and manage your online store.",
+  "demoTitle": "See Flomerce in action",
+  "demoSubtitle": "Watch how easy it is to build and run your online store.",
   "playVideo": "Play video",
   "featuresPill": "Features",
-  "featuresTitle": "Everything You Need to Sell Online",
-  "featuresSubtitle": "From store setup to order delivery, Flomerce gives you all the tools to run your online business.",
+  "featuresTitle": "Everything you need to run a serious online business",
+  "featuresSubtitle": "From storefront to fulfilment to marketing — Flomerce covers the full lifecycle so you can focus on the brand, not the plumbing.",
+  "features": {
+    "categories": {
+      "storefront": {
+        "label": "Storefront",
+        "intro": "Launch a polished storefront customers love to browse.",
+        "items": {
+          "themes": { "title": "Modern responsive themes", "desc": "Pixel-perfect themes that look brilliant on every device, ready in minutes." },
+          "customizer": { "title": "Visual homepage customizer", "desc": "Drag, drop, and tweak sections with a live editor — no developer needed." },
+          "currency": { "title": "Multi-currency switching", "desc": "Show local prices to every visitor with automatic currency conversion." },
+          "translate": { "title": "AI translation, 60+ languages", "desc": "Auto-translate your storefront so global shoppers buy in their language." },
+          "accounts": { "title": "Customer accounts & wishlists", "desc": "Saved carts, addresses, and wishlists that quietly drive repeat sales." }
+        }
+      },
+      "selling": {
+        "label": "Selling",
+        "intro": "Take orders, accept payments, and stay compliant from day one.",
+        "items": {
+          "variants": { "title": "Variants & bulk pricing", "desc": "Sell sizes, colors, and tiered quantities with rich product options." },
+          "orders": { "title": "Order management", "desc": "A clean dashboard to track, fulfil, and update every order in one place." },
+          "payments": { "title": "Razorpay, Stripe & COD", "desc": "Accept UPI, cards, wallets, net banking, or cash — out of the box." },
+          "invoicing": { "title": "Automated GST invoicing", "desc": "Tax-compliant invoices generated automatically for every sale." },
+          "cart": { "title": "Abandoned cart recovery", "desc": "Win back lost sales with email and WhatsApp follow-ups on autopilot." }
+        }
+      },
+      "operations": {
+        "label": "Operations",
+        "intro": "Run the back office without juggling spreadsheets.",
+        "items": {
+          "inventory": { "title": "Multi-location inventory", "desc": "Track stock across stores, warehouses, and pop-ups in real time." },
+          "transfers": { "title": "Stock transfers", "desc": "Move inventory between locations and keep counts perfectly in sync." },
+          "shipping": { "title": "Shiprocket integration", "desc": "Print labels, schedule pickups, and track shipments without leaving the dashboard." },
+          "domain": { "title": "Custom domain & auto SSL", "desc": "Bring your own domain with HTTPS provisioned automatically." },
+          "staff": { "title": "Role-based staff access", "desc": "Invite teammates with the exact permissions they need — no more, no less." }
+        }
+      },
+      "marketing": {
+        "label": "Marketing & Growth",
+        "intro": "Bring shoppers back and turn them into regulars.",
+        "items": {
+          "push": { "title": "Web push notifications", "desc": "Re-engage visitors with promo, restock, and back-in-stock alerts." },
+          "whatsapp": { "title": "WhatsApp marketing & chat", "desc": "Run campaigns and answer questions through a floating WhatsApp widget." },
+          "discounts": { "title": "Discounts & coupons", "desc": "Run flash sales, BOGOs, and loyalty codes that actually convert." },
+          "seo": { "title": "Built-in SEO suite", "desc": "Sitemaps, structured data, and Search Console hooks built right in." },
+          "reviews": { "title": "Verified reviews with photos", "desc": "Collect authentic reviews and showcase customer photos on every product." }
+        }
+      },
+      "insights": {
+        "label": "Insights",
+        "intro": "See exactly what's working — and what's next.",
+        "items": {
+          "analytics": { "title": "Real-time visitor analytics", "desc": "Watch live traffic, top pages, and on-site journeys as they happen." },
+          "conversion": { "title": "Conversion & best sellers", "desc": "Pinpoint your highest-performing products and funnels at a glance." },
+          "reports": { "title": "Revenue, tax & shipping reports", "desc": "Exportable reports that keep finance, ops, and you on the same page." },
+          "geography": { "title": "Device & geography breakdowns", "desc": "Understand where (and how) your customers are actually shopping." },
+          "attribution": { "title": "Traffic source attribution", "desc": "See which channels drive sales — search, social, email, or direct." }
+        }
+      }
+    }
+  },
   "pricingPill": "Pricing",
-  "pricingTitle": "Simple, Transparent Pricing",
+  "pricingTitle": "Simple, transparent pricing",
   "pricingSubtitle": "Choose a plan that fits your business. Start with a free trial, upgrade anytime.",
   "footerTagline": "Empowering small businesses to sell online with ease.",
   "footerCompany": "Company",
@@ -30,14 +123,6 @@
   "pwaInstallTitle": "Install Flomerce",
   "pwaInstallDesc": "Add to home screen for better experience",
   "pwaInstall": "Install",
-  "features": {
-    "store": { "title": "Complete Online Store", "desc": "Launch a fully functional e-commerce store with product listings, categories, and a beautiful storefront — ready to sell in minutes." },
-    "orders": { "title": "Order Management", "desc": "Track orders from placement to delivery with status updates, customer notifications, and shipping management built in." },
-    "payments": { "title": "Secure Payments", "desc": "Accept payments via Razorpay with support for UPI, cards, net banking, and wallets. Cash on delivery also supported." },
-    "analytics": { "title": "Built-in Analytics", "desc": "Monitor your store performance with visitor tracking, page views, traffic sources, and sales insights from your admin panel." },
-    "push": { "title": "Push Notifications", "desc": "Engage customers with web push notifications for new products, price drops, and back-in-stock alerts — all automated." },
-    "seo": { "title": "Custom Domain & SEO", "desc": "Connect your own domain, optimize for search engines with built-in SEO tools, sitemaps, and structured data for Google rich results." }
-  },
   "pricing": {
     "loading": "Loading plans...",
     "loadError": "Unable to load pricing. Please try again later.",
@@ -73,7 +158,7 @@
     }
   },
   "contact": {
-    "title": "Get in Touch",
+    "title": "Get in touch",
     "subtitle": "Have questions about Flomerce? Need help getting started? We'd love to hear from you.",
     "labelEmail": "Email",
     "labelPhone": "Phone",
