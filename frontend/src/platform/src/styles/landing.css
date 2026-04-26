@@ -1186,15 +1186,20 @@
   }
   .landing-page .hero.hero--video {
     padding: 0 0 40px;
-    --hero-video-h: clamp(240px, 38vh, 340px);
-    --hero-overlap: 72px;
-    --hero-fade-h: 120px;
+    /* Height tracks the video's native 16:9 aspect against viewport width
+       so the video fills horizontally with no horizontal cropping. */
+    --hero-video-h: min(calc(100vw * 9 / 16), 360px);
+    --hero-overlap: 64px;
+    --hero-fade-h: 110px;
     --nav-h: 72px;
   }
-  .landing-page .hero--video .hero-video,
-  .landing-page .hero--video .hero-video-poster {
+  .landing-page .hero--video .hero-video {
+    object-fit: cover;
     object-position: center center;
+  }
+  .landing-page .hero--video .hero-video-poster {
     background-position: center center;
+    background-size: cover;
   }
   .landing-page .hero--video .hero-buttons--center .btn-hero-primary {
     flex: 0 1 auto;
@@ -1265,9 +1270,9 @@
 @media (max-width: 480px) {
   .landing-page .hero h1 { font-size: 2rem; }
   .landing-page .hero.hero--video {
-    --hero-video-h: clamp(220px, 34vh, 300px);
-    --hero-overlap: 60px;
-    --hero-fade-h: 100px;
+    --hero-video-h: calc(100vw * 9 / 16);
+    --hero-overlap: 52px;
+    --hero-fade-h: 90px;
   }
   .landing-page .hero-visual-col { min-height: 360px; }
   .landing-page .hero-visual { max-width: 320px; }
