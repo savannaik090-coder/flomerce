@@ -1,5 +1,64 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "wUiA4HQvuN0szKKAxVbIh"
+uri = "file://artifacts/mockup-sandbox/public/images/feat-storefront-dark.png"
+type = "image"
+title = "storefront phone dark luxury"
+
+[[generated]]
+id = "LaoLVPy8zcYXW3bD03BwM"
+uri = "file://artifacts/mockup-sandbox/public/images/feat-selling-dark.png"
+type = "image"
+title = "payment terminal dark luxury"
+
+[[generated]]
+id = "pbm0gjdmBHtSULBjlAJWa"
+uri = "file://artifacts/mockup-sandbox/public/images/feat-operations-dark.png"
+type = "image"
+title = "inventory boxes dark luxury"
+
+[[generated]]
+id = "B8BfOxhL938qDzmLZJnGR"
+uri = "file://artifacts/mockup-sandbox/public/images/feat-marketing-dark.png"
+type = "image"
+title = "marketing notification dark luxury"
+
+[[generated]]
+id = "MNPlYaZvWOnERQOfIo68m"
+uri = "file://artifacts/mockup-sandbox/public/images/feat-insights-dark.png"
+type = "image"
+title = "analytics dashboard dark luxury"
+
+[[generated]]
+id = "iqaszwwevkXjyE08Fn3eu"
+uri = "file://artifacts/mockup-sandbox/public/images/editorial-storefront.png"
+type = "image"
+title = "watercolor storefront illustration"
+
+[[generated]]
+id = "utsYASuDXhEBrN4ImTzBD"
+uri = "file://artifacts/mockup-sandbox/public/images/editorial-selling.png"
+type = "image"
+title = "watercolor selling packaging illustration"
+
+[[generated]]
+id = "2FaPN_Va3K7WGMRps0Wrx"
+uri = "file://artifacts/mockup-sandbox/public/images/editorial-operations.png"
+type = "image"
+title = "watercolor operations inventory illustration"
+
+[[generated]]
+id = "Vcm1C7U5cOcYFAIfgFpZy"
+uri = "file://artifacts/mockup-sandbox/public/images/editorial-marketing.png"
+type = "image"
+title = "watercolor marketing chat illustration"
+
+[[generated]]
+id = "UCTDpV1TQNzhsa56P4ZbO"
+uri = "file://artifacts/mockup-sandbox/public/images/editorial-insights.png"
+type = "image"
+title = "watercolor insights chart illustration"
 
 [[outputs]]
 id = "hgjova_qvIjGRD-NjdZij"
