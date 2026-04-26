@@ -139,10 +139,6 @@ export default function LandingPage() {
 
         <section className="hero hero--video">
           <div className="hero-video-wrap" aria-hidden="true">
-            <div
-              className="hero-video-poster"
-              style={{ opacity: heroVideoLoaded ? 0 : 1 }}
-            />
             <video
               ref={heroVideoRef}
               className="hero-video"
@@ -151,7 +147,6 @@ export default function LandingPage() {
               loop
               playsInline
               preload="auto"
-              poster="/assets/images/storefront-preview.jpg"
               style={{ opacity: heroVideoLoaded ? 1 : 0 }}
             >
               <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
