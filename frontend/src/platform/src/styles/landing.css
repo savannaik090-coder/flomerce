@@ -1186,15 +1186,15 @@
   }
   .landing-page .hero.hero--video {
     padding: 0 0 40px;
-    --hero-video-h: clamp(360px, 56vh, 480px);
-    --hero-overlap: 96px;
-    --hero-fade-h: 160px;
+    --hero-video-h: clamp(240px, 38vh, 340px);
+    --hero-overlap: 72px;
+    --hero-fade-h: 120px;
     --nav-h: 72px;
   }
   .landing-page .hero--video .hero-video,
   .landing-page .hero--video .hero-video-poster {
-    object-position: center 30%;
-    background-position: center 30%;
+    object-position: center center;
+    background-position: center center;
   }
   .landing-page .hero--video .hero-buttons--center .btn-hero-primary {
     flex: 0 1 auto;
@@ -1264,6 +1264,11 @@
 
 @media (max-width: 480px) {
   .landing-page .hero h1 { font-size: 2rem; }
+  .landing-page .hero.hero--video {
+    --hero-video-h: clamp(220px, 34vh, 300px);
+    --hero-overlap: 60px;
+    --hero-fade-h: 100px;
+  }
   .landing-page .hero-visual-col { min-height: 360px; }
   .landing-page .hero-visual { max-width: 320px; }
   .landing-page .hero-storefront { width: 150px; }
