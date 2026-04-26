@@ -168,7 +168,6 @@ export default function LandingPage() {
             >
               <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
             </video>
-            <div className="hero-video-tint" />
             <div className="hero-video-fade" />
           </div>
 

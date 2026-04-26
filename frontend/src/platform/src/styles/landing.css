@@ -142,13 +142,6 @@
   transition: opacity 0.5s ease;
   pointer-events: none;
 }
-.landing-page .hero--video .hero-video-tint {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 80% 0%, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
-    linear-gradient(180deg, rgba(11, 13, 23, 0.35) 0%, rgba(11, 13, 23, 0.10) 35%, rgba(255, 255, 255, 0) 65%);
-}
 .landing-page .hero--video .hero-video-fade {
   position: absolute;
   inset: auto 0 0 0;
