@@ -10,6 +10,7 @@ import { COUNTRIES, getStatesForCountry, getCountryName, getDialCode } from '../
 import PhoneInput from '../components/ui/PhoneInput.jsx';
 import * as orderService from '../services/orderService.js';
 import * as authService from '../services/authService.js';
+import { getApiUrl } from '../services/api.js';
 import '../styles/checkout.css';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -58,8 +59,15 @@ export default function CheckoutPage() {
 
   const settings = siteConfig?.settings || {};
   const codEnabled = settings.codEnabled !== false;
+  const shiprocketEnabled = settings.shiprocketEnabled === true;
   const availableCoupons = Array.isArray(settings.coupons) ? settings.coupons : [];
   const whatsappNotificationsAvailable = settings.whatsappNotificationsEnabled === true;
+
+  // Shiprocket serviceability (range ETA + COD-availability badge). Lazy-fetched
+  // when the customer enters a complete Indian pincode at checkout. Stays null
+  // when Shiprocket is off, country isn't India, or the cart is empty.
+  const [serviceability, setServiceability] = useState(null);
+  const [serviceabilityLoading, setServiceabilityLoading] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -179,6 +187,70 @@ export default function CheckoutPage() {
       setPaymentMethod('razorpay');
     }
   }, [codEnabled]);
+
+  // Build a stable signature for the cart so we only re-fetch serviceability
+  // when product IDs / quantities change (not on every render).
+  const itemsSig = useMemo(
+    () => items.map((i) => `${i.productId || i.product_id}:${i.quantity || 1}`).join(','),
+    [items]
+  );
+
+  // Fetch courier serviceability whenever the customer has entered a complete
+  // Indian pincode and the merchant has Shiprocket enabled. Debounced so a
+  // typing user doesn't fire one request per keystroke. Asks for COD-eligible
+  // couriers only when the merchant has COD enabled — otherwise the COD
+  // result is irrelevant.
+  useEffect(() => {
+    if (!shiprocketEnabled) { setServiceability(null); return; }
+    if (!siteConfig?.id) { setServiceability(null); return; }
+    if (address.country !== 'IN') { setServiceability(null); return; }
+    const pin = (address.pinCode || '').trim();
+    if (!/^\d{6}$/.test(pin)) { setServiceability(null); return; }
+    if (!itemsSig) { setServiceability(null); return; }
+
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      setServiceabilityLoading(true);
+      try {
+        const url = getApiUrl(
+          `/api/shipping/serviceability?siteId=${encodeURIComponent(siteConfig.id)}` +
+          `&pincode=${pin}&items=${encodeURIComponent(itemsSig)}&cod=${codEnabled ? 1 : 0}`
+        );
+        const resp = await fetch(url, { method: 'GET' });
+        const body = await resp.json().catch(() => null);
+        if (cancelled) return;
+        // The shared `successResponse` helper wraps payloads as
+        // { success, message, data } — the actual serviceability fields
+        // (serviceable, etaMin/MaxDays, codAvailable, ...) live under .data.
+        // The endpoint always returns ok:true with serviceable:false on any
+        // soft failure (auth/cache/upstream), so we can trust .data verbatim.
+        // A network failure or non-JSON response means we hide the badge
+        // and never block checkout.
+        const svc = body && typeof body === 'object' ? (body.data ?? null) : null;
+        setServiceability(svc && typeof svc === 'object' ? svc : null);
+      } catch (e) {
+        if (!cancelled) setServiceability(null);
+      } finally {
+        if (!cancelled) setServiceabilityLoading(false);
+      }
+    }, 350);
+
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [shiprocketEnabled, siteConfig?.id, address.country, address.pinCode, itemsSig, codEnabled]);
+
+  // If COD ends up unavailable for the entered pincode, auto-switch any
+  // already-selected COD payment to Razorpay so the customer doesn't try
+  // to place an order that the courier can't actually deliver.
+  useEffect(() => {
+    if (
+      paymentMethod === 'cod' &&
+      serviceability?.serviceable &&
+      codEnabled &&
+      serviceability.codAvailable === false
+    ) {
+      setPaymentMethod('razorpay');
+    }
+  }, [serviceability, paymentMethod, codEnabled]);
 
   const couponDiscount = appliedCoupon
     ? appliedCoupon.type === 'percent'
@@ -938,17 +1010,66 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {shiprocketEnabled && address.country === 'IN' && /^\d{6}$/.test((address.pinCode || '').trim()) && (
+            <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              {serviceabilityLoading && (
+                <div style={{ fontSize: 13, color: '#475569' }}>
+                  <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: 6 }}></i>
+                  <TranslatedText text="Checking delivery to your pincode…" />
+                </div>
+              )}
+              {!serviceabilityLoading && serviceability?.serviceable && (
+                <>
+                  <div style={{ fontSize: 14, color: '#0f172a', fontWeight: 600 }}>
+                    <i className="fa-solid fa-truck-fast" style={{ marginRight: 8, color: '#16a34a' }}></i>
+                    {serviceability.etaMinDays && serviceability.etaMaxDays && serviceability.etaMinDays !== serviceability.etaMaxDays ? (
+                      <TranslatedText text="Estimated delivery: {{min}}–{{max}} business days" vars={{ min: serviceability.etaMinDays, max: serviceability.etaMaxDays }} />
+                    ) : serviceability.etaMaxDays ? (
+                      <TranslatedText text="Estimated delivery: {{max}} business days" vars={{ max: serviceability.etaMaxDays }} />
+                    ) : (
+                      <TranslatedText text="Delivery available to your pincode" />
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                    <TranslatedText text="Exact date will be confirmed once your order ships." />
+                  </div>
+                </>
+              )}
+              {!serviceabilityLoading && serviceability && serviceability.serviceable === false && serviceability.reason !== 'NOT_CONFIGURED' && (
+                <div style={{ fontSize: 13, color: '#b45309' }}>
+                  <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 6 }}></i>
+                  <TranslatedText text="We can't confirm delivery to this pincode right now. You can still place the order — we'll update you with shipping details after." />
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ marginBottom: 24 }}>
             <h5 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}><TranslatedText text="Payment Method" /></h5>
-            {codEnabled && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, marginBottom: 12, cursor: 'pointer', background: paymentMethod === 'cod' ? '#f8f6f0' : '#fff' }}>
-                <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} style={{ accentColor: '#7a4012' }} />
-                <div>
-                  <div style={{ fontWeight: 600 }}><TranslatedText text="Cash on Delivery (COD)" /></div>
-                  <div style={{ fontSize: 13, color: '#666' }}><TranslatedText text="Pay when you receive your order" /></div>
-                </div>
-              </label>
-            )}
+            {codEnabled && (() => {
+              const codBlocked = !!(serviceability?.serviceable && serviceability.codAvailable === false);
+              return (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'cod' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, marginBottom: 12, cursor: codBlocked ? 'not-allowed' : 'pointer', background: codBlocked ? '#f1f5f9' : (paymentMethod === 'cod' ? '#f8f6f0' : '#fff'), opacity: codBlocked ? 0.6 : 1 }}>
+                  <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} disabled={codBlocked} onChange={() => !codBlocked && setPaymentMethod('cod')} style={{ accentColor: '#7a4012' }} />
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      <TranslatedText text="Cash on Delivery (COD)" />
+                      {serviceability?.serviceable && serviceability.codAvailable === true && (
+                        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 12, background: '#dcfce7', color: '#15803d' }}>
+                          <i className="fa-solid fa-check" style={{ marginRight: 4 }}></i>
+                          <TranslatedText text="Available" />
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 13, color: '#666' }}>
+                      {codBlocked
+                        ? <TranslatedText text="Cash on Delivery isn't available for this pincode. Please pay online." />
+                        : <TranslatedText text="Pay when you receive your order" />}
+                    </div>
+                  </div>
+                </label>
+              );
+            })()}
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 16, border: `2px solid ${paymentMethod === 'razorpay' ? '#7a4012' : '#e0e0e0'}`, borderRadius: 8, cursor: 'pointer', background: paymentMethod === 'razorpay' ? '#f8f6f0' : '#fff' }}>
               <input type="radio" name="payment" value="razorpay" checked={paymentMethod === 'razorpay'} onChange={() => setPaymentMethod('razorpay')} style={{ accentColor: '#7a4012' }} />
               <div>

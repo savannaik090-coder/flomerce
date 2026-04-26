@@ -769,7 +769,327 @@ async function handleTrack(env, siteId, orderId) {
   }
 }
 
-// ---------- Top-level admin dispatcher ----------
+// ---------- Public endpoint: cart/checkout serviceability ----------
+//
+// Customer-facing (NO admin auth) — called from cart and checkout pages to
+// surface ETA range + COD-availability badges. Returns a small aggregated
+// view of Shiprocket's serviceability response (min/max delivery days, COD
+// available across any courier, courier count). Heavy-weight: hits Shiprocket
+// per (pickup, delivery, weight, cod) tuple — cached in the edge cache for 1h.
+//
+// COD-availability gating: even if Shiprocket says some courier supports COD
+// for this pincode, we ONLY surface `codAvailable: true` when the merchant
+// has Cash-on-Delivery enabled in Settings → Payments. The frontend should
+// never show a COD badge when the merchant has disabled COD.
+
+const SERVICEABILITY_CACHE_TTL_S = 60 * 60; // 1 hour
+
+// Hard caps to limit abuse of the public endpoint:
+//  - per-line qty: a real cart shouldn't have more than this of one SKU.
+//  - total weight: anything beyond this is almost certainly an attempt to
+//    bust the cache key-space and burn the merchant's Shiprocket quota.
+//  - distinct items: enforced separately when parsing (slice(0, 50)).
+const SERVICEABILITY_MAX_QTY_PER_ITEM = 999;
+const SERVICEABILITY_MAX_TOTAL_WEIGHT_KG = 100;
+
+// In-flight request dedupe (per isolate). When two concurrent shoppers ask
+// for the exact same (site, pickup, delivery, weight, cod) tuple we let the
+// second one wait on the first one's promise instead of also calling
+// Shiprocket. Workers spread requests across isolates so this is only a
+// partial mitigation, but it eliminates the worst stampedes within an
+// isolate without the operational weight of a Durable Object.
+const INFLIGHT_SERVICEABILITY = new Map();
+
+// Look up the merchant's pickup pincode. Cached in site_config.settings.shiprocket
+// after the first lookup so subsequent serviceability calls don't hit
+// Shiprocket's pickup-locations endpoint repeatedly.
+async function resolvePickupPincode(env, siteId, ctx) {
+  const cached = String(ctx.sr?.pickupLocationPincode || '').trim();
+  if (/^\d{6}$/.test(cached)) return cached;
+
+  const nickname = String(ctx.sr?.pickupLocationNickname || '').trim();
+  if (!nickname) return null;
+
+  let token;
+  try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
+  catch { return null; }
+
+  let list;
+  try { list = await getPickupLocations(token); }
+  catch { return null; }
+
+  const match = (Array.isArray(list) ? list : []).find(
+    (l) => String(l?.pickup_location || '').trim().toLowerCase() === nickname.toLowerCase()
+  );
+  const pin = String(match?.pin_code || '').trim();
+  if (!/^\d{6}$/.test(pin)) return null;
+
+  // Persist for future calls (won't clobber other settings — uses json_set on
+  // $.shiprocket.pickupLocationPincode).
+  try {
+    const siteDB = await resolveSiteDBById(env, siteId);
+    await siteDB.prepare(
+      `UPDATE site_config
+          SET settings = json_set(
+                COALESCE(settings, '{}'),
+                '$.shiprocket.pickupLocationPincode',
+                ?
+              ),
+              updated_at = datetime('now')
+        WHERE site_id = ?`
+    ).bind(pin, siteId).run();
+  } catch (e) {
+    console.warn('Failed to cache pickup pincode:', e?.message || e);
+  }
+  return pin;
+}
+
+// Bulk-load product weights (in grams) for the supplied product IDs from the
+// site's shard. Returns Map<productId, weightG>. Missing products / null
+// weights are simply absent from the map — the caller fail-fasts.
+async function loadProductWeightsG(env, siteId, productIds) {
+  const ids = [...new Set((productIds || []).map((p) => String(p)).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const siteDB = await resolveSiteDBById(env, siteId);
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await siteDB.prepare(
+    `SELECT id, weight FROM products WHERE site_id = ? AND id IN (${placeholders})`
+  ).bind(siteId, ...ids).all();
+  const map = new Map();
+  for (const r of (rows?.results || [])) {
+    const w = Number(r.weight);
+    if (Number.isFinite(w) && w > 0) map.set(String(r.id), w);
+  }
+  return map;
+}
+
+// Reduce Shiprocket's available_courier_companies array to the small view we
+// surface to buyers. `merchantCodEnabled` MUST be passed in so we never tell a
+// shopper COD is available when the merchant has disabled it in Payments.
+function aggregateServiceability(srData, merchantCodEnabled) {
+  const couriers = Array.isArray(srData?.available_courier_companies)
+    ? srData.available_courier_companies
+    : [];
+  if (couriers.length === 0) {
+    return { serviceable: false, etaMinDays: null, etaMaxDays: null, codAvailable: false, courierCount: 0 };
+  }
+  const days = couriers
+    .map((c) => Number(c?.estimated_delivery_days))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const codCourier = couriers.some((c) => Number(c?.cod) === 1 || c?.cod === true);
+  return {
+    serviceable: true,
+    etaMinDays: days.length ? Math.min(...days) : null,
+    etaMaxDays: days.length ? Math.max(...days) : null,
+    codAvailable: !!(merchantCodEnabled && codCourier),
+    courierCount: couriers.length,
+  };
+}
+
+async function handlePublicServiceability(request, env, siteId, reqCtx) {
+  const url = new URL(request.url);
+  const deliveryPincode = (url.searchParams.get('pincode') || '').trim();
+  const itemsRaw = (url.searchParams.get('items') || '').trim();
+  const codRequested = url.searchParams.get('cod') === '1';
+
+  if (!/^\d{6}$/.test(deliveryPincode)) {
+    return errorResponse('Valid 6-digit Indian pincode required', 400, 'BAD_PINCODE');
+  }
+  if (!itemsRaw) {
+    return errorResponse('items query parameter required (format: pid:qty,pid:qty)', 400, 'NO_ITEMS');
+  }
+
+  // Parse "pid:qty,pid:qty" — cap at 50 distinct entries and clamp each
+  // line's quantity to a sane upper bound to prevent the public endpoint
+  // from being abused as a cache-key buster against the merchant's
+  // Shiprocket quota.
+  const parsedItems = [];
+  const seenIds = new Set();
+  for (const piece of itemsRaw.split(',').slice(0, 50)) {
+    const [pid, qtyStr] = piece.split(':');
+    const id = String(pid || '').trim();
+    const rawQty = Math.floor(Number(qtyStr));
+    if (!id || !Number.isFinite(rawQty) || rawQty <= 0) continue;
+    // De-dupe a productId appearing multiple times by summing its quantities,
+    // then clamp. This prevents `items=p1:1,p1:1,p1:1,...` from minting
+    // unique cache keys per repetition.
+    const qty = Math.min(rawQty, SERVICEABILITY_MAX_QTY_PER_ITEM);
+    if (seenIds.has(id)) {
+      const existing = parsedItems.find((x) => x.productId === id);
+      existing.quantity = Math.min(existing.quantity + qty, SERVICEABILITY_MAX_QTY_PER_ITEM);
+    } else {
+      seenIds.add(id);
+      parsedItems.push({ productId: id, quantity: qty });
+    }
+  }
+  if (parsedItems.length === 0) {
+    return errorResponse('items must contain at least one valid pid:qty entry', 400, 'NO_ITEMS');
+  }
+
+  let ctx;
+  try { ctx = await readShiprocketSettings(env, siteId); }
+  catch (e) { return errorResponse(`Site lookup failed: ${e.message || e}`, 500, 'SITE_LOOKUP_FAILED'); }
+  if (!ctx) return errorResponse('Site not found', 404, 'SITE_NOT_FOUND');
+
+  // Read merchant COD setting from the same settings JSON we already loaded.
+  // Default-true matches the storefront default.
+  const merchantCodEnabled = ctx.settings?.codEnabled !== false;
+
+  if (!ctx.sr?.enabled || !ctx.sr?.emailEncrypted) {
+    return successResponse({
+      ok: true,
+      serviceable: false,
+      etaMinDays: null,
+      etaMaxDays: null,
+      codAvailable: false,
+      courierCount: 0,
+      reason: 'NOT_CONFIGURED',
+    });
+  }
+
+  const pickupPincode = await resolvePickupPincode(env, siteId, ctx);
+  if (!pickupPincode) {
+    return successResponse({
+      ok: true,
+      serviceable: false,
+      etaMinDays: null,
+      etaMaxDays: null,
+      codAvailable: false,
+      courierCount: 0,
+      reason: 'NO_PICKUP_LOCATION',
+    });
+  }
+
+  // Sum weights from the live products table. Refuse to estimate if any
+  // cart product is missing a weight — accurate estimates require accurate
+  // input, and Phase 1 already enforces weight at order placement.
+  const weightMap = await loadProductWeightsG(env, siteId, parsedItems.map((i) => i.productId));
+  let totalG = 0;
+  for (const it of parsedItems) {
+    const w = weightMap.get(String(it.productId));
+    if (!w) {
+      return successResponse({
+        ok: true,
+        serviceable: false,
+        etaMinDays: null,
+        etaMaxDays: null,
+        codAvailable: false,
+        courierCount: 0,
+        reason: 'MISSING_WEIGHT',
+      });
+    }
+    totalG += w * it.quantity;
+  }
+  const totalKg = Math.max(0.01, Number((totalG / 1000).toFixed(3)));
+
+  // Reject implausibly large parcels — anything over the cap is almost
+  // certainly an attempt to mint unique cache keys to bust the cache.
+  if (totalKg > SERVICEABILITY_MAX_TOTAL_WEIGHT_KG) {
+    return successResponse({
+      ok: true,
+      serviceable: false,
+      etaMinDays: null,
+      etaMaxDays: null,
+      codAvailable: false,
+      courierCount: 0,
+      reason: 'WEIGHT_EXCEEDS_MAX',
+    });
+  }
+
+  // Edge-cache the upstream response. Key includes everything that affects
+  // the answer; `cod=1` and `cod=0` are cached separately because Shiprocket
+  // returns a different courier list when filtering for COD-supporting ones.
+  const cacheKeyStr =
+    `https://flomerce-cache.invalid/srv?site=${encodeURIComponent(siteId)}&p=${pickupPincode}&d=${deliveryPincode}&w=${totalKg}&cod=${codRequested ? 1 : 0}`;
+  const cacheKey = new Request(cacheKeyStr, { method: 'GET' });
+  const cache = caches.default;
+  let srData = null;
+  let cacheHit = false;
+  try {
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      srData = await cached.json();
+      cacheHit = true;
+    }
+  } catch (e) {
+    console.warn('Serviceability cache read failed:', e?.message || e);
+  }
+
+  if (!srData) {
+    // Coalesce concurrent identical requests within this isolate so we
+    // make exactly one Shiprocket call per (cache-key) tuple instead of N.
+    let inflight = INFLIGHT_SERVICEABILITY.get(cacheKeyStr);
+    if (!inflight) {
+      inflight = (async () => {
+        let token;
+        try { token = await ensureShiprocketToken(env, siteId, ctx.sr); }
+        catch (e) {
+          return { reason: 'AUTH_FAILED', srData: null };
+        }
+        try {
+          const resp = await getServiceability(token, {
+            pickup_postcode: pickupPincode,
+            delivery_postcode: deliveryPincode,
+            weight: totalKg,
+            cod: codRequested ? 1 : 0,
+          });
+          return { reason: null, srData: resp?.data || resp || {} };
+        } catch (e) {
+          console.warn('Shiprocket serviceability call failed:', e?.message || e);
+          return { reason: 'UPSTREAM_ERROR', srData: null };
+        }
+      })().finally(() => {
+        // Clear the in-flight slot the moment the upstream call settles —
+        // subsequent requests will use the now-warm cache, not coalesce on
+        // a stale promise.
+        INFLIGHT_SERVICEABILITY.delete(cacheKeyStr);
+      });
+      INFLIGHT_SERVICEABILITY.set(cacheKeyStr, inflight);
+    }
+    const { reason, srData: fetched } = await inflight;
+    if (reason) {
+      return successResponse({
+        ok: true,
+        serviceable: false,
+        etaMinDays: null,
+        etaMaxDays: null,
+        codAvailable: false,
+        courierCount: 0,
+        reason,
+      });
+    }
+    srData = fetched;
+
+    // Use waitUntil so the cache write doesn't add latency to the response.
+    // Falls back to a fire-and-forget Promise if no execution context was
+    // threaded in (defensive — handleShipping always passes ctx today).
+    const writeP = (async () => {
+      try {
+        await cache.put(cacheKey, new Response(JSON.stringify(srData), {
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': `public, max-age=${SERVICEABILITY_CACHE_TTL_S}`,
+          },
+        }));
+      } catch (e) {
+        console.warn('Serviceability cache write failed:', e?.message || e);
+      }
+    })();
+    if (reqCtx?.waitUntil) reqCtx.waitUntil(writeP);
+  }
+
+  const view = aggregateServiceability(srData, merchantCodEnabled);
+  return successResponse({
+    ok: true,
+    ...view,
+    pickupPincode,
+    deliveryPincode,
+    weightKg: totalKg,
+    cached: cacheHit,
+  });
+}
+
+// ---------- Top-level dispatcher (mixed public + admin) ----------
 
 export async function handleShipping(request, env, path, ctx) {
   const url = new URL(request.url);
@@ -781,6 +1101,18 @@ export async function handleShipping(request, env, path, ctx) {
 
   const siteId = url.searchParams.get('siteId');
   if (!siteId) return errorResponse('siteId is required', 400, 'MISSING_SITE_ID');
+
+  // Public route — checked BEFORE admin auth so customers (not logged into
+  // the admin panel) can call it from cart/checkout. Thread `ctx` so the
+  // handler can use ctx.waitUntil(...) for non-blocking edge-cache writes.
+  if (action === 'serviceability' && method === 'GET') {
+    try {
+      return await handlePublicServiceability(request, env, siteId, ctx);
+    } catch (e) {
+      console.error('Serviceability error:', e);
+      return errorResponse(`Serviceability error: ${e.message || 'Unknown'}`, 500);
+    }
+  }
 
   const admin = await validateSiteAdmin(request, env, siteId);
   if (!admin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
