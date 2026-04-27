@@ -34,6 +34,7 @@ const ProductDetailPage = React.lazy(() => import('./pages/ProductDetailPage.jsx
 const CartPage = React.lazy(() => import('./pages/CartPage.jsx'));
 const CheckoutPage = React.lazy(() => import('./pages/CheckoutPage.jsx'));
 const CheckoutPageModern = React.lazy(() => import('./components/templates/modern/CheckoutPageModern.jsx'));
+const CheckoutPageClassic = React.lazy(() => import('./components/templates/classic/CheckoutPageClassic.jsx'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage.jsx'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage.jsx'));
 const SignupPage = React.lazy(() => import('./pages/SignupPage.jsx'));
@@ -247,7 +248,8 @@ function StorefrontShell() {
   const isModern = theme.id === 'modern';
   const ActiveNavbar = isModern ? NavbarModern : Navbar;
   const ActiveFooter = isModern ? FooterModern : Footer;
-  const ActiveCheckout = isModern ? CheckoutPageModern : CheckoutPage;
+  const isClassic = theme.id === 'classic';
+  const ActiveCheckout = isModern ? CheckoutPageModern : isClassic ? CheckoutPageClassic : CheckoutPage;
   const ActiveReview = isModern ? ReviewPageModern : ReviewPage;
 
   return (
