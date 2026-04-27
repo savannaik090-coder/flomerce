@@ -1298,8 +1298,6 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
         hint = 'Abandoned-cart reminders are not enabled in your saved settings. Toggle "Send abandoned cart reminders" ON, then click Save Settings at the bottom of the page, then click this test button again. (The toggle alone is not enough — it must be persisted.)';
       } else if (summary.sitesNoSettings > 0) {
         hint = 'This site has no settings record yet. Save any setting once to initialize it, then try again.';
-      } else if (summary.errors > 0) {
-        hint = `The cart sweep ran but ${summary.errors} per-site error(s) were swallowed by the inner try/catch. Check the worker logs for "[AbandonedCart] Error for site" entries to see the underlying SQL/runtime error.`;
       } else {
         // Run a diagnostic against this site's cart table so the admin
         // immediately knows whether the cart is a guest cart, empty, or
@@ -1331,7 +1329,8 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
       else if (skipped.empty_items > 0) hint = 'Cart is empty.';
       else if (skipped.parse_error > 0) hint = 'Cart items are corrupted and could not be parsed.';
       else if (skipped.no_channel_dispatched > 0) hint = 'Both channels failed. Check that BREVO_API_KEY and FROM_EMAIL are configured (for email) and that WhatsApp credentials are set (for WhatsApp).';
-      else hint = 'Cart found but no reminder was sent. Check the worker logs for [AbandonedCart] [TEST] details.';
+      else if (summary.errors > 0) hint = `The cart was found but threw ${summary.errors} error(s) during processing (likely a SQL or runtime exception in the per-cart code path — e.g., the products lookup, customer lookup, or email/WhatsApp template rendering). Check the worker logs for "[AbandonedCart] Error processing cart" entries to see the underlying error.`;
+      else hint = `Cart found but no reminder was sent and no skip reason was recorded. Sweep summary: ${JSON.stringify(summary)}.`;
     } else {
       hint = `Sent ${summary.emailsSent} email reminder(s) and ${summary.whatsappSent} WhatsApp reminder(s). Check the customer's inbox.`;
     }
@@ -1449,13 +1448,21 @@ async function processAbandonedCartReminders(env, options = {}) {
         try {
           await db.prepare('ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0').run();
         } catch (e) {}
-        // The language column is selected by the candidate query below. On
-        // older site shards that pre-date the migration in site-schema.js, a
-        // missing column causes the entire SELECT to throw, the per-site
-        // try/catch swallows it, and the cart sweep silently sees zero
-        // candidates. Self-heal here so the sweep is resilient.
+        // The language / preferred_lang / placed_in_language columns are
+        // selected by the candidate query and per-cart processing below.
+        // On older site shards that pre-date these migrations a missing
+        // column causes the SELECT to throw, the per-site try/catch
+        // swallows it, and the sweep silently produces 0 candidates / 0
+        // sent reminders with no clear hint. Self-heal here so the sweep
+        // is resilient on every shard regardless of migration drift.
         try {
           await db.prepare('ALTER TABLE carts ADD COLUMN language TEXT').run();
+        } catch (e) {}
+        try {
+          await db.prepare('ALTER TABLE site_customers ADD COLUMN preferred_lang TEXT').run();
+        } catch (e) {}
+        try {
+          await db.prepare('ALTER TABLE orders ADD COLUMN placed_in_language TEXT').run();
         } catch (e) {}
 
         // Cheap aggregate count of carts that already received maxReminders
