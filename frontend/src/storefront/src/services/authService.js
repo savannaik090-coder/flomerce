@@ -1,4 +1,4 @@
-import { apiRequest, setAuthToken } from './api.js';
+import { apiRequest, setAuthToken, getSessionId } from './api.js';
 
 function getCurrentLang() {
   try {
@@ -105,9 +105,15 @@ export async function resendVerification(email, siteId) {
 }
 
 export async function googleLogin(siteId, credential) {
+  // Pass the anonymous shopper sessionId so the server can attach the guest
+  // cart to the new customer record. Without this, items added pre-login
+  // are stranded under session_id and the abandoned-cart job (which only
+  // looks at carts with a user_id) skips them.
+  let sessionId = null;
+  try { sessionId = getSessionId(); } catch { sessionId = null; }
   const data = await apiRequest('/api/customer-auth/google-login', {
     method: 'POST',
-    body: JSON.stringify({ siteId, credential }),
+    body: JSON.stringify({ siteId, credential, sessionId }),
   });
   if (data.token) {
     setAuthToken(data.token);

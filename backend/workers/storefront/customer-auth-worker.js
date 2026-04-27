@@ -4,6 +4,7 @@ import { sendEmail } from '../../utils/email.js';
 import { translateLabels, translateString } from '../../utils/email-i18n.js';
 import { estimateRowBytes, trackD1Write, trackD1Update, trackD1Delete } from '../../utils/usage-tracker.js';
 import { resolveSiteDBById, checkMigrationLock, ensureAddressCountryColumn, getSiteConfig } from '../../utils/site-db.js';
+import { mergeCarts } from './cart-worker.js';
 import { PLATFORM_DOMAIN } from '../../config.js';
 
 export async function handleCustomerAuth(request, env, path) {
@@ -449,7 +450,12 @@ async function handleCustomerGoogleLogin(request, env) {
   if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
 
   try {
-    const { siteId, credential } = await request.json();
+    const body = await request.json();
+    const { siteId, credential } = body;
+    // Pull the shopper's anonymous session id so we can attach the guest
+    // cart to the new user record. Accept both the JSON body field and the
+    // X-Session-ID header (the cart endpoints use both interchangeably).
+    const sessionId = (body.sessionId || request.headers.get('X-Session-ID') || '').trim() || null;
     if (!siteId || !credential) return errorResponse('Site ID and credential are required', 400, 'GOOGLE_FIELDS_REQUIRED');
 
     const clientId = env.GOOGLE_CLIENT_ID;
@@ -533,16 +539,31 @@ async function handleCustomerGoogleLogin(request, env) {
       }
     }
 
+    // Attach the shopper's guest cart (if any) to the just-resolved/created
+    // customer record. Without this, a Google sign-in shopper's pre-login
+    // items disappear and the abandoned-cart job — which only looks at carts
+    // with a non-null user_id — never sees them. mergeCarts() handles the
+    // case where the user already has a cart by merging items rather than
+    // overwriting; it is safe to call even when there is no guest cart for
+    // the session. Failures here must NOT block sign-in.
+    if (sessionId) {
+      try {
+        await mergeCarts(env, siteId, customer.id, sessionId);
+      } catch (mergeErr) {
+        console.error('[GoogleLogin] Cart merge failed (non-fatal):', mergeErr.message || mergeErr);
+      }
+    }
+
     const token = generateToken(32);
     const expiresAt = getExpiryDate(24 * 7);
-    const sessionId = generateId();
-    const sessData = { id: sessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
+    const authSessionId = generateId();
+    const sessData = { id: authSessionId, customer_id: customer.id, site_id: siteId, token, expires_at: expiresAt };
     const sessBytes = estimateRowBytes(sessData);
 
     await db.prepare(
       `INSERT INTO site_customer_sessions (id, customer_id, site_id, token, expires_at, row_size_bytes, created_at)
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
-    ).bind(sessionId, customer.id, siteId, token, expiresAt, sessBytes).run();
+    ).bind(authSessionId, customer.id, siteId, token, expiresAt, sessBytes).run();
     await trackD1Write(env, siteId, sessBytes);
 
     return successResponse({

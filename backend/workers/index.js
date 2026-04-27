@@ -89,21 +89,47 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    // Daily cleanup runs every cron tick (cheap, idempotent).
-    ctx.waitUntil(cleanupExpiredData(env));
-    ctx.waitUntil(processAbandonedCartReminders(env));
-    ctx.waitUntil(cleanupOrphanMedia(env));
+    // Cloudflare delivers a separate scheduled event for each registered cron
+    // pattern, with `event.cron` set to the matching expression. We dispatch
+    // off that so each job keeps its own cadence — abandoned-cart reminders
+    // run hourly (so a merchant's "1 hour delay" actually means ~1 hour), but
+    // the daily cleanup and monthly snapshot do NOT run hourly.
+    const cron = event && event.cron;
 
-    // Monthly enterprise snapshot — only on the dedicated monthly cron tick.
-    // Cloudflare passes the cron expression that triggered the event in
-    // `event.cron`; we use it to dispatch instead of the daily cleanup.
-    if (event && event.cron === '5 0 1 * *') {
+    if (cron === '0 * * * *') {
+      // Hourly: abandoned-cart sweep only. The processor itself respects each
+      // merchant's configured delayHours / maxReminders, so running hourly
+      // does not over-send.
+      ctx.waitUntil(
+        processAbandonedCartReminders(env).catch(err =>
+          console.error('[Cron] processAbandonedCartReminders failed:', err.message || err)
+        )
+      );
+      return;
+    }
+
+    if (cron === '0 3 * * *') {
+      // Daily cleanups (3 AM UTC).
+      ctx.waitUntil(cleanupExpiredData(env));
+      ctx.waitUntil(cleanupOrphanMedia(env));
+      return;
+    }
+
+    if (cron === '5 0 1 * *') {
+      // Monthly enterprise overage snapshot (00:05 UTC on the 1st).
       ctx.waitUntil(
         runMonthlyEnterpriseSnapshots(env).catch(err =>
           console.error('[Cron] runMonthlyEnterpriseSnapshots failed:', err.message || err)
         )
       );
+      return;
     }
+
+    // Unknown cron expression — fall back to the conservative daily set so a
+    // misconfigured trigger never silently drops scheduled work.
+    console.warn(`[Cron] Unknown cron "${cron}" — running daily cleanups as a fallback`);
+    ctx.waitUntil(cleanupExpiredData(env));
+    ctx.waitUntil(cleanupOrphanMedia(env));
   },
 };
 
@@ -1198,25 +1224,87 @@ async function processAbandonedCartReminders(env) {
   const { buildAbandonedCartEmail } = await import('../utils/email.js');
   const { sendOrderWhatsApp, buildAbandonedCartWA, isWhatsAppConfigured } = await import('../utils/whatsapp.js');
 
+  // Single, loud, run-level warning when email is misconfigured. Without this
+  // every cart fails silently inside sendEmail() and the only signal is missing
+  // emails — which is exactly how this bug went undetected.
+  const brevoConfigured = !!(env.BREVO_API_KEY && String(env.BREVO_API_KEY).trim());
+  const fromEmailConfigured = !!(env.FROM_EMAIL && String(env.FROM_EMAIL).trim());
+  if (!brevoConfigured || !fromEmailConfigured) {
+    console.warn(
+      `[AbandonedCart] Email misconfigured — emails will be skipped this run. ` +
+      `BREVO_API_KEY=${brevoConfigured ? 'set' : 'MISSING'}, ` +
+      `FROM_EMAIL=${fromEmailConfigured ? 'set' : 'MISSING'}. ` +
+      `Set them via wrangler secret/vars to enable abandoned-cart email reminders.`
+    );
+  }
+
+  // Run-level totals — printed once at the end so production logs surface a
+  // single concise summary even when many sites are processed.
+  const runSummary = {
+    sitesScanned: 0,
+    // Split so a merchant who turned the feature off is distinguishable from
+    // one whose settings row simply doesn't exist yet — different remediation.
+    sitesFeatureDisabled: 0,
+    sitesNoSettings: 0,
+    sitesWithCandidates: 0,
+    candidates: 0,
+    emailsSent: 0,
+    whatsappSent: 0,
+    skipped: {
+      backoff: 0,
+      recent_order: 0,
+      no_contact: 0,
+      no_customer: 0,
+      empty_items: 0,
+      parse_error: 0,
+      no_channel_dispatched: 0,
+      // Carts that have already received the merchant's configured maxReminders
+      // are filtered out by the candidate-selection SQL (so they never enter
+      // the per-cart loop). We count them here from a separate cheap query so
+      // operators can still see "the job is healthy, these carts are simply
+      // done" rather than wondering why nothing fired.
+      max_reminders_reached: 0,
+    },
+    errors: 0,
+  };
+
   try {
     const allSites = await env.DB.prepare('SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE is_active = 1').all();
 
     for (const site of (allSites.results || [])) {
+      runSummary.sitesScanned++;
       try {
         const db = await resolveSiteDBById(env, site.id);
         const siteConfig = await getSiteConfig(env, site.id);
-        if (!siteConfig.settings) continue;
+        if (!siteConfig.settings) { runSummary.sitesNoSettings++; continue; }
 
         let settings = siteConfig.settings;
         if (typeof settings === 'string') settings = JSON.parse(settings);
 
         const acConfig = settings.abandonedCartConfig;
-        if (!acConfig || !acConfig.enabled) continue;
+        if (!acConfig || !acConfig.enabled) { runSummary.sitesFeatureDisabled++; continue; }
 
         const delayHours = Number(acConfig.delayHours) || 1;
         const maxReminders = Number(acConfig.maxReminders) || 1;
         const sendWhatsApp = acConfig.whatsapp !== false;
         const sendEmailChannel = acConfig.email !== false;
+
+        // Per-site counters — printed once per site so a merchant's cart
+        // funnel is debuggable from production logs.
+        const siteStats = {
+          candidates: 0,
+          emailsSent: 0,
+          whatsappSent: 0,
+          skipped_backoff: 0,
+          skipped_recent_order: 0,
+          skipped_no_contact: 0,
+          skipped_no_customer: 0,
+          skipped_empty_items: 0,
+          skipped_parse_error: 0,
+          skipped_no_channel_dispatched: 0,
+          skipped_max_reminders_reached: 0,
+          errors: 0,
+        };
 
         try {
           await db.prepare('ALTER TABLE carts ADD COLUMN reminder_sent_at TEXT').run();
@@ -1224,6 +1312,29 @@ async function processAbandonedCartReminders(env) {
         try {
           await db.prepare('ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0').run();
         } catch (e) {}
+
+        // Cheap aggregate count of carts that already received maxReminders
+        // — these are filtered out of the candidate query, so without this
+        // separate count an operator looking at a quiet log would have no
+        // way to know "0 sent" means "all eligible carts are already done"
+        // vs. "the job is broken". Failure here is non-fatal; counter stays 0.
+        try {
+          const maxedRow = await db.prepare(
+            `SELECT COUNT(*) AS n
+             FROM carts
+             WHERE site_id = ?
+               AND user_id IS NOT NULL
+               AND items != '[]'
+               AND items != ''
+               AND reminder_count IS NOT NULL
+               AND reminder_count >= ?`
+          ).bind(site.id, maxReminders).first();
+          const maxedN = Number(maxedRow && maxedRow.n) || 0;
+          siteStats.skipped_max_reminders_reached = maxedN;
+          runSummary.skipped.max_reminders_reached += maxedN;
+        } catch (e) {
+          // Don't fail the whole site for an observability counter.
+        }
 
         const abandonedCarts = await db.prepare(
           `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
@@ -1238,7 +1349,11 @@ async function processAbandonedCartReminders(env) {
            LIMIT 50`
         ).bind(maxReminders, delayHours).all();
 
-        if (!abandonedCarts.results || abandonedCarts.results.length === 0) continue;
+        const candidateCount = (abandonedCarts.results || []).length;
+        siteStats.candidates = candidateCount;
+        runSummary.candidates += candidateCount;
+        if (candidateCount === 0) continue;
+        runSummary.sitesWithCandidates++;
 
         const brandName = site.brand_name || 'Store';
         const domain = env.DOMAIN || PLATFORM_DOMAIN;
@@ -1253,7 +1368,11 @@ async function processAbandonedCartReminders(env) {
             if (currentReminderCount > 0 && cart.reminder_sent_at) {
               const nextDelay = delayHours * Math.pow(2, currentReminderCount);
               const nextSendTime = new Date(new Date(cart.reminder_sent_at).getTime() + nextDelay * 60 * 60 * 1000);
-              if (new Date() < nextSendTime) continue;
+              if (new Date() < nextSendTime) {
+                siteStats.skipped_backoff++;
+                runSummary.skipped.backoff++;
+                continue;
+              }
             }
 
             const recentOrder = await db.prepare(
@@ -1264,6 +1383,8 @@ async function processAbandonedCartReminders(env) {
               await db.prepare(
                 `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
               ).bind(maxReminders, cart.id).run();
+              siteStats.skipped_recent_order++;
+              runSummary.skipped.recent_order++;
               continue;
             }
 
@@ -1271,14 +1392,30 @@ async function processAbandonedCartReminders(env) {
               `SELECT name, email, phone, preferred_lang FROM site_customers WHERE id = ? AND site_id = ?`
             ).bind(cart.user_id, cart.site_id).first();
 
-            if (!customer) continue;
-            if (!customer.email && !customer.phone) continue;
+            if (!customer) {
+              siteStats.skipped_no_customer++;
+              runSummary.skipped.no_customer++;
+              continue;
+            }
+            if (!customer.email && !customer.phone) {
+              siteStats.skipped_no_contact++;
+              runSummary.skipped.no_contact++;
+              continue;
+            }
 
             let items = [];
             try {
               items = typeof cart.items === 'string' ? JSON.parse(cart.items) : cart.items;
-            } catch (e) { continue; }
-            if (!Array.isArray(items) || items.length === 0) continue;
+            } catch (e) {
+              siteStats.skipped_parse_error++;
+              runSummary.skipped.parse_error++;
+              continue;
+            }
+            if (!Array.isArray(items) || items.length === 0) {
+              siteStats.skipped_empty_items++;
+              runSummary.skipped.empty_items++;
+              continue;
+            }
 
             const enrichedItems = [];
             for (const item of items) {
@@ -1312,7 +1449,10 @@ async function processAbandonedCartReminders(env) {
               } catch (e) {}
             }
 
-            if (sendEmailChannel && customer.email) {
+            // Skip the email branch entirely if Brevo/FROM_EMAIL aren't set —
+            // we already logged the run-level warning at the top of the run,
+            // so we don't need to re-fail per cart inside sendEmail().
+            if (sendEmailChannel && customer.email && brevoConfigured && fromEmailConfigured) {
               try {
                 const emailContent = await buildAbandonedCartEmail(
                   customer.name, brandName, enrichedItems, cartTotal, storeUrl, currency,
@@ -1348,18 +1488,57 @@ async function processAbandonedCartReminders(env) {
               await db.prepare(
                 `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
               ).bind(currentReminderCount + 1, cart.id).run();
+              if (emailSent) { siteStats.emailsSent++; runSummary.emailsSent++; }
+              if (whatsappSent) { siteStats.whatsappSent++; runSummary.whatsappSent++; }
               console.log(`[AbandonedCart] Reminder #${currentReminderCount + 1} sent for cart ${cart.id} (email: ${emailSent}, whatsapp: ${whatsappSent})`);
+            } else {
+              siteStats.skipped_no_channel_dispatched++;
+              runSummary.skipped.no_channel_dispatched++;
             }
           } catch (cartErr) {
+            siteStats.errors++;
+            runSummary.errors++;
             console.error(`[AbandonedCart] Error processing cart ${cart.id}:`, cartErr.message || cartErr);
           }
         }
+        // Per-site summary — emit when there was something to report (live
+        // candidates this run, OR carts that already exhausted their
+        // reminders — the latter explains a quiet log to operators).
+        if (siteStats.candidates > 0 || siteStats.skipped_max_reminders_reached > 0) {
+          console.log(
+            `[AbandonedCart] site=${site.id} (${site.subdomain || ''}) ` +
+            `candidates=${siteStats.candidates} ` +
+            `sent=email:${siteStats.emailsSent},wa:${siteStats.whatsappSent} ` +
+            `skipped=backoff:${siteStats.skipped_backoff},` +
+            `recent_order:${siteStats.skipped_recent_order},` +
+            `no_contact:${siteStats.skipped_no_contact},` +
+            `no_customer:${siteStats.skipped_no_customer},` +
+            `empty_items:${siteStats.skipped_empty_items},` +
+            `parse_error:${siteStats.skipped_parse_error},` +
+            `no_channel_dispatched:${siteStats.skipped_no_channel_dispatched},` +
+            `max_reminders_reached:${siteStats.skipped_max_reminders_reached} ` +
+            `errors=${siteStats.errors} ` +
+            `cfg=delayHours:${delayHours},maxReminders:${maxReminders},` +
+            `email:${sendEmailChannel},whatsapp:${sendWhatsApp}`
+          );
+        }
       } catch (siteErr) {
+        runSummary.errors++;
         console.error(`[AbandonedCart] Error for site ${site.id}:`, siteErr.message || siteErr);
       }
     }
 
-    console.log('[AbandonedCart] Processing complete');
+    console.log(
+      `[AbandonedCart] Run complete — ` +
+      `sites=${runSummary.sitesScanned} ` +
+      `feature_disabled=${runSummary.sitesFeatureDisabled} ` +
+      `no_settings=${runSummary.sitesNoSettings} ` +
+      `with_candidates=${runSummary.sitesWithCandidates} ` +
+      `candidates=${runSummary.candidates} ` +
+      `sent=email:${runSummary.emailsSent},wa:${runSummary.whatsappSent} ` +
+      `skipped=${JSON.stringify(runSummary.skipped)} ` +
+      `errors=${runSummary.errors}`
+    );
   } catch (error) {
     console.error('[AbandonedCart] Error:', error.message || error);
   }
