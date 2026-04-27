@@ -1298,6 +1298,8 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
         hint = 'Abandoned-cart reminders are not enabled in your saved settings. Toggle "Send abandoned cart reminders" ON, then click Save Settings at the bottom of the page, then click this test button again. (The toggle alone is not enough — it must be persisted.)';
       } else if (summary.sitesNoSettings > 0) {
         hint = 'This site has no settings record yet. Save any setting once to initialize it, then try again.';
+      } else if (summary.errors > 0) {
+        hint = `The cart sweep ran but ${summary.errors} per-site error(s) were swallowed by the inner try/catch. Check the worker logs for "[AbandonedCart] Error for site" entries to see the underlying SQL/runtime error.`;
       } else {
         // Run a diagnostic against this site's cart table so the admin
         // immediately knows whether the cart is a guest cart, empty, or
@@ -1446,6 +1448,14 @@ async function processAbandonedCartReminders(env, options = {}) {
         } catch (e) {}
         try {
           await db.prepare('ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0').run();
+        } catch (e) {}
+        // The language column is selected by the candidate query below. On
+        // older site shards that pre-date the migration in site-schema.js, a
+        // missing column causes the entire SELECT to throw, the per-site
+        // try/catch swallows it, and the cart sweep silently sees zero
+        // candidates. Self-heal here so the sweep is resilient.
+        try {
+          await db.prepare('ALTER TABLE carts ADD COLUMN language TEXT').run();
         } catch (e) {}
 
         // Cheap aggregate count of carts that already received maxReminders
