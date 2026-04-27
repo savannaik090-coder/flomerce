@@ -76,6 +76,9 @@ export default function SettingsSection() {
   const [abandonedCartMaxReminders, setAbandonedCartMaxReminders] = useState('1');
   const [abandonedCartWhatsApp, setAbandonedCartWhatsApp] = useState(true);
   const [abandonedCartEmail, setAbandonedCartEmail] = useState(true);
+  const [abandonedCartTesting, setAbandonedCartTesting] = useState(false);
+  const [abandonedCartTestResult, setAbandonedCartTestResult] = useState('');
+  const [abandonedCartTestIsError, setAbandonedCartTestIsError] = useState(false);
 
   // Shiprocket integration state (loaded from /api/shipping/status — separate
   // from public site-info which never exposes the encrypted credentials).
@@ -638,6 +641,38 @@ export default function SettingsSection() {
       setMessageIsError(true);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleTestAbandonedCartNow() {
+    if (!siteConfig?.id) return;
+    setAbandonedCartTesting(true);
+    setAbandonedCartTestResult('');
+    setAbandonedCartTestIsError(false);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const authToken = localStorage.getItem('auth_token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `SiteAdmin ${token}`;
+      else if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+      const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}/abandoned-cart/test-now`, {
+        method: 'POST',
+        headers,
+      });
+      const result = await response.json();
+      if (response.ok && result.success) {
+        setAbandonedCartTestResult(result.hint || 'Test sweep completed.');
+        setAbandonedCartTestIsError(false);
+      } else {
+        setAbandonedCartTestResult(result.error || 'Test sweep failed.');
+        setAbandonedCartTestIsError(true);
+      }
+    } catch (e) {
+      setAbandonedCartTestResult(`Test sweep failed: ${e.message}`);
+      setAbandonedCartTestIsError(true);
+    } finally {
+      setAbandonedCartTesting(false);
     }
   }
 
@@ -1848,6 +1883,50 @@ Create these templates in your WhatsApp Business account: <strong>order_confirma
                   </div>
                   {abandonedCartWhatsApp && !whatsappNotificationsEnabled && (
                     <p style={{ fontSize: 12, color: '#dc2626', marginTop: 6 }}>WhatsApp notifications must be enabled above with valid credentials for WhatsApp cart reminders to work.</p>
+                  )}
+                </div>
+
+                <div style={{ padding: '14px 16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, marginBottom: 16 }}>
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#1e3a8a', marginBottom: 6 }}>
+                    <i className="fas fa-flask" style={{ marginInlineEnd: 6 }} />Test the reminder pipeline
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12, color: '#1e40af', lineHeight: 1.6, marginBottom: 10 }}>
+                    The hourly cron is what normally fires reminders, so a brand-new abandoned cart can take up to an hour to receive an email. Use this button to run the sweep right now (only for this site) and check the email/WhatsApp pipeline end-to-end without waiting. Make sure you have a logged-in customer with an item in their cart first.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleTestAbandonedCartNow}
+                    disabled={abandonedCartTesting || !abandonedCartEnabled}
+                    style={{
+                      padding: '8px 16px',
+                      border: 'none',
+                      borderRadius: 6,
+                      background: abandonedCartTesting || !abandonedCartEnabled ? '#94a3b8' : '#2563eb',
+                      color: '#fff',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: abandonedCartTesting || !abandonedCartEnabled ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {abandonedCartTesting ? (
+                      <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }} />Sending…</>
+                    ) : (
+                      <><i className="fas fa-paper-plane" style={{ marginInlineEnd: 6 }} />Send test reminder now</>
+                    )}
+                  </button>
+                  {!abandonedCartEnabled && (
+                    <p style={{ margin: '8px 0 0 0', fontSize: 11, color: '#64748b' }}>Enable the toggle above first to use the test button.</p>
+                  )}
+                  {abandonedCartTestResult && (
+                    <p style={{
+                      margin: '10px 0 0 0',
+                      fontSize: 12,
+                      padding: '8px 10px',
+                      borderRadius: 6,
+                      background: abandonedCartTestIsError ? '#fef2f2' : '#f0fdf4',
+                      color: abandonedCartTestIsError ? '#991b1b' : '#166534',
+                      border: `1px solid ${abandonedCartTestIsError ? '#fecaca' : '#bbf7d0'}`,
+                    }}>{abandonedCartTestResult}</p>
                   )}
                 </div>
 
