@@ -10,6 +10,10 @@ import {
   hashString,
 } from '../../utils/translator.js';
 import { purgeLocaleCache, PLATFORM_PLANS_R2_PREFIX } from '../../utils/cdn-cache.js';
+import {
+  normalizeFeatureGroups as normalizePlanFeatureGroups,
+  flattenFeatureGroups as flattenPlanGroups,
+} from '../../utils/plan-features.js';
 // Each namespace file holds that namespace's keys at the top level
 // (`landing.json` is `{ heroBadge: "..." }`, NOT wrapped). Nesting each file
 // under its namespace name when assembling EN_CATALOG keeps the per-key SHA
@@ -839,19 +843,23 @@ async function readPlansEnglishFromDB(env) {
   const seen = new Set();
 
   const plansResult = await env.DB.prepare(
-    `SELECT plan_name, features, tagline FROM subscription_plans
+    `SELECT plan_name, features, feature_groups, tagline FROM subscription_plans
      WHERE is_active = 1 AND billing_cycle IN ('monthly', '3months', '6months', 'yearly')`
   ).all();
   for (const row of (plansResult.results || [])) {
     if (!row.plan_name || seen.has(row.plan_name)) continue;
     seen.add(row.plan_name);
-    let features = [];
-    try { features = JSON.parse(row.features) || []; } catch { features = []; }
-    if (!Array.isArray(features)) features = [];
+    // EN payload carries both shapes (matches /api/payments/plans).
+    const groups = normalizePlanFeatureGroups(row.feature_groups, row.features);
+    const flat = flattenPlanGroups(groups);
     planTranslations[row.plan_name] = {
       plan_name: row.plan_name,
       tagline: row.tagline || '',
-      features: features.map((f) => (typeof f === 'string' ? f : String(f ?? ''))),
+      features: flat,
+      feature_groups: groups.map((g) => ({
+        heading: typeof g.heading === 'string' ? g.heading : '',
+        items: Array.isArray(g.items) ? g.items.slice() : [],
+      })),
     };
   }
 
@@ -880,6 +888,8 @@ async function translatePlansPayload(env, enPayload, lang) {
   const sources = [];
   const slots = [];
 
+  // Translate plan_name, tagline, group headings + items. Flat features[] is
+  // re-derived from translated groups below so the two shapes can never drift.
   for (const [planKey, p] of Object.entries(enPayload.planTranslations || {})) {
     if (p.plan_name) {
       sources.push(p.plan_name);
@@ -889,9 +899,21 @@ async function translatePlansPayload(env, enPayload, lang) {
       sources.push(p.tagline);
       slots.push({ kind: 'tagline', planKey });
     }
-    for (let i = 0; i < (p.features || []).length; i++) {
-      sources.push(p.features[i]);
-      slots.push({ kind: 'feature', planKey, idx: i });
+    const groups = Array.isArray(p.feature_groups) ? p.feature_groups : [];
+    for (let gi = 0; gi < groups.length; gi++) {
+      const g = groups[gi] || {};
+      // Blank headings (legacy / single ungrouped section) stay blank.
+      if (typeof g.heading === 'string' && g.heading.length > 0) {
+        sources.push(g.heading);
+        slots.push({ kind: 'heading', planKey, gi });
+      }
+      const items = Array.isArray(g.items) ? g.items : [];
+      for (let ii = 0; ii < items.length; ii++) {
+        if (typeof items[ii] === 'string' && items[ii].length > 0) {
+          sources.push(items[ii]);
+          slots.push({ kind: 'item', planKey, gi, ii });
+        }
+      }
     }
   }
   if (enPayload.enterpriseMessage) {
@@ -920,10 +942,16 @@ async function translatePlansPayload(env, enPayload, lang) {
     generated_at: Date.now(),
   };
   for (const [planKey, p] of Object.entries(enPayload.planTranslations || {})) {
+    const groupsCopy = (Array.isArray(p.feature_groups) ? p.feature_groups : [])
+      .map((g) => ({
+        heading: typeof g?.heading === 'string' ? g.heading : '',
+        items: Array.isArray(g?.items) ? g.items.slice() : [],
+      }));
     out.planTranslations[planKey] = {
       plan_name: p.plan_name,
       tagline: p.tagline || '',
-      features: [...(p.features || [])],
+      features: [], // re-derived from translated groups below
+      feature_groups: groupsCopy,
     };
   }
   for (let i = 0; i < slots.length; i++) {
@@ -932,8 +960,19 @@ async function translatePlansPayload(env, enPayload, lang) {
     if (typeof v !== 'string' || !v) continue;
     if (slot.kind === 'plan_name') out.planTranslations[slot.planKey].plan_name = v;
     else if (slot.kind === 'tagline') out.planTranslations[slot.planKey].tagline = v;
-    else if (slot.kind === 'feature') out.planTranslations[slot.planKey].features[slot.idx] = v;
+    else if (slot.kind === 'heading') {
+      const grp = out.planTranslations[slot.planKey].feature_groups[slot.gi];
+      if (grp) grp.heading = v;
+    }
+    else if (slot.kind === 'item') {
+      const grp = out.planTranslations[slot.planKey].feature_groups[slot.gi];
+      if (grp && Array.isArray(grp.items)) grp.items[slot.ii] = v;
+    }
     else if (slot.kind === 'enterpriseMessage') out.enterpriseMessage = v;
+  }
+  // Re-derive flat features from translated groups so both shapes stay aligned.
+  for (const t of Object.values(out.planTranslations)) {
+    t.features = flattenPlanGroups(t.feature_groups);
   }
   return out;
 }

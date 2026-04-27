@@ -5,6 +5,10 @@ import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
 import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Update } from '../../utils/usage-tracker.js';
+import {
+  normalizeFeatureGroups as normalizePlanFeatureGroups,
+  flattenFeatureGroups as flattenPlanGroups,
+} from '../../utils/plan-features.js';
 import crypto from 'node:crypto';
 
 export async function handlePayments(request, env, path, ctx) {
@@ -870,14 +874,19 @@ async function getPublicPlans(request, env) {
 
   try {
     const plansResult = await env.DB.prepare(
-      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, is_popular, display_order, plan_tier, tagline 
+      `SELECT id, plan_name, billing_cycle, display_price, original_price, features, feature_groups, is_popular, display_order, plan_tier, tagline 
        FROM subscription_plans WHERE is_active = 1 AND billing_cycle IN ('monthly', '3months', '6months', 'yearly') ORDER BY display_order ASC, plan_name ASC`
     ).all();
 
-    const plans = (plansResult.results || []).map(p => ({
-      ...p,
-      features: (() => { try { return JSON.parse(p.features); } catch { return []; } })(),
-    }));
+    // Always return both shapes; flat features stays for legacy consumers.
+    const plans = (plansResult.results || []).map(p => {
+      const groups = normalizePlanFeatureGroups(p.feature_groups, p.features);
+      return {
+        ...p,
+        feature_groups: groups,
+        features: flattenPlanGroups(groups),
+      };
+    });
 
     const platformKeyId = await getPlatformRazorpayKeyId(env);
 

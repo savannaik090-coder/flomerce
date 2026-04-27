@@ -8,6 +8,11 @@ import { cancelRazorpaySubscription } from './payments-worker.js';
 import { sendEmail, getOwnerRecipients } from '../../utils/email.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
 import { purgePlansLocaleCache } from '../../utils/cdn-cache.js';
+import {
+  normalizeFeatureGroups,
+  flattenFeatureGroups,
+  buildFeatureGroupsFromInput,
+} from '../../utils/plan-features.js';
 
 // Helper: run the plans CDN purge after a successful plan or enterprise_*
 // mutation. Awaited (not fire-and-forget) so the purge actually completes
@@ -240,6 +245,11 @@ async function ensurePlansTables(env) {
     await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN tagline TEXT DEFAULT NULL`).run();
   } catch (e) {}
 
+  // Grouped plan features. Existing rows are NULL → one ungrouped section at read time.
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN feature_groups TEXT DEFAULT NULL`).run();
+  } catch (e) {}
+
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       setting_key TEXT PRIMARY KEY,
@@ -310,10 +320,14 @@ async function getPlans(env) {
     const result = await env.DB.prepare(
       `SELECT * FROM subscription_plans ORDER BY display_order ASC, plan_name ASC`
     ).all();
-    const plans = (result.results || []).map(p => ({
-      ...p,
-      features: (() => { try { return JSON.parse(p.features); } catch { return []; } })(),
-    }));
+    const plans = (result.results || []).map(p => {
+      const groups = normalizeFeatureGroups(p.feature_groups, p.features);
+      return {
+        ...p,
+        feature_groups: groups,
+        features: flattenFeatureGroups(groups),
+      };
+    });
     return successResponse(plans);
   } catch (error) {
     console.error('Get plans error:', error);
@@ -323,7 +337,8 @@ async function getPlans(env) {
 
 async function createPlan(request, env) {
   try {
-    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier } = await request.json();
+    const body = await request.json();
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, is_popular, display_order, plan_tier } = body;
 
     if (!plan_name || !billing_cycle || display_price === undefined || !razorpay_plan_id) {
       return errorResponse('Plan name, billing cycle, display price, and Razorpay Plan ID are required');
@@ -344,10 +359,18 @@ async function createPlan(request, env) {
       if (op <= parseFloat(display_price)) return errorResponse('Original price must be greater than the display (discounted) price');
     }
 
+    let groups;
+    try {
+      groups = buildFeatureGroupsFromInput(body);
+    } catch (e) {
+      return errorResponse(e.message || 'Invalid feature payload', 400);
+    }
+    const flat = flattenFeatureGroups(groups);
+
     const id = generateId();
     await env.DB.prepare(
-      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, display_order, plan_tier, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       plan_name,
@@ -355,7 +378,8 @@ async function createPlan(request, env) {
       display_price,
       original_price || null,
       razorpay_plan_id,
-      JSON.stringify(features || []),
+      JSON.stringify(flat),
+      JSON.stringify(groups),
       is_popular ? 1 : 0,
       display_order || 0,
       plan_tier
@@ -377,7 +401,7 @@ async function updatePlan(request, env, planId) {
     }
 
     const updates = await request.json();
-    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, is_active, display_order, plan_tier } = updates;
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, is_active, display_order, plan_tier } = updates;
 
     const effectiveOriginal = original_price !== undefined ? original_price : existing.original_price;
     const effectiveDisplay = display_price ?? existing.display_price;
@@ -385,6 +409,21 @@ async function updatePlan(request, env, planId) {
       const op = parseFloat(effectiveOriginal);
       if (!isFinite(op) || op <= 0) return errorResponse('Original price must be a positive number');
       if (op <= parseFloat(effectiveDisplay)) return errorResponse('Original price must be greater than the display (discounted) price');
+    }
+
+    // Validate + re-derive both columns when either feature shape is sent;
+    // otherwise leave the existing rows untouched (metadata-only PUT).
+    let nextFeaturesJson = existing.features;
+    let nextFeatureGroupsJson = existing.feature_groups;
+    if (feature_groups !== undefined || features !== undefined) {
+      let groups;
+      try {
+        groups = buildFeatureGroupsFromInput({ feature_groups, features });
+      } catch (e) {
+        return errorResponse(e.message || 'Invalid feature payload', 400);
+      }
+      nextFeatureGroupsJson = JSON.stringify(groups);
+      nextFeaturesJson = JSON.stringify(flattenFeatureGroups(groups));
     }
 
     await env.DB.prepare(
@@ -395,6 +434,7 @@ async function updatePlan(request, env, planId) {
         original_price = ?,
         razorpay_plan_id = ?,
         features = ?,
+        feature_groups = ?,
         is_popular = ?,
         is_active = ?,
         display_order = ?,
@@ -407,7 +447,8 @@ async function updatePlan(request, env, planId) {
       display_price ?? existing.display_price,
       original_price !== undefined ? (original_price || null) : (existing.original_price ?? null),
       razorpay_plan_id ?? existing.razorpay_plan_id,
-      features ? JSON.stringify(features) : existing.features,
+      nextFeaturesJson,
+      nextFeatureGroupsJson,
       is_popular !== undefined ? (is_popular ? 1 : 0) : existing.is_popular,
       is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
       display_order ?? existing.display_order,
@@ -425,7 +466,8 @@ async function updatePlan(request, env, planId) {
 
 async function bulkSavePlan(request, env) {
   try {
-    const { plan_name, plan_tier, features, is_popular, display_order, cycles, tagline, old_plan_name } = await request.json();
+    const body = await request.json();
+    const { plan_name, plan_tier, is_popular, display_order, cycles, tagline, old_plan_name } = body;
 
     if (!plan_name || !plan_tier || !cycles || !Array.isArray(cycles) || cycles.length === 0) {
       return errorResponse('Plan name, tier, and at least one billing cycle are required');
@@ -436,7 +478,14 @@ async function bulkSavePlan(request, env) {
     }
 
     const validCycles = ['monthly', '3months', '6months', 'yearly'];
-    const featuresJson = JSON.stringify(features || []);
+    let groups;
+    try {
+      groups = buildFeatureGroupsFromInput(body);
+    } catch (e) {
+      return errorResponse(e.message || 'Invalid feature payload', 400);
+    }
+    const featuresJson = JSON.stringify(flattenFeatureGroups(groups));
+    const featureGroupsJson = JSON.stringify(groups);
 
     const lookupName = old_plan_name || plan_name;
     const existingResult = await env.DB.prepare(
@@ -503,21 +552,21 @@ async function bulkSavePlan(request, env) {
         statements.push(env.DB.prepare(
           `UPDATE subscription_plans SET
             plan_name = ?, plan_tier = ?, display_price = ?, original_price = ?,
-            razorpay_plan_id = ?, features = ?, is_popular = ?, display_order = ?,
+            razorpay_plan_id = ?, features = ?, feature_groups = ?, is_popular = ?, display_order = ?,
             tagline = ?, is_active = 1, updated_at = datetime('now')
           WHERE id = ?`
         ).bind(
           plan_name, plan_tier, cycle.dp, cycle.op, cycle.razorpay_plan_id,
-          featuresJson, is_popular ? 1 : 0, display_order || 0, tagline || null, existing.id
+          featuresJson, featureGroupsJson, is_popular ? 1 : 0, display_order || 0, tagline || null, existing.id
         ));
       } else {
         const id = generateId();
         statements.push(env.DB.prepare(
-          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, is_popular, display_order, plan_tier, tagline, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, display_order, plan_tier, tagline, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(
           id, plan_name, cycle.key, cycle.dp, cycle.op, cycle.razorpay_plan_id,
-          featuresJson, is_popular ? 1 : 0, display_order || 0, plan_tier, tagline || null
+          featuresJson, featureGroupsJson, is_popular ? 1 : 0, display_order || 0, plan_tier, tagline || null
         ));
       }
     }

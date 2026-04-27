@@ -24,8 +24,16 @@ export default function OwnerAdminPage() {
   const [plansLoading, setPlansLoading] = useState(false);
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [editingPlanName, setEditingPlanName] = useState(null);
+  // featureGroups: ordered [{ heading, items[] }] sections. featuresMode picks
+  // editor; both buffers are kept alive so toggles are non-destructive. plainDirty
+  // is true only when the textarea was edited since the last grouped→plain sync,
+  // so a no-edit round-trip preserves group structure exactly.
   const [planForm, setPlanForm] = useState({
-    plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, tagline: '',
+    plan_name: '', plan_tier: 1, is_popular: false, display_order: 0, tagline: '',
+    featureGroups: [{ heading: '', items: [] }],
+    featuresPlainText: '',
+    featuresMode: 'grouped',
+    plainDirty: false,
     monthly_price: '',
     cycles: {
       'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
@@ -146,7 +154,14 @@ export default function OwnerAdminPage() {
   };
 
   const resetPlanForm = () => {
-    setPlanForm({ plan_name: '', plan_tier: 1, features: '', is_popular: false, display_order: 0, tagline: '', monthly_price: '', cycles: emptyCycles() });
+    setPlanForm({
+      plan_name: '', plan_tier: 1, is_popular: false, display_order: 0, tagline: '',
+      featureGroups: [{ heading: '', items: [] }],
+      featuresPlainText: '',
+      featuresMode: 'grouped',
+      plainDirty: false,
+      monthly_price: '', cycles: emptyCycles(),
+    });
     setEditingPlanName(null);
     setShowPlanForm(false);
   };
@@ -155,7 +170,17 @@ export default function OwnerAdminPage() {
     const groups = {};
     for (const p of plans) {
       if (!groups[p.plan_name]) {
-        groups[p.plan_name] = { plan_name: p.plan_name, plan_tier: p.plan_tier, is_popular: !!p.is_popular, display_order: p.display_order || 0, features: p.features, tagline: p.tagline || '', cycles: [] };
+        // Keep both shapes so the edit handler can pick the right editor mode.
+        groups[p.plan_name] = {
+          plan_name: p.plan_name,
+          plan_tier: p.plan_tier,
+          is_popular: !!p.is_popular,
+          display_order: p.display_order || 0,
+          features: p.features,
+          feature_groups: p.feature_groups,
+          tagline: p.tagline || '',
+          cycles: [],
+        };
       }
       groups[p.plan_name].cycles.push(p);
     }
@@ -187,10 +212,38 @@ export default function OwnerAdminPage() {
         return;
       }
 
+      // Build feature_groups from the active editor; plain mode collapses to one
+      // ungrouped section. Send legacy `features` too so older consumers keep working.
+      let feature_groups;
+      if (planForm.featuresMode === 'plain') {
+        const items = (planForm.featuresPlainText || '')
+          .split('\n').map((s) => s.trim()).filter(Boolean);
+        feature_groups = items.length > 0 ? [{ heading: '', items }] : [];
+      } else {
+        feature_groups = (planForm.featureGroups || [])
+          .map((g) => ({
+            heading: (g.heading || '').trim(),
+            items: (Array.isArray(g.items) ? g.items : [])
+              .map((s) => (typeof s === 'string' ? s.trim() : ''))
+              .filter(Boolean),
+          }))
+          .filter((g) => g.heading.length > 0 || g.items.length > 0);
+      }
+      // Mirror the backend rule: every section needs a heading once there's >1 section.
+      if (feature_groups.length > 1) {
+        const blank = feature_groups.find((g) => g.heading.length === 0);
+        if (blank) {
+          toast.warning('Every section needs a heading when there is more than one section.');
+          return;
+        }
+      }
+      const flatFeatures = feature_groups.flatMap((g) => g.items);
+
       const body = {
         plan_name: planForm.plan_name,
         plan_tier: parseInt(planForm.plan_tier) || 1,
-        features: planForm.features ? planForm.features.split('\n').filter(f => f.trim()) : [],
+        feature_groups,
+        features: flatFeatures,
         is_popular: planForm.is_popular,
         display_order: parseInt(planForm.display_order) || 0,
         tagline: planForm.tagline || '',
@@ -229,10 +282,30 @@ export default function OwnerAdminPage() {
         };
       }
     }
+    // Default to grouped mode if any heading exists, plain otherwise. Both buffers
+    // are pre-populated so toggling never wipes work.
+    const groups = Array.isArray(group.feature_groups) && group.feature_groups.length > 0
+      ? group.feature_groups
+          .map((g) => ({
+            heading: typeof g?.heading === 'string' ? g.heading : '',
+            items: Array.isArray(g?.items) ? g.items.filter((s) => typeof s === 'string') : [],
+          }))
+          .filter((g) => g.heading.length > 0 || g.items.length > 0)
+      : [];
+    const flat = Array.isArray(group.features) ? group.features.filter((s) => typeof s === 'string') : [];
+    const featureGroups = groups.length > 0
+      ? groups
+      : [{ heading: '', items: flat }];
+    const plainText = (groups.length > 0 ? groups.flatMap((g) => g.items) : flat).join('\n');
+    const hasAnyHeading = featureGroups.some((g) => g.heading && g.heading.length > 0);
+
     setPlanForm({
       plan_name: group.plan_name,
       plan_tier: group.plan_tier || 1,
-      features: Array.isArray(group.features) ? group.features.join('\n') : '',
+      featureGroups,
+      featuresPlainText: plainText,
+      featuresMode: hasAnyHeading ? 'grouped' : 'plain',
+      plainDirty: false,
       is_popular: !!group.is_popular,
       display_order: group.display_order || 0,
       tagline: group.tagline || '',
@@ -1185,9 +1258,291 @@ export default function OwnerAdminPage() {
                     </div>
                   </div>
                   <div className="oa-form-group" style={{ marginTop: '0.5rem' }}>
-                    <label>Features (one per line)</label>
-                    <textarea rows="5" value={planForm.features} onChange={e => setPlanForm({ ...planForm, features: e.target.value })} placeholder={"1 Website\nUnlimited Products\nCustom Domain\n500 MB Database / 5 GB Storage"} />
-                    <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>These features are shared across all billing cycles of this plan.</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <label style={{ margin: 0 }}>Features</label>
+                      <div style={{ display: 'inline-flex', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', fontSize: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // grouped → plain: flatten items into textarea, keep groups intact, reset plainDirty.
+                            const flat = (planForm.featureGroups || [])
+                              .flatMap((g) => Array.isArray(g.items) ? g.items : [])
+                              .filter((s) => typeof s === 'string' && s.trim().length > 0);
+                            setPlanForm({
+                              ...planForm,
+                              featuresMode: 'plain',
+                              featuresPlainText: flat.join('\n'),
+                              plainDirty: false,
+                            });
+                          }}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            border: 'none',
+                            background: planForm.featuresMode === 'plain' ? '#6366f1' : '#fff',
+                            color: planForm.featuresMode === 'plain' ? '#fff' : '#475569',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Plain text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // plain → grouped: keep groups verbatim if textarea wasn't edited;
+                            // otherwise rebuild from plain text (collapses to one ungrouped section).
+                            if (planForm.plainDirty) {
+                              const items = (planForm.featuresPlainText || '')
+                                .split('\n').map((s) => s.trim()).filter(Boolean);
+                              setPlanForm({
+                                ...planForm,
+                                featuresMode: 'grouped',
+                                featureGroups: [{ heading: '', items }],
+                                plainDirty: false,
+                              });
+                            } else {
+                              setPlanForm({
+                                ...planForm,
+                                featuresMode: 'grouped',
+                              });
+                            }
+                          }}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            border: 'none',
+                            background: planForm.featuresMode === 'grouped' ? '#6366f1' : '#fff',
+                            color: planForm.featuresMode === 'grouped' ? '#fff' : '#475569',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Grouped
+                        </button>
+                      </div>
+                    </div>
+
+                    {planForm.featuresMode === 'plain' && (
+                      <>
+                        <textarea
+                          rows="5"
+                          value={planForm.featuresPlainText}
+                          onChange={(e) => setPlanForm({ ...planForm, featuresPlainText: e.target.value, plainDirty: true })}
+                          placeholder={"1 Website\nUnlimited Products\nCustom Domain\n500 MB Database / 5 GB Storage"}
+                          style={{ marginTop: '0.5rem' }}
+                        />
+                        <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>One feature per line. These features are shared across all billing cycles of this plan.</p>
+                      </>
+                    )}
+
+                    {planForm.featuresMode === 'grouped' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        {(planForm.featureGroups || []).map((g, gi) => (
+                          <div
+                            key={gi}
+                            style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem', background: '#fafafa' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                              <input
+                                type="text"
+                                value={g.heading || ''}
+                                maxLength={120}
+                                onChange={(e) => {
+                                  const next = planForm.featureGroups.slice();
+                                  next[gi] = { ...next[gi], heading: e.target.value };
+                                  setPlanForm({ ...planForm, featureGroups: next });
+                                }}
+                                placeholder={(planForm.featureGroups || []).length > 1 ? "Section heading (required, e.g. \"Everything in Starter, plus:\")" : "Section heading (optional — leave blank for no heading)"}
+                                required={(planForm.featureGroups || []).length > 1}
+                                style={{ flex: 1 }}
+                              />
+                              <button
+                                type="button"
+                                title="Move section up"
+                                disabled={gi === 0}
+                                onClick={() => {
+                                  if (gi === 0) return;
+                                  const next = planForm.featureGroups.slice();
+                                  [next[gi - 1], next[gi]] = [next[gi], next[gi - 1]];
+                                  setPlanForm({ ...planForm, featureGroups: next });
+                                }}
+                                style={{ padding: '0.3rem 0.5rem', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '6px', cursor: gi === 0 ? 'not-allowed' : 'pointer', opacity: gi === 0 ? 0.5 : 1 }}
+                              >↑</button>
+                              <button
+                                type="button"
+                                title="Move section down"
+                                disabled={gi === planForm.featureGroups.length - 1}
+                                onClick={() => {
+                                  if (gi === planForm.featureGroups.length - 1) return;
+                                  const next = planForm.featureGroups.slice();
+                                  [next[gi + 1], next[gi]] = [next[gi], next[gi + 1]];
+                                  setPlanForm({ ...planForm, featureGroups: next });
+                                }}
+                                style={{ padding: '0.3rem 0.5rem', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '6px', cursor: gi === planForm.featureGroups.length - 1 ? 'not-allowed' : 'pointer', opacity: gi === planForm.featureGroups.length - 1 ? 0.5 : 1 }}
+                              >↓</button>
+                              <button
+                                type="button"
+                                title="Remove section"
+                                onClick={async () => {
+                                  // Move orphan items into a default section so they aren't silently dropped.
+                                  // When other named sections will remain, name it "Ungrouped" so the
+                                  // result is immediately savable under the every-heading-required rule.
+                                  const cur = planForm.featureGroups[gi];
+                                  const liveItems = (cur.items || []).filter((s) => typeof s === 'string' && s.trim().length > 0);
+                                  if (liveItems.length > 0) {
+                                    const ok = await confirm({
+                                      title: 'Remove this section?',
+                                      message: `"${cur.heading || 'Untitled section'}" has ${liveItems.length} feature${liveItems.length === 1 ? '' : 's'}. They will be moved into an "Ungrouped" section so you don't lose them.`,
+                                      variant: 'danger',
+                                      confirmText: 'Remove section',
+                                    });
+                                    if (!ok) return;
+                                  }
+                                  const remaining = planForm.featureGroups.filter((_, i) => i !== gi);
+                                  if (liveItems.length > 0) {
+                                    const defaultHeading = remaining.length > 0 ? 'Ungrouped' : '';
+                                    const ungroupedIdx = remaining.findIndex((g) => !g.heading || g.heading.trim().length === 0 || g.heading.trim() === 'Ungrouped');
+                                    if (ungroupedIdx >= 0) {
+                                      remaining[ungroupedIdx] = {
+                                        heading: remaining[ungroupedIdx].heading || defaultHeading,
+                                        items: [...(remaining[ungroupedIdx].items || []), ...liveItems],
+                                      };
+                                    } else {
+                                      remaining.push({ heading: defaultHeading, items: liveItems });
+                                    }
+                                  }
+                                  setPlanForm({
+                                    ...planForm,
+                                    featureGroups: remaining.length > 0 ? remaining : [{ heading: '', items: [] }],
+                                  });
+                                }}
+                                style={{ padding: '0.3rem 0.5rem', border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', borderRadius: '6px', cursor: 'pointer' }}
+                              >×</button>
+                            </div>
+
+                            {/* Per-item rows: input + move-to-other-group +
+                                delete. Rendering items as individual rows
+                                (instead of one textarea) is what gives
+                                admins an explicit "move feature between
+                                groups" affordance, which is the core
+                                requirement that pure-textarea editing can't
+                                satisfy. */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              {(g.items || []).map((item, ii) => (
+                                <div key={ii} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                  <input
+                                    type="text"
+                                    value={item}
+                                    maxLength={500}
+                                    placeholder="Feature description"
+                                    onChange={(e) => {
+                                      const next = planForm.featureGroups.slice();
+                                      const items = (next[gi].items || []).slice();
+                                      items[ii] = e.target.value;
+                                      next[gi] = { ...next[gi], items };
+                                      setPlanForm({ ...planForm, featureGroups: next });
+                                    }}
+                                    style={{ flex: 1 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    title="Move feature up within section"
+                                    disabled={ii === 0}
+                                    onClick={() => {
+                                      if (ii === 0) return;
+                                      const next = planForm.featureGroups.slice();
+                                      const items = (next[gi].items || []).slice();
+                                      [items[ii - 1], items[ii]] = [items[ii], items[ii - 1]];
+                                      next[gi] = { ...next[gi], items };
+                                      setPlanForm({ ...planForm, featureGroups: next });
+                                    }}
+                                    style={{ padding: '0.25rem 0.4rem', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '6px', cursor: ii === 0 ? 'not-allowed' : 'pointer', opacity: ii === 0 ? 0.5 : 1, fontSize: '0.7rem' }}
+                                  >↑</button>
+                                  <button
+                                    type="button"
+                                    title="Move feature down within section"
+                                    disabled={ii === (g.items || []).length - 1}
+                                    onClick={() => {
+                                      const items = (planForm.featureGroups[gi].items || []).slice();
+                                      if (ii === items.length - 1) return;
+                                      [items[ii + 1], items[ii]] = [items[ii], items[ii + 1]];
+                                      const next = planForm.featureGroups.slice();
+                                      next[gi] = { ...next[gi], items };
+                                      setPlanForm({ ...planForm, featureGroups: next });
+                                    }}
+                                    style={{ padding: '0.25rem 0.4rem', border: '1px solid #e2e8f0', background: '#fff', borderRadius: '6px', cursor: ii === (g.items || []).length - 1 ? 'not-allowed' : 'pointer', opacity: ii === (g.items || []).length - 1 ? 0.5 : 1, fontSize: '0.7rem' }}
+                                  >↓</button>
+                                  {(planForm.featureGroups || []).length > 1 && (
+                                    <select
+                                      value=""
+                                      title="Move feature to another section"
+                                      onChange={(e) => {
+                                        const targetIdx = parseInt(e.target.value, 10);
+                                        if (Number.isNaN(targetIdx) || targetIdx === gi) return;
+                                        const next = planForm.featureGroups.slice();
+                                        const fromItems = (next[gi].items || []).slice();
+                                        const [moved] = fromItems.splice(ii, 1);
+                                        next[gi] = { ...next[gi], items: fromItems };
+                                        const toItems = (next[targetIdx].items || []).slice();
+                                        toItems.push(moved);
+                                        next[targetIdx] = { ...next[targetIdx], items: toItems };
+                                        setPlanForm({ ...planForm, featureGroups: next });
+                                      }}
+                                      style={{ fontSize: '0.7rem', padding: '0.25rem 0.3rem', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#fff', color: '#475569' }}
+                                    >
+                                      <option value="">Move to…</option>
+                                      {planForm.featureGroups.map((other, oi) => (
+                                        oi === gi ? null : (
+                                          <option key={oi} value={oi}>
+                                            {other.heading || `Section ${oi + 1}`}
+                                          </option>
+                                        )
+                                      ))}
+                                    </select>
+                                  )}
+                                  <button
+                                    type="button"
+                                    title="Remove this feature"
+                                    onClick={() => {
+                                      const next = planForm.featureGroups.slice();
+                                      const items = (next[gi].items || []).slice();
+                                      items.splice(ii, 1);
+                                      next[gi] = { ...next[gi], items };
+                                      setPlanForm({ ...planForm, featureGroups: next });
+                                    }}
+                                    style={{ padding: '0.25rem 0.4rem', border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                  >×</button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                disabled={(g.items || []).length >= 50}
+                                onClick={() => {
+                                  const next = planForm.featureGroups.slice();
+                                  const items = (next[gi].items || []).slice();
+                                  items.push('');
+                                  next[gi] = { ...next[gi], items };
+                                  setPlanForm({ ...planForm, featureGroups: next });
+                                }}
+                                style={{ alignSelf: 'flex-start', padding: '0.3rem 0.6rem', border: '1px dashed #cbd5e1', background: '#fff', color: '#475569', borderRadius: '6px', cursor: (g.items || []).length >= 50 ? 'not-allowed' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                              >+ Add feature</button>
+                            </div>
+                          </div>
+                        ))}
+                        <div>
+                          <button
+                            type="button"
+                            disabled={(planForm.featureGroups || []).length >= 20}
+                            onClick={() => {
+                              const next = (planForm.featureGroups || []).slice();
+                              next.push({ heading: '', items: [] });
+                              setPlanForm({ ...planForm, featureGroups: next });
+                            }}
+                            style={{ padding: '0.4rem 0.8rem', border: '1px dashed #94a3b8', background: '#fff', color: '#475569', borderRadius: '6px', cursor: (planForm.featureGroups || []).length >= 20 ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                          >+ Add section</button>
+                        </div>
+                        <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>Group features under named sections. With more than one section, every section needs a heading. Use "Move to…" beside any feature to shift it into another section. These features are shared across all billing cycles of this plan.</p>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ marginTop: '1rem' }}>

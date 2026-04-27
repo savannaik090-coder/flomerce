@@ -370,6 +370,11 @@ export async function ensureTablesExist(env) {
       { col: 'translator_region', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_region TEXT' },
       { col: 'translator_enabled', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_enabled INTEGER DEFAULT 0' },
       { col: 'translator_languages', table: 'sites', sql: 'ALTER TABLE sites ADD COLUMN translator_languages TEXT' },
+      // 0023_plan_feature_groups: structured grouped features for plans.
+      // Stored as JSON array of { heading, items[] }; the legacy `features`
+      // column is still populated as a flat list on every write so unmodified
+      // consumers keep working. See backend/migrations/0023_plan_feature_groups.sql
+      { col: 'feature_groups', table: 'subscription_plans', sql: 'ALTER TABLE subscription_plans ADD COLUMN feature_groups TEXT DEFAULT NULL' },
     ];
     for (const m of migrations) {
       try {

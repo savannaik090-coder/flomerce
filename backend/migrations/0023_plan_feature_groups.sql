@@ -1,0 +1,21 @@
+-- Grouped plan features (Apr 2026)
+--
+-- Adds a structured `feature_groups` JSON column to subscription_plans so the
+-- platform admin can organize a plan's features into ordered, named sections
+-- (e.g. "Storefront & Content", "Sales & Payments") that render as styled
+-- headings on the public landing pricing page.
+--
+-- Storage shape (TEXT, JSON-encoded):
+--   [{ "heading": "Storefront & Content", "items": ["1 Website", "..."] },
+--    { "heading": "Sales & Payments",    "items": ["..."] }]
+--
+-- Backwards compatibility:
+--   * The existing flat `features` column stays writable and continues to be
+--     populated by the admin worker on every save (a flattened list of all
+--     items across all groups), so any external/legacy consumer that still
+--     reads the flat list keeps working.
+--   * Plans that pre-date this migration leave `feature_groups` NULL; the
+--     read path normalizes a NULL/empty value into a single ungrouped
+--     section ({ heading: "", items: <flat features> }) at request time,
+--     so no backfill is required.
+ALTER TABLE subscription_plans ADD COLUMN feature_groups TEXT DEFAULT NULL;

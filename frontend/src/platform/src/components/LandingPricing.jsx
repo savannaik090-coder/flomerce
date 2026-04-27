@@ -6,14 +6,9 @@ import { SUPPORT_EMAIL } from '../config.js';
 
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
 
-// Apply a per-language translation overlay (loaded from /api/i18n/plans/:lang)
-// onto the raw plans array returned by /api/payments/plans. The overlay only
-// covers strings: plan_name (group key), tagline, and the features list. The
-// raw row's price / billing_cycle / razorpay_plan_id stay untouched so the
-// checkout flow always references the canonical English plan_name on the
-// server side. The visible plan_name is replaced ONLY for rendering; we keep
-// the original under `_original_plan_name` so future logic that needs the
-// raw key (e.g. analytics or a switch to a Razorpay flow) can still find it.
+// Apply per-language translation overlay onto raw plans. Strings only —
+// price / billing_cycle / razorpay_plan_id stay untouched. Original plan_name
+// is preserved under `_original_plan_name` for non-display lookups.
 function applyPlanTranslations(rawPlans, overlay) {
   if (!overlay || !overlay.planTranslations) return rawPlans;
   return rawPlans.map((p) => {
@@ -25,8 +20,26 @@ function applyPlanTranslations(rawPlans, overlay) {
       plan_name: t.plan_name || p.plan_name,
       tagline: t.tagline || p.tagline,
       features: Array.isArray(t.features) && t.features.length ? t.features : p.features,
+      feature_groups: Array.isArray(t.feature_groups) && t.feature_groups.length
+        ? t.feature_groups
+        : p.feature_groups,
     };
   });
+}
+
+// Normalize either feature shape into a stable [{heading, items[]}] for
+// uniform rendering. Flat-only plans collapse to one ungrouped section.
+function planFeatureGroupsForRender(plan) {
+  if (Array.isArray(plan?.feature_groups) && plan.feature_groups.length > 0) {
+    return plan.feature_groups
+      .map((g) => ({
+        heading: typeof g?.heading === 'string' ? g.heading : '',
+        items: Array.isArray(g?.items) ? g.items.filter((i) => typeof i === 'string' && i.length > 0) : [],
+      }))
+      .filter((g) => g.heading.length > 0 || g.items.length > 0);
+  }
+  const flat = Array.isArray(plan?.features) ? plan.features.filter((f) => typeof f === 'string' && f.length > 0) : [];
+  return flat.length > 0 ? [{ heading: '', items: flat }] : [];
 }
 
 export default function LandingPricing() {
@@ -40,12 +53,8 @@ export default function LandingPricing() {
   const durationLabel = (key) => t(`pricing.duration.${key}`, { defaultValue: key });
   const durationText = (key) => t(`pricing.duration.${key}Per`, { defaultValue: key });
 
-  // Re-fetch whenever the active language changes so the visitor sees the
-  // pricing tiles in their selected language. The translation overlay endpoint
-  // is long-cached at the Cloudflare edge (~7d) and purged automatically when
-  // the admin saves a plan, so this fetch costs effectively zero worker time
-  // in steady state — see backend/workers/platform/i18n-worker.js
-  // handlePlansLocale.
+  // Re-fetch on language change. Overlay endpoint is edge-cached and purged
+  // on plan saves, so steady-state worker cost is ~zero.
   const loadPlans = useCallback(async () => {
     try {
       setLoading(true);
@@ -54,9 +63,7 @@ export default function LandingPricing() {
         getAvailablePlans(),
         lang && lang !== 'en'
           ? getPlanTranslations(lang).catch((e) => {
-              // Translation failure must NEVER break the page — fall back to
-              // English plan strings silently. The visitor still sees the rest
-              // of the UI in their language; only the plan tiles stay English.
+              // Translation failure falls back to English plan strings silently.
               console.warn('[pricing] plan translations fetch failed:', e?.message || e);
               return null;
             })
@@ -66,8 +73,7 @@ export default function LandingPricing() {
       const translated = overlayResp ? applyPlanTranslations(rawPlans, overlayResp) : rawPlans;
       setPlans(translated);
       if (plansData.enterpriseConfig) {
-        // Overlay the enterprise banner message too. enterprise_enabled and
-        // enterprise_email are not translated (boolean + raw email).
+        // Overlay enterprise message; enabled flag + email stay raw.
         const ent = { ...plansData.enterpriseConfig };
         if (overlayResp && overlayResp.enterpriseMessage) {
           ent.message = overlayResp.enterpriseMessage;
@@ -107,6 +113,7 @@ export default function LandingPricing() {
         name: key,
         prices: {},
         features: plan.features || [],
+        featureGroups: planFeatureGroupsForRender(plan),
         is_popular: false,
         plans: {},
         display_order: plan.display_order ?? 999,
@@ -205,11 +212,29 @@ export default function LandingPricing() {
               {DURATION_MONTHS[duration] > 1 && (
                 <p className="lp-price-monthly">&#8377;{Math.round(price / DURATION_MONTHS[duration])}{t('pricing.perMonth')}</p>
               )}
-              <ul className="lp-plan-features">
-                {planGroup.features.map((f, i) => (
-                  <li key={i}>{f}</li>
-                ))}
-              </ul>
+              <div className="lp-plan-features-wrap">
+                {planGroup.featureGroups.map((g, gi) => {
+                  // Hide the heading element entirely for the single
+                  // ungrouped section (legacy plans) so existing pricing
+                  // pages keep their flat-list look. When the heading IS
+                  // set we render it as a styled section title above the
+                  // bullet list, preserving the "Everything in X, plus:"
+                  // pattern admins commonly use.
+                  const showHeading = g.heading && g.heading.length > 0;
+                  return (
+                    <div key={gi} className="lp-plan-feature-group">
+                      {showHeading && (
+                        <div className="lp-plan-feature-group-heading">{g.heading}</div>
+                      )}
+                      <ul className="lp-plan-features">
+                        {g.items.map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
               <Link to="/signup" className="btn lp-btn-subscribe">{t('pricing.getStarted')}</Link>
             </div>
           );
