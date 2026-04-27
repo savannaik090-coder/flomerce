@@ -569,7 +569,12 @@
    ========================================================================== */
 .landing-page .industry-section { padding-top: 72px; padding-bottom: 96px; }
 .landing-page .industry-headline { font-weight: 800; letter-spacing: -0.02em; }
-.landing-page .industry-headline-accent { color: var(--lp-brand); }
+.landing-page .industry-headline-accent {
+  background: var(--lp-accent-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 /* Spotlight card */
 .landing-page .industry-spotlight {
@@ -619,7 +624,12 @@
   font-weight: 800; letter-spacing: -0.025em; line-height: 1.1;
   color: var(--lp-ink); margin: 4px 0 4px;
 }
-.landing-page .industry-spotlight-title-accent { color: #b45309; }
+.landing-page .industry-spotlight-title-accent {
+  background: var(--lp-accent-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 .landing-page .industry-spotlight-desc { font-size: 0.98rem; color: var(--lp-text); line-height: 1.6; margin: 0; }
 .landing-page .industry-spotlight-proof {
   display: inline-flex; align-items: center; gap: 8px;
