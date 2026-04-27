@@ -1275,7 +1275,29 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
     const skipped = summary.skipped || {};
     let hint = null;
     if (summary.candidates === 0) {
-      hint = 'No carts found for this site. Make sure a logged-in customer (not a guest) has added an item, then try again.';
+      // Run a diagnostic against this site's cart table so the admin
+      // immediately knows whether the cart is a guest cart, empty, or
+      // simply doesn't exist on this site/shard.
+      let diag = '';
+      try {
+        const db = await resolveSiteDBById(env, siteId);
+        const [total, withUser, guestWithItems, mostRecent] = await Promise.all([
+          db.prepare('SELECT COUNT(*) AS n FROM carts WHERE site_id = ?').bind(siteId).first(),
+          db.prepare(`SELECT COUNT(*) AS n FROM carts WHERE site_id = ? AND user_id IS NOT NULL AND items != '[]' AND items != ''`).bind(siteId).first(),
+          db.prepare(`SELECT COUNT(*) AS n FROM carts WHERE site_id = ? AND user_id IS NULL AND items != '[]' AND items != ''`).bind(siteId).first(),
+          db.prepare(`SELECT id, user_id, session_id, length(items) AS items_len, updated_at FROM carts WHERE site_id = ? ORDER BY updated_at DESC LIMIT 1`).bind(siteId).first(),
+        ]);
+        const t = Number(total && total.n) || 0;
+        const wu = Number(withUser && withUser.n) || 0;
+        const gw = Number(guestWithItems && guestWithItems.n) || 0;
+        diag = ` Diagnostic: ${t} total cart row(s) on this site, ${wu} with a logged-in user and items, ${gw} guest cart(s) with items.`;
+        if (mostRecent) {
+          diag += ` Most recent cart: user_id=${mostRecent.user_id ? 'set' : 'NULL'}, session_id=${mostRecent.session_id ? 'set' : 'NULL'}, items_len=${mostRecent.items_len || 0}.`;
+        }
+      } catch (e) {
+        diag = ` (Diagnostic query failed: ${e.message || e})`;
+      }
+      hint = 'No eligible carts found.' + diag + ' If your cart is a guest cart, log out and back in to merge it onto your account, then add an item again.';
     } else if (summary.emailsSent === 0 && summary.whatsappSent === 0) {
       if (skipped.no_customer > 0) hint = 'Cart found but no matching customer record. The cart may belong to a guest session.';
       else if (skipped.no_contact > 0) hint = 'Cart found but the customer has no email or phone on file.';
