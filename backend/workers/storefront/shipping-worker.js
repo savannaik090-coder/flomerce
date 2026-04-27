@@ -1897,6 +1897,21 @@ function mapShiprocketStatus(statusId, statusText) {
 // Auth: X-Api-Key header must match site_config.settings.shiprocket.webhookToken.
 
 export async function handleShiprocketWebhook(request, env, path) {
+  // Shiprocket's webhook config screen sends a GET probe to the URL when the
+  // merchant clicks Save / Test Webhook and requires a 2xx to consider the URL
+  // valid. Answer GET/HEAD on this route with a generic OK so the probe
+  // succeeds for any well-formed webhook URL — without revealing whether the
+  // siteId exists or leaking the token. Real delivery still goes through POST
+  // below, fully authenticated.
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const body = request.method === 'HEAD'
+      ? null
+      : JSON.stringify({ ok: true, service: 'shiprocket-webhook' });
+    return new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
   if (request.method !== 'POST') return errorResponse('Method not allowed', 405);
 
   const parts = path.split('/').filter(Boolean); // ['api','webhooks','shiprocket', siteId]
