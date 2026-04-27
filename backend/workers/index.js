@@ -1342,6 +1342,38 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
   }
 }
 
+// Module-level cache: which shard bindings have already been "self-healed"
+// (had their missing abandoned-cart columns added) in this Worker isolate.
+// Cloudflare Worker isolates are long-lived and share module state, so this
+// converts the per-cart-sweep DDL hot path into a one-shot-per-shard cost
+// per isolate, eliminating DB lock contention on the hourly cron run while
+// still keeping the safety net for older shards that pre-date the
+// language / preferred_lang / placed_in_language migrations.
+const abandonedCartHealedShards = new Set();
+
+async function ensureAbandonedCartColumns(env, db, siteId) {
+  // We key by the resolved shard binding name (stable per shard) so two
+  // sites on the same shard only pay the heal cost once. Fall back to
+  // siteId if we can't determine the shard name — worst case we ALTER once
+  // per site instead of once per shard, still bounded.
+  let shardKey = null;
+  try {
+    const row = await env.DB.prepare('SELECT shard_id FROM sites WHERE id = ?').bind(siteId).first();
+    shardKey = row?.shard_id ? `shard:${row.shard_id}` : `site:${siteId}`;
+  } catch (e) {
+    shardKey = `site:${siteId}`;
+  }
+  if (abandonedCartHealedShards.has(shardKey)) return;
+
+  try { await db.prepare('ALTER TABLE carts ADD COLUMN reminder_sent_at TEXT').run(); } catch (e) {}
+  try { await db.prepare('ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0').run(); } catch (e) {}
+  try { await db.prepare('ALTER TABLE carts ADD COLUMN language TEXT').run(); } catch (e) {}
+  try { await db.prepare('ALTER TABLE site_customers ADD COLUMN preferred_lang TEXT').run(); } catch (e) {}
+  try { await db.prepare('ALTER TABLE orders ADD COLUMN placed_in_language TEXT').run(); } catch (e) {}
+
+  abandonedCartHealedShards.add(shardKey);
+}
+
 async function processAbandonedCartReminders(env, options = {}) {
   // Optional opts let an admin "Send test reminder now" button reuse the
   // exact same pipeline against a single site without waiting for cron:
@@ -1442,28 +1474,9 @@ async function processAbandonedCartReminders(env, options = {}) {
           errors: 0,
         };
 
-        try {
-          await db.prepare('ALTER TABLE carts ADD COLUMN reminder_sent_at TEXT').run();
-        } catch (e) {}
-        try {
-          await db.prepare('ALTER TABLE carts ADD COLUMN reminder_count INTEGER DEFAULT 0').run();
-        } catch (e) {}
-        // The language / preferred_lang / placed_in_language columns are
-        // selected by the candidate query and per-cart processing below.
-        // On older site shards that pre-date these migrations a missing
-        // column causes the SELECT to throw, the per-site try/catch
-        // swallows it, and the sweep silently produces 0 candidates / 0
-        // sent reminders with no clear hint. Self-heal here so the sweep
-        // is resilient on every shard regardless of migration drift.
-        try {
-          await db.prepare('ALTER TABLE carts ADD COLUMN language TEXT').run();
-        } catch (e) {}
-        try {
-          await db.prepare('ALTER TABLE site_customers ADD COLUMN preferred_lang TEXT').run();
-        } catch (e) {}
-        try {
-          await db.prepare('ALTER TABLE orders ADD COLUMN placed_in_language TEXT').run();
-        } catch (e) {}
+        // Self-heal missing columns once per shard per Worker isolate.
+        // See ensureAbandonedCartColumns() above for the full rationale.
+        await ensureAbandonedCartColumns(env, db, site.id);
 
         // Cheap aggregate count of carts that already received maxReminders
         // — these are filtered out of the candidate query, so without this
