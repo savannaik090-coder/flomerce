@@ -1269,6 +1269,7 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
 
   try {
     const summary = await processAbandonedCartReminders(env, { siteIdFilter: siteId, testMode: true, testCartId: cartId });
+    console.log(`[AbandonedCart][TEST] siteId=${siteId} cartId=${cartId || 'auto'} summary=${JSON.stringify(summary)}`);
 
     // Surface the most useful skip reason as a human-readable hint so the
     // admin UI can show "why didn't an email go out?" without parsing JSON.
@@ -1278,7 +1279,22 @@ async function handleAbandonedCartTestNow(request, env, siteId) {
       // Check the gate before the candidate query — if the site was skipped
       // because the abandoned-cart feature isn't saved as enabled in the
       // database, no diagnostic about carts will help.
-      if (summary.sitesFeatureDisabled > 0) {
+      if (summary.sitesScanned === 0) {
+        // The sweep's per-site loop never executed at all. Either the site
+        // row was filtered out (is_active = 0) or siteId doesn't exist in
+        // the platform sites table.
+        let siteRow = null;
+        try {
+          siteRow = await env.DB.prepare('SELECT id, is_active, brand_name FROM sites WHERE id = ?').bind(siteId).first();
+        } catch (e) {}
+        if (!siteRow) {
+          hint = `Site ${siteId} was not found in the platform sites table. The cart records may belong to a different site.`;
+        } else if (!siteRow.is_active) {
+          hint = `Site "${siteRow.brand_name || siteId}" is currently marked inactive (is_active = 0) in the platform sites table, so the abandoned-cart sweep skips it. Reactivate the site to test reminders.`;
+        } else {
+          hint = `Site exists and is active, but the sweep loop did not run. Sweep summary: ${JSON.stringify(summary)}.`;
+        }
+      } else if (summary.sitesFeatureDisabled > 0) {
         hint = 'Abandoned-cart reminders are not enabled in your saved settings. Toggle "Send abandoned cart reminders" ON, then click Save Settings at the bottom of the page, then click this test button again. (The toggle alone is not enough — it must be persisted.)';
       } else if (summary.sitesNoSettings > 0) {
         hint = 'This site has no settings record yet. Save any setting once to initialize it, then try again.';
