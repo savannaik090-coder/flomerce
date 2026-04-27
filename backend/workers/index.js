@@ -93,14 +93,24 @@ export default {
     // Cloudflare delivers a separate scheduled event for each registered cron
     // pattern, with `event.cron` set to the matching expression. We dispatch
     // off that so each job keeps its own cadence — abandoned-cart reminders
-    // run hourly (so a merchant's "1 hour delay" actually means ~1 hour), but
-    // the daily cleanup and monthly snapshot do NOT run hourly.
+    // run every 15 minutes (so a merchant's "30 minute delay" actually fires
+    // within ~30-45 min), but the daily cleanup and monthly snapshot do NOT
+    // run on the 15-minute cadence.
+    //
+    // CRITICAL: the strings below MUST exactly match the entries in
+    // wrangler.toml `[triggers].crons`. If you change one, change both, or
+    // the matching cron will silently fall through to the no-op fallback
+    // and the corresponding job will never run — exactly what happened in
+    // April 2026 when the abandoned-cart cadence was bumped from "0 * * * *"
+    // to "*/15 * * * *" without updating this dispatcher.
     const cron = event && event.cron;
 
-    if (cron === '0 * * * *') {
-      // Hourly: abandoned-cart sweep only. The processor itself respects each
-      // merchant's configured delayHours / maxReminders, so running hourly
-      // does not over-send.
+    if (cron === '*/15 * * * *') {
+      // Every 15 minutes: abandoned-cart sweep only. The processor itself
+      // respects each merchant's configured delayHours / maxReminders, so
+      // running every 15 min does not over-send. Cadence chosen so the
+      // smallest configurable delayHours (0.5h / 30 min) fires within
+      // ~30-45 min of cart abandonment, not up to a full hour later.
       ctx.waitUntil(
         processAbandonedCartReminders(env).catch(err =>
           console.error('[Cron] processAbandonedCartReminders failed:', err.message || err)
@@ -126,11 +136,15 @@ export default {
       return;
     }
 
-    // Unknown cron expression — fall back to the conservative daily set so a
-    // misconfigured trigger never silently drops scheduled work.
-    console.warn(`[Cron] Unknown cron "${cron}" — running daily cleanups as a fallback`);
-    ctx.waitUntil(cleanupExpiredData(env));
-    ctx.waitUntil(cleanupOrphanMedia(env));
+    // Unknown cron expression — log loudly and do NOTHING. Earlier this
+    // branch ran the daily cleanups as a fallback, which accidentally
+    // hid the "0 * * * *" → "*/15 * * * *" mismatch above (the
+    // abandoned-cart sweep silently never ran while cleanups ran every 15
+    // minutes instead). Better to fail loudly than to mask a routing bug.
+    console.error(
+      `[Cron] Unknown cron "${cron}" — no job dispatched. ` +
+      `Add a matching branch in scheduled() or remove the trigger from wrangler.toml.`
+    );
   },
 };
 
