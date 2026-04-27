@@ -5,6 +5,7 @@ export const modules: ModuleMap = {
   "./components/mockups/feature-cards-vertical/ShowcaseUITiles.tsx": () => import("../components/mockups/feature-cards-vertical/ShowcaseUITiles.tsx"),
   "./components/mockups/feature-cards-vertical/SpotlightDarkLux.tsx": () => import("../components/mockups/feature-cards-vertical/SpotlightDarkLux.tsx"),
   "./components/mockups/industry-showcase/EditorialTabs.tsx": () => import("../components/mockups/industry-showcase/EditorialTabs.tsx"),
+  "./components/mockups/industry-showcase/JewelleryDarkContainer.tsx": () => import("../components/mockups/industry-showcase/JewelleryDarkContainer.tsx"),
   "./components/mockups/industry-showcase/JewellerySpotlightPlusTiles.tsx": () => import("../components/mockups/industry-showcase/JewellerySpotlightPlusTiles.tsx"),
   "./components/mockups/industry-showcase/PhonePreview.tsx": () => import("../components/mockups/industry-showcase/PhonePreview.tsx"),
   "./components/mockups/industry-showcase/VibrantTiles.tsx": () => import("../components/mockups/industry-showcase/VibrantTiles.tsx"),
