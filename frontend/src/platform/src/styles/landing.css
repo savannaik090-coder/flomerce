@@ -567,11 +567,62 @@
 /* ==========================================================================
    Industry showcase — Jewellery spotlight + tiles
    ========================================================================== */
-.landing-page .industry-section { padding-top: 72px; padding-bottom: 96px; }
+.landing-page .industry-section { padding-top: 56px; padding-bottom: 80px; }
 .landing-page .industry-headline { font-weight: 800; letter-spacing: -0.02em; }
 .landing-page .industry-headline-accent,
 .landing-page .industry-spotlight-title-accent {
   color: var(--lp-ink);
+}
+
+/* Dark shell that wraps the whole industry showcase */
+.landing-page .industry-shell {
+  position: relative;
+  border-radius: 36px;
+  background: #0b0d17;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 40px 80px -28px rgba(2, 6, 23, 0.45);
+}
+.landing-page .industry-shell-glow {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.55;
+  background:
+    radial-gradient(40% 35% at 8% 6%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(40% 35% at 92% 32%, rgba(245, 158, 11, 0.10), transparent 60%),
+    radial-gradient(35% 35% at 50% 95%, rgba(139, 92, 246, 0.10), transparent 60%);
+}
+.landing-page .industry-shell-inner {
+  position: relative;
+  padding: 64px 56px 72px;
+}
+/* Header overrides inside the dark shell */
+.landing-page .industry-shell .section-header { margin-bottom: 2.25rem; }
+.landing-page .industry-shell .section-pill {
+  background: rgba(255, 255, 255, 0.06);
+  color: #c7d2fe;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+}
+.landing-page .industry-shell .section-header h2 { color: #ffffff; }
+.landing-page .industry-shell .industry-headline-accent { color: #ffffff; }
+.landing-page .industry-shell .section-header p { color: rgba(226, 232, 240, 0.72); }
+/* Spotlight stays as a white card lifted on dark */
+.landing-page .industry-shell .industry-spotlight {
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+  margin-bottom: 56px;
+}
+/* Divider text recoloured for dark bg */
+.landing-page .industry-shell .industry-divider-eyebrow { color: rgba(226, 232, 240, 0.58); }
+.landing-page .industry-shell .industry-divider-title { color: #ffffff; }
+.landing-page .industry-shell .industry-divider-note { color: rgba(226, 232, 240, 0.68); }
+/* Tiles get a subtle dark-friendly shadow */
+.landing-page .industry-shell .industry-tile {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px -22px rgba(0, 0, 0, 0.55);
+}
+.landing-page .industry-shell .industry-tile:hover {
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.6);
 }
 
 /* Spotlight card */
@@ -937,8 +988,13 @@
   .landing-page .industry-spotlight-cards { grid-column: 1 / -1; flex-direction: row; }
   .landing-page .industry-support-card { flex: 1; }
 }
+@media (max-width: 1100px) {
+  .landing-page .industry-shell-inner { padding: 56px 36px 64px; }
+}
 @media (max-width: 820px) {
-  .landing-page .industry-section { padding-top: 56px; padding-bottom: 72px; }
+  .landing-page .industry-section { padding-top: 40px; padding-bottom: 56px; }
+  .landing-page .industry-shell { border-radius: 28px; }
+  .landing-page .industry-shell-inner { padding: 44px 22px 52px; }
   .landing-page .industry-spotlight-grid { grid-template-columns: 1fr; padding: 28px 22px; gap: 24px; }
   .landing-page .industry-spotlight-copy { align-items: flex-start; }
   .landing-page .industry-spotlight-cards { flex-direction: column; }
