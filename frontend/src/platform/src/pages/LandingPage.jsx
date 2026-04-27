@@ -463,12 +463,6 @@ export default function LandingPage() {
                   {t('industries.spotlight.titleLine2')}
                 </h3>
                 <p className="industry-spotlight-desc">{t('industries.spotlight.desc')}</p>
-                <div className="industry-spotlight-proof">
-                  <span className="industry-spotlight-stars" aria-hidden="true">
-                    {STAR_ICON}{STAR_ICON}{STAR_ICON}{STAR_ICON}{STAR_ICON}
-                  </span>
-                  <span>{t('industries.spotlight.proof')}</span>
-                </div>
                 <Link to="/signup" className="industry-spotlight-cta">
                   {t('industries.spotlight.cta')}
                   <span className="industry-cta-arrow" aria-hidden="true">{ARROW_ICON}</span>

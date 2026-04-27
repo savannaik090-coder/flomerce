@@ -623,12 +623,6 @@
   color: var(--lp-ink); margin: 4px 0 4px;
 }
 .landing-page .industry-spotlight-desc { font-size: 0.98rem; color: var(--lp-text); line-height: 1.6; margin: 0; }
-.landing-page .industry-spotlight-proof {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 0.85rem; color: var(--lp-ink-2); font-weight: 500;
-}
-.landing-page .industry-spotlight-stars { display: inline-flex; gap: 1px; color: #f59e0b; }
-.landing-page .industry-spotlight-stars svg { width: 13px; height: 13px; }
 .landing-page .industry-spotlight-cta {
   margin-top: 6px;
   display: inline-flex; align-items: center; gap: 8px;
