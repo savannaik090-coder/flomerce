@@ -435,7 +435,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="industries" className="landing-section industry-section reveal" aria-label={t('industries.titleAccent')}>
+        <section id="industries" className="landing-section industry-section" aria-label={t('industries.titleAccent')}>
           <div className="industry-shell">
           <div className="industry-shell-glow" aria-hidden="true" />
           <div className="industry-shell-inner">
