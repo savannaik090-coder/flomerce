@@ -571,10 +571,7 @@
 .landing-page .industry-headline { font-weight: 800; letter-spacing: -0.02em; }
 .landing-page .industry-headline-accent,
 .landing-page .industry-spotlight-title-accent {
-  background: var(--lp-accent-grad);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--lp-ink);
 }
 
 /* Spotlight card */
