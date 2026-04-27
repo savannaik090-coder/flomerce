@@ -569,8 +569,9 @@
    ========================================================================== */
 .landing-page .industry-section { padding-top: 72px; padding-bottom: 96px; }
 .landing-page .industry-headline { font-weight: 800; letter-spacing: -0.02em; }
-.landing-page .industry-headline-accent {
-  background: var(--lp-accent-grad);
+.landing-page .industry-headline-accent,
+.landing-page .industry-spotlight-title-accent {
+  background: linear-gradient(120deg, #818cf8 0%, #a78bfa 50%, #22d3ee 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -623,12 +624,6 @@
   font-size: clamp(1.6rem, 2.6vw, 2.1rem);
   font-weight: 800; letter-spacing: -0.025em; line-height: 1.1;
   color: var(--lp-ink); margin: 4px 0 4px;
-}
-.landing-page .industry-spotlight-title-accent {
-  background: var(--lp-accent-grad);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 .landing-page .industry-spotlight-desc { font-size: 0.98rem; color: var(--lp-text); line-height: 1.6; margin: 0; }
 .landing-page .industry-spotlight-proof {
