@@ -83,3 +83,9 @@ id = "zQk51izjl2uekohSafGvL"
 uri = "file://Flomerce_Starter_Learning_Guide.pdf"
 type = "pdf"
 title = "Flomerce Employee Onboarding Handbook"
+
+[[outputs]]
+id = "37F3lnovR1YQVZ-E7VovK"
+uri = "file://merchant-app-implementation-plan.pdf"
+type = "pdf"
+title = "Merchant App Implementation Plan (PDF)"
