@@ -68,13 +68,17 @@ database_name = "saas-sites-db-3"
 database_id = "7cd02690-e40c-40b3-822a-683da3d93ed2"
 
 # Scheduled jobs
-#  - "0 * * * *"  : hourly abandoned-cart reminder sweep (honors merchant delayHours setting)
-#  - "0 3 * * *"  : daily cleanup (orphan media, expired sessions/tokens/stale orders)
-#  - "5 0 1 * *"  : monthly enterprise overage snapshot + invoice email (00:05 UTC on the 1st)
+#  - "*/15 * * * *" : abandoned-cart reminder sweep, every 15 minutes. Cadence
+#                     must be smaller than the smallest configurable delayHours
+#                     (currently 0.5h / 30 min) so merchants on a 30-minute
+#                     delay see reminders fire within ~30-45 min of cart
+#                     abandonment, not up to a full hour later.
+#  - "0 3 * * *"    : daily cleanup (orphan media, expired sessions/tokens/stale orders)
+#  - "5 0 1 * *"    : monthly enterprise overage snapshot + invoice email (00:05 UTC on the 1st)
 # The scheduled() handler in workers/index.js dispatches on `event.cron` so each
-# job keeps its own cadence (e.g. cleanup is NOT re-run hourly).
+# job keeps its own cadence (e.g. cleanup is NOT re-run every 15 minutes).
 [triggers]
-crons = ["0 * * * *", "0 3 * * *", "5 0 1 * *"]
+crons = ["*/15 * * * *", "0 3 * * *", "5 0 1 * *"]
 
 # R2 Storage Configuration
 # Bucket: saas-platform-s

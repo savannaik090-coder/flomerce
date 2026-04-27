@@ -32,7 +32,6 @@ import { resolveSiteDBById, getSiteConfig } from '../utils/site-db.js';
 import { translateContentBatch, isTargetSupported } from '../utils/server-translator.js';
 import { translateLabels } from '../utils/email-i18n.js';
 import { validateAuth } from '../utils/auth.js';
-import { validateSiteAdmin, hasPermission } from './storefront/site-admin-worker.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -387,13 +386,6 @@ async function handleAPI(request, env, path, ctx) {
 
   if (apiVersion !== 'api') {
     return errorResponse('Invalid API path', 400);
-  }
-
-  // Admin-triggered manual abandoned-cart sweep for one site. Lets a merchant
-  // verify the email pipeline end-to-end without waiting for the hourly cron.
-  // Path: POST /api/sites/:siteId/abandoned-cart/test-now
-  if (resource === 'sites' && pathParts[3] === 'abandoned-cart' && pathParts[4] === 'test-now' && request.method === 'POST') {
-    return handleAbandonedCartTestNow(request, env, pathParts[2]);
   }
 
   switch (resource) {
@@ -1228,120 +1220,6 @@ async function cleanupExpiredData(env) {
   }
 }
 
-// HTTP handler for the manual "Send test reminder now" admin button.
-// Authorizes the caller as either the platform user who owns the site or an
-// authenticated site admin/staff session, then runs the abandoned-cart sweep
-// in test mode against just this one site and returns the run summary.
-async function handleAbandonedCartTestNow(request, env, siteId) {
-  const corsResponse = handleCORS(request);
-  if (corsResponse) return corsResponse;
-
-  if (!siteId) return errorResponse('Missing siteId', 400);
-
-  let authorized = false;
-  const user = await validateAuth(request, env);
-  if (user) {
-    const ownedSite = await env.DB.prepare('SELECT id FROM sites WHERE id = ? AND user_id = ?').bind(siteId, user.id).first();
-    if (ownedSite) authorized = true;
-  }
-  if (!authorized) {
-    const siteAdmin = await validateSiteAdmin(request, env, siteId);
-    // Site staff must have the same permission required to view/edit
-    // abandoned-cart settings (settings section). Without this, any staff
-    // role could trigger outbound customer comms.
-    if (siteAdmin && hasPermission(siteAdmin, 'settings')) authorized = true;
-  }
-  if (!authorized) {
-    return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
-  }
-
-  // Optional cartId in body lets the admin target one specific cart;
-  // otherwise we default to "the single most recently updated cart" so
-  // a single click can never spam many real customers.
-  let cartId = null;
-  try {
-    const ct = request.headers.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      const body = await request.json();
-      if (body && typeof body.cartId === 'string') cartId = body.cartId.trim() || null;
-    }
-  } catch (_) { /* empty/invalid body is fine */ }
-
-  try {
-    const summary = await processAbandonedCartReminders(env, { siteIdFilter: siteId, testMode: true, testCartId: cartId });
-    console.log(`[AbandonedCart][TEST] siteId=${siteId} cartId=${cartId || 'auto'} summary=${JSON.stringify(summary)}`);
-
-    // Surface the most useful skip reason as a human-readable hint so the
-    // admin UI can show "why didn't an email go out?" without parsing JSON.
-    const skipped = summary.skipped || {};
-    let hint = null;
-    if (summary.candidates === 0) {
-      // Check the gate before the candidate query — if the site was skipped
-      // because the abandoned-cart feature isn't saved as enabled in the
-      // database, no diagnostic about carts will help.
-      if (summary.sitesScanned === 0) {
-        // The sweep's per-site loop never executed at all. Either the site
-        // row was filtered out (is_active = 0) or siteId doesn't exist in
-        // the platform sites table.
-        let siteRow = null;
-        try {
-          siteRow = await env.DB.prepare('SELECT id, is_active, brand_name FROM sites WHERE id = ?').bind(siteId).first();
-        } catch (e) {}
-        if (!siteRow) {
-          hint = `Site ${siteId} was not found in the platform sites table. The cart records may belong to a different site.`;
-        } else if (!siteRow.is_active) {
-          hint = `Site "${siteRow.brand_name || siteId}" is currently marked inactive (is_active = 0) in the platform sites table, so the abandoned-cart sweep skips it. Reactivate the site to test reminders.`;
-        } else {
-          hint = `Site exists and is active, but the sweep loop did not run. Sweep summary: ${JSON.stringify(summary)}.`;
-        }
-      } else if (summary.sitesFeatureDisabled > 0) {
-        hint = 'Abandoned-cart reminders are not enabled in your saved settings. Toggle "Send abandoned cart reminders" ON, then click Save Settings at the bottom of the page, then click this test button again. (The toggle alone is not enough — it must be persisted.)';
-      } else if (summary.sitesNoSettings > 0) {
-        hint = 'This site has no settings record yet. Save any setting once to initialize it, then try again.';
-      } else {
-        // Run a diagnostic against this site's cart table so the admin
-        // immediately knows whether the cart is a guest cart, empty, or
-        // simply doesn't exist on this site/shard.
-        let diag = '';
-        try {
-          const db = await resolveSiteDBById(env, siteId);
-          const [total, withUser, guestWithItems, mostRecentEligible] = await Promise.all([
-            db.prepare('SELECT COUNT(*) AS n FROM carts WHERE site_id = ?').bind(siteId).first(),
-            db.prepare(`SELECT COUNT(*) AS n FROM carts WHERE site_id = ? AND user_id IS NOT NULL AND items != '[]' AND items != ''`).bind(siteId).first(),
-            db.prepare(`SELECT COUNT(*) AS n FROM carts WHERE site_id = ? AND user_id IS NULL AND items != '[]' AND items != ''`).bind(siteId).first(),
-            db.prepare(`SELECT id, user_id, length(items) AS items_len, reminder_count, updated_at FROM carts WHERE site_id = ? AND user_id IS NOT NULL AND items != '[]' AND items != '' ORDER BY updated_at DESC LIMIT 1`).bind(siteId).first(),
-          ]);
-          const t = Number(total && total.n) || 0;
-          const wu = Number(withUser && withUser.n) || 0;
-          const gw = Number(guestWithItems && guestWithItems.n) || 0;
-          diag = ` Diagnostic: ${t} total cart row(s) on this site, ${wu} with a logged-in user and items, ${gw} guest cart(s) with items.`;
-          if (mostRecentEligible) {
-            diag += ` Most recent eligible cart: id=${mostRecentEligible.id}, items_len=${mostRecentEligible.items_len || 0}, reminder_count=${mostRecentEligible.reminder_count ?? 0}, updated_at=${mostRecentEligible.updated_at}.`;
-          }
-        } catch (e) {
-          diag = ` (Diagnostic query failed: ${e.message || e})`;
-        }
-        hint = 'No eligible carts found by the sweep.' + diag + ' If your cart is a guest cart, log out and back in to merge it onto your account, then add an item again.';
-      }
-    } else if (summary.emailsSent === 0 && summary.whatsappSent === 0) {
-      if (skipped.no_customer > 0) hint = 'Cart found but no matching customer record. The cart may belong to a guest session.';
-      else if (skipped.no_contact > 0) hint = 'Cart found but the customer has no email or phone on file.';
-      else if (skipped.empty_items > 0) hint = 'Cart is empty.';
-      else if (skipped.parse_error > 0) hint = 'Cart items are corrupted and could not be parsed.';
-      else if (skipped.no_channel_dispatched > 0) hint = 'Both channels failed. Check that BREVO_API_KEY and FROM_EMAIL are configured (for email) and that WhatsApp credentials are set (for WhatsApp).';
-      else if (summary.errors > 0) hint = `The cart was found but threw ${summary.errors} error(s) during processing (likely a SQL or runtime exception in the per-cart code path — e.g., the products lookup, customer lookup, or email/WhatsApp template rendering). Check the worker logs for "[AbandonedCart] Error processing cart" entries to see the underlying error.`;
-      else hint = `Cart found but no reminder was sent and no skip reason was recorded. Sweep summary: ${JSON.stringify(summary)}.`;
-    } else {
-      hint = `Sent ${summary.emailsSent} email reminder(s) and ${summary.whatsappSent} WhatsApp reminder(s). Check the customer's inbox.`;
-    }
-
-    return jsonResponse({ success: true, summary, hint });
-  } catch (err) {
-    console.error('[AbandonedCart][TEST] handler error:', err.message || err);
-    return errorResponse('Failed to run abandoned-cart test sweep: ' + (err.message || err), 500);
-  }
-}
-
 // Module-level cache: which shard bindings have already been "self-healed"
 // (had their missing abandoned-cart columns added) in this Worker isolate.
 // Cloudflare Worker isolates are long-lived and share module state, so this
@@ -1374,18 +1252,7 @@ async function ensureAbandonedCartColumns(env, db, siteId) {
   abandonedCartHealedShards.add(shardKey);
 }
 
-async function processAbandonedCartReminders(env, options = {}) {
-  // Optional opts let an admin "Send test reminder now" button reuse the
-  // exact same pipeline against a single site without waiting for cron:
-  //   - siteIdFilter: only scan this one site
-  //   - testMode:     bypass the time-delay filter, max-reminders filter,
-  //                   per-cart backoff window, AND skip the counter bump
-  //                   so repeated clicks keep working during debugging
-  const siteIdFilter = options.siteIdFilter || null;
-  const testMode = options.testMode === true;
-  const testCartId = (testMode && typeof options.testCartId === 'string' && options.testCartId)
-    ? options.testCartId
-    : null;
+async function processAbandonedCartReminders(env) {
   const { sendEmail } = await import('../utils/email.js');
   const { buildAbandonedCartEmail } = await import('../utils/email.js');
   const { sendOrderWhatsApp, buildAbandonedCartWA, isWhatsAppConfigured } = await import('../utils/whatsapp.js');
@@ -1435,9 +1302,9 @@ async function processAbandonedCartReminders(env, options = {}) {
   };
 
   try {
-    const allSites = siteIdFilter
-      ? await env.DB.prepare('SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE id = ? AND is_active = 1').bind(siteIdFilter).all()
-      : await env.DB.prepare('SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE is_active = 1').all();
+    const allSites = await env.DB.prepare(
+      'SELECT id, brand_name, subdomain, custom_domain, domain_status FROM sites WHERE is_active = 1'
+    ).all();
 
     for (const site of (allSites.results || [])) {
       runSummary.sitesScanned++;
@@ -1501,48 +1368,18 @@ async function processAbandonedCartReminders(env, options = {}) {
           // Don't fail the whole site for an observability counter.
         }
 
-        // In test mode we want to see ANY non-empty cart for this site, even
-        // ones that were just added or have already exhausted their reminder
-        // quota — the goal is to verify the email pipeline end-to-end.
-        // Critically: we cap test mode to ONE cart (either the explicit
-        // testCartId or the most-recently-updated cart). This prevents a
-        // single click on the admin button from spamming up to 50 real
-        // customers with reminder emails.
-        const abandonedCarts = testMode
-          ? (testCartId
-              ? await db.prepare(
-                  `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
-                          c.reminder_count, c.reminder_sent_at, c.language
-                   FROM carts c
-                   WHERE c.site_id = ?
-                     AND c.id = ?
-                     AND c.user_id IS NOT NULL
-                     AND c.items != '[]'
-                     AND c.items != ''`
-                ).bind(site.id, testCartId).all()
-              : await db.prepare(
-                  `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
-                          c.reminder_count, c.reminder_sent_at, c.language
-                   FROM carts c
-                   WHERE c.site_id = ?
-                     AND c.user_id IS NOT NULL
-                     AND c.items != '[]'
-                     AND c.items != ''
-                   ORDER BY c.updated_at DESC
-                   LIMIT 1`
-                ).bind(site.id).all())
-          : await db.prepare(
-              `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
-                      c.reminder_count, c.reminder_sent_at, c.language
-               FROM carts c
-               WHERE c.user_id IS NOT NULL
-                 AND c.items != '[]'
-                 AND c.items != ''
-                 AND (c.reminder_count IS NULL OR c.reminder_count < ?)
-                 AND c.updated_at < datetime('now', '-' || ? || ' hours')
-               ORDER BY c.updated_at ASC
-               LIMIT 50`
-            ).bind(maxReminders, delayHours).all();
+        const abandonedCarts = await db.prepare(
+          `SELECT c.id, c.site_id, c.user_id, c.items, c.subtotal, c.updated_at,
+                  c.reminder_count, c.reminder_sent_at, c.language
+           FROM carts c
+           WHERE c.user_id IS NOT NULL
+             AND c.items != '[]'
+             AND c.items != ''
+             AND (c.reminder_count IS NULL OR c.reminder_count < ?)
+             AND c.updated_at < datetime('now', '-' || ? || ' hours')
+           ORDER BY c.updated_at ASC
+           LIMIT 50`
+        ).bind(maxReminders, delayHours).all();
 
         const candidateCount = (abandonedCarts.results || []).length;
         siteStats.candidates = candidateCount;
@@ -1560,7 +1397,7 @@ async function processAbandonedCartReminders(env, options = {}) {
         for (const cart of abandonedCarts.results) {
           try {
             const currentReminderCount = cart.reminder_count || 0;
-            if (!testMode && currentReminderCount > 0 && cart.reminder_sent_at) {
+            if (currentReminderCount > 0 && cart.reminder_sent_at) {
               const nextDelay = delayHours * Math.pow(2, currentReminderCount);
               const nextSendTime = new Date(new Date(cart.reminder_sent_at).getTime() + nextDelay * 60 * 60 * 1000);
               if (new Date() < nextSendTime) {
@@ -1574,7 +1411,7 @@ async function processAbandonedCartReminders(env, options = {}) {
               `SELECT id FROM orders WHERE user_id = ? AND site_id = ? AND created_at > ? LIMIT 1`
             ).bind(cart.user_id, cart.site_id, cart.updated_at).first();
 
-            if (recentOrder && !testMode) {
+            if (recentOrder) {
               await db.prepare(
                 `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
               ).bind(maxReminders, cart.id).run();
@@ -1680,18 +1517,12 @@ async function processAbandonedCartReminders(env, options = {}) {
             }
 
             if (emailSent || whatsappSent) {
-              if (!testMode) {
-                // In test mode we deliberately don't bump the counter so the
-                // merchant can click "Send test reminder now" repeatedly while
-                // verifying the pipeline. The cart goes back to normal cron
-                // behaviour after the test.
-                await db.prepare(
-                  `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
-                ).bind(currentReminderCount + 1, cart.id).run();
-              }
+              await db.prepare(
+                `UPDATE carts SET reminder_count = ?, reminder_sent_at = datetime('now') WHERE id = ?`
+              ).bind(currentReminderCount + 1, cart.id).run();
               if (emailSent) { siteStats.emailsSent++; runSummary.emailsSent++; }
               if (whatsappSent) { siteStats.whatsappSent++; runSummary.whatsappSent++; }
-              console.log(`[AbandonedCart]${testMode ? ' [TEST]' : ''} Reminder #${currentReminderCount + 1} sent for cart ${cart.id} (email: ${emailSent}, whatsapp: ${whatsappSent})`);
+              console.log(`[AbandonedCart] Reminder #${currentReminderCount + 1} sent for cart ${cart.id} (email: ${emailSent}, whatsapp: ${whatsappSent})`);
             } else {
               siteStats.skipped_no_channel_dispatched++;
               runSummary.skipped.no_channel_dispatched++;
@@ -1730,7 +1561,7 @@ async function processAbandonedCartReminders(env, options = {}) {
     }
 
     console.log(
-      `[AbandonedCart]${testMode ? ' [TEST]' : ''} Run complete — ` +
+      `[AbandonedCart] Run complete — ` +
       `sites=${runSummary.sitesScanned} ` +
       `feature_disabled=${runSummary.sitesFeatureDisabled} ` +
       `no_settings=${runSummary.sitesNoSettings} ` +
