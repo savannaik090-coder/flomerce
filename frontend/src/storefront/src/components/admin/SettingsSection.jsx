@@ -1812,13 +1812,14 @@ Create these templates in your WhatsApp Business account: <strong>order_confirma
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Send Reminder After</label>
                   <select value={abandonedCartDelayHours} onChange={e => setAbandonedCartDelayHours(e.target.value)} style={{ width: '100%', maxWidth: 300, padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', background: '#fff' }}>
+                    <option value="0.0167">1 minute (test only)</option>
                     <option value="1">1 hour</option>
                     <option value="3">3 hours</option>
                     <option value="6">6 hours</option>
                     <option value="12">12 hours</option>
                     <option value="24">24 hours</option>
                   </select>
-                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>How long after the cart becomes inactive before sending the first reminder</p>
+                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>How long after the cart becomes inactive before sending the first reminder. The 1-minute option is for testing only — note that the reminder sweep itself runs once per hour, so the actual email may still take up to an hour to arrive.</p>
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
