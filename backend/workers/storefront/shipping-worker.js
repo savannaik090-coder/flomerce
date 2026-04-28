@@ -481,6 +481,19 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
     }
   } catch {}
 
+  // Different parts of the codebase store address fields under different
+  // keys: storefront checkout stores `pinCode` (camelCase) + a combined
+  // `address` line built from `house_number, road_name`, while admin /
+  // profile flows use `pin_code`, `postalCode`, etc. Centralise the lookup
+  // so adding a new variant means changing one place.
+  const addrLine1 = (a) =>
+    a.line1 || a.address1 || a.address_1 || a.address || a.street ||
+    [a.house_number || a.houseNumber || '', a.road_name || a.roadName || ''].filter(Boolean).join(', ') ||
+    '';
+  const addrLine2 = (a) => a.line2 || a.address2 || a.address_2 || '';
+  const addrPincode = (a) =>
+    a.pinCode || a.pin_code || a.pincode || a.postalCode || a.postal_code || a.pin || a.zip || a.zipCode || a.zip_code || '';
+
   // Deep-equal address comparison so `shipping_is_billing` flips to false
   // whenever the merchant captured a distinct billing address (even if it
   // happens to share a few fields with shipping). The previous `billing ===
@@ -488,10 +501,10 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
   // even when both addresses were identical, and true only when billing was
   // missing — so Shiprocket got the wrong flag in both directions.
   const sameAddress = !billingExplicit || (
-    String(billing.line1 || billing.address || billing.street || '') === String(shipping.line1 || shipping.address || shipping.street || '') &&
-    String(billing.line2 || billing.address2 || '') === String(shipping.line2 || shipping.address2 || '') &&
+    String(addrLine1(billing)) === String(addrLine1(shipping)) &&
+    String(addrLine2(billing)) === String(addrLine2(shipping)) &&
     String(billing.city || '') === String(shipping.city || '') &&
-    String(billing.postalCode || billing.pincode || billing.pin || billing.zip || '') === String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '') &&
+    String(addrPincode(billing)) === String(addrPincode(shipping)) &&
     String(billing.state || '') === String(shipping.state || '') &&
     String(billing.country || 'India') === String(shipping.country || 'India')
   );
@@ -551,10 +564,10 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
     comment: order.notes || '',
     billing_customer_name: firstName,
     billing_last_name: lastName,
-    billing_address: String(billing.line1 || billing.address || billing.street || '').slice(0, 100),
-    billing_address_2: String(billing.line2 || billing.address2 || '').slice(0, 100),
+    billing_address: String(addrLine1(billing)).slice(0, 100),
+    billing_address_2: String(addrLine2(billing)).slice(0, 100),
     billing_city: String(billing.city || ''),
-    billing_pincode: String(billing.postalCode || billing.pincode || billing.pin || billing.zip || ''),
+    billing_pincode: String(addrPincode(billing)),
     billing_state: String(billing.state || ''),
     billing_country: String(billing.country || 'India'),
     billing_email: order.customer_email || '',
@@ -562,10 +575,10 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
     shipping_is_billing: sameAddress,
     shipping_customer_name: firstName,
     shipping_last_name: lastName,
-    shipping_address: String(shipping.line1 || shipping.address || shipping.street || '').slice(0, 100),
-    shipping_address_2: String(shipping.line2 || shipping.address2 || '').slice(0, 100),
+    shipping_address: String(addrLine1(shipping)).slice(0, 100),
+    shipping_address_2: String(addrLine2(shipping)).slice(0, 100),
     shipping_city: String(shipping.city || ''),
-    shipping_pincode: String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || ''),
+    shipping_pincode: String(addrPincode(shipping)),
     shipping_country: String(shipping.country || 'India'),
     shipping_state: String(shipping.state || ''),
     shipping_email: order.customer_email || '',
@@ -594,7 +607,7 @@ function buildShiprocketOrderPayload(order, sr, brandConfig, siteId, totalWeight
 async function pickCourierForOrder({ env, siteId, sr, order, totalWeightKg, pickupPincode }) {
   let shipping = {};
   try { shipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
-  const deliveryPincode = String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '').trim();
+  const deliveryPincode = String(shipping.pinCode || shipping.pin_code || shipping.pincode || shipping.postalCode || shipping.postal_code || shipping.pin || shipping.zip || shipping.zipCode || shipping.zip_code || '').trim();
   if (!/^\d{6}$/.test(deliveryPincode) || !pickupPincode) {
     return { courierId: null, courierName: '', available: [] };
   }
@@ -1110,7 +1123,7 @@ async function handleListServiceableCouriers(env, siteId, orderId) {
 
   let shipping = {};
   try { shipping = typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address) : (order.shipping_address || {}); } catch {}
-  const deliveryPincode = String(shipping.postalCode || shipping.pincode || shipping.pin || shipping.zip || '').trim();
+  const deliveryPincode = String(shipping.pinCode || shipping.pin_code || shipping.pincode || shipping.postalCode || shipping.postal_code || shipping.pin || shipping.zip || shipping.zipCode || shipping.zip_code || '').trim();
   if (!/^\d{6}$/.test(deliveryPincode)) {
     return errorResponse("Order's shipping address has no valid 6-digit pincode.", 400, 'BAD_DELIVERY_PINCODE');
   }
