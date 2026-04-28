@@ -83,10 +83,10 @@ export default function OwnerAdminPage() {
     plainDirty: false,
     monthly_price: '',
     cycles: {
-      'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
-      '3months': { enabled: false, razorpay_plan_id: '', discount: 0 },
-      '6months': { enabled: false, razorpay_plan_id: '', discount: 0 },
-      'yearly': { enabled: false, razorpay_plan_id: '', discount: 10 },
+      'monthly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+      '3months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+      '6months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+      'yearly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 10 },
     }
   });
 
@@ -185,19 +185,35 @@ export default function OwnerAdminPage() {
   const tierLabel = (tier) => TIER_LABELS[tier] || `Tier ${tier}`;
 
   const emptyCycles = () => ({
-    'monthly': { enabled: false, razorpay_plan_id: '', discount: 0 },
-    '3months': { enabled: false, razorpay_plan_id: '', discount: 0 },
-    '6months': { enabled: false, razorpay_plan_id: '', discount: 0 },
-    'yearly': { enabled: false, razorpay_plan_id: '', discount: 10 },
+    'monthly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+    '3months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+    '6months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+    'yearly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 10 },
   });
 
-  const calcCyclePrice = (monthlyPrice, cycleKey, discount) => {
+  // Compute the displayed cycle price from the monthly base price plus a
+  // (type, value) discount pair.
+  //   * percent: discounted = round(original * (1 - value/100))
+  //   * flat:    discounted = max(0, original - value)
+  // `original` is returned non-null only when a discount is actually
+  // applied — so the strike-through preview only appears when there is a
+  // real saving to show.
+  const calcCyclePrice = (monthlyPrice, cycleKey, discountType, discountValue) => {
     const mp = parseFloat(monthlyPrice);
-    if (!isFinite(mp) || mp <= 0) return { display: 0, original: 0 };
+    if (!isFinite(mp) || mp <= 0) return { display: 0, original: null };
     const months = CYCLE_MONTHS[cycleKey];
     const original = Math.round(mp * months);
-    const discounted = discount > 0 ? Math.round(original * (1 - discount / 100)) : original;
-    return { display: discounted, original: discount > 0 ? original : null };
+    const v = parseFloat(discountValue);
+    const hasDiscount = isFinite(v) && v > 0;
+    if (!hasDiscount) return { display: original, original: null };
+    let discounted;
+    if (discountType === 'flat') {
+      discounted = Math.max(0, Math.round(original - v));
+    } else {
+      const pct = Math.min(99, Math.max(0, v));
+      discounted = Math.round(original * (1 - pct / 100));
+    }
+    return { display: discounted, original };
   };
 
   const resetPlanForm = () => {
@@ -242,15 +258,42 @@ export default function OwnerAdminPage() {
       return;
     }
     try {
+      // Mirror the backend's normalizeDiscountFields validation here so the
+      // owner gets immediate feedback before we hit the network. Percent must
+      // be 0..99; flat must be 0 <= value < original cycle price.
+      for (const [key, c] of Object.entries(planForm.cycles)) {
+        if (!c.enabled) continue;
+        const v = parseFloat(c.discount_value);
+        if (c.discount_value !== '' && c.discount_value != null && (!isFinite(v) || v < 0)) {
+          toast.warning(`${cycleLabel(key)}: discount must be a non-negative number.`);
+          return;
+        }
+        if (c.discount_type === 'percent') {
+          if (isFinite(v) && v > 99) {
+            toast.warning(`${cycleLabel(key)}: percentage discount must be between 0 and 99.`);
+            return;
+          }
+        } else if (c.discount_type === 'flat' && isFinite(v) && v > 0) {
+          const months = CYCLE_MONTHS[key];
+          const original = Math.round(mp * months);
+          if (v >= original) {
+            toast.warning(`${cycleLabel(key)}: flat discount must be less than the original price (₹${original}).`);
+            return;
+          }
+        }
+      }
+
       const enabledCycles = Object.entries(planForm.cycles)
         .filter(([, c]) => c.enabled && c.razorpay_plan_id)
         .map(([key, c]) => {
-          const prices = calcCyclePrice(planForm.monthly_price, key, c.discount || 0);
+          const prices = calcCyclePrice(planForm.monthly_price, key, c.discount_type, c.discount_value || 0);
           return {
             billing_cycle: key,
             display_price: prices.display,
             original_price: prices.original,
             razorpay_plan_id: c.razorpay_plan_id,
+            discount_type: c.discount_type || 'percent',
+            discount_value: (c.discount_value === '' || c.discount_value == null) ? 0 : parseFloat(c.discount_value),
           };
         });
 
@@ -329,14 +372,23 @@ export default function OwnerAdminPage() {
         const monthlyFromThis = Math.round(fullPrice / months);
         if (!derivedMonthly && p.is_active) derivedMonthly = monthlyFromThis;
 
-        let disc = 0;
-        if (p.original_price && p.original_price > p.display_price) {
-          disc = Math.round((1 - p.display_price / p.original_price) * 100);
+        // Prefer the explicitly stored discount_type/value the owner picked
+        // last time. Fall back to a derived percentage from the price pair so
+        // legacy rows (created before these columns existed) still hydrate
+        // cleanly into the editor.
+        let dType = p.discount_type === 'flat' ? 'flat' : 'percent';
+        let dValue = 0;
+        if (p.discount_value != null && p.discount_value !== '' && isFinite(parseFloat(p.discount_value))) {
+          dValue = parseFloat(p.discount_value);
+        } else if (p.original_price && p.original_price > p.display_price) {
+          dType = 'percent';
+          dValue = Math.round((1 - p.display_price / p.original_price) * 100);
         }
         cyc[p.billing_cycle] = {
           enabled: !!p.is_active,
           razorpay_plan_id: p.razorpay_plan_id || '',
-          discount: disc,
+          discount_type: dType,
+          discount_value: dValue,
         };
       }
     }
@@ -1632,37 +1684,84 @@ export default function OwnerAdminPage() {
                     <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.75rem' }}>Enable the cycles you want. Prices are calculated from the monthly price. Add an optional discount for longer durations.</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {CYCLE_KEYS.map((key) => {
-                        const prices = calcCyclePrice(planForm.monthly_price, key, planForm.cycles[key].discount || 0);
+                        const cyc = planForm.cycles[key];
+                        const dType = cyc.discount_type || 'percent';
+                        const prices = calcCyclePrice(planForm.monthly_price, key, dType, cyc.discount_value || 0);
+                        const mp = parseFloat(planForm.monthly_price);
+                        const cycleOriginal = isFinite(mp) && mp > 0 ? Math.round(mp * CYCLE_MONTHS[key]) : null;
+                        const dValueNum = parseFloat(cyc.discount_value);
+                        let inlineError = '';
+                        if (cyc.enabled) {
+                          if (isFinite(dValueNum) && dValueNum < 0) {
+                            inlineError = 'Discount cannot be negative.';
+                          } else if (isFinite(dValueNum) && dValueNum > 0) {
+                            if (dType === 'percent' && dValueNum > 99) {
+                              inlineError = 'Percentage must be 0–99.';
+                            } else if (dType === 'flat' && cycleOriginal != null && dValueNum >= cycleOriginal) {
+                              inlineError = `Flat discount must be less than ₹${cycleOriginal}.`;
+                            }
+                          }
+                        }
                         return (
-                        <div key={key} style={{ border: '1px solid ' + (planForm.cycles[key].enabled ? '#6366f1' : '#e2e8f0'), borderRadius: '8px', padding: '0.75rem', background: planForm.cycles[key].enabled ? '#f8f7ff' : '#fafafa', transition: 'all 0.2s' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, cursor: 'pointer', marginBottom: planForm.cycles[key].enabled ? '0.75rem' : 0 }}>
-                            <input type="checkbox" checked={planForm.cycles[key].enabled} onChange={e => updateCycle(key, 'enabled', e.target.checked)} />
+                        <div key={key} style={{ border: '1px solid ' + (cyc.enabled ? '#6366f1' : '#e2e8f0'), borderRadius: '8px', padding: '0.75rem', background: cyc.enabled ? '#f8f7ff' : '#fafafa', transition: 'all 0.2s' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, cursor: 'pointer', marginBottom: cyc.enabled ? '0.75rem' : 0 }}>
+                            <input type="checkbox" checked={cyc.enabled} onChange={e => updateCycle(key, 'enabled', e.target.checked)} />
                             {cycleLabel(key)}
-                            {planForm.cycles[key].enabled && planForm.monthly_price && (
+                            {cyc.enabled && planForm.monthly_price && (
                               <span style={{ marginInlineStart: 'auto', fontSize: '0.85rem', fontWeight: 600, color: '#6366f1' }}>
                                 ₹{prices.display}
                                 {prices.original ? <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginInlineStart: '0.4rem', fontWeight: 400, fontSize: '0.75rem' }}>₹{prices.original}</span> : null}
                               </span>
                             )}
                           </label>
-                          {planForm.cycles[key].enabled && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
-                              <div className="oa-form-group" style={{ margin: 0 }}>
-                                <label style={{ fontSize: '0.75rem' }}>Discount (%)</label>
-                                <input type="number" min="0" max="99" value={planForm.cycles[key].discount} onChange={e => updateCycle(key, 'discount', parseInt(e.target.value) || 0)} placeholder="0" />
-                              </div>
-                              <div className="oa-form-group" style={{ margin: 0 }}>
-                                <label style={{ fontSize: '0.75rem' }}>Razorpay Plan ID</label>
-                                <input type="text" value={planForm.cycles[key].razorpay_plan_id} onChange={e => updateCycle(key, 'razorpay_plan_id', e.target.value)} placeholder="plan_XXXXXX" required />
-                              </div>
-                              {planForm.monthly_price && (
-                                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.35rem' }}>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                    {`₹${Math.round(prices.display / CYCLE_MONTHS[key])}/mo effective`}
-                                  </span>
+                          {cyc.enabled && (
+                            <>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
+                                <div className="oa-form-group" style={{ margin: 0 }}>
+                                  <label style={{ fontSize: '0.75rem' }}>Discount Type</label>
+                                  <select
+                                    value={dType}
+                                    onChange={e => updateCycle(key, 'discount_type', e.target.value)}
+                                  >
+                                    <option value="percent">Percentage (%)</option>
+                                    <option value="flat">Flat Amount (₹)</option>
+                                  </select>
                                 </div>
+                                <div className="oa-form-group" style={{ margin: 0 }}>
+                                  <label style={{ fontSize: '0.75rem' }}>
+                                    {dType === 'flat' ? 'Discount (₹)' : 'Discount (%)'}
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={dType === 'flat' ? (cycleOriginal != null ? cycleOriginal - 1 : undefined) : 99}
+                                    step={dType === 'flat' ? '1' : '1'}
+                                    value={cyc.discount_value}
+                                    onChange={e => {
+                                      const raw = e.target.value;
+                                      // Keep empty string as 0 in state so the input stays controlled.
+                                      const next = raw === '' ? 0 : (parseFloat(raw) || 0);
+                                      updateCycle(key, 'discount_value', next);
+                                    }}
+                                    placeholder={dType === 'flat' ? 'e.g. 500' : '0'}
+                                  />
+                                </div>
+                                <div className="oa-form-group" style={{ margin: 0 }}>
+                                  <label style={{ fontSize: '0.75rem' }}>Razorpay Plan ID</label>
+                                  <input type="text" value={cyc.razorpay_plan_id} onChange={e => updateCycle(key, 'razorpay_plan_id', e.target.value)} placeholder="plan_XXXXXX" required />
+                                </div>
+                                {planForm.monthly_price && (
+                                  <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.35rem' }}>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                      {`₹${Math.round(prices.display / CYCLE_MONTHS[key])}/mo effective`}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              {inlineError && (
+                                <p style={{ color: '#b91c1c', fontSize: '0.7rem', margin: '0.4rem 0 0' }}>{inlineError}</p>
                               )}
-                            </div>
+                            </>
                           )}
                         </div>
                         );

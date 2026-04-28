@@ -250,6 +250,20 @@ async function ensurePlansTables(env) {
     await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN feature_groups TEXT DEFAULT NULL`).run();
   } catch (e) {}
 
+  // Per-cycle discount intent: 'percent' (default, legacy behaviour) or 'flat'
+  // (rupee amount off). discount_value is the raw value the owner typed —
+  // 0..99 for percent, 0..<original_price for flat. display_price /
+  // original_price remain the source of truth for rendering; these columns
+  // only exist so the editor can restore the owner's *choice* on re-open
+  // (percent vs flat) instead of reverse-engineering one from the prices.
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN discount_type TEXT DEFAULT 'percent'`).run();
+  } catch (e) {}
+
+  try {
+    await env.DB.prepare(`ALTER TABLE subscription_plans ADD COLUMN discount_value REAL DEFAULT NULL`).run();
+  } catch (e) {}
+
   await env.DB.prepare(`
     CREATE TABLE IF NOT EXISTS platform_settings (
       setting_key TEXT PRIMARY KEY,
@@ -257,6 +271,48 @@ async function ensurePlansTables(env) {
       updated_at TEXT DEFAULT (datetime('now'))
     )
   `).run();
+}
+
+// Validate the (discount_type, discount_value) pair against an effective
+// original_price. Returns { type, value } normalized for storage, or throws
+// an Error whose .message is safe to surface as a 400 response.
+//   * type defaults to 'percent' when null/undefined (legacy behaviour).
+//   * value defaults to null when not supplied; otherwise must be a finite
+//     non-negative number.
+//   * For 'percent': value must be 0..99.
+//   * For 'flat':    value must be 0 <= value < originalPrice. originalPrice
+//                    must be a positive finite number when type === 'flat'
+//                    and value > 0, otherwise the discount cannot be
+//                    interpreted (we have nothing to subtract from).
+function normalizeDiscountFields(discount_type, discount_value, originalPrice) {
+  let type = discount_type == null ? 'percent' : String(discount_type);
+  if (type !== 'percent' && type !== 'flat') {
+    throw new Error("discount_type must be 'percent' or 'flat'");
+  }
+  let value = null;
+  if (discount_value !== undefined && discount_value !== null && discount_value !== '') {
+    const v = parseFloat(discount_value);
+    if (!isFinite(v) || v < 0) {
+      throw new Error('discount_value must be a non-negative number');
+    }
+    value = v;
+  }
+  if (type === 'percent') {
+    if (value != null && value > 99) {
+      throw new Error('Percentage discount must be between 0 and 99');
+    }
+  } else {
+    if (value != null && value > 0) {
+      const op = parseFloat(originalPrice);
+      if (!isFinite(op) || op <= 0) {
+        throw new Error('Flat discount requires a positive original price');
+      }
+      if (value >= op) {
+        throw new Error('Flat discount must be less than the original price');
+      }
+    }
+  }
+  return { type, value };
 }
 
 async function handlePlansManagement(request, env, pathParts) {
@@ -338,7 +394,7 @@ async function getPlans(env) {
 async function createPlan(request, env) {
   try {
     const body = await request.json();
-    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, is_popular, display_order, plan_tier } = body;
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, is_popular, display_order, plan_tier, discount_type, discount_value } = body;
 
     if (!plan_name || !billing_cycle || display_price === undefined || !razorpay_plan_id) {
       return errorResponse('Plan name, billing cycle, display price, and Razorpay Plan ID are required');
@@ -359,6 +415,13 @@ async function createPlan(request, env) {
       if (op <= parseFloat(display_price)) return errorResponse('Original price must be greater than the display (discounted) price');
     }
 
+    let normalizedDiscount;
+    try {
+      normalizedDiscount = normalizeDiscountFields(discount_type, discount_value, original_price);
+    } catch (e) {
+      return errorResponse(e.message, 400);
+    }
+
     let groups;
     try {
       groups = buildFeatureGroupsFromInput(body);
@@ -369,8 +432,8 @@ async function createPlan(request, env) {
 
     const id = generateId();
     await env.DB.prepare(
-      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, display_order, plan_tier, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, display_order, plan_tier, discount_type, discount_value, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       id,
       plan_name,
@@ -382,7 +445,9 @@ async function createPlan(request, env) {
       JSON.stringify(groups),
       is_popular ? 1 : 0,
       display_order || 0,
-      plan_tier
+      plan_tier,
+      normalizedDiscount.type,
+      normalizedDiscount.value
     ).run();
 
     await firePlansPurge(env);
@@ -401,7 +466,7 @@ async function updatePlan(request, env, planId) {
     }
 
     const updates = await request.json();
-    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, is_active, display_order, plan_tier } = updates;
+    const { plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, is_active, display_order, plan_tier, discount_type, discount_value } = updates;
 
     const effectiveOriginal = original_price !== undefined ? original_price : existing.original_price;
     const effectiveDisplay = display_price ?? existing.display_price;
@@ -409,6 +474,18 @@ async function updatePlan(request, env, planId) {
       const op = parseFloat(effectiveOriginal);
       if (!isFinite(op) || op <= 0) return errorResponse('Original price must be a positive number');
       if (op <= parseFloat(effectiveDisplay)) return errorResponse('Original price must be greater than the display (discounted) price');
+    }
+
+    // Resolve effective discount fields: if the caller didn't send them, keep
+    // the existing row's values verbatim (metadata-only PUT). Otherwise
+    // validate the new pair against the effective original price.
+    const effectiveDiscountType = discount_type !== undefined ? discount_type : existing.discount_type;
+    const effectiveDiscountValue = discount_value !== undefined ? discount_value : existing.discount_value;
+    let normalizedDiscount;
+    try {
+      normalizedDiscount = normalizeDiscountFields(effectiveDiscountType, effectiveDiscountValue, effectiveOriginal);
+    } catch (e) {
+      return errorResponse(e.message, 400);
     }
 
     // Validate + re-derive both columns when either feature shape is sent;
@@ -439,6 +516,8 @@ async function updatePlan(request, env, planId) {
         is_active = ?,
         display_order = ?,
         plan_tier = ?,
+        discount_type = ?,
+        discount_value = ?,
         updated_at = datetime('now')
       WHERE id = ?`
     ).bind(
@@ -453,6 +532,8 @@ async function updatePlan(request, env, planId) {
       is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
       display_order ?? existing.display_order,
       (plan_tier != null && plan_tier >= 1 && plan_tier <= 10) ? plan_tier : (existing.plan_tier ?? 1),
+      normalizedDiscount.type,
+      normalizedDiscount.value,
       planId
     ).run();
 
@@ -532,7 +613,21 @@ async function bulkSavePlan(request, env) {
         errors.push(`${cycle.billing_cycle}: original price must be greater than display price`);
         continue;
       }
-      activeCycleKeys.push({ key: cycle.billing_cycle, dp, op, razorpay_plan_id: cycle.razorpay_plan_id });
+      let nd;
+      try {
+        nd = normalizeDiscountFields(cycle.discount_type, cycle.discount_value, op);
+      } catch (e) {
+        errors.push(`${cycle.billing_cycle}: ${e.message}`);
+        continue;
+      }
+      activeCycleKeys.push({
+        key: cycle.billing_cycle,
+        dp,
+        op,
+        razorpay_plan_id: cycle.razorpay_plan_id,
+        discount_type: nd.type,
+        discount_value: nd.value,
+      });
     }
 
     if (errors.length > 0) {
@@ -553,20 +648,22 @@ async function bulkSavePlan(request, env) {
           `UPDATE subscription_plans SET
             plan_name = ?, plan_tier = ?, display_price = ?, original_price = ?,
             razorpay_plan_id = ?, features = ?, feature_groups = ?, is_popular = ?, display_order = ?,
-            tagline = ?, is_active = 1, updated_at = datetime('now')
+            tagline = ?, discount_type = ?, discount_value = ?, is_active = 1, updated_at = datetime('now')
           WHERE id = ?`
         ).bind(
           plan_name, plan_tier, cycle.dp, cycle.op, cycle.razorpay_plan_id,
-          featuresJson, featureGroupsJson, is_popular ? 1 : 0, display_order || 0, tagline || null, existing.id
+          featuresJson, featureGroupsJson, is_popular ? 1 : 0, display_order || 0, tagline || null,
+          cycle.discount_type, cycle.discount_value, existing.id
         ));
       } else {
         const id = generateId();
         statements.push(env.DB.prepare(
-          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, display_order, plan_tier, tagline, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+          `INSERT INTO subscription_plans (id, plan_name, billing_cycle, display_price, original_price, razorpay_plan_id, features, feature_groups, is_popular, display_order, plan_tier, tagline, discount_type, discount_value, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
         ).bind(
           id, plan_name, cycle.key, cycle.dp, cycle.op, cycle.razorpay_plan_id,
-          featuresJson, featureGroupsJson, is_popular ? 1 : 0, display_order || 0, plan_tier, tagline || null
+          featuresJson, featureGroupsJson, is_popular ? 1 : 0, display_order || 0, plan_tier, tagline || null,
+          cycle.discount_type, cycle.discount_value
         ));
       }
     }

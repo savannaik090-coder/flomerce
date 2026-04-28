@@ -1,0 +1,23 @@
+-- Per-cycle discount type & value (Apr 2026)
+--
+-- Adds two columns to subscription_plans so the platform admin can record
+-- *how* a billing cycle was discounted (percentage off, or a flat rupee
+-- amount off), in addition to the resulting display_price/original_price
+-- pair that drives the public pricing UI.
+--
+--   discount_type  TEXT  - 'percent' (default, legacy behaviour) or 'flat'
+--   discount_value REAL  - the raw value the owner typed in the editor:
+--                          for 'percent' this is 0..99 (the % off),
+--                          for 'flat'    this is the rupee amount off
+--                          (0 <= value < original_price).
+--
+-- Backwards compatibility:
+--   * Pre-existing rows leave discount_type defaulting to 'percent' and
+--     discount_value NULL. The plan editor reconstructs an equivalent
+--     percentage from original_price/display_price when these are NULL,
+--     so older plans keep editing exactly as before.
+--   * display_price / original_price are still the source of truth for
+--     rendering — these new columns only let the editor restore the
+--     owner's *intent* (percent vs flat) on re-open.
+ALTER TABLE subscription_plans ADD COLUMN discount_type TEXT DEFAULT 'percent';
+ALTER TABLE subscription_plans ADD COLUMN discount_value REAL DEFAULT NULL;
