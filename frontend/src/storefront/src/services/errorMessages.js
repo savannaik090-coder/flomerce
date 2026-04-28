@@ -84,14 +84,31 @@ const CODE_KEYS = {
  */
 export function translateApiError(err, tx, fallback) {
   const code = err && typeof err === 'object' ? err.code : null;
+  const backendMessage = (err && typeof err === 'object' && typeof err.message === 'string')
+    ? err.message.trim()
+    : '';
   const safeFallback = (fallback != null && fallback !== '')
     ? fallback
-    : (err && err.message) || '';
+    : backendMessage;
 
   if (code && Object.prototype.hasOwnProperty.call(CODE_KEYS, code)) {
     const source = CODE_KEYS[code];
     const translated = typeof tx === 'function' ? tx(source) : source;
     return translated || safeFallback;
+  }
+
+  // No code mapping: prefer the backend's specific error message over the
+  // generic fallback so the shopper (and the merchant debugging) actually
+  // sees what went wrong (e.g. "Insufficient stock for Mug",
+  // "Failed to create order: ...") instead of an opaque "Please try again".
+  // Generic / network errors fall through to the fallback.
+  if (
+    backendMessage &&
+    backendMessage !== 'Request failed' &&
+    !backendMessage.startsWith('Network error:') &&
+    !backendMessage.startsWith('Server returned an unexpected response')
+  ) {
+    return backendMessage;
   }
 
   return safeFallback;
