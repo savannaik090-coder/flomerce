@@ -171,13 +171,22 @@ export default function CategoryPage() {
       />
 
       <section className="shop-products-section">
-        <FilterSortBar
-          onSort={handleSort}
-          onFilter={handleFilter}
-          currentSort={sortBy}
-          currentFilters={filters}
-          subcategories={subcategories}
-        />
+        <div className="shop-filter-row">
+          <div className="shop-filter-row-inner">
+            <FilterSortBar
+              onSort={handleSort}
+              onFilter={handleFilter}
+              currentSort={sortBy}
+              currentFilters={filters}
+              subcategories={subcategories}
+            />
+            {!loading && filteredProducts.length > 0 && (
+              <div className="product-count-label">
+                {filteredProducts.length} <TranslatedText text={filteredProducts.length === 1 ? 'piece' : 'pieces'} />
+              </div>
+            )}
+          </div>
+        </div>
         <div className="shop-products">
           {loading ? (
             <LoadingSkeleton />
