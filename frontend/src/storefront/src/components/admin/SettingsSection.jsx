@@ -2169,10 +2169,13 @@ Create a template named <strong>abandoned_cart_reminder</strong> in your WhatsAp
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Webhook URL (configure in your Shiprocket dashboard)</p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all' }}>
-                          {getMerchantBaseUrl(siteConfig)}/api/webhooks/shiprocket/{siteConfig?.id}
+                          {getMerchantBaseUrl(siteConfig)}/api/webhooks/tracking/{siteConfig?.id}
                         </code>
-                        <button type="button" onClick={() => copyToClipboard(`${getMerchantBaseUrl(siteConfig)}/api/webhooks/shiprocket/${siteConfig?.id}`)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
+                        <button type="button" onClick={() => copyToClipboard(`${getMerchantBaseUrl(siteConfig)}/api/webhooks/tracking/${siteConfig?.id}`)} className="btn btn-outline" style={{ fontSize: 11, padding: '4px 10px' }}>Copy</button>
                       </div>
+                      <p style={{ fontSize: 10, color: '#94a3b8', marginTop: 4, marginBottom: 0 }}>
+                        Note: Shiprocket rejects URLs containing the words "shiprocket", "kartrocket", "sr" or "kr" — this URL is intentionally generic.
+                      </p>
                       <p style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginTop: 10, marginBottom: 6 }}>X-Api-Key (paste into the webhook auth header)</p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                         <code style={{ fontSize: 11, color: '#0f172a', background: '#fff', padding: '4px 8px', borderRadius: 4, border: '1px solid #e2e8f0', flex: 1, wordBreak: 'break-all' }}>

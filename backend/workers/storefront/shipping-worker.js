@@ -2006,7 +2006,11 @@ function mapShiprocketStatus(statusId, statusText) {
 }
 
 // ---------- Webhook dispatcher ----------
-// Path: /api/webhooks/shiprocket/:siteId
+// Path: /api/webhooks/tracking/:siteId   (canonical — surfaced to merchants)
+//       /api/webhooks/shiprocket/:siteId (legacy alias, kept for backward compat)
+// We do NOT advertise the legacy path because Shiprocket's dashboard rejects
+// any URL containing the substrings "shiprocket", "kartrocket", "sr" or "kr"
+// (per apidocs.shiprocket.in). Both paths route here via index.js.
 // Auth: X-Api-Key header must match site_config.settings.shiprocket.webhookToken.
 
 export async function handleShiprocketWebhook(request, env, path) {

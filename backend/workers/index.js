@@ -439,7 +439,13 @@ async function handleAPI(request, env, path, ctx) {
         return handlePayments(request, env, '/api/payments/webhook', ctx);
       }
       // Per-tenant Shiprocket webhook: /api/webhooks/shiprocket/:siteId
-      if (pathParts[2] === 'shiprocket') {
+      // NOTE: Shiprocket's dashboard REJECTS any webhook URL that contains the
+      // substrings "shiprocket", "kartrocket", "sr", or "kr" (per their official
+      // apidocs.shiprocket.in spec). We therefore expose the SAME handler under
+      // a clean alias path /api/webhooks/tracking/:siteId — this is the URL we
+      // surface to merchants in the admin UI. The legacy /shiprocket/ path is
+      // kept for backward compatibility with anyone who already saved it.
+      if (pathParts[2] === 'shiprocket' || pathParts[2] === 'tracking') {
         return handleShiprocketWebhook(request, env, path);
       }
       return errorResponse('Not found', 404);
