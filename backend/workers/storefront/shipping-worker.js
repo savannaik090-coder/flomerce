@@ -1904,9 +1904,13 @@ export async function handleShiprocketWebhook(request, env, path) {
   // siteId exists or leaking the token. Real delivery still goes through POST
   // below, fully authenticated.
   if (request.method === 'GET' || request.method === 'HEAD') {
+    // Some webhook validators (Shiprocket included) parse the response body
+    // and look for a success-shaped JSON like {"status":"success"} — return
+    // that exact shape so it works across providers without leaking
+    // internals like the service name or whether the siteId exists.
     const body = request.method === 'HEAD'
       ? null
-      : JSON.stringify({ ok: true, service: 'shiprocket-webhook' });
+      : JSON.stringify({ status: 'success' });
     return new Response(body, {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -1933,7 +1937,7 @@ export async function handleShiprocketWebhook(request, env, path) {
   // siteId exists.
   const provided = String(request.headers.get('X-Api-Key') || request.headers.get('x-api-key') || '');
   if (!provided) {
-    return new Response(JSON.stringify({ ok: true, service: 'shiprocket-webhook' }), {
+    return new Response(JSON.stringify({ status: 'success' }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
