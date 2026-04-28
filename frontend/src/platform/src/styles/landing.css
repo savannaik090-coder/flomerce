@@ -201,6 +201,14 @@
   letter-spacing: 0;
 }
 
+/* Zero-fee badge sits between the price badge and the "New ·" badge,
+   keeping the stack tight so the three read as a single value-prop group. */
+.landing-page .hero--video .hero-badge--fee {
+  margin-bottom: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 .landing-page .hero--video .hero-content--center h1 {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
