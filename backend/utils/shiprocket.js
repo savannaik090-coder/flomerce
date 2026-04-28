@@ -43,14 +43,37 @@ async function srFetch(token, path, opts = {}) {
   }
 
   if (!res.ok) {
-    const msg = body?.message || body?.error || body?.errors || `Shiprocket HTTP ${res.status}`;
+    // Shiprocket frequently returns a useless top-level message like
+    //   { message: "Oops! Invalid Data.", errors: { billing_phone: ["..."] } }
+    // The merchant has no way to act on "Oops! Invalid Data." alone, so flatten
+    // the field-level `errors` (and Shiprocket's other shapes) into the
+    // surfaced message whenever they're present.
+    const flattenErrors = (e) => {
+      if (!e) return '';
+      if (typeof e === 'string') return e;
+      if (Array.isArray(e)) return e.filter(Boolean).map(String).join('; ');
+      if (typeof e === 'object') {
+        const parts = [];
+        for (const [k, v] of Object.entries(e)) {
+          const flat = flattenErrors(v);
+          if (flat) parts.push(`${k}: ${flat}`);
+        }
+        return parts.join('; ');
+      }
+      return String(e);
+    };
+    const topMsg = body?.message || body?.error || `Shiprocket HTTP ${res.status}`;
+    const detail = flattenErrors(body?.errors);
+    const msg = detail
+      ? `${typeof topMsg === 'string' ? topMsg : JSON.stringify(topMsg)} (${detail})`
+      : (typeof topMsg === 'string' ? topMsg : JSON.stringify(topMsg));
     let code = 'SHIPROCKET_ERROR';
     if (res.status === 401) code = 'SHIPROCKET_AUTH';
     else if (res.status === 403) code = 'SHIPROCKET_FORBIDDEN';
     else if (res.status === 404) code = 'SHIPROCKET_NOT_FOUND';
     else if (res.status === 422) code = 'SHIPROCKET_VALIDATION';
     else if (res.status >= 500) code = 'SHIPROCKET_UPSTREAM';
-    throw new ShiprocketError(typeof msg === 'string' ? msg : JSON.stringify(msg), {
+    throw new ShiprocketError(msg, {
       status: res.status, code, raw: body,
     });
   }

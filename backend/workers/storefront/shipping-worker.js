@@ -793,11 +793,86 @@ export async function shipOrderViaShiprocket(env, siteId, orderId, options = {})
   if (needsCreate) {
     const payload = buildShiprocketOrderPayload(order, ctx.sr, ctx.config, siteId, totalWeightKg);
 
+    // Pre-validate the most common Shiprocket payload requirements. Their
+    // /orders/create/adhoc endpoint returns the unhelpful "Oops! Invalid
+    // Data." for any of these and the merchant can't act on that. Surface
+    // the missing field directly so they can fix the order and retry.
+    const validationErrors = [];
+    const phoneDigits = String(payload.shipping_phone || '').replace(/\D/g, '');
+    if (!phoneDigits || phoneDigits.length < 10) {
+      validationErrors.push("customer phone is missing or invalid (need 10-digit phone)");
+    }
+    if (!String(payload.shipping_pincode || '').match(/^\d{6}$/)) {
+      validationErrors.push(`shipping pincode "${payload.shipping_pincode || ''}" is invalid (need 6-digit Indian pincode)`);
+    }
+    if (!String(payload.shipping_address || '').trim()) {
+      validationErrors.push("shipping address is empty");
+    }
+    if (!String(payload.shipping_city || '').trim()) {
+      validationErrors.push("shipping city is empty");
+    }
+    if (!String(payload.shipping_state || '').trim()) {
+      validationErrors.push("shipping state is empty");
+    }
+    // Billing fields are separately required by Shiprocket whenever billing
+    // differs from shipping. When they're the same (`shipping_is_billing`
+    // true), Shiprocket copies from shipping so we don't need to re-check.
+    if (payload.shipping_is_billing === false) {
+      const billingPhoneDigits = String(payload.billing_phone || '').replace(/\D/g, '');
+      if (!billingPhoneDigits || billingPhoneDigits.length < 10) {
+        validationErrors.push("billing phone is missing or invalid (need 10-digit phone)");
+      }
+      if (!String(payload.billing_pincode || '').match(/^\d{6}$/)) {
+        validationErrors.push(`billing pincode "${payload.billing_pincode || ''}" is invalid (need 6-digit Indian pincode)`);
+      }
+      if (!String(payload.billing_address || '').trim()) {
+        validationErrors.push("billing address is empty");
+      }
+      if (!String(payload.billing_city || '').trim()) {
+        validationErrors.push("billing city is empty");
+      }
+      if (!String(payload.billing_state || '').trim()) {
+        validationErrors.push("billing state is empty");
+      }
+    }
+    if (!Array.isArray(payload.order_items) || payload.order_items.length === 0) {
+      validationErrors.push("order has no items");
+    } else {
+      for (const it of payload.order_items) {
+        if (!it.sku || !String(it.sku).trim()) {
+          validationErrors.push(`item "${it.name || 'unknown'}" is missing SKU`);
+          break;
+        }
+        if (!Number.isFinite(Number(it.units)) || Number(it.units) <= 0) {
+          validationErrors.push(`item "${it.name || 'unknown'}" has invalid quantity`);
+          break;
+        }
+      }
+    }
+    if (validationErrors.length) {
+      const msg = `Cannot ship — ${validationErrors.join('; ')}. Please fix the order in the admin panel and retry.`;
+      await siteDB.prepare(`UPDATE ${table} SET shiprocket_status = 'failed', shiprocket_error = ? WHERE id = ?`).bind(msg, orderId).run();
+      return { ok: false, code: 'INVALID_ORDER_DATA', message: msg };
+    }
+
     let createRes;
     try {
       createRes = await srCall(env, siteId, ctx.sr, (t) => srCreateOrder(t, payload));
     } catch (e) {
       const msg = e instanceof ShiprocketError ? e.message : (e.message || String(e));
+      // Log the payload (without PII-rich fields) when Shiprocket rejects so
+      // the merchant or support can see what we sent. Helps diagnose future
+      // "Oops! Invalid Data." cases without needing prod log access.
+      console.error('[Shiprocket] create order failed:', msg, JSON.stringify({
+        order_id: payload.order_id,
+        pickup_location: payload.pickup_location,
+        items_count: payload.order_items?.length,
+        weight: payload.weight,
+        sub_total: payload.sub_total,
+        shipping_pincode: payload.shipping_pincode,
+        shipping_state: payload.shipping_state,
+        payment_method: payload.payment_method,
+      }));
       await siteDB.prepare(`UPDATE ${table} SET shiprocket_status = 'failed', shiprocket_error = ? WHERE id = ?`).bind(msg, orderId).run();
       return { ok: false, code: e?.code || 'CREATE_FAILED', message: msg };
     }
@@ -971,7 +1046,21 @@ async function handleShipNow(request, env, siteId, orderId) {
     if (result.code === 'COURIER_PICK_REQUIRED') {
       return successResponse({ ...result, pickerRequired: true }, result.message || 'Pick a courier');
     }
-    const status = result.code === 'NOT_CONNECTED' ? 400
+    // Map merchant-actionable client errors to 4xx so the admin UI can show
+    // the message inline as a soft failure (and retries don't auto-trigger).
+    // Anything we don't recognise stays as 502 — those are upstream issues
+    // we can't fix by editing the order.
+    const clientErrorCodes = new Set([
+      'NOT_CONNECTED',
+      'NO_PICKUP_LOCATION',
+      'NO_ITEM_WEIGHT',
+      'INVALID_ORDER_DATA',
+      'ORDER_TERMINAL',
+      'ALREADY_SHIPPED',
+      'IN_PROGRESS',
+      'SHIPROCKET_VALIDATION',
+    ]);
+    const status = clientErrorCodes.has(result.code) ? 400
       : result.code === 'ORDER_NOT_FOUND' ? 404
       : result.code === 'AUTH_FAILED' || result.code === 'SHIPROCKET_AUTH' ? 401
       : 502;
