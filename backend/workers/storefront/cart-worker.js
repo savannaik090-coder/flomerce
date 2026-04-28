@@ -277,7 +277,41 @@ async function getCart(env, siteId, user, sessionId, lang = null) {
         await db.prepare('UPDATE carts SET language = ? WHERE id = ?').bind(lang, cart.id).run();
       } catch (e) {}
     }
-    const items = JSON.parse(cart.items);
+    const rawItems = JSON.parse(cart.items);
+
+    // Self-heal: merge any duplicate entries (productId + variant + selectedOptions)
+    // left behind by the pre-fix asymmetric comparison bug.
+    const dedupedItems = [];
+    const dedupeIndex = new Map();
+    for (const it of rawItems) {
+      if (!it || !it.productId) continue;
+      const key = `${it.productId}|${JSON.stringify(it.variant ?? null)}|${JSON.stringify(it.selectedOptions ?? null)}`;
+      const existingIdx = dedupeIndex.get(key);
+      if (existingIdx !== undefined) {
+        dedupedItems[existingIdx].quantity = (dedupedItems[existingIdx].quantity || 1) + (it.quantity || 1);
+      } else {
+        dedupeIndex.set(key, dedupedItems.length);
+        dedupedItems.push({ ...it });
+      }
+    }
+    if (dedupedItems.length !== rawItems.length) {
+      try {
+        const newItemsStr = JSON.stringify(dedupedItems);
+        const oldBytes = cart.row_size_bytes || 0;
+        const newBytes = estimateRowBytes({ items: newItemsStr, cart_id: cart.id });
+        // Compare-and-swap: only persist if the cart row hasn't been mutated
+        // by a concurrent add/update/remove between our read and this write.
+        const result = await db.prepare(
+          `UPDATE carts SET items = ?, row_size_bytes = ?, updated_at = datetime('now')
+           WHERE id = ? AND items = ?`
+        ).bind(newItemsStr, newBytes, cart.id, cart.items).run();
+        const changed = result?.meta?.changes ?? result?.changes ?? 0;
+        if (changed > 0) {
+          await trackD1Update(env, siteId, oldBytes, newBytes);
+        }
+      } catch (e) {}
+    }
+    const items = dedupedItems;
 
     const enrichedItems = [];
     for (const item of items) {
@@ -373,11 +407,12 @@ async function addToCart(request, env, siteId, user, sessionId) {
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
 
-    const optionsKey = selectedOptions ? JSON.stringify(selectedOptions) : null;
-    const existingIndex = items.findIndex(item => 
-      item.productId === productId && 
-      JSON.stringify(item.variant) === JSON.stringify(variant) &&
-      JSON.stringify(item.selectedOptions || null) === optionsKey
+    const variantKey = JSON.stringify(variant ?? null);
+    const optionsKey = JSON.stringify(selectedOptions ?? null);
+    const existingIndex = items.findIndex(item =>
+      item.productId === productId &&
+      JSON.stringify(item.variant ?? null) === variantKey &&
+      JSON.stringify(item.selectedOptions ?? null) === optionsKey
     );
 
     if (existingIndex >= 0) {
@@ -429,11 +464,12 @@ async function updateCartItem(request, env, siteId, user, sessionId) {
     const items = JSON.parse(cart.items);
     const oldBytes = cart.row_size_bytes || 0;
 
-    const optionsKey = selectedOptions ? JSON.stringify(selectedOptions) : null;
-    const existingIndex = items.findIndex(item => 
-      item.productId === productId && 
-      JSON.stringify(item.variant) === JSON.stringify(variant) &&
-      JSON.stringify(item.selectedOptions || null) === optionsKey
+    const variantKey = JSON.stringify(variant ?? null);
+    const optionsKey = JSON.stringify(selectedOptions ?? null);
+    const existingIndex = items.findIndex(item =>
+      item.productId === productId &&
+      JSON.stringify(item.variant ?? null) === variantKey &&
+      JSON.stringify(item.selectedOptions ?? null) === optionsKey
     );
 
     if (existingIndex < 0) {
@@ -536,10 +572,10 @@ export async function mergeCarts(env, siteId, userId, sessionId) {
       const oldBytes = userCart.row_size_bytes || 0;
 
       for (const guestItem of guestItems) {
-        const existingIndex = userItems.findIndex(item => 
-          item.productId === guestItem.productId && 
-          JSON.stringify(item.variant) === JSON.stringify(guestItem.variant) &&
-          JSON.stringify(item.selectedOptions || null) === JSON.stringify(guestItem.selectedOptions || null)
+        const existingIndex = userItems.findIndex(item =>
+          item.productId === guestItem.productId &&
+          JSON.stringify(item.variant ?? null) === JSON.stringify(guestItem.variant ?? null) &&
+          JSON.stringify(item.selectedOptions ?? null) === JSON.stringify(guestItem.selectedOptions ?? null)
         );
 
         if (existingIndex >= 0) {
