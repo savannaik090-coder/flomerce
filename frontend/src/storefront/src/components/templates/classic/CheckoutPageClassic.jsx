@@ -575,7 +575,11 @@ export default function CheckoutPageClassic() {
         ) : (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#EBF5EB', border: `1px solid #A7D4A7` }}>
             <span style={{ fontSize: 13, color: T.successGreen, fontWeight: 600, ...BODY }}>
-              ✓ {appliedCoupon.code} ({appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `${formatAmount(appliedCoupon.value)} off`})
+              ✓ {appliedCoupon.code} (
+              {appliedCoupon.type === 'percent'
+                ? <TranslatedText text="{{value}}% off" vars={{ value: appliedCoupon.value }} />
+                : <TranslatedText text="{{amount}} off" vars={{ amount: formatAmount(appliedCoupon.value) }} />}
+              )
             </span>
             <button onClick={removeCoupon} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 13, ...BODY, textDecoration: 'underline' }}>
               <TranslatedText text="Remove" />
@@ -653,12 +657,12 @@ export default function CheckoutPageClassic() {
   function SelectedOptionsSummary({ item }) {
     if (!item.selectedOptions) return null;
     const parts = [];
-    if (item.selectedOptions.color) parts.push(`Color: ${item.selectedOptions.color}`);
+    if (item.selectedOptions.color) parts.push(`${tx('Color')}: ${tx(item.selectedOptions.color)}`);
     if (item.selectedOptions.customOptions) {
-      for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) parts.push(`${label}: ${value}`);
+      for (const [label, value] of Object.entries(item.selectedOptions.customOptions)) parts.push(`${tx(label)}: ${tx(value)}`);
     }
     if (item.selectedOptions.pricedOptions) {
-      for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) parts.push(`${label}: ${val.name}`);
+      for (const [label, val] of Object.entries(item.selectedOptions.pricedOptions)) parts.push(`${tx(label)}: ${tx(val.name)}`);
     }
     if (!parts.length) return null;
     return <div style={{ fontSize: 11, color: T.muted, marginTop: 2, ...BODY }}>{parts.join(' · ')}</div>;
@@ -823,7 +827,7 @@ export default function CheckoutPageClassic() {
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                                 <span style={{ fontSize: 14, fontWeight: 600, color: T.dark, ...BODY }}>{formatAmount(price * qty)}</span>
-                                <button type="button" onClick={() => removeItem(itemKey, item.selectedOptions)} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 16, padding: 0, lineHeight: 1 }} aria-label="Remove">×</button>
+                                <button type="button" onClick={() => removeItem(itemKey, item.selectedOptions)} style={{ background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: 16, padding: 0, lineHeight: 1 }} aria-label={tx("Remove")}>×</button>
                               </div>
                             </div>
                           </div>
@@ -850,7 +854,7 @@ export default function CheckoutPageClassic() {
                     <h2 style={S.cardHeading}><TranslatedText text="Saved Addresses" /></h2>
                     {savedAddresses.map(sa => (
                       <div key={sa.id} className="wp-saved-addr" onClick={() => selectSavedAddress(sa)} style={{ border: `2px solid ${selectedAddressId === sa.id ? T.stepActive : T.border}`, padding: 14, marginBottom: 12, cursor: 'pointer', background: selectedAddressId === sa.id ? '#F5ECD5' : T.cardBg, transition: 'border-color 0.2s' }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: T.dark, ...BODY }}>{sa.label || 'Address'}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: T.dark, ...BODY }}>{sa.label ? <TranslatedText text={sa.label} /> : <TranslatedText text="Address" />}</div>
                         <div style={{ fontSize: 13, color: T.body, ...BODY, marginTop: 4, lineHeight: 1.6 }}>
                           {sa.house_number} {sa.road_name}, {sa.city}{sa.state ? `, ${sa.state}` : ''} – {sa.pin_code}
                         </div>
@@ -865,17 +869,17 @@ export default function CheckoutPageClassic() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div>
                       <label style={S.label}><TranslatedText text="First Name" /></label>
-                      <input className="wp-input" type="text" value={address.firstName} onChange={e => handleAddressChange('firstName', e.target.value)} style={S.input} placeholder="Jane" />
+                      <input className="wp-input" type="text" value={address.firstName} onChange={e => handleAddressChange('firstName', e.target.value)} style={S.input} placeholder={tx("Jane")} />
                       {addressErrors.firstName && <div style={S.fieldError}>{addressErrors.firstName}</div>}
                     </div>
                     <div>
                       <label style={S.label}><TranslatedText text="Last Name" /></label>
-                      <input className="wp-input" type="text" value={address.lastName} onChange={e => handleAddressChange('lastName', e.target.value)} style={S.input} placeholder="Doe" />
+                      <input className="wp-input" type="text" value={address.lastName} onChange={e => handleAddressChange('lastName', e.target.value)} style={S.input} placeholder={tx("Doe")} />
                       {addressErrors.lastName && <div style={S.fieldError}>{addressErrors.lastName}</div>}
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={S.label}><TranslatedText text="Email Address" /></label>
-                      <input className="wp-input" type="email" value={address.email} onChange={e => handleAddressChange('email', e.target.value)} style={S.input} placeholder="jane@example.com" />
+                      <input className="wp-input" type="email" value={address.email} onChange={e => handleAddressChange('email', e.target.value)} style={S.input} placeholder={tx("jane@example.com")} />
                       {addressErrors.email && <div style={S.fieldError}>{addressErrors.email}</div>}
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
@@ -903,17 +907,17 @@ export default function CheckoutPageClassic() {
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={S.label}><TranslatedText text="House / Flat No." /></label>
-                      <input className="wp-input" type="text" value={address.houseNumber} onChange={e => handleAddressChange('houseNumber', e.target.value)} style={S.input} placeholder="Apt 4B" />
+                      <input className="wp-input" type="text" value={address.houseNumber} onChange={e => handleAddressChange('houseNumber', e.target.value)} style={S.input} placeholder={tx("Apt 4B")} />
                       {addressErrors.houseNumber && <div style={S.fieldError}>{addressErrors.houseNumber}</div>}
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={S.label}><TranslatedText text="Street / Road" /></label>
-                      <input className="wp-input" type="text" value={address.roadName} onChange={e => handleAddressChange('roadName', e.target.value)} style={S.input} placeholder="MG Road" />
+                      <input className="wp-input" type="text" value={address.roadName} onChange={e => handleAddressChange('roadName', e.target.value)} style={S.input} placeholder={tx("MG Road")} />
                       {addressErrors.roadName && <div style={S.fieldError}>{addressErrors.roadName}</div>}
                     </div>
                     <div>
                       <label style={S.label}><TranslatedText text="City" /></label>
-                      <input className="wp-input" type="text" value={address.city} onChange={e => handleAddressChange('city', e.target.value)} style={S.input} placeholder="Bangalore" />
+                      <input className="wp-input" type="text" value={address.city} onChange={e => handleAddressChange('city', e.target.value)} style={S.input} placeholder={tx("Bangalore")} />
                       {addressErrors.city && <div style={S.fieldError}>{addressErrors.city}</div>}
                     </div>
                     {statesForCountry.length > 0 ? (
@@ -928,12 +932,12 @@ export default function CheckoutPageClassic() {
                     ) : (
                       <div>
                         <label style={S.label}><TranslatedText text="State / Region" /></label>
-                        <input className="wp-input" type="text" value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={S.input} placeholder="State" />
+                        <input className="wp-input" type="text" value={address.state} onChange={e => handleAddressChange('state', e.target.value)} style={S.input} placeholder={tx("State")} />
                       </div>
                     )}
                     <div>
                       <label style={S.label}>{address.country === 'IN' ? <TranslatedText text="PIN Code" /> : <TranslatedText text="Postal Code" />}</label>
-                      <input className="wp-input" type="text" value={address.pinCode} onChange={e => handleAddressChange('pinCode', e.target.value)} style={S.input} placeholder={address.country === 'IN' ? '560001' : 'Postal code'} />
+                      <input className="wp-input" type="text" value={address.pinCode} onChange={e => handleAddressChange('pinCode', e.target.value)} style={S.input} placeholder={address.country === 'IN' ? '560001' : tx('Postal code')} />
                       {pinValidating && <div style={{ fontSize: 12, color: T.muted, marginTop: 4, ...BODY }}><TranslatedText text="Validating…" /></div>}
                       {addressErrors.pinCode && <div style={S.fieldError}>{addressErrors.pinCode}</div>}
                     </div>
