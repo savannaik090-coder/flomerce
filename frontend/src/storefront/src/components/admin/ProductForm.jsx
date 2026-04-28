@@ -624,16 +624,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
             </div>
             )}
 
-            {siteConfig?.settings?.shiprocket?.enabled && (
             <div style={{ marginTop: 16, padding: '14px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
               <div style={{ fontWeight: 600, fontSize: 13, color: '#166534', marginBottom: 4 }}>Shipping Details</div>
               <p style={{ fontSize: 11, color: '#475569', marginTop: 0, marginBottom: 10 }}>
-                Used to calculate courier rates and delivery dates. Weight is required while Shiprocket is enabled.
+                {siteConfig?.settings?.shiprocket?.enabled
+                  ? 'Used to calculate courier rates and delivery dates. Weight is required while Shiprocket is enabled.'
+                  : 'Recommended for accurate courier rates. Weight will be required if you enable Shiprocket later.'}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                    Weight (g) <span style={{ color: '#dc2626' }}>*</span>
+                    Weight (g){siteConfig?.settings?.shiprocket?.enabled && <span style={{ color: '#dc2626' }}> *</span>}
                   </label>
                   <input
                     type="number"
@@ -683,7 +684,6 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 </div>
               </div>
             </div>
-            )}
           </div>
         </div>
 
