@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
-import { trackOrder, getReturnStatus, getCancelStatus } from '../services/orderService.js';
+import { trackOrder, getReturnStatus, getCancelStatus, getPublicShipmentTracking } from '../services/orderService.js';
 import { formatDateForCustomer } from '../utils/dateFormatter.js';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -49,13 +49,19 @@ export default function OrderTrackPage() {
   const [searched, setSearched] = useState(false);
   const [returnInfo, setReturnInfo] = useState(null);
   const [cancelInfo, setCancelInfo] = useState(null);
+  const [shipmentInfo, setShipmentInfo] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('orderId');
+    // `t` is the per-order track token customer emails embed; passing it
+    // to the public-track endpoint unlocks live Shiprocket scan history.
+    // Absent → user typed the order number manually, so the page falls
+    // back to the basic timeline only (no scan section).
+    const t = params.get('t') || params.get('token');
     if (id && siteConfig?.id) {
       setOrderIdInput(id);
-      fetchOrder(id);
+      fetchOrder(id, t);
     }
   }, [siteConfig?.id]);
 
@@ -70,7 +76,7 @@ export default function OrderTrackPage() {
     }
   }, [siteConfig]);
 
-  async function fetchOrder(id) {
+  async function fetchOrder(id, trackToken) {
     const searchId = (id || orderIdInput).trim();
     if (!searchId) {
       setError(tx("Please enter an order number or order ID"));
@@ -81,6 +87,7 @@ export default function OrderTrackPage() {
     setOrder(null);
     setReturnInfo(null);
     setCancelInfo(null);
+    setShipmentInfo(null);
     setSearched(true);
     try {
       const res = await trackOrder(searchId, siteConfig?.id);
@@ -94,6 +101,15 @@ export default function OrderTrackPage() {
         try {
           const canRes = await getCancelStatus(orderId, siteConfig?.id);
           if (canRes.success && canRes.data) setCancelInfo(canRes.data);
+        } catch {}
+        // Live Shiprocket scan history. Server requires the per-order
+        // track_token (only present for customers who arrived via an
+        // emailed tracking link); without it the call returns
+        // `hasShipment:false` and the scan section just hides itself.
+        try {
+          const shipRes = await getPublicShipmentTracking(orderId, siteConfig?.id, trackToken);
+          const shipData = shipRes?.data || shipRes;
+          if (shipData && shipData.hasShipment) setShipmentInfo(shipData);
         } catch {}
       } else {
         setError(res.error || tx("Order not found. Please check your order number and try again."));
@@ -219,11 +235,54 @@ export default function OrderTrackPage() {
             </div>
           )}
 
-          {(order.tracking_number || order.carrier) && (
+          {!isCancelled && (order.tracking_number || order.carrier) && (
             <div style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9', background: '#f8fafc' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 8 }}><TranslatedText text="Shipping Details" /></div>
               {order.carrier && <div style={{ fontSize: 14, color: '#334155', marginBottom: 4 }}><strong><TranslatedText text="Carrier:" /></strong> {order.carrier}</div>}
               {order.tracking_number && <div style={{ fontSize: 14, color: '#334155' }}><strong><TranslatedText text="Tracking Number:" /></strong> {order.tracking_number}</div>}
+              {shipmentInfo?.etd && (
+                <div style={{ fontSize: 14, color: '#334155', marginTop: 4 }}>
+                  <strong><TranslatedText text="Estimated Delivery:" /></strong> {shipmentInfo.etd}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isCancelled && shipmentInfo && Array.isArray(shipmentInfo.scans) && shipmentInfo.scans.length > 0 && (
+            <div style={{ padding: '20px 24px', borderTop: '1px solid #f1f5f9', background: '#fff' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 12 }}>
+                <TranslatedText text="Tracking Updates" />
+              </div>
+              <div style={{ position: 'relative', paddingInlineStart: 20 }}>
+                {shipmentInfo.scans.map((scan, idx) => {
+                  const isLast = idx === shipmentInfo.scans.length - 1;
+                  const isFirst = idx === 0;
+                  return (
+                    <div key={idx} style={{ position: 'relative', paddingBottom: isLast ? 0 : 16 }}>
+                      {!isLast && (
+                        <div style={{
+                          position: 'absolute', left: -12, top: 14, width: 2, bottom: 0,
+                          background: '#e2e8f0',
+                        }} />
+                      )}
+                      <div style={{
+                        position: 'absolute', left: -16, top: 4, width: 10, height: 10, borderRadius: '50%',
+                        background: isFirst ? '#0284c7' : '#cbd5e1',
+                      }} />
+                      <div style={{ fontSize: 14, fontWeight: isFirst ? 600 : 500, color: '#0f172a' }}>
+                        {scan.status || '—'}
+                      </div>
+                      {(scan.location || scan.timestamp) && (
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                          {scan.location ? <span>{scan.location}</span> : null}
+                          {scan.location && scan.timestamp ? <span> · </span> : null}
+                          {scan.timestamp ? <span>{scan.timestamp}</span> : null}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

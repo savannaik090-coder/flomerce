@@ -21,6 +21,16 @@ import {
 } from './whatsapp.js';
 import { PLATFORM_DOMAIN } from '../config.js';
 
+// Local copy of orders-worker's generateReturnToken — duplicated rather
+// than imported to keep this util free of cross-worker dependencies.
+// 48 random chars (~285 bits of entropy) is well beyond guessable.
+function generateTrackToken() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(48);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => chars[b % chars.length]).join('');
+}
+
 // Fire customer-facing email + WhatsApp for a status flip driven by a
 // Shiprocket webhook (no admin user/session in scope). Best-effort: errors
 // are logged but never thrown.
@@ -40,7 +50,26 @@ export async function sendShiprocketStatusNotification(env, siteId, orderId, new
 
     const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(siteId).first();
     const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || PLATFORM_DOMAIN}`;
-    const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
+
+    // Issue / reuse the per-order track_token so the customer landing on
+    // the Track Order page from this email can pull live Shiprocket scan
+    // history (the public-track endpoint requires this token to prevent
+    // anyone with a guessable order_number from scraping scan locations).
+    let trackToken = fullOrder.track_token || null;
+    try {
+      try { await db.prepare(`ALTER TABLE ${table} ADD COLUMN track_token TEXT`).run(); } catch (e) {}
+      if (!trackToken) {
+        trackToken = generateTrackToken();
+        await db.prepare(`UPDATE ${table} SET track_token = ? WHERE id = ?`).bind(trackToken, orderId).run();
+        fullOrder.track_token = trackToken;
+      }
+    } catch (e) {
+      console.error('[shiprocket] track_token generation error:', e);
+      trackToken = null;
+    }
+    const trackingUrl = trackToken
+      ? `https://${domain}/order-track?orderId=${fullOrder.order_number}&t=${trackToken}`
+      : `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
     const placedLang = fullOrder.placed_in_language || null;
 
     const emailOrder = {

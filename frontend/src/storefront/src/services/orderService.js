@@ -43,6 +43,18 @@ export async function trackOrder(orderId, siteId) {
   return apiRequest(`/api/orders/${orderId}/track${params}`);
 }
 
+// Customer-facing live Shiprocket tracking. Returns `{ hasShipment, awb,
+// courier, etd, scans }` when an AWB exists AND the per-order track token
+// matches; otherwise `{ hasShipment: false }`. The token is the `t` query
+// param the customer's tracking-link emails embed. Calls without a token
+// degrade silently (basic timeline only) so manually-typed order numbers
+// still work without revealing scan history to anyone who guesses an id.
+export async function getPublicShipmentTracking(orderId, siteId, token) {
+  const params = new URLSearchParams({ siteId, orderId });
+  if (token) params.set('t', token);
+  return apiRequest(`/api/shipping/public-track?${params}`);
+}
+
 export async function createReturnRequest(orderId, data) {
   return apiRequest(`/api/orders/${orderId}/return`, {
     method: 'POST',

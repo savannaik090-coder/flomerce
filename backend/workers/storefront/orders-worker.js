@@ -1116,7 +1116,26 @@ async function updateOrderStatus(request, env, user, orderId) {
           const site = await env.DB.prepare('SELECT subdomain, custom_domain FROM sites WHERE id = ?').bind(fullOrder.site_id).first();
           const domain = site?.custom_domain || `${site?.subdomain || 'store'}.${env.DOMAIN || PLATFORM_DOMAIN}`;
 
-          const trackingUrl = `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
+          // Issue a per-order track_token (lazy column add) so the
+          // public Shiprocket scan-history endpoint can verify ownership
+          // when the customer follows the tracking link from this email.
+          // Without it the customer page falls back to the basic timeline
+          // only — that path is intentionally still public.
+          let trackToken = fullOrder.track_token || null;
+          try {
+            try { await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN track_token TEXT`).run(); } catch (e) {}
+            if (!trackToken) {
+              trackToken = generateReturnToken();
+              await db.prepare(`UPDATE ${tableName} SET track_token = ? WHERE id = ?`).bind(trackToken, orderId).run();
+              fullOrder.track_token = trackToken;
+            }
+          } catch (e) {
+            console.error('Track token generation error:', e);
+            trackToken = null;
+          }
+          const trackingUrl = trackToken
+            ? `https://${domain}/order-track?orderId=${fullOrder.order_number}&t=${trackToken}`
+            : `https://${domain}/order-track?orderId=${fullOrder.order_number}`;
 
           const storeTz = statusSettings.timezone || '';
           const emailOrder = {

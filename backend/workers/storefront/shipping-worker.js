@@ -1328,6 +1328,194 @@ async function handleTrack(env, siteId, orderId) {
   }
 }
 
+// ---------- Public endpoint: customer-facing live tracking ----------
+//
+// Sibling of `handleTrack` above but reachable WITHOUT admin auth so the
+// customer Track Order page can render Shiprocket scan history inline.
+// Resolves the order in the same site-scoped, order-id-or-order-number way
+// the existing /api/orders/:id/track endpoint does, then calls Shiprocket's
+// track-by-AWB endpoint via `trackShipment` and normalizes the response to
+// only the fields the customer page renders. Crucially, no external courier
+// tracking URL is ever included — all tracking stays on the merchant domain.
+//
+// Edge-cached for 60s by (site, AWB) to absorb refresh-spam from the buyer
+// without burning the merchant's Shiprocket quota. Keyed by AWB (not
+// orderId) so two orders sharing an AWB hit the same cache entry.
+//
+// Failure modes (no AWB, Shiprocket disconnected, upstream error/timeout)
+// all return `{ ok: true, hasShipment: false }` so the customer page just
+// omits the scan section instead of showing a broken UI.
+const PUBLIC_TRACK_CACHE_TTL_S = 60;
+
+function normalizeTrackingForCustomer(tr, awb, fallbackCourier) {
+  // Shiprocket wraps the payload under tracking_data.* (older accounts
+  // sometimes return the body at the top level — handle both).
+  const td = tr?.tracking_data || tr || {};
+  const head = Array.isArray(td.shipment_track) && td.shipment_track[0]
+    ? td.shipment_track[0]
+    : {};
+  const acts = Array.isArray(td.shipment_track_activities)
+    ? td.shipment_track_activities
+    : [];
+
+  const courier = String(head.courier_name || fallbackCourier || '').trim() || null;
+  // Shiprocket uses `etd` on some accounts, `edd` on others.
+  const etd = String(head.etd || head.edd || '').trim() || null;
+
+  const scans = acts.map((a) => {
+    const status = String(
+      a?.activity || a?.status || a?.['sr-status-label'] || a?.srStatusLabel || ''
+    ).trim();
+    const location = String(a?.location || a?.scan_location || '').trim();
+    const timestamp = String(
+      a?.date || a?.scan_date_time || a?.scanDateTime || ''
+    ).trim();
+    if (!status && !timestamp) return null;
+    return {
+      status,
+      location: location || null,
+      timestamp: timestamp || null,
+    };
+  }).filter(Boolean);
+
+  // Newest first. Date.parse handles Shiprocket's "YYYY-MM-DD HH:MM:SS"
+  // format; if it can't parse we treat it as 0 so the entry sorts oldest.
+  scans.sort((a, b) => {
+    const ta = Date.parse(a.timestamp || '') || 0;
+    const tb = Date.parse(b.timestamp || '') || 0;
+    return tb - ta;
+  });
+
+  return { awb, courier, etd, scans };
+}
+
+async function handlePublicTrack(request, env, siteId, reqCtx) {
+  const url = new URL(request.url);
+  const orderId = (url.searchParams.get('orderId') || '').trim();
+  // Per-order ownership token, issued by orders-worker when the customer's
+  // tracking-link emails are built. Without this, anyone who guesses an
+  // order_number could pull the parcel's scan history (city, hub, ETD) —
+  // an IDOR-style leak. Accept either `t` or `token` so this matches the
+  // naming convention used by the existing invoice/cancel/return tokens.
+  const token = (
+    url.searchParams.get('t') ||
+    url.searchParams.get('token') ||
+    ''
+  ).trim();
+  if (!orderId) return errorResponse('orderId required', 400, 'NO_ORDER_ID');
+  // Missing token → degrade silently instead of 401, so customers who land
+  // on the Track Order page by typing their order number (no email link)
+  // still get the basic 5-dot timeline; only the scan section is hidden.
+  if (!token) return successResponse({ ok: true, hasShipment: false });
+
+  let ctx;
+  try {
+    ctx = await readShiprocketSettings(env, siteId);
+  } catch (e) {
+    return errorResponse(`Site lookup failed: ${e.message || e}`, 500, 'SITE_LOOKUP_FAILED');
+  }
+  if (!ctx) return errorResponse('Site not found', 404, 'SITE_NOT_FOUND');
+
+  // Older shards predate the shiprocket_* columns; the SELECTs below would
+  // throw on those. Lazy-add the columns once per shard before reading.
+  try {
+    await ensureShiprocketColumns(ctx.siteDB, `shiprocket-cols:${siteId}`);
+  } catch (e) {
+    console.warn('ensureShiprocketColumns (public-track) failed:', e?.message || e);
+  }
+  // Same lazy-migration pattern as the cancel/invoice/return tokens — the
+  // column may not exist on older shards. Best-effort; if the ALTER fails
+  // because the column already exists, the SELECT below still works.
+  for (const table of ['orders', 'guest_orders']) {
+    try { await ctx.siteDB.prepare(`ALTER TABLE ${table} ADD COLUMN track_token TEXT`).run(); } catch (e) {}
+  }
+
+  // Site-scoped lookup by id OR order_number across both tables — same
+  // matcher used by the orders-worker /track endpoint so the customer's
+  // single search input behaves consistently between the two calls.
+  const { siteDB } = ctx;
+  let order = null;
+  for (const table of ['orders', 'guest_orders']) {
+    if (order) break;
+    try {
+      order = await siteDB.prepare(
+        `SELECT id, status, shiprocket_awb, shiprocket_courier, track_token
+           FROM ${table}
+          WHERE site_id = ? AND (id = ? OR order_number = ?)
+          LIMIT 1`
+      ).bind(siteId, orderId, orderId).first();
+    } catch (e) {
+      // Schema drift on this shard — skip and let the next table try.
+      console.warn(`public-track ${table} lookup failed:`, e?.message || e);
+    }
+  }
+
+  if (!order || !order.shiprocket_awb) {
+    return successResponse({ ok: true, hasShipment: false });
+  }
+  // Constant-time compare not strictly required: tokens are 48 random
+  // chars (~285 bits), so timing attacks aren't realistic. We just need
+  // an exact match, and we degrade silently on mismatch (same shape as
+  // the no-shipment path) so an attacker can't tell tokens apart.
+  if (!order.track_token || order.track_token !== token) {
+    return successResponse({ ok: true, hasShipment: false });
+  }
+  if (!ctx.sr?.enabled || !ctx.sr?.emailEncrypted) {
+    return successResponse({ ok: true, hasShipment: false });
+  }
+
+  const awb = String(order.shiprocket_awb).trim();
+  const cacheKeyStr =
+    `https://flomerce-cache.invalid/public-track?site=${encodeURIComponent(siteId)}&awb=${encodeURIComponent(awb)}`;
+  const cacheKey = new Request(cacheKeyStr, { method: 'GET' });
+  const cache = caches.default;
+
+  let normalized = null;
+  let cacheHit = false;
+  try {
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      normalized = await cached.json();
+      cacheHit = true;
+    }
+  } catch (e) {
+    console.warn('Public track cache read failed:', e?.message || e);
+  }
+
+  if (!normalized) {
+    try {
+      const tr = await srCall(env, siteId, ctx.sr, (t) => trackShipment(t, awb));
+      normalized = normalizeTrackingForCustomer(tr, awb, order.shiprocket_courier);
+    } catch (e) {
+      // Any upstream failure → degrade gracefully so the customer page
+      // still renders the timeline + carrier line without a scan section.
+      console.warn('Public track upstream failed:', e?.message || e);
+      return successResponse({ ok: true, hasShipment: false });
+    }
+
+    const writeP = (async () => {
+      try {
+        await cache.put(cacheKey, new Response(JSON.stringify(normalized), {
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': `public, max-age=${PUBLIC_TRACK_CACHE_TTL_S}`,
+          },
+        }));
+      } catch (e) {
+        console.warn('Public track cache write failed:', e?.message || e);
+      }
+    })();
+    if (reqCtx?.waitUntil) reqCtx.waitUntil(writeP);
+  }
+
+  return successResponse({
+    ok: true,
+    hasShipment: true,
+    cached: cacheHit,
+    ...normalized,
+  });
+}
+
 // ---------- Public endpoint: cart/checkout serviceability ----------
 //
 // Customer-facing (NO admin auth) — called from cart and checkout pages to
@@ -1856,6 +2044,19 @@ export async function handleShipping(request, env, path, ctx) {
     } catch (e) {
       console.error('Serviceability error:', e);
       return errorResponse(`Serviceability error: ${e.message || 'Unknown'}`, 500);
+    }
+  }
+
+  // Public route — customer Track Order page calls this (no admin auth) to
+  // surface live Shiprocket scan history inline. On any failure we degrade
+  // to `hasShipment:false` so the customer page just hides the scan box.
+  if (action === 'public-track' && method === 'GET') {
+    try {
+      return await handlePublicTrack(request, env, siteId, ctx);
+    } catch (e) {
+      console.error('Public track error:', e);
+      // Never 500 the customer-facing page — degrade gracefully.
+      return successResponse({ ok: true, hasShipment: false });
     }
   }
 

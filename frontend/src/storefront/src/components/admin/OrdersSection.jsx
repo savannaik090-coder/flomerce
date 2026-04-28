@@ -1463,7 +1463,7 @@ export default function OrdersSection() {
                                   <i className="fas fa-check" />
                                 </button>
                               )}
-                              {statusLower === 'confirmed' && (
+                              {statusLower === 'confirmed' && !shiprocketEnabled && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
@@ -1473,7 +1473,7 @@ export default function OrdersSection() {
                                   Packed
                                 </button>
                               )}
-                              {statusLower === 'packed' && (
+                              {statusLower === 'packed' && !shiprocketEnabled && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#0284c7', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
@@ -1483,7 +1483,7 @@ export default function OrdersSection() {
                                   Shipped
                                 </button>
                               )}
-                              {statusLower === 'shipped' && (
+                              {statusLower === 'shipped' && !shiprocketEnabled && (
                                 <button
                                   className="btn btn-sm"
                                   style={{ background: '#27ae60', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
@@ -1718,13 +1718,13 @@ export default function OrdersSection() {
               {!isCancelled && !isDelivered && statusLower !== 'confirmed' && statusLower !== 'packed' && statusLower !== 'shipped' && (
                 <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'confirmed', label: "Confirm this order?" }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#22c55e', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Confirm</button>
               )}
-              {statusLower === 'confirmed' && (
+              {statusLower === 'confirmed' && !shiprocketEnabled && (
                 <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'packed', label: "Mark this order as packed?" }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Packed</button>
               )}
-              {statusLower === 'packed' && (
+              {statusLower === 'packed' && !shiprocketEnabled && (
                 <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'shipped', label: "Mark this order as shipped?" }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#0284c7', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Shipped</button>
               )}
-              {statusLower === 'shipped' && (
+              {statusLower === 'shipped' && !shiprocketEnabled && (
                 <button onClick={() => { setOrderDetailModal(null); setConfirmDialog({ orderId: order.id, orderNum, action: 'delivered', label: "Mark this order as delivered?" }); }} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: '#27ae60', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Delivered</button>
               )}
               {!isCancelled && !isDelivered && (
