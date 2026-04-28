@@ -9,6 +9,7 @@ import * as categoryService from '../services/categoryService.js';
 import TranslatedText from '../components/TranslatedText.jsx';
 import ProductGrid from '../components/product/ProductGrid.jsx';
 import FilterSortBar from '../components/product/FilterSortBar.jsx';
+import SubcategoryChipRow from '../components/product/SubcategoryChipRow.jsx';
 import { resolveImageUrl } from '../utils/imageUrl.js';
 import { parseAsUTC } from '../utils/dateFormatter.js';
 import { getDemoProductsForCategory } from '../defaults/index.js';
@@ -162,6 +163,12 @@ export default function CategoryPage() {
           <p className="hero-subtitle">{categoryDescription}</p>
         </div>
       </section>
+
+      <SubcategoryChipRow
+        subcategories={subcategories}
+        activeId={filters.subcategoryId}
+        onSelect={(id) => setFilters({ ...filters, subcategoryId: id })}
+      />
 
       <section className="shop-products-section">
         <FilterSortBar

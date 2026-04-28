@@ -49,6 +49,88 @@
     opacity: 0.95;
 }
 
+.subcategory-chip-row-wrap {
+    background: #fbf8f3;
+    border-bottom: 1px solid #ebe2d3;
+    position: sticky;
+    top: 95px;
+    z-index: 50;
+}
+
+.subcategory-chip-row {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 15px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.subcategory-chip-row::-webkit-scrollbar {
+    display: none;
+}
+
+.subcategory-chip {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 8px 18px;
+    border-radius: 25px;
+    border: 1px solid #e0d6c2;
+    background: #ffffff;
+    color: #603000;
+    font-family: var(--font-primary);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+.subcategory-chip:hover {
+    border-color: #603000;
+    color: #603000;
+    background: #fff;
+}
+
+.subcategory-chip.active {
+    background: #603000;
+    border-color: #603000;
+    color: #ffffff;
+}
+
+.modern-theme .subcategory-chip-row-wrap {
+    background: #ffffff;
+    border-bottom: 1px solid #efefef;
+    top: 100px;
+}
+
+.modern-theme .subcategory-chip {
+    border-color: #e5e5e5;
+    color: #1a1a1a;
+    border-radius: 4px;
+    letter-spacing: 1px;
+}
+
+.modern-theme .subcategory-chip:hover {
+    border-color: #1a1a1a;
+}
+
+.modern-theme .subcategory-chip.active {
+    background: #1a1a1a;
+    border-color: #1a1a1a;
+    color: #ffffff;
+}
+
+@media (max-width: 768px) {
+    .subcategory-chip-row-wrap { top: 80px; }
+    .modern-theme .subcategory-chip-row-wrap { top: 80px; }
+    .subcategory-chip-row { padding: 10px 12px; gap: 6px; }
+    .subcategory-chip { padding: 7px 14px; font-size: 11px; letter-spacing: 1px; }
+}
+
 .shop-products-section {
     padding: 0;
     background: #ffffff;
