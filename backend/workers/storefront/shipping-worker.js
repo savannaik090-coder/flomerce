@@ -1918,6 +1918,27 @@ export async function handleShiprocketWebhook(request, env, path) {
   const siteId = parts[3];
   if (!siteId) return errorResponse('siteId missing in path', 400, 'MISSING_SITE_ID');
 
+  // Shiprocket's "Save / Test Webhook" button in the merchant dashboard sends
+  // a POST to validate the URL and only checks for a 2xx response — the
+  // X-Api-Key header is *not* attached on that probe (the merchant may not
+  // have entered the token yet, and Shiprocket's validator runs before the
+  // delivery layer that signs requests). If we 401 the probe, Shiprocket
+  // shows "Please check your endpoint, unable to send request to mentioned
+  // api" and the merchant can't save the webhook at all.
+  //
+  // Treat any POST that arrives without an X-Api-Key header as a probe and
+  // ack with 200. Real webhook deliveries from Shiprocket always carry the
+  // X-Api-Key, so they fall through to the authenticated path below. This is
+  // safe: probes don't read or write any DB rows and don't leak whether the
+  // siteId exists.
+  const provided = String(request.headers.get('X-Api-Key') || request.headers.get('x-api-key') || '');
+  if (!provided) {
+    return new Response(JSON.stringify({ ok: true, service: 'shiprocket-webhook' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   let ctx;
   try {
     ctx = await readShiprocketSettings(env, siteId);
@@ -1927,12 +1948,11 @@ export async function handleShiprocketWebhook(request, env, path) {
   if (!ctx) return errorResponse('Site not found', 404, 'SITE_NOT_FOUND');
 
   const expectedToken = String(ctx.sr?.webhookToken || '');
-  const provided = String(request.headers.get('X-Api-Key') || request.headers.get('x-api-key') || '');
   // Constant-time compare so an attacker can't time-attack the token byte by
   // byte. `constantTimeEqual` short-circuits when lengths differ but does so
   // *before* iterating, which is fine — token length is public knowledge in
   // every webhook system anyway.
-  if (!expectedToken || !provided || !constantTimeEqual(provided, expectedToken)) {
+  if (!expectedToken || !constantTimeEqual(provided, expectedToken)) {
     return errorResponse('Invalid webhook token', 401, 'BAD_WEBHOOK_TOKEN');
   }
 
