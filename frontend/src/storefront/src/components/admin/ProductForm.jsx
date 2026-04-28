@@ -20,6 +20,7 @@ const DEFAULT_FORM = {
   hsn_code: '',
   gst_rate: '',
   weight: '',
+  weight_unit: 'g',
   length: '',
   breadth: '',
   height: '',
@@ -192,7 +193,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
         mainImageIndex: product.main_image_index || 0,
         hsn_code: product.hsn_code || '',
         gst_rate: product.gst_rate != null ? String(product.gst_rate) : '',
-        weight: product.weight != null ? String(product.weight) : '',
+        weight: product.weight != null
+          ? (product.weight >= 1000 && product.weight % 1000 === 0
+              ? String(product.weight / 1000)
+              : String(product.weight))
+          : '',
+        weight_unit: (product.weight != null && product.weight >= 1000 && product.weight % 1000 === 0) ? 'kg' : 'g',
         length: dims?.length != null ? String(dims.length) : '',
         breadth: dims?.breadth != null ? String(dims.breadth) : '',
         height: dims?.height != null ? String(dims.height) : '',
@@ -267,7 +273,8 @@ export default function ProductForm({ product, onSave, onCancel }) {
     // charges from the courier.
     if (siteConfig?.settings?.shiprocket?.enabled) {
       const w = parseFloat(form.weight);
-      if (!form.weight || !Number.isFinite(w) || w <= 0) {
+      const wGrams = form.weight_unit === 'kg' ? w * 1000 : w;
+      if (!form.weight || !Number.isFinite(wGrams) || wGrams <= 0) {
         errs.weight = "Shipping weight is required when Shiprocket is enabled.";
       }
     }
@@ -315,7 +322,11 @@ export default function ProductForm({ product, onSave, onCancel }) {
         options: cleanedOptions,
         hsnCode: form.hsn_code.trim() || null,
         gstRate: form.gst_rate !== '' ? parseFloat(form.gst_rate) : 0,
-        weight: form.weight !== '' && Number.isFinite(parseFloat(form.weight)) ? parseFloat(form.weight) : null,
+        weight: (() => {
+          if (form.weight === '' || !Number.isFinite(parseFloat(form.weight))) return null;
+          const w = parseFloat(form.weight);
+          return form.weight_unit === 'kg' ? Math.round(w * 1000) : Math.round(w);
+        })(),
         dimensions: Object.keys(dimsPayload).length > 0 ? dimsPayload : null,
       };
       let savedProductId = product?.id;
@@ -634,20 +645,48 @@ export default function ProductForm({ product, onSave, onCancel }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                    Weight (g){siteConfig?.settings?.shiprocket?.enabled && <span style={{ color: '#dc2626' }}> *</span>}
+                    Weight{siteConfig?.settings?.shiprocket?.enabled && <span style={{ color: '#dc2626' }}> *</span>}
                   </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.weight}
-                    onChange={e => setForm(p => ({ ...p, weight: e.target.value }))}
-                    placeholder="e.g., 250"
-                    style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.weight ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
-                  />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step={form.weight_unit === 'kg' ? '0.001' : '1'}
+                      value={form.weight}
+                      onChange={e => {
+                        setForm(p => ({ ...p, weight: e.target.value }));
+                        if (errors.weight) setErrors(p => { const n = { ...p }; delete n.weight; return n; });
+                      }}
+                      placeholder={form.weight_unit === 'kg' ? 'e.g., 0.25' : 'e.g., 250'}
+                      style={{ flex: 1, minWidth: 0, padding: '10px 12px', border: `1px solid ${errors.weight ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <select
+                      value={form.weight_unit}
+                      onChange={e => {
+                        const newUnit = e.target.value;
+                        setForm(p => {
+                          if (!p.weight || !Number.isFinite(parseFloat(p.weight))) {
+                            return { ...p, weight_unit: newUnit };
+                          }
+                          const cur = parseFloat(p.weight);
+                          let converted = cur;
+                          if (p.weight_unit === 'g' && newUnit === 'kg') converted = cur / 1000;
+                          else if (p.weight_unit === 'kg' && newUnit === 'g') converted = cur * 1000;
+                          const str = newUnit === 'kg'
+                            ? String(Number(converted.toFixed(3)))
+                            : String(Math.round(converted));
+                          return { ...p, weight: str, weight_unit: newUnit };
+                        });
+                      }}
+                      style={{ padding: '10px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, background: 'white', boxSizing: 'border-box' }}
+                    >
+                      <option value="g">g</option>
+                      <option value="kg">kg</option>
+                    </select>
+                  </div>
                   {errors.weight
                     ? <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.weight}</p>
-                    : <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Total weight of one packed unit, in grams</p>}
+                    : <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Total weight of one packed unit. Stored in grams.</p>}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Dimensions (cm)</label>
