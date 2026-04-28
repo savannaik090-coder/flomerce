@@ -52,6 +52,58 @@ export function normalizeFeatureGroups(rawFeatureGroups, rawFeatures) {
   return [{ heading: '', items: [] }];
 }
 
+// Parse a plain-text features string into canonical [{heading, items[]}].
+// Convention: a line whose trimmed text ends with `:` starts a new section
+// (heading = the line minus the trailing colon, trimmed). Subsequent
+// non-heading lines become that section's items. Any items that appear
+// BEFORE the first heading line collapse into a leading section with an
+// empty heading (so legacy plain-text input keeps producing a single
+// ungrouped section). Blank lines are ignored.
+export function parseFeaturesPlainText(text) {
+  const src = typeof text === 'string' ? text : (text == null ? '' : String(text));
+  const groups = [];
+  let current = null;
+  for (const raw of src.split('\n')) {
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) continue;
+    if (trimmed.endsWith(':')) {
+      const heading = trimmed.slice(0, -1).trim();
+      current = { heading, items: [] };
+      groups.push(current);
+    } else {
+      if (!current) {
+        current = { heading: '', items: [] };
+        groups.push(current);
+      }
+      current.items.push(trimmed);
+    }
+  }
+  return groups;
+}
+
+// Serialize canonical [{heading, items[]}] back to plain text using the same
+// `Heading:` convention so the round trip Plain ↔ Grouped is lossless.
+// A section with a non-empty heading emits a `Heading:` line followed by its
+// items (one per line). A section with an empty heading just emits its items.
+export function serializeFeatureGroupsToPlainText(groups) {
+  if (!Array.isArray(groups)) return '';
+  const lines = [];
+  for (const g of groups) {
+    if (!g || typeof g !== 'object') continue;
+    const heading = typeof g.heading === 'string' ? g.heading.trim() : '';
+    if (heading.length > 0) lines.push(`${heading}:`);
+    if (Array.isArray(g.items)) {
+      for (const it of g.items) {
+        if (typeof it !== 'string') continue;
+        const item = it.trim();
+        if (item.length === 0) continue;
+        lines.push(item);
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
 // Flatten groups → flat string[] for the legacy `features` column.
 export function flattenFeatureGroups(groups) {
   if (!Array.isArray(groups)) return [];
@@ -106,11 +158,16 @@ export function buildFeatureGroupsFromInput({ feature_groups, features }) {
       out.push({ heading, items });
     }
     const cleaned = out.filter((g) => g.heading.length > 0 || g.items.length > 0);
-    // Empty heading allowed only for the single ungrouped section (legacy/plain mode).
+    // Empty heading is allowed for the single ungrouped section (legacy/plain
+    // mode) and for at most one *leading* section in a multi-section list
+    // (this lets plain-text mode start with un-headed items before the first
+    // `Heading:` line). Any other empty-heading section is rejected so admins
+    // can't accidentally produce unnamed sections in the middle of a list.
     if (cleaned.length > 1) {
-      const blank = cleaned.find((g) => g.heading.length === 0);
-      if (blank) {
-        throw new Error('feature validation: every group must have a heading when there is more than one section');
+      for (let i = 1; i < cleaned.length; i++) {
+        if (cleaned[i].heading.length === 0) {
+          throw new Error('feature validation: only the first section may have an empty heading; every other section must have a heading');
+        }
       }
     }
     return cleaned;

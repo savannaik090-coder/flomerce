@@ -10,6 +10,53 @@ import I18nAdminPanel from '../components/I18nAdminPanel.jsx';
 
 function utcDate(s) { if (!s) return null; const v = String(s).trim(); const iso = v.includes('T') ? v : v.replace(' ', 'T'); return new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'); }
 
+// Plain text ↔ feature_groups conversion. These mirror the backend helpers in
+// `backend/utils/plan-features.js` so the same `Heading:` convention applies
+// in both places. A line whose trimmed text ends with `:` starts a new section
+// (heading = the line minus the trailing colon, trimmed); subsequent
+// non-heading lines become its items. Items appearing before the first
+// `Heading:` line collapse into a leading section with an empty heading.
+function parseFeaturesPlainText(text) {
+  const src = typeof text === 'string' ? text : (text == null ? '' : String(text));
+  const groups = [];
+  let current = null;
+  for (const raw of src.split('\n')) {
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) continue;
+    if (trimmed.endsWith(':')) {
+      const heading = trimmed.slice(0, -1).trim();
+      current = { heading, items: [] };
+      groups.push(current);
+    } else {
+      if (!current) {
+        current = { heading: '', items: [] };
+        groups.push(current);
+      }
+      current.items.push(trimmed);
+    }
+  }
+  return groups;
+}
+
+function serializeFeatureGroupsToPlainText(groups) {
+  if (!Array.isArray(groups)) return '';
+  const lines = [];
+  for (const g of groups) {
+    if (!g || typeof g !== 'object') continue;
+    const heading = typeof g.heading === 'string' ? g.heading.trim() : '';
+    if (heading.length > 0) lines.push(`${heading}:`);
+    if (Array.isArray(g.items)) {
+      for (const it of g.items) {
+        if (typeof it !== 'string') continue;
+        const item = it.trim();
+        if (item.length === 0) continue;
+        lines.push(item);
+      }
+    }
+  }
+  return lines.join('\n');
+}
+
 export default function OwnerAdminPage() {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
@@ -212,13 +259,20 @@ export default function OwnerAdminPage() {
         return;
       }
 
-      // Build feature_groups from the active editor; plain mode collapses to one
-      // ungrouped section. Send legacy `features` too so older consumers keep working.
+      // Build feature_groups from the active editor. Plain mode runs through
+      // the shared parser so a `Heading:` line in the textarea produces a
+      // section heading (matching how the public pricing page renders grouped
+      // plans). Send legacy `features` too so older consumers keep working.
       let feature_groups;
       if (planForm.featuresMode === 'plain') {
-        const items = (planForm.featuresPlainText || '')
-          .split('\n').map((s) => s.trim()).filter(Boolean);
-        feature_groups = items.length > 0 ? [{ heading: '', items }] : [];
+        feature_groups = parseFeaturesPlainText(planForm.featuresPlainText || '')
+          .map((g) => ({
+            heading: (g.heading || '').trim(),
+            items: (Array.isArray(g.items) ? g.items : [])
+              .map((s) => (typeof s === 'string' ? s.trim() : ''))
+              .filter(Boolean),
+          }))
+          .filter((g) => g.heading.length > 0 || g.items.length > 0);
       } else {
         feature_groups = (planForm.featureGroups || [])
           .map((g) => ({
@@ -229,12 +283,16 @@ export default function OwnerAdminPage() {
           }))
           .filter((g) => g.heading.length > 0 || g.items.length > 0);
       }
-      // Mirror the backend rule: every section needs a heading once there's >1 section.
+      // Mirror the backend rule: in a multi-section list, only the first
+      // section may have an empty heading (so plain-text mode can start with
+      // un-headed items before the first `Heading:` line). Every other
+      // section must be named.
       if (feature_groups.length > 1) {
-        const blank = feature_groups.find((g) => g.heading.length === 0);
-        if (blank) {
-          toast.warning('Every section needs a heading when there is more than one section.');
-          return;
+        for (let i = 1; i < feature_groups.length; i++) {
+          if (feature_groups[i].heading.length === 0) {
+            toast.warning('Only the first section may have an empty heading; every other section must have a heading.');
+            return;
+          }
         }
       }
       const flatFeatures = feature_groups.flatMap((g) => g.items);
@@ -296,7 +354,12 @@ export default function OwnerAdminPage() {
     const featureGroups = groups.length > 0
       ? groups
       : [{ heading: '', items: flat }];
-    const plainText = (groups.length > 0 ? groups.flatMap((g) => g.items) : flat).join('\n');
+    // Serialize grouped data with the Heading: convention so opening a plan
+    // and toggling to Plain text shows the same structure (no information
+    // loss). Legacy flat plans still produce the bare item-per-line buffer.
+    const plainText = groups.length > 0
+      ? serializeFeatureGroupsToPlainText(groups)
+      : flat.join('\n');
     const hasAnyHeading = featureGroups.some((g) => g.heading && g.heading.length > 0);
 
     setPlanForm({
@@ -1264,14 +1327,16 @@ export default function OwnerAdminPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            // grouped → plain: flatten items into textarea, keep groups intact, reset plainDirty.
-                            const flat = (planForm.featureGroups || [])
-                              .flatMap((g) => Array.isArray(g.items) ? g.items : [])
-                              .filter((s) => typeof s === 'string' && s.trim().length > 0);
+                            // grouped → plain: serialize groups using the
+                            // Heading: convention so headings round-trip
+                            // back into the textarea instead of being
+                            // dropped. Keep groups intact in the buffer too,
+                            // and reset plainDirty so toggling back is a no-op
+                            // when the user doesn't edit the textarea.
                             setPlanForm({
                               ...planForm,
                               featuresMode: 'plain',
-                              featuresPlainText: flat.join('\n'),
+                              featuresPlainText: serializeFeatureGroupsToPlainText(planForm.featureGroups || []),
                               plainDirty: false,
                             });
                           }}
@@ -1289,15 +1354,26 @@ export default function OwnerAdminPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            // plain → grouped: keep groups verbatim if textarea wasn't edited;
-                            // otherwise rebuild from plain text (collapses to one ungrouped section).
+                            // plain → grouped: keep groups verbatim if the
+                            // textarea wasn't edited; otherwise rebuild from
+                            // plain text via the shared parser, so `Heading:`
+                            // lines become section headings (instead of the
+                            // old behaviour of collapsing everything into one
+                            // ungrouped section).
                             if (planForm.plainDirty) {
-                              const items = (planForm.featuresPlainText || '')
-                                .split('\n').map((s) => s.trim()).filter(Boolean);
+                              const parsed = parseFeaturesPlainText(planForm.featuresPlainText || '');
+                              const cleaned = parsed
+                                .map((g) => ({
+                                  heading: (g.heading || '').trim(),
+                                  items: (Array.isArray(g.items) ? g.items : [])
+                                    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+                                    .filter(Boolean),
+                                }))
+                                .filter((g) => g.heading.length > 0 || g.items.length > 0);
                               setPlanForm({
                                 ...planForm,
                                 featuresMode: 'grouped',
-                                featureGroups: [{ heading: '', items }],
+                                featureGroups: cleaned.length > 0 ? cleaned : [{ heading: '', items: [] }],
                                 plainDirty: false,
                               });
                             } else {
@@ -1324,13 +1400,13 @@ export default function OwnerAdminPage() {
                     {planForm.featuresMode === 'plain' && (
                       <>
                         <textarea
-                          rows="5"
+                          rows="6"
                           value={planForm.featuresPlainText}
                           onChange={(e) => setPlanForm({ ...planForm, featuresPlainText: e.target.value, plainDirty: true })}
-                          placeholder={"1 Website\nUnlimited Products\nCustom Domain\n500 MB Database / 5 GB Storage"}
+                          placeholder={"1 Website\nUnlimited Products\nEverything in Starter, plus:\nCustom Domain\nPriority Support"}
                           style={{ marginTop: '0.5rem' }}
                         />
-                        <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>One feature per line. These features are shared across all billing cycles of this plan.</p>
+                        <p style={{ fontSize: '0.7rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>One feature per line. End a line with <code>:</code> to make it a section heading (e.g. <code>Everything in Starter, plus:</code>) — lines after it become items under that heading. These features are shared across all billing cycles of this plan.</p>
                       </>
                     )}
 
