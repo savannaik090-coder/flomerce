@@ -1,211 +1,192 @@
-import React, { useState } from 'react';
-import { Heart, ChevronDown, ArrowRight } from 'lucide-react';
-import { CATEGORY, SUBCATEGORIES, PRODUCTS, formatINR } from './_data';
+import React, { useState, useMemo } from 'react';
+import { Heart, ChevronDown, X } from 'lucide-react';
+import { CATEGORY, SUBCATEGORIES, PRODUCTS, formatINR, type Product } from './_data';
+
+type SortValue = 'price-low-high' | 'price-high-low' | 'newest';
+
+const SORT_LABELS: Record<SortValue, string> = {
+  'price-low-high': 'Price: Low to High',
+  'price-high-low': 'Price: High to Low',
+  'newest': 'Newest',
+};
+
+function ProductTile({ p }: { p: Product }) {
+  const [wished, setWished] = useState(false);
+  const out = p.stock <= 0;
+  return (
+    <div className="group">
+      <div className="relative overflow-hidden bg-[#f4efe7]">
+        <img
+          src={p.images[0]}
+          alt={p.name}
+          className="w-full h-[480px] object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+          loading="lazy"
+        />
+        {out && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="text-white text-sm font-semibold tracking-[0.2em] uppercase">Out of Stock</span>
+          </div>
+        )}
+        <button
+          onClick={(e) => { e.preventDefault(); setWished(!wished); }}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition"
+          aria-label="Add to wishlist"
+        >
+          <Heart size={16} className={wished ? 'fill-[#e53e3e] text-[#e53e3e]' : 'text-[#333]'} />
+        </button>
+      </div>
+      <div className="text-center pt-4 pb-2">
+        <h3 className="text-[14px] font-medium text-[#333] truncate" style={{ fontFamily: "'Futura PT', 'Century Gothic', sans-serif" }}>
+          {p.name}
+        </h3>
+        <p className="text-[15px] font-semibold text-[#333] mt-1.5" style={{ fontFamily: "'Lato', sans-serif" }}>
+          {formatINR(p.price)}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function EditorialLookbook() {
-  const [activeSubcategory, setActiveSubcategory] = useState('all');
+  const [sort, setSort] = useState<SortValue>('price-low-high');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [tempSort, setTempSort] = useState<'featured' | 'newest'>('featured');
+  const [tempInStock, setTempInStock] = useState(false);
+  const [tempSub, setTempSub] = useState('');
+  const [filters, setFilters] = useState({ inStockOnly: false, subcategoryId: '' });
+
+  const products = useMemo(() => {
+    let r = [...PRODUCTS];
+    if (filters.subcategoryId) r = r.filter(p => p.subcategory_id === filters.subcategoryId);
+    if (filters.inStockOnly) r = r.filter(p => p.stock > 0);
+    if (sort === 'price-low-high') r.sort((a, b) => a.price - b.price);
+    else if (sort === 'price-high-low') r.sort((a, b) => b.price - a.price);
+    else if (sort === 'newest') r.sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
+    return r;
+  }, [sort, filters]);
+
+  const activeFilters = (filters.inStockOnly ? 1 : 0) + (filters.subcategoryId ? 1 : 0);
 
   return (
-    <div className="min-h-screen bg-[#faf6ee] text-[#3a2818] font-['Lato',sans-serif]">
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
-      `}} />
+    <div className="bg-[#f8f8f5] min-h-screen" style={{ fontFamily: "'Lato', sans-serif" }}>
+      {/* HERO — full-bleed image_url with overlay */}
+      <section
+        className="relative h-[60vh] min-h-[420px] bg-center bg-cover flex items-center justify-center"
+        style={{ backgroundImage: `url(${CATEGORY.image_url})` }}
+      >
+        <div className="absolute inset-0 bg-black/35" />
+        <div className="relative text-center px-6 max-w-3xl">
+          <h1 className="text-white text-5xl md:text-6xl tracking-wide" style={{ fontFamily: "'Playfair Display', serif" }}>
+            {CATEGORY.name}
+          </h1>
+          <div className="mx-auto my-5 h-px w-16 bg-[#d4af37]" />
+          <p className="text-white/90 text-base md:text-lg leading-relaxed" style={{ fontFamily: "'Lora', serif", fontStyle: 'italic' }}>
+            {CATEGORY.description}
+          </p>
+        </div>
+      </section>
 
-      {/* Breadcrumb */}
-      <div className="max-w-[1280px] mx-auto px-6 py-4">
-        <nav className="text-[10px] tracking-[0.2em] uppercase text-stone-500 font-medium">
-          {CATEGORY.breadcrumb.map((item, i) => (
-            <span key={i}>
-              {item}
-              {i < CATEGORY.breadcrumb.length - 1 && <span className="mx-2 text-stone-300">/</span>}
-            </span>
-          ))}
-        </nav>
+      {/* FILTER + SORT BAR (sticky) — matches current FilterSortBar pattern */}
+      <div className="sticky top-0 z-30 bg-[#f8f8f5]/95 backdrop-blur border-b border-[#e8e1d6]">
+        <div className="max-w-[1280px] mx-auto px-8 py-4 flex items-center justify-between">
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="text-[12px] tracking-[0.25em] uppercase text-[#603000] hover:text-[#d4af37] transition"
+          >
+            Filter{activeFilters > 0 ? ` (${activeFilters})` : ''}
+          </button>
+          <div className="text-[11px] tracking-[0.3em] uppercase text-[#888]">
+            {products.length} pieces
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setSortOpen(!sortOpen)}
+              className="flex items-center gap-2 text-[12px] tracking-[0.25em] uppercase text-[#603000] hover:text-[#d4af37] transition"
+            >
+              Sort By <ChevronDown size={12} className={`transition ${sortOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {sortOpen && (
+              <div className="absolute right-0 top-full mt-2 bg-white border border-[#e8e1d6] shadow-lg min-w-[200px] z-40">
+                {(['price-low-high', 'price-high-low', 'newest'] as SortValue[]).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => { setSort(v); setSortOpen(false); }}
+                    className={`block w-full text-left px-4 py-3 text-sm hover:bg-[#f8f8f5] transition ${sort === v ? 'text-[#603000] font-semibold' : 'text-[#666]'}`}
+                  >
+                    {SORT_LABELS[v]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Hero */}
-      <div className="max-w-[1280px] mx-auto px-6 mb-12">
-        <div className="flex flex-col md:flex-row h-[520px] bg-[#fdfaf5] border border-[#e8e1d6] overflow-hidden shadow-sm">
-          <div className="w-full md:w-[60%] h-[300px] md:h-full relative">
-            <img 
-              src={CATEGORY.heroImage} 
-              alt={CATEGORY.name} 
-              className="w-full h-full object-cover object-center"
-            />
-          </div>
-          <div className="w-full md:w-[40%] flex flex-col justify-center p-12 lg:p-16 relative">
-            <span className="text-xs tracking-[0.25em] uppercase text-[#c9949a] mb-4 font-semibold">
-              The Collection
-            </span>
-            <h1 className="font-['Playfair_Display'] text-5xl lg:text-[72px] leading-[1.05] font-normal text-[#3a2818] mb-6">
-              {CATEGORY.name.split(' ').map((word, i) => (
-                <span key={i} className="block">{word}</span>
-              ))}
-            </h1>
-            <p className="text-[#5a4838] leading-relaxed mb-10 max-w-sm text-sm lg:text-base">
-              {CATEGORY.description}
-            </p>
-            <div className="absolute top-8 right-8">
-              <div className="w-16 h-16 rounded-full border border-[#d4af37] flex flex-col items-center justify-center text-center p-2">
-                <span className="font-['Playfair_Display'] text-lg leading-none text-[#d4af37]">{CATEGORY.productCount}</span>
-                <span className="text-[8px] tracking-widest uppercase text-[#d4af37] mt-1">Pieces</span>
+      {/* PRODUCT GRID — looser 3-col, generous breathing room */}
+      <section className="max-w-[1280px] mx-auto px-8 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-12">
+          {products.map(p => <ProductTile key={p.id} p={p} />)}
+        </div>
+      </section>
+
+      {/* FILTER MODAL — exact behavior of existing FilterSortBar modal */}
+      {filterOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setFilterOpen(false)}>
+          <div className="bg-white max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#eee]">
+              <h2 className="text-xl text-[#333]" style={{ fontFamily: "'Playfair Display', serif" }}>Filter Products</h2>
+              <button onClick={() => setFilterOpen(false)} className="text-[#888] hover:text-[#333]"><X size={20} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-6">
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Sort By</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="srt" checked={tempSort === 'featured'} onChange={() => setTempSort('featured')} /> Featured
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="srt" checked={tempSort === 'newest'} onChange={() => setTempSort('newest')} /> Newest
+                  </label>
+                </div>
               </div>
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Subcategory</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="sub" checked={tempSub === ''} onChange={() => setTempSub('')} /> All
+                  </label>
+                  {SUBCATEGORIES.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                      <input type="radio" name="sub" checked={tempSub === s.id} onChange={() => setTempSub(s.id)} /> {s.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Availability</h3>
+                <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                  <input type="checkbox" checked={tempInStock} onChange={e => setTempInStock(e.target.checked)} /> In Stock
+                </label>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#eee] flex gap-3">
+              <button
+                onClick={() => { setFilters({ inStockOnly: tempInStock, subcategoryId: tempSub }); setFilterOpen(false); }}
+                className="flex-1 bg-[#603000] text-white py-3 text-sm tracking-[0.15em] uppercase hover:bg-[#7B410A] transition"
+              >
+                Apply Filters
+              </button>
+              <button
+                onClick={() => { setTempSort('featured'); setTempInStock(false); setTempSub(''); setFilters({ inStockOnly: false, subcategoryId: '' }); setFilterOpen(false); }}
+                className="px-5 border border-[#ddd] text-[#666] text-sm tracking-[0.15em] uppercase hover:bg-[#f8f8f5] transition"
+              >
+                Clear All
+              </button>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Subcategory Chips */}
-      <div className="max-w-[1280px] mx-auto px-6 mb-10">
-        <div className="flex flex-wrap items-center gap-3">
-          {SUBCATEGORIES.map(sub => {
-            const isActive = activeSubcategory === sub.id;
-            return (
-              <button
-                key={sub.id}
-                onClick={() => setActiveSubcategory(sub.id)}
-                className={`
-                  px-6 py-2.5 rounded-full text-xs tracking-wider uppercase transition-all duration-300
-                  ${isActive 
-                    ? 'bg-[#c9949a] text-white border-[#c9949a]' 
-                    : 'bg-transparent text-[#3a2818] border-[#e8e1d6] hover:border-[#d4af37] hover:text-[#d4af37]'
-                  }
-                  border
-                `}
-              >
-                {sub.name} <span className={`ml-1 ${isActive ? 'text-white/80' : 'text-stone-400'}`}>({sub.count})</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Sort Bar */}
-      <div className="max-w-[1280px] mx-auto px-6 mb-12">
-        <div className="border-y border-[#e8e1d6] py-4 flex justify-between items-center bg-[#fdfaf5]/50 px-4">
-          <div className="text-xs text-[#5a4838] tracking-widest uppercase">
-            Showing 1–12 of {CATEGORY.productCount}
-          </div>
-          <button className="flex items-center gap-2 text-xs tracking-widest uppercase text-[#3a2818] hover:text-[#c9949a] transition-colors group">
-            Sort by: Featured
-            <ChevronDown className="w-4 h-4 text-stone-400 group-hover:text-[#c9949a] transition-colors" />
-          </button>
-        </div>
-      </div>
-
-      {/* Editorial Grid */}
-      <div className="max-w-[1280px] mx-auto px-6 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-16">
-          {PRODUCTS.map((product, idx) => {
-            // Determine card type based on pattern:
-            // 0,1,2: normal
-            // 3: large (col-span-2), 4: normal
-            // 5: normal, 6: large (col-span-2)
-            // 7,8,9: normal
-            // 10: large (col-span-2), 11: normal
-            
-            let isLarge = false;
-            let layout = 'normal';
-            if (idx === 3 || idx === 10) { isLarge = true; layout = 'large-left'; }
-            if (idx === 6) { isLarge = true; layout = 'large-right'; }
-
-            if (isLarge) {
-              return (
-                <div key={product.id} className="col-span-1 md:col-span-2 group cursor-pointer relative flex flex-col sm:flex-row bg-white border border-[#e8e1d6] overflow-hidden hover:shadow-md transition-shadow duration-500">
-                  <div className={`w-full sm:w-[60%] relative overflow-hidden bg-stone-100 ${layout === 'large-right' ? 'order-2' : 'order-1'}`}>
-                    <img 
-                      src={product.image} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover aspect-[4/3] sm:aspect-auto sm:absolute sm:inset-0 group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
-                    {!product.inStock && (
-                      <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center">
-                        <span className="bg-white/90 px-4 py-2 text-xs tracking-widest uppercase text-[#3a2818]">Out of Stock</span>
-                      </div>
-                    )}
-                    {product.badge && (
-                      <div className="absolute top-4 left-4 bg-[#faf6ee] px-3 py-1 text-[10px] tracking-widest uppercase text-[#3a2818] shadow-sm z-10">
-                        {product.badge}
-                      </div>
-                    )}
-                    <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/70 backdrop-blur flex items-center justify-center text-[#3a2818] hover:bg-[#c9949a] hover:text-white transition-colors z-10">
-                      <Heart className="w-5 h-5" strokeWidth={1.5} />
-                    </button>
-                  </div>
-                  <div className={`w-full sm:w-[40%] p-8 md:p-12 flex flex-col justify-center bg-[#fdfaf5] ${layout === 'large-right' ? 'order-1' : 'order-2'}`}>
-                    <div className="text-[10px] tracking-widest uppercase text-stone-400 mb-3">{product.subcategory}</div>
-                    <h3 className="font-['Playfair_Display'] text-2xl lg:text-3xl text-[#3a2818] mb-4 leading-snug">
-                      {product.name}
-                    </h3>
-                    <div className="font-['Playfair_Display'] italic text-[#d4af37] text-xl mb-8">
-                      {formatINR(product.price)}
-                    </div>
-                    <div className="mt-auto flex items-center gap-3 text-xs tracking-[0.2em] uppercase text-[#3a2818] group-hover:text-[#c9949a] transition-colors font-semibold">
-                      Discover
-                      <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div key={product.id} className="col-span-1 group cursor-pointer flex flex-col">
-                <div className="relative aspect-[4/5] overflow-hidden mb-6 bg-stone-100 border border-transparent group-hover:border-[#e8e1d6] transition-colors duration-500">
-                  <img 
-                    src={product.image} 
-                    alt={product.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                  />
-                  {product.hoverImage && (
-                    <img 
-                      src={product.hoverImage} 
-                      alt={product.name} 
-                      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-out"
-                    />
-                  )}
-                  {!product.inStock && (
-                    <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex items-center justify-center z-10">
-                      <span className="bg-white/90 px-4 py-2 text-[10px] tracking-widest uppercase text-[#3a2818]">Out of Stock</span>
-                    </div>
-                  )}
-                  {product.badge && (
-                    <div className="absolute top-4 left-4 bg-[#faf6ee] px-3 py-1 text-[9px] tracking-[0.15em] uppercase text-[#3a2818] shadow-sm z-10">
-                      {product.badge}
-                    </div>
-                  )}
-                  <button className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/70 backdrop-blur flex items-center justify-center text-[#3a2818] hover:bg-[#c9949a] hover:text-white transition-colors z-10">
-                    <Heart className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
-                </div>
-                <div className="text-center px-4 flex flex-col items-center">
-                  <h3 className="text-xs tracking-[0.15em] uppercase text-[#3a2818] mb-2 leading-relaxed">
-                    {product.name}
-                  </h3>
-                  <div className="font-['Playfair_Display'] italic text-[#d4af37] text-lg">
-                    {formatINR(product.price)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <footer className="border-t border-[#e8e1d6] bg-[#fdfaf5] py-24">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <p className="font-['Playfair_Display'] italic text-2xl md:text-4xl text-[#3a2818] leading-snug mb-8">
-            "We believe that true luxury lies in the patience of the craft and the quiet elegance of the wearer."
-          </p>
-          <div className="text-xs tracking-widest uppercase text-stone-400 mb-12">
-            — The House of Bridal Collection
-          </div>
-          <button className="bg-[#3a2818] text-white px-10 py-4 text-xs tracking-[0.2em] uppercase hover:bg-[#c9949a] transition-colors duration-300">
-            Continue Shopping
-          </button>
-        </div>
-      </footer>
+      )}
     </div>
   );
 }

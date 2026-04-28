@@ -1,323 +1,194 @@
-import React, { useState } from 'react';
-import { 
-  ChevronRight, 
-  Heart, 
-  Grid3X3, 
-  Grid2X2, 
-  ChevronDown, 
-  SlidersHorizontal,
-  Star
-} from 'lucide-react';
-import { PRODUCTS, SUBCATEGORIES, CATEGORY, formatINR } from './_data';
+import React, { useState, useMemo } from 'react';
+import { Heart, ChevronDown, X } from 'lucide-react';
+import { CATEGORY, SUBCATEGORIES, PRODUCTS, formatINR, type Product } from './_data';
+
+type SortValue = 'price-low-high' | 'price-high-low' | 'newest';
+const SORT_LABELS: Record<SortValue, string> = {
+  'price-low-high': 'Price: Low to High',
+  'price-high-low': 'Price: High to Low',
+  'newest': 'Newest',
+};
+
+function ProductTile({ p }: { p: Product }) {
+  const [wished, setWished] = useState(false);
+  const out = p.stock <= 0;
+  return (
+    <div className="group">
+      <div className="relative overflow-hidden bg-[#f4efe7]">
+        <img
+          src={p.images[0]}
+          alt={p.name}
+          className="w-full h-[340px] object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+          loading="lazy"
+        />
+        {out && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="text-white text-xs font-semibold tracking-[0.2em] uppercase">Out of Stock</span>
+          </div>
+        )}
+        <button
+          onClick={(e) => { e.preventDefault(); setWished(!wished); }}
+          className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition"
+          aria-label="Add to wishlist"
+        >
+          <Heart size={14} className={wished ? 'fill-[#e53e3e] text-[#e53e3e]' : 'text-[#333]'} />
+        </button>
+      </div>
+      <div className="text-center pt-3 pb-1">
+        <h3 className="text-[13px] font-medium text-[#333] truncate" style={{ fontFamily: "'Futura PT', 'Century Gothic', sans-serif" }}>
+          {p.name}
+        </h3>
+        <p className="text-[14px] font-semibold text-[#333] mt-1" style={{ fontFamily: "'Lato', sans-serif" }}>
+          {formatINR(p.price)}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function SidebarDense() {
-  const [viewCols, setViewCols] = useState<3 | 4>(3);
-  const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortValue>('price-low-high');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [tempSort, setTempSort] = useState<'featured' | 'newest'>('featured');
+  const [tempInStock, setTempInStock] = useState(false);
+  const [tempSub, setTempSub] = useState('');
+  const [filters, setFilters] = useState({ inStockOnly: false, subcategoryId: '' });
+
+  const products = useMemo(() => {
+    let r = [...PRODUCTS];
+    if (filters.subcategoryId) r = r.filter(p => p.subcategory_id === filters.subcategoryId);
+    if (filters.inStockOnly) r = r.filter(p => p.stock > 0);
+    if (sort === 'price-low-high') r.sort((a, b) => a.price - b.price);
+    else if (sort === 'price-high-low') r.sort((a, b) => b.price - a.price);
+    else if (sort === 'newest') r.sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
+    return r;
+  }, [sort, filters]);
+
+  const activeFilters = (filters.inStockOnly ? 1 : 0) + (filters.subcategoryId ? 1 : 0);
 
   return (
-    <div className="min-h-screen bg-white text-stone-800 font-['Lato'] selection:bg-[#c9949a] selection:text-white">
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&family=Playfair+Display:wght@400;500;600;700&display=swap');
-        
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}} />
-
-      {/* Breadcrumb */}
-      <div className="max-w-[1280px] mx-auto px-6 py-4">
-        <nav className="flex items-center gap-2 text-xs text-stone-500 uppercase tracking-widest">
-          {CATEGORY.breadcrumb.map((crumb, idx) => (
-            <React.Fragment key={crumb}>
-              <span className={idx === CATEGORY.breadcrumb.length - 1 ? 'text-stone-900 font-bold' : 'hover:text-[#c9949a] cursor-pointer transition-colors'}>
-                {crumb}
-              </span>
-              {idx < CATEGORY.breadcrumb.length - 1 && <ChevronRight className="w-3 h-3" />}
-            </React.Fragment>
-          ))}
-        </nav>
-      </div>
-
-      {/* Hero */}
-      <div className="h-[220px] bg-gradient-to-b from-[#fdfbf9] to-[#faf8f5] border-b border-[#e8e1d6] flex flex-col items-center justify-center text-center px-4">
-        <h1 className="font-['Playfair_Display'] text-4xl md:text-5xl text-stone-900 mb-3 tracking-wide">
-          {CATEGORY.name}
-        </h1>
-        <p className="max-w-2xl text-stone-600 text-sm md:text-base leading-relaxed mb-4">
-          {CATEGORY.description}
-        </p>
-        <span className="text-xs uppercase tracking-widest font-bold text-[#c9949a]">
-          {CATEGORY.productCount} Pieces
-        </span>
-      </div>
-
-      {/* Two Column Layout */}
-      <div className="max-w-[1280px] mx-auto px-6 py-8 flex flex-col md:flex-row gap-8 items-start">
-        
-        {/* Left Sidebar */}
-        <aside className="hidden md:block w-[260px] shrink-0 sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar bg-[#faf8f5] border border-[#e8e1d6] rounded-sm p-6">
-          <div className="flex items-center gap-2 mb-8 text-stone-800">
-            <SlidersHorizontal className="w-4 h-4" />
-            <span className="font-bold uppercase tracking-widest text-sm">Filters</span>
-          </div>
-
-          {/* Subcategories */}
-          <div className="mb-8">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900 mb-4">Category</h3>
-            <div className="space-y-3">
-              {SUBCATEGORIES.filter(s => s.id !== 'all').map((sub) => (
-                <label key={sub.id} className="flex items-center group cursor-pointer">
-                  <div className="relative flex items-center justify-center w-4 h-4 border border-[#e8e1d6] bg-white rounded-sm mr-3 group-hover:border-[#c9949a] transition-colors">
-                    <input type="checkbox" className="peer sr-only" />
-                    <div className="absolute inset-0 bg-[#c9949a] opacity-0 peer-checked:opacity-100 transition-opacity rounded-sm flex items-center justify-center">
-                      <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3 text-white">
-                        <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <span className="text-sm text-stone-600 group-hover:text-stone-900 transition-colors flex-1">{sub.name}</span>
-                  <span className="text-xs text-stone-400">{sub.count}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <hr className="border-[#e8e1d6] mb-8" />
-
-          {/* Price Range */}
-          <div className="mb-8">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900 mb-4">Price Range</h3>
-            <div className="px-1 mb-2">
-              {/* Fake Slider Track */}
-              <div className="relative h-1 bg-[#e8e1d6] rounded-full mt-6 mb-4">
-                <div className="absolute left-[20%] right-[30%] h-full bg-[#c9949a] rounded-full"></div>
-                <div className="absolute left-[20%] top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 bg-[#c9949a] rounded-full border-2 border-white shadow-sm"></div>
-                <div className="absolute right-[30%] top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-4 bg-[#c9949a] rounded-full border-2 border-white shadow-sm"></div>
-              </div>
-            </div>
-            <div className="flex justify-between items-center text-sm text-stone-600">
-              <span>₹0</span>
-              <span>₹500,000+</span>
-            </div>
-          </div>
-
-          <hr className="border-[#e8e1d6] mb-8" />
-
-          {/* Availability */}
-          <div className="mb-8 flex items-center justify-between">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900">In Stock Only</h3>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" value="" className="sr-only peer" />
-              <div className="w-9 h-5 bg-[#e8e1d6] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#c9949a]"></div>
-            </label>
-          </div>
-
-          <hr className="border-[#e8e1d6] mb-8" />
-
-          {/* Material */}
-          <div className="mb-8">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900 mb-4">Material</h3>
-            <div className="space-y-3">
-              {['22K Gold', 'Diamond', 'Polki', 'Kundan', 'Pearl'].map((mat) => (
-                <label key={mat} className="flex items-center group cursor-pointer">
-                  <div className="relative flex items-center justify-center w-4 h-4 border border-[#e8e1d6] bg-white rounded-sm mr-3 group-hover:border-[#c9949a] transition-colors">
-                    <input type="checkbox" className="peer sr-only" />
-                    <div className="absolute inset-0 bg-[#c9949a] opacity-0 peer-checked:opacity-100 transition-opacity rounded-sm flex items-center justify-center">
-                      <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3 text-white">
-                        <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <span className="text-sm text-stone-600 group-hover:text-stone-900 transition-colors">{mat}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <hr className="border-[#e8e1d6] mb-8" />
-
-          {/* Rating */}
-          <div className="mb-8">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-stone-900 mb-4">Rating</h3>
-            <div className="space-y-3">
-              {[5, 4, 3].map((rating) => (
-                <label key={rating} className="flex items-center group cursor-pointer">
-                  <div className="relative flex items-center justify-center w-4 h-4 border border-[#e8e1d6] bg-white rounded-sm mr-3 group-hover:border-[#c9949a] transition-colors">
-                    <input type="checkbox" className="peer sr-only" />
-                    <div className="absolute inset-0 bg-[#c9949a] opacity-0 peer-checked:opacity-100 transition-opacity rounded-sm flex items-center justify-center">
-                      <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3 text-white">
-                        <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-3.5 h-3.5 ${i < rating ? 'fill-[#d4af37] text-[#d4af37]' : 'fill-[#e8e1d6] text-[#e8e1d6]'}`} />
-                    ))}
-                    {rating < 5 && <span className="text-xs text-stone-500 ml-1">& Up</span>}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <button className="w-full py-2 text-xs uppercase tracking-widest font-bold text-stone-500 hover:text-[#c9949a] transition-colors underline decoration-transparent hover:decoration-[#c9949a] underline-offset-4">
-            Clear All Filters
-          </button>
-        </aside>
-
-        {/* Right Content */}
-        <div className="flex-1 min-w-0">
-          
-          {/* Top Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-[#e8e1d6]">
-            <p className="text-sm text-stone-500">
-              Showing <span className="font-bold text-stone-900">12</span> of 48 products
+    <div className="bg-white min-h-screen" style={{ fontFamily: "'Lato', sans-serif" }}>
+      {/* HERO — short banner with side-by-side text + image */}
+      <section className="relative bg-[#f8f8f5]">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-0">
+          <div className="px-8 md:px-12 py-12 md:py-16 flex flex-col justify-center">
+            <div className="text-[11px] tracking-[0.3em] uppercase text-[#d4af37] mb-3">Collection</div>
+            <h1 className="text-4xl md:text-5xl text-[#1a1a1a] leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              {CATEGORY.name}
+            </h1>
+            <div className="mt-4 mb-5 h-px w-12 bg-[#603000]" />
+            <p className="text-[#555] text-base leading-relaxed max-w-md" style={{ fontFamily: "'Lora', serif" }}>
+              {CATEGORY.description}
             </p>
+          </div>
+          <div
+            className="h-[280px] md:h-auto bg-cover bg-center"
+            style={{ backgroundImage: `url(${CATEGORY.image_url})` }}
+          />
+        </div>
+      </section>
 
-            <div className="flex items-center gap-6">
-              {/* View Toggles */}
-              <div className="hidden sm:flex items-center gap-2 border-r border-[#e8e1d6] pr-6">
-                <button 
-                  onClick={() => setViewCols(3)}
-                  className={`p-1.5 transition-colors ${viewCols === 3 ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}`}
-                >
-                  <Grid3X3 className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => setViewCols(4)}
-                  className={`p-1.5 transition-colors ${viewCols === 4 ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}`}
-                >
-                  <Grid2X2 className="w-5 h-5" />
-                </button>
+      {/* FILTER + SORT BAR (sticky) with product count */}
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-[#e8e1d6]">
+        <div className="max-w-[1280px] mx-auto px-8 py-3.5 flex items-center justify-between">
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="text-[12px] tracking-[0.25em] uppercase text-[#603000] hover:text-[#d4af37] transition"
+          >
+            Filter{activeFilters > 0 ? ` (${activeFilters})` : ''}
+          </button>
+          <div className="text-[11px] tracking-[0.3em] uppercase text-[#888]">
+            Showing {products.length} of {PRODUCTS.length}
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setSortOpen(!sortOpen)}
+              className="flex items-center gap-2 text-[12px] tracking-[0.25em] uppercase text-[#603000] hover:text-[#d4af37] transition"
+            >
+              Sort By <ChevronDown size={12} className={`transition ${sortOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {sortOpen && (
+              <div className="absolute right-0 top-full mt-2 bg-white border border-[#e8e1d6] shadow-lg min-w-[200px] z-40">
+                {(['price-low-high', 'price-high-low', 'newest'] as SortValue[]).map(v => (
+                  <button
+                    key={v}
+                    onClick={() => { setSort(v); setSortOpen(false); }}
+                    className={`block w-full text-left px-4 py-3 text-sm hover:bg-[#f8f8f5] transition ${sort === v ? 'text-[#603000] font-semibold' : 'text-[#666]'}`}
+                  >
+                    {SORT_LABELS[v]}
+                  </button>
+                ))}
               </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-              {/* Sort Dropdown */}
-              <div className="flex items-center gap-2 text-sm group relative cursor-pointer">
-                <span className="text-stone-500">Sort by:</span>
-                <span className="font-bold text-stone-900">Featured</span>
-                <ChevronDown className="w-4 h-4 text-stone-500" />
-                
-                {/* Fake Dropdown */}
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#e8e1d6] shadow-lg rounded-sm py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                  {['Featured', 'Price: Low to High', 'Price: High to Low', 'Newest'].map(s => (
-                    <div key={s} className="px-4 py-2 hover:bg-[#faf8f5] hover:text-[#c9949a] transition-colors">
-                      {s}
-                    </div>
+      {/* PRODUCT GRID — dense 4-col (matches current Classic theme default) */}
+      <section className="max-w-[1280px] mx-auto px-8 py-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-10">
+          {products.map(p => <ProductTile key={p.id} p={p} />)}
+        </div>
+      </section>
+
+      {/* FILTER MODAL */}
+      {filterOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setFilterOpen(false)}>
+          <div className="bg-white max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#eee]">
+              <h2 className="text-xl text-[#333]" style={{ fontFamily: "'Playfair Display', serif" }}>Filter Products</h2>
+              <button onClick={() => setFilterOpen(false)} className="text-[#888] hover:text-[#333]"><X size={20} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-6">
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Sort By</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="srt" checked={tempSort === 'featured'} onChange={() => setTempSort('featured')} /> Featured
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="srt" checked={tempSort === 'newest'} onChange={() => setTempSort('newest')} /> Newest
+                  </label>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Subcategory</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="sub" checked={tempSub === ''} onChange={() => setTempSub('')} /> All
+                  </label>
+                  {SUBCATEGORIES.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                      <input type="radio" name="sub" checked={tempSub === s.id} onChange={() => setTempSub(s.id)} /> {s.name}
+                    </label>
                   ))}
                 </div>
               </div>
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Availability</h3>
+                <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                  <input type="checkbox" checked={tempInStock} onChange={e => setTempInStock(e.target.checked)} /> In Stock
+                </label>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#eee] flex gap-3">
+              <button
+                onClick={() => { setFilters({ inStockOnly: tempInStock, subcategoryId: tempSub }); setFilterOpen(false); }}
+                className="flex-1 bg-[#603000] text-white py-3 text-sm tracking-[0.15em] uppercase hover:bg-[#7B410A] transition"
+              >
+                Apply Filters
+              </button>
+              <button
+                onClick={() => { setTempSort('featured'); setTempInStock(false); setTempSub(''); setFilters({ inStockOnly: false, subcategoryId: '' }); setFilterOpen(false); }}
+                className="px-5 border border-[#ddd] text-[#666] text-sm tracking-[0.15em] uppercase hover:bg-[#f8f8f5] transition"
+              >
+                Clear All
+              </button>
             </div>
           </div>
-
-          {/* Grid */}
-          <div className={`grid gap-4 ${viewCols === 3 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
-            {PRODUCTS.map(product => (
-              <div 
-                key={product.id} 
-                className="group flex flex-col border-b border-transparent hover:border-[#e8e1d6] pb-3 transition-colors"
-                onMouseEnter={() => setHoveredProduct(product.id)}
-                onMouseLeave={() => setHoveredProduct(null)}
-              >
-                <div className="relative aspect-[3/4] bg-[#f5f5f5] overflow-hidden mb-3">
-                  <img 
-                    src={hoveredProduct === product.id && product.hoverImage ? product.hoverImage : product.image} 
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] group-hover:opacity-90"
-                  />
-                  
-                  {/* Ribbon Badge */}
-                  {product.badge && (
-                    <div className="absolute top-3 left-0 bg-[#c9949a] text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1 z-10">
-                      {product.badge}
-                    </div>
-                  )}
-
-                  {/* Out of Stock Overlay */}
-                  {!product.inStock && (
-                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10 backdrop-blur-[1px]">
-                      <span className="bg-white/90 text-stone-800 text-xs font-bold uppercase tracking-widest px-4 py-2 border border-stone-200">
-                        Out of Stock
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Wishlist Button */}
-                  <button className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-white/80 hover:bg-white text-stone-400 hover:text-[#c9949a] rounded-full opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-10 shadow-sm">
-                    <Heart className="w-4 h-4" />
-                  </button>
-
-                  {/* Quick View */}
-                  {product.inStock && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-10 px-4">
-                      <button className="w-full bg-white/95 hover:bg-white text-stone-900 text-xs font-bold uppercase tracking-widest py-3 shadow-md transition-colors border border-stone-100">
-                        Quick View
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col flex-1 relative">
-                  <h3 className="text-sm text-stone-700 leading-snug line-clamp-2 mb-1 pr-8">
-                    {product.name}
-                  </h3>
-                  <div className="mt-auto pt-1">
-                    <span className="font-medium text-[#d4af37] text-sm">
-                      {formatINR(product.price)}
-                    </span>
-                  </div>
-
-                  {/* Add to bag small button (revealed on hover) */}
-                  {product.inStock && (
-                    <div className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white pl-2">
-                      <button className="text-xs font-bold text-[#c9949a] hover:text-stone-900 uppercase tracking-widest border-b border-transparent hover:border-stone-900 transition-colors">
-                        + Bag
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          <div className="mt-16 flex items-center justify-center gap-2">
-            {[1, 2, 3, 4].map((page) => (
-              <button 
-                key={page}
-                className={`w-8 h-8 flex items-center justify-center text-sm font-medium transition-colors ${page === 1 ? 'bg-[#c9949a] text-white' : 'text-stone-500 hover:bg-[#faf8f5] hover:text-[#c9949a]'}`}
-              >
-                {page}
-              </button>
-            ))}
-            <span className="text-stone-300 mx-1">·</span>
-            <button className="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-[#faf8f5] hover:text-[#c9949a] transition-colors">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
         </div>
-      </div>
-
-      {/* Footer Band */}
-      <div className="bg-[#faf8f5] border-t border-[#e8e1d6] py-16 px-6 text-center mt-8">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="font-['Playfair_Display'] text-2xl text-stone-900 mb-4">
-            The {CATEGORY.name} Experience
-          </h2>
-          <p className="text-stone-600 text-sm leading-relaxed mb-8">
-            {CATEGORY.description} Each piece is carefully curated and handcrafted to ensure the highest quality and timeless elegance for your special moments.
-          </p>
-          <button className="inline-flex items-center justify-center bg-stone-900 text-white px-8 py-3 text-xs uppercase tracking-widest font-bold hover:bg-[#c9949a] transition-colors">
-            Continue Shopping
-          </button>
-        </div>
-      </div>
-
+      )}
     </div>
   );
 }

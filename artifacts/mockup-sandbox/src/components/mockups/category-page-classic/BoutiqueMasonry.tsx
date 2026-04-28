@@ -1,223 +1,229 @@
-import React, { useState } from 'react';
-import { ChevronRight, Package, Truck, Shield, RotateCcw, Heart, ChevronDown, Plus } from 'lucide-react';
-import { CATEGORY, SUBCATEGORIES, PRODUCTS, formatINR } from './_data';
+import React, { useState, useMemo } from 'react';
+import { Heart, ChevronDown, X } from 'lucide-react';
+import { CATEGORY, SUBCATEGORIES, PRODUCTS, formatINR, type Product } from './_data';
 
-export function BoutiqueMasonry() {
-  const [activeSubcategory, setActiveSubcategory] = useState('all');
-  const [activeFilter, setActiveFilter] = useState('All');
+type SortValue = 'price-low-high' | 'price-high-low' | 'newest';
+const SORT_LABELS: Record<SortValue, string> = {
+  'price-low-high': 'Price: Low to High',
+  'price-high-low': 'Price: High to Low',
+  'newest': 'Newest',
+};
 
-  const aspectRatios = ['aspect-[3/4]', 'aspect-square', 'aspect-[4/5]', 'aspect-[2/3]'];
-
+function ProductTile({ p }: { p: Product }) {
+  const [wished, setWished] = useState(false);
+  const out = p.stock <= 0;
   return (
-    <div className="min-h-screen bg-[#fbf8f3] text-[#333] font-['Lato'] pb-20">
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
-      `}} />
-
-      {/* Top Breadcrumb */}
-      <div className="max-w-6xl mx-auto px-6 py-6 text-sm text-[#888] flex items-center gap-2">
-        {CATEGORY.breadcrumb.map((item, i) => (
-          <React.Fragment key={i}>
-            <span className={i === CATEGORY.breadcrumb.length - 1 ? 'text-[#333] font-medium' : 'hover:text-[#c9949a] cursor-pointer transition-colors'}>
-              {item}
-            </span>
-            {i < CATEGORY.breadcrumb.length - 1 && <ChevronRight className="w-3 h-3" />}
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Contained Banner Hero */}
-      <div className="max-w-6xl mx-auto px-6 mb-12">
-        <div className="relative w-full h-[340px] rounded-3xl overflow-hidden shadow-sm">
-          <img 
-            src={CATEGORY.heroImage} 
-            alt={CATEGORY.name} 
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#4a3b32]/60 via-[#4a3b32]/20 to-transparent"></div>
-          
-          <div className="absolute bottom-6 left-6 max-w-sm bg-white/95 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/50">
-            <h1 className="font-['Playfair_Display'] text-4xl font-semibold text-[#333] mb-3 leading-tight">
-              {CATEGORY.name}
-            </h1>
-            <p className="text-sm text-[#555] mb-5 line-clamp-2 leading-relaxed">
-              {CATEGORY.description}
-            </p>
-            <button className="bg-[#c9949a] hover:bg-[#b5727a] text-white text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-full transition-colors shadow-sm">
-              Explore the Story &rarr;
-            </button>
+    <div className="group">
+      <div className="relative overflow-hidden bg-[#f4efe7]">
+        <img
+          src={p.images[0]}
+          alt={p.name}
+          className="w-full h-[440px] object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+          loading="lazy"
+        />
+        {out && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="text-white text-sm font-semibold tracking-[0.2em] uppercase">Out of Stock</span>
           </div>
-        </div>
-      </div>
-
-      {/* Subcategory Pills */}
-      <div className="max-w-6xl mx-auto px-6 mb-8 flex justify-center">
-        <div className="flex flex-wrap justify-center gap-3">
-          {SUBCATEGORIES.map(sub => (
-            <button
-              key={sub.id}
-              onClick={() => setActiveSubcategory(sub.id)}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all shadow-sm border border-transparent ${
-                activeSubcategory === sub.id 
-                  ? 'bg-[#c9949a] text-white shadow-md' 
-                  : 'bg-white text-[#555] hover:border-[#c9949a]/30 hover:text-[#c9949a]'
-              }`}
-            >
-              {sub.name}
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeSubcategory === sub.id ? 'bg-white/20' : 'bg-[#f0ece8] text-[#888]'}`}>
-                {sub.count}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Ambient Stat Strip */}
-      <div className="border-y border-[#e8e1d6] bg-white/50 py-3 mb-10">
-        <div className="max-w-4xl mx-auto px-6 flex flex-wrap justify-center md:justify-between items-center gap-6 text-[10px] md:text-xs uppercase tracking-widest text-[#666] font-semibold">
-          <div className="flex items-center gap-2"><Package className="w-4 h-4 text-[#c9949a]" /> 48 Pieces</div>
-          <div className="flex items-center gap-2"><Truck className="w-4 h-4 text-[#c9949a]" /> Ships in 24 hrs</div>
-          <div className="flex items-center gap-2"><Shield className="w-4 h-4 text-[#c9949a]" /> Lifetime Warranty</div>
-          <div className="flex items-center gap-2"><RotateCcw className="w-4 h-4 text-[#c9949a]" /> Easy Returns</div>
-        </div>
-      </div>
-
-      {/* Sort + Count Bar */}
-      <div className="max-w-6xl mx-auto px-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex flex-wrap gap-2">
-          {['All', 'Newest', 'Bestseller', 'Under ₹100K', 'Featured'].map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                activeFilter === filter
-                  ? 'bg-[#ffe4e8] text-[#b5727a] border border-[#c9949a]/20'
-                  : 'bg-white text-[#666] border border-[#e8e1d6] hover:border-[#c9949a]/50'
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-2 text-sm text-[#555] font-medium bg-white px-4 py-2 rounded-full border border-[#e8e1d6] shadow-sm cursor-pointer hover:border-[#c9949a]/50 transition-colors">
-          Sort: Curated <ChevronDown className="w-4 h-4 text-[#888]" />
-        </div>
-      </div>
-
-      {/* Masonry Grid */}
-      <div className="max-w-6xl mx-auto px-6 mb-16">
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-          {PRODUCTS.map((product, i) => {
-            const aspectClass = aspectRatios[i % aspectRatios.length];
-            
-            return (
-              <div 
-                key={product.id} 
-                className="break-inside-avoid bg-white p-3 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 group -translate-y-0 hover:-translate-y-1 border border-[#e8e1d6]/50"
-              >
-                <div className={`relative w-full ${aspectClass} rounded-xl overflow-hidden mb-4 bg-[#f8f5f0]`}>
-                  {/* Badge */}
-                  {product.badge && (
-                    <div className="absolute top-3 left-3 z-20 bg-white/90 backdrop-blur-sm text-[#333] text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-sm shadow-sm">
-                      {product.badge}
-                    </div>
-                  )}
-                  
-                  {/* Wishlist Heart */}
-                  <button className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-[#555] hover:text-[#c9949a] hover:bg-white transition-colors shadow-sm">
-                    <Heart className="w-4 h-4" />
-                  </button>
-
-                  {/* Main Image */}
-                  <img 
-                    src={product.image} 
-                    alt={product.name}
-                    className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-in-out z-10"
-                  />
-                  
-                  {/* Hover Image */}
-                  {product.hoverImage && (
-                    <img 
-                      src={product.hoverImage} 
-                      alt={`${product.name} alternate view`}
-                      className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-in-out opacity-0 group-hover:opacity-100 z-[15]"
-                    />
-                  )}
-
-                  {/* Out of stock overlay */}
-                  {!product.inStock && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
-                      <span className="bg-white/90 text-[#333] text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-sm shadow-sm">
-                        Out of Stock
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="px-1 flex justify-between items-end gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-stone-800 text-sm truncate mb-1">
-                      {product.name}
-                    </h3>
-                    <p className="font-['Playfair_Display'] text-[#d4af37] text-base font-semibold tracking-wide">
-                      {formatINR(product.price)}
-                    </p>
-                  </div>
-                  <button 
-                    disabled={!product.inStock}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full shadow-sm transition-colors ${
-                      product.inStock 
-                        ? 'bg-[#fbf8f3] text-[#c9949a] hover:bg-[#c9949a] hover:text-white border border-[#e8e1d6]' 
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Load More */}
-      <div className="flex justify-center mb-24">
-        <button className="px-8 py-3 rounded-full border-2 border-stone-300 text-stone-600 font-bold text-xs uppercase tracking-widest hover:bg-[#c9949a] hover:border-[#c9949a] hover:text-white transition-all">
-          Load More Pieces
+        )}
+        <button
+          onClick={(e) => { e.preventDefault(); setWished(!wished); }}
+          className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition"
+          aria-label="Add to wishlist"
+        >
+          <Heart size={16} className={wished ? 'fill-[#e53e3e] text-[#e53e3e]' : 'text-[#333]'} />
         </button>
       </div>
+      <div className="text-center pt-4 pb-2">
+        <h3 className="text-[14px] font-medium text-[#333] truncate" style={{ fontFamily: "'Futura PT', 'Century Gothic', sans-serif" }}>
+          {p.name}
+        </h3>
+        <p className="text-[15px] font-semibold text-[#333] mt-1.5" style={{ fontFamily: "'Lato', sans-serif" }}>
+          {formatINR(p.price)}
+        </p>
+      </div>
+    </div>
+  );
+}
 
-      {/* Footer Styling Tips */}
-      <div className="max-w-5xl mx-auto px-6 border-t border-[#e8e1d6] pt-16">
-        <div className="text-center mb-10">
-          <h2 className="font-['Playfair_Display'] text-2xl font-semibold text-[#333] italic mb-2">Curated by our atelier</h2>
-          <p className="text-sm text-[#666]">Styling tips and editorial inspiration for your special day.</p>
+export function BoutiqueMasonry() {
+  const [sort, setSort] = useState<SortValue>('price-low-high');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [tempSort, setTempSort] = useState<'featured' | 'newest'>('featured');
+  const [tempInStock, setTempInStock] = useState(false);
+  const [tempSub, setTempSub] = useState('');
+  const [filters, setFilters] = useState({ inStockOnly: false, subcategoryId: '' });
+
+  const products = useMemo(() => {
+    let r = [...PRODUCTS];
+    if (filters.subcategoryId) r = r.filter(p => p.subcategory_id === filters.subcategoryId);
+    if (filters.inStockOnly) r = r.filter(p => p.stock > 0);
+    if (sort === 'price-low-high') r.sort((a, b) => a.price - b.price);
+    else if (sort === 'price-high-low') r.sort((a, b) => b.price - a.price);
+    else if (sort === 'newest') r.sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));
+    return r;
+  }, [sort, filters]);
+
+  const activeFilters = (filters.inStockOnly ? 1 : 0) + (filters.subcategoryId ? 1 : 0);
+
+  function selectChip(id: string) {
+    setFilters(f => ({ ...f, subcategoryId: id }));
+    setTempSub(id);
+  }
+
+  return (
+    <div className="bg-[#fbf8f3] min-h-screen" style={{ fontFamily: "'Lato', sans-serif" }}>
+      {/* HERO — medium full-bleed */}
+      <section
+        className="relative h-[45vh] min-h-[340px] bg-center bg-cover flex items-end"
+        style={{ backgroundImage: `url(${CATEGORY.image_url})` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-black/55" />
+        <div className="relative max-w-[1280px] mx-auto w-full px-8 pb-12">
+          <h1 className="text-white text-5xl md:text-6xl" style={{ fontFamily: "'Playfair Display', serif" }}>
+            {CATEGORY.name}
+          </h1>
+          <p className="text-white/90 text-base md:text-lg max-w-2xl mt-3" style={{ fontFamily: "'Lora', serif", fontStyle: 'italic' }}>
+            {CATEGORY.description}
+          </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="group cursor-pointer">
-            <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden mb-4 shadow-sm">
-              <img src="https://images.unsplash.com/photo-1599643477877-530e5d3e2d7e?auto=format&fit=crop&w=600&q=80" alt="Styling Tip 1" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-            </div>
-            <h4 className="font-semibold text-stone-800 text-sm mb-1 group-hover:text-[#c9949a] transition-colors">The Perfect Stack</h4>
-            <p className="text-xs text-[#666]">How to layer your heirloom bangles.</p>
+      </section>
+
+      {/* SUBCATEGORY CHIP ROW — sticky horizontal pills */}
+      <div className="sticky top-0 z-30 bg-[#fbf8f3] border-b border-[#ebe2d3]">
+        <div className="max-w-[1280px] mx-auto px-8">
+          <div className="flex gap-2 overflow-x-auto py-4 scrollbar-hide">
+            <button
+              onClick={() => selectChip('')}
+              className={`whitespace-nowrap px-5 py-2 rounded-full text-[12px] tracking-[0.18em] uppercase border transition ${
+                filters.subcategoryId === ''
+                  ? 'bg-[#603000] text-white border-[#603000]'
+                  : 'bg-white text-[#603000] border-[#e0d6c2] hover:border-[#603000]'
+              }`}
+            >
+              All
+            </button>
+            {SUBCATEGORIES.map(s => {
+              const active = filters.subcategoryId === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => selectChip(s.id)}
+                  className={`whitespace-nowrap px-5 py-2 rounded-full text-[12px] tracking-[0.18em] uppercase border transition ${
+                    active
+                      ? 'bg-[#603000] text-white border-[#603000]'
+                      : 'bg-white text-[#603000] border-[#e0d6c2] hover:border-[#603000]'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              );
+            })}
           </div>
-          <div className="group cursor-pointer mt-0 md:mt-8">
-            <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden mb-4 shadow-sm">
-              <img src="https://images.unsplash.com/photo-1601821765780-754fa98637c1?auto=format&fit=crop&w=600&q=80" alt="Styling Tip 2" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        </div>
+
+        {/* FILTER + SORT BAR */}
+        <div className="border-t border-[#ebe2d3] bg-[#fbf8f3]/95 backdrop-blur">
+          <div className="max-w-[1280px] mx-auto px-8 py-3 flex items-center justify-between">
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="text-[12px] tracking-[0.25em] uppercase text-[#603000] hover:text-[#c9949a] transition"
+            >
+              Filter{activeFilters > 0 ? ` (${activeFilters})` : ''}
+            </button>
+            <div className="text-[11px] tracking-[0.3em] uppercase text-[#888]">
+              {products.length} pieces
             </div>
-            <h4 className="font-semibold text-stone-800 text-sm mb-1 group-hover:text-[#c9949a] transition-colors">Choosing Polki</h4>
-            <p className="text-xs text-[#666]">Understanding uncut diamonds.</p>
-          </div>
-          <div className="group cursor-pointer">
-            <div className="w-full aspect-[4/3] rounded-2xl overflow-hidden mb-4 shadow-sm">
-              <img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=600&q=80" alt="Styling Tip 3" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <div className="relative">
+              <button
+                onClick={() => setSortOpen(!sortOpen)}
+                className="flex items-center gap-2 text-[12px] tracking-[0.25em] uppercase text-[#603000] hover:text-[#c9949a] transition"
+              >
+                Sort By <ChevronDown size={12} className={`transition ${sortOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-full mt-2 bg-white border border-[#e8e1d6] shadow-lg min-w-[200px] z-40">
+                  {(['price-low-high', 'price-high-low', 'newest'] as SortValue[]).map(v => (
+                    <button
+                      key={v}
+                      onClick={() => { setSort(v); setSortOpen(false); }}
+                      className={`block w-full text-left px-4 py-3 text-sm hover:bg-[#fbf8f3] transition ${sort === v ? 'text-[#603000] font-semibold' : 'text-[#666]'}`}
+                    >
+                      {SORT_LABELS[v]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <h4 className="font-semibold text-stone-800 text-sm mb-1 group-hover:text-[#c9949a] transition-colors">Minimalist Bridal</h4>
-            <p className="text-xs text-[#666]">For the modern, understated bride.</p>
           </div>
         </div>
       </div>
+
+      {/* PRODUCT GRID — 3-col */}
+      <section className="max-w-[1280px] mx-auto px-8 py-10">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-12">
+          {products.map(p => <ProductTile key={p.id} p={p} />)}
+        </div>
+      </section>
+
+      {/* FILTER MODAL */}
+      {filterOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setFilterOpen(false)}>
+          <div className="bg-white max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#eee]">
+              <h2 className="text-xl text-[#333]" style={{ fontFamily: "'Playfair Display', serif" }}>Filter Products</h2>
+              <button onClick={() => setFilterOpen(false)} className="text-[#888] hover:text-[#333]"><X size={20} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-6">
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Sort By</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="srt" checked={tempSort === 'featured'} onChange={() => setTempSort('featured')} /> Featured
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="srt" checked={tempSort === 'newest'} onChange={() => setTempSort('newest')} /> Newest
+                  </label>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Subcategory</h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                    <input type="radio" name="sub" checked={tempSub === ''} onChange={() => setTempSub('')} /> All
+                  </label>
+                  {SUBCATEGORIES.map(s => (
+                    <label key={s.id} className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                      <input type="radio" name="sub" checked={tempSub === s.id} onChange={() => setTempSub(s.id)} /> {s.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs tracking-[0.2em] uppercase text-[#888] mb-3">Availability</h3>
+                <label className="flex items-center gap-2 text-sm text-[#333] cursor-pointer">
+                  <input type="checkbox" checked={tempInStock} onChange={e => setTempInStock(e.target.checked)} /> In Stock
+                </label>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[#eee] flex gap-3">
+              <button
+                onClick={() => { setFilters({ inStockOnly: tempInStock, subcategoryId: tempSub }); setFilterOpen(false); }}
+                className="flex-1 bg-[#603000] text-white py-3 text-sm tracking-[0.15em] uppercase hover:bg-[#7B410A] transition"
+              >
+                Apply Filters
+              </button>
+              <button
+                onClick={() => { setTempSort('featured'); setTempInStock(false); setTempSub(''); setFilters({ inStockOnly: false, subcategoryId: '' }); setFilterOpen(false); }}
+                className="px-5 border border-[#ddd] text-[#666] text-sm tracking-[0.15em] uppercase hover:bg-[#f8f8f5] transition"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
