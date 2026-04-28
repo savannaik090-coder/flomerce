@@ -1761,6 +1761,17 @@ export async function handleShipping(request, env, path, ctx) {
   if (!admin) return errorResponse('Unauthorized', 401, 'UNAUTHORIZED');
 
   try {
+    // Older shards don't have the shiprocket_* columns on orders/guest_orders.
+    // Run the lazy migration once per worker before any handler that might
+    // SELECT/UPDATE those columns (Ship Now, cancel, label, track, ...).
+    // Cheap no-op after the first hit thanks to the in-memory cache.
+    try {
+      const siteDBForMigration = await resolveSiteDBById(env, siteId);
+      await ensureShiprocketColumns(siteDBForMigration, `shiprocket-cols:${siteId}`);
+    } catch (migErr) {
+      console.error('ensureShiprocketColumns (admin) failed:', migErr?.message || migErr);
+    }
+
     if (action === 'connect' && method === 'POST') {
       if (!hasPermission(admin, 'settings')) return errorResponse('Forbidden: settings permission required', 403, 'FORBIDDEN');
       return await handleConnect(request, env, siteId);

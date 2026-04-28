@@ -89,10 +89,12 @@ export async function ensureShiprocketColumns(db, cacheKey) {
     'shiprocket_error',
     'shiprocket_claimed_at',
   ];
+  let allTablesOk = true;
   for (const table of ['orders', 'guest_orders']) {
     try {
       const cols = await db.prepare(`PRAGMA table_info(${table})`).all();
       const have = new Set((cols.results || []).map((c) => c.name));
+      let tableOk = true;
       for (const col of wantedCols) {
         if (!have.has(col)) {
           try {
@@ -104,15 +106,21 @@ export async function ensureShiprocketColumns(db, cacheKey) {
             const msg = String(e?.message || e);
             if (!/duplicate column|already exists/i.test(msg)) {
               console.error(`ensureShiprocketColumns ${table}.${col}:`, msg);
+              tableOk = false;
             }
           }
         }
       }
+      if (!tableOk) allTablesOk = false;
     } catch (e) {
       console.error(`ensureShiprocketColumns table_info(${table}):`, e?.message || e);
+      allTablesOk = false;
     }
   }
-  _shiprocketColumnsMigratedDBs.add(key);
+  // Only cache as "migrated" when both tables fully succeeded — transient
+  // failures (e.g. shard unreachable) should be retried on the next request
+  // instead of silently skipped for the lifetime of this worker instance.
+  if (allTablesOk) _shiprocketColumnsMigratedDBs.add(key);
 }
 
 export async function ensureAddressCountryColumn(db, cacheKey) {

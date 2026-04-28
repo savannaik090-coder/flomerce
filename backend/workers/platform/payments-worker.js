@@ -3,7 +3,7 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from '../storefront/site-admin-worker.js';
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
-import { resolveSiteDBById, getSiteConfig } from '../../utils/site-db.js';
+import { resolveSiteDBById, getSiteConfig, ensureShiprocketColumns } from '../../utils/site-db.js';
 import { estimateRowBytes, trackD1Update } from '../../utils/usage-tracker.js';
 import {
   normalizeFeatureGroups as normalizePlanFeatureGroups,
@@ -1641,6 +1641,14 @@ async function handleRefundOrder(request, env, orderId) {
 
     const siteDB = await resolveSiteDBById(env, siteId);
     if (!siteDB) return errorResponse('Site database unavailable', 500);
+
+    // Older shards may not have shiprocket_* columns yet; lazy-add before
+    // SELECTing them so this refund flow doesn't crash on legacy stores.
+    try {
+      await ensureShiprocketColumns(siteDB, `shiprocket-cols:${siteId}`);
+    } catch (migErr) {
+      console.error('ensureShiprocketColumns (refund) failed:', migErr?.message || migErr);
+    }
 
     // Find the order in either table.
     let table = 'orders';
