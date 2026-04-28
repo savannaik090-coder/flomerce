@@ -2,6 +2,7 @@ const _migratedDBs = new Set();
 const _subcatMigratedDBs = new Set();
 const _addrCountryMigratedDBs = new Set();
 const _translationCacheMigratedDBs = new Set();
+const _shiprocketColumnsMigratedDBs = new Set();
 
 /**
  * One-shot ensure of the per-shard translation_cache table. New shards
@@ -64,6 +65,54 @@ export async function ensureProductSubcategoryColumn(db, cacheKey) {
   } catch (e) {
     console.error('ensureProductSubcategoryColumn error:', e.message || e);
   }
+}
+
+/**
+ * One-shot ensure of the shiprocket_* columns on the per-shard `orders` and
+ * `guest_orders` tables. New shards created after Shiprocket integration
+ * landed already get these from getSiteSchemaStatements, but live shards
+ * that pre-date that change need the columns added lazily — otherwise the
+ * webhook handler crashes (Cloudflare error 1101) the moment Shiprocket
+ * sends a real payload, blocking webhook setup entirely.
+ */
+export async function ensureShiprocketColumns(db, cacheKey) {
+  const key = cacheKey || 'default';
+  if (_shiprocketColumnsMigratedDBs.has(key)) return;
+  const wantedCols = [
+    'shiprocket_order_id',
+    'shiprocket_shipment_id',
+    'shiprocket_awb',
+    'shiprocket_courier',
+    'shiprocket_label_url',
+    'shiprocket_status',
+    'shiprocket_last_event_at',
+    'shiprocket_error',
+    'shiprocket_claimed_at',
+  ];
+  for (const table of ['orders', 'guest_orders']) {
+    try {
+      const cols = await db.prepare(`PRAGMA table_info(${table})`).all();
+      const have = new Set((cols.results || []).map((c) => c.name));
+      for (const col of wantedCols) {
+        if (!have.has(col)) {
+          try {
+            await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT`).run();
+          } catch (e) {
+            // Race / "duplicate column" — safe to ignore. Other failures
+            // (e.g. table doesn't exist on this shard) we surface so the
+            // caller can decide what to do.
+            const msg = String(e?.message || e);
+            if (!/duplicate column|already exists/i.test(msg)) {
+              console.error(`ensureShiprocketColumns ${table}.${col}:`, msg);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`ensureShiprocketColumns table_info(${table}):`, e?.message || e);
+    }
+  }
+  _shiprocketColumnsMigratedDBs.add(key);
 }
 
 export async function ensureAddressCountryColumn(db, cacheKey) {

@@ -30,7 +30,7 @@
 // we lazily re-login when expired or close to expiry.
 
 import { errorResponse, successResponse, generateToken } from '../../utils/helpers.js';
-import { getSiteConfig, resolveSiteDBById } from '../../utils/site-db.js';
+import { getSiteConfig, resolveSiteDBById, ensureShiprocketColumns } from '../../utils/site-db.js';
 import { encryptSecret, decryptSecret, maskSecret } from '../../utils/crypto.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import {
@@ -1960,8 +1960,34 @@ export async function handleShiprocketWebhook(request, env, path) {
     return errorResponse('Invalid webhook token', 401, 'BAD_WEBHOOK_TOKEN');
   }
 
+  // Older shards predate the shiprocket_* columns and the SELECTs below
+  // would otherwise throw, crashing the worker (Cloudflare error 1101) and
+  // making it look like the webhook URL is broken to Shiprocket. Add the
+  // columns lazily and once-per-shard.
+  try {
+    await ensureShiprocketColumns(ctx.siteDB, `shiprocket-cols:${siteId}`);
+  } catch (e) {
+    console.error('ensureShiprocketColumns failed:', e?.message || e);
+  }
+
   let payload;
   try { payload = await request.json(); } catch { return errorResponse('Invalid JSON', 400); }
+
+  // Wrap the entire processing block in try/catch so any unexpected
+  // downstream failure (DB schema drift, malformed Shiprocket payload, etc.)
+  // returns a clean 200 OK instead of a Worker exception. Shiprocket retries
+  // 5xx forever and shows the merchant an "endpoint broken" error, so a 200
+  // with `{ok:true,ignored}` is strictly better than letting the exception
+  // bubble up.
+  try {
+    return await processShiprocketWebhookPayload(env, ctx, siteId, payload);
+  } catch (e) {
+    console.error('shiprocket webhook processing error:', e?.message || e, e?.stack);
+    return successResponse({ ok: true, ignored: 'processing_error' });
+  }
+}
+
+async function processShiprocketWebhookPayload(env, ctx, siteId, payload) {
 
   // Shiprocket webhook payload typically contains awb, current_status,
   // current_status_id (numeric — preferred), order_id (the merchant's
