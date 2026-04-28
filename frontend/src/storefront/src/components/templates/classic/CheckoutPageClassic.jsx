@@ -782,11 +782,6 @@ export default function CheckoutPageClassic() {
     <div style={{ minHeight: '100vh', background: T.bg, ...BODY }}>
       <style dangerouslySetInnerHTML={{ __html: fontStyle }} />
 
-      <header style={{ paddingTop: 24, paddingBottom: 20, textAlign: 'center', borderBottom: `1px solid ${T.border}` }}>
-        <h1 style={{ ...SERIF, fontSize: 28, color: T.dark, margin: 0, letterSpacing: '0.03em' }}>{brandName}</h1>
-      </header>
-      <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${T.gold}, transparent)` }} />
-
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 20px' }}>
         <StepWizard />
       </div>
