@@ -156,7 +156,7 @@ export function SidebarDense() {
                   </div>
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={\`w-3.5 h-3.5 \${i < rating ? 'fill-[#d4af37] text-[#d4af37]' : 'fill-[#e8e1d6] text-[#e8e1d6]'}\`} />
+                      <Star key={i} className={`w-3.5 h-3.5 ${i < rating ? 'fill-[#d4af37] text-[#d4af37]' : 'fill-[#e8e1d6] text-[#e8e1d6]'}`} />
                     ))}
                     {rating < 5 && <span className="text-xs text-stone-500 ml-1">& Up</span>}
                   </div>
@@ -184,13 +184,13 @@ export function SidebarDense() {
               <div className="hidden sm:flex items-center gap-2 border-r border-[#e8e1d6] pr-6">
                 <button 
                   onClick={() => setViewCols(3)}
-                  className={\`p-1.5 transition-colors \${viewCols === 3 ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}\`}
+                  className={`p-1.5 transition-colors ${viewCols === 3 ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}`}
                 >
                   <Grid3X3 className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={() => setViewCols(4)}
-                  className={\`p-1.5 transition-colors \${viewCols === 4 ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}\`}
+                  className={`p-1.5 transition-colors ${viewCols === 4 ? 'text-stone-900 bg-stone-100' : 'text-stone-400 hover:text-stone-600'}`}
                 >
                   <Grid2X2 className="w-5 h-5" />
                 </button>
@@ -215,7 +215,7 @@ export function SidebarDense() {
           </div>
 
           {/* Grid */}
-          <div className={\`grid gap-4 \${viewCols === 3 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}\`}>
+          <div className={`grid gap-4 ${viewCols === 3 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
             {PRODUCTS.map(product => (
               <div 
                 key={product.id} 
@@ -289,7 +289,7 @@ export function SidebarDense() {
             {[1, 2, 3, 4].map((page) => (
               <button 
                 key={page}
-                className={\`w-8 h-8 flex items-center justify-center text-sm font-medium transition-colors \${page === 1 ? 'bg-[#c9949a] text-white' : 'text-stone-500 hover:bg-[#faf8f5] hover:text-[#c9949a]'}\`}
+                className={`w-8 h-8 flex items-center justify-center text-sm font-medium transition-colors ${page === 1 ? 'bg-[#c9949a] text-white' : 'text-stone-500 hover:bg-[#faf8f5] hover:text-[#c9949a]'}`}
               >
                 {page}
               </button>

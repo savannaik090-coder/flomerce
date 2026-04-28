@@ -113,10 +113,10 @@ export function StorytellingSplit() {
                 onClick={() => setActiveTab(sub.id)}
                 className="group relative px-2 py-1"
               >
-                <span className={\`font-['Playfair_Display'] italic lowercase text-lg lg:text-xl transition-colors duration-300 \${activeTab === sub.id ? 'text-[#1f2a3a]' : 'text-[#888] group-hover:text-[#1f2a3a]'}\`}>
+                <span className={`font-['Playfair_Display'] italic lowercase text-lg lg:text-xl transition-colors duration-300 ${activeTab === sub.id ? 'text-[#1f2a3a]' : 'text-[#888] group-hover:text-[#1f2a3a]'}`}>
                   {sub.name}
                 </span>
-                <span className={\`absolute bottom-0 left-0 h-[1px] bg-[#d4af37] transition-all duration-300 \${activeTab === sub.id ? 'w-full' : 'w-0 group-hover:w-full'}\`}></span>
+                <span className={`absolute bottom-0 left-0 h-[1px] bg-[#d4af37] transition-all duration-300 ${activeTab === sub.id ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
               </button>
               {i < SUBCATEGORIES.length - 1 && (
                 <span className="text-[#d4af37] text-xl leading-none">·</span>
@@ -257,7 +257,7 @@ function ProductCard({ product, isWishlisted, onWishlist }: { product: Product, 
           onClick={(e) => onWishlist(e, product.id)}
           className="absolute top-3 right-3 z-10 text-[#888] hover:text-[#c9949a] transition-colors p-2"
         >
-          <Heart className={\`w-5 h-5 \${isWishlisted ? 'fill-[#c9949a] text-[#c9949a]' : ''}\`} strokeWidth={1.5} />
+          <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-[#c9949a] text-[#c9949a]' : ''}`} strokeWidth={1.5} />
         </button>
 
         {!product.inStock && (
