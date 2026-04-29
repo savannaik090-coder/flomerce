@@ -241,6 +241,58 @@ export default function ProductDetailPage() {
   const categoryDefaults = getPolicies(siteConfig?.category);
   const pol = (key) => settings[key] || categoryDefaults[key] || '';
 
+  // ===== PDP display toggles (managed in admin → Visual Customizer → Settings → Product Page) =====
+  const pdpShowMrp = settings.pdpShowMrp !== false;
+  const pdpShowFeaturedBadge = settings.pdpShowFeaturedBadge !== false;
+  const pdpShowLowStockCue = settings.pdpShowLowStockCue !== false;
+  const pdpShowTrustBadges = settings.pdpShowTrustBadges !== false;
+  const pdpShowSpecsPanel = settings.pdpShowSpecsPanel !== false;
+  const pdpShowTags = settings.pdpShowTags === true;
+  const pdpShowRelatedProducts = settings.pdpShowRelatedProducts !== false;
+  const pdpRelatedProductsHeading = settings.pdpRelatedProductsHeading || 'You may also like';
+  const pdpDefaultLowStockThreshold = (() => {
+    const n = Number(settings.pdpDefaultLowStockThreshold);
+    return Number.isFinite(n) && n >= 0 ? n : 3;
+  })();
+
+  // MRP / discount — only when admin has set a compare price > selling price.
+  const comparePrice = Number(product.compare_price);
+  const hasComparePrice = pdpShowMrp && Number.isFinite(comparePrice) && comparePrice > Number(effectivePrice);
+  const discountPct = hasComparePrice
+    ? Math.round(((comparePrice - Number(effectivePrice)) / comparePrice) * 100)
+    : 0;
+
+  // Low-stock urgency — uses per-product threshold first, then site default.
+  const productLowStock = (() => {
+    const n = Number(product.low_stock_threshold);
+    return Number.isFinite(n) && n >= 0 ? n : pdpDefaultLowStockThreshold;
+  })();
+  const showLowStockCue =
+    pdpShowLowStockCue &&
+    !isOutOfStock &&
+    Number.isFinite(Number(product.stock)) &&
+    Number(product.stock) > 0 &&
+    Number(product.stock) <= productLowStock;
+
+  // Tags — accept either an array or a JSON string.
+  const productTags = (() => {
+    let t = product.tags;
+    if (!t) return [];
+    if (typeof t === 'string') {
+      try { t = JSON.parse(t); } catch { t = t.split(',').map(s => s.trim()).filter(Boolean); }
+    }
+    return Array.isArray(t) ? t.filter(Boolean) : [];
+  })();
+
+  // Specs — only show when at least one value exists.
+  const specWeight = Number(product.weight);
+  const specLength = Number(product.length);
+  const specBreadth = Number(product.breadth);
+  const specHeight = Number(product.height);
+  const hasSpecWeight = Number.isFinite(specWeight) && specWeight > 0;
+  const hasSpecDims = [specLength, specBreadth, specHeight].every(v => Number.isFinite(v) && v > 0);
+  const hasAnySpec = hasSpecWeight || hasSpecDims;
+
   return (
     <div className={isModern ? 'modern-theme' : ''}>
       <div className="product-detail-container">
@@ -252,9 +304,50 @@ export default function ProductDetailPage() {
 
         <div className="product-detail-right">
           <div className="product-detail-info">
+            {pdpShowFeaturedBadge && product.is_featured ? (
+              <div style={{ marginBottom: 8 }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                  color: '#92400e', padding: '4px 10px', borderRadius: 999,
+                  fontSize: 11, fontWeight: 700, letterSpacing: 0.3,
+                  textTransform: 'uppercase',
+                }}>
+                  <i className="fas fa-star" style={{ fontSize: 10 }} />
+                  <TranslatedText text="Featured" />
+                </span>
+              </div>
+            ) : null}
+
             <h1 className="product-title"><TranslatedText text={product.name} /></h1>
-            <div className="price">
+
+            {product.short_description ? (
+              <p style={{
+                margin: '4px 0 12px', fontSize: 15, color: '#475569',
+                lineHeight: 1.5,
+              }}>
+                <TranslatedText text={product.short_description} />
+              </p>
+            ) : null}
+
+            <div className="price" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 10 }}>
               <span className="product-price">{formatAmount(effectivePrice)}</span>
+              {hasComparePrice && (
+                <>
+                  <span style={{
+                    fontSize: 16, color: '#94a3b8', textDecoration: 'line-through',
+                  }}>
+                    {formatAmount(comparePrice)}
+                  </span>
+                  <span style={{
+                    background: '#dcfce7', color: '#166534',
+                    padding: '3px 8px', borderRadius: 6,
+                    fontSize: 12, fontWeight: 700,
+                  }}>
+                    {discountPct}% <TranslatedText text="OFF" />
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="product-meta">
@@ -275,6 +368,19 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+
+            {showLowStockCue && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: '#fff7ed', color: '#9a3412',
+                border: '1px solid #fed7aa', borderRadius: 8,
+                padding: '8px 12px', fontSize: 13, fontWeight: 600,
+                margin: '8px 0 0',
+              }}>
+                <i className="fas fa-fire" style={{ color: '#ea580c' }} />
+                <TranslatedText text={`Only ${product.stock} left in stock`} />
+              </div>
+            )}
 
             {hasColors && (
               <div className="product-option-section">
@@ -372,6 +478,73 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
+            {pdpShowTrustBadges && (
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+                marginTop: 16, padding: '14px 12px',
+                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10,
+              }}>
+                {[
+                  { icon: 'fa-truck-fast', label: settings.pdpTrustBadge1Label || 'Free shipping over ₹999' },
+                  { icon: 'fa-rotate-left', label: settings.pdpTrustBadge2Label || 'Easy 10-day returns' },
+                  { icon: 'fa-lock', label: settings.pdpTrustBadge3Label || 'Secure checkout' },
+                ].map((b, i) => (
+                  <div key={i} style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    textAlign: 'center', gap: 6, padding: '4px 2px',
+                  }}>
+                    <i className={`fas ${b.icon}`} style={{ fontSize: 18, color: '#0f172a' }} />
+                    <span style={{ fontSize: 11, color: '#475569', lineHeight: 1.3, fontWeight: 500 }}>
+                      <TranslatedText text={b.label} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {pdpShowSpecsPanel && hasAnySpec && (
+              <div style={{
+                marginTop: 16, padding: '12px 14px',
+                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+              }}>
+                <h4 style={{
+                  margin: '0 0 8px', fontSize: 13, color: '#0f172a',
+                  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
+                }}>
+                  <i className="fas fa-clipboard-list" style={{ marginInlineEnd: 8, color: '#64748b' }} />
+                  <TranslatedText text="Specifications" />
+                </h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 24px', fontSize: 13, color: '#334155' }}>
+                  {hasSpecWeight && (
+                    <div>
+                      <span style={{ color: '#64748b' }}><TranslatedText text="Weight" />: </span>
+                      <strong>{specWeight} g</strong>
+                    </div>
+                  )}
+                  {hasSpecDims && (
+                    <div>
+                      <span style={{ color: '#64748b' }}><TranslatedText text="Dimensions" />: </span>
+                      <strong>{specLength} × {specBreadth} × {specHeight} cm</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {pdpShowTags && productTags.length > 0 && (
+              <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {productTags.map((t, i) => (
+                  <span key={i} style={{
+                    fontSize: 11, padding: '4px 10px',
+                    background: '#f1f5f9', color: '#475569',
+                    borderRadius: 999, fontWeight: 500,
+                  }}>
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {siteConfig?.settings?.showProductPolicies !== false && (
             <div className="product-policies-accordions">
               <PolicyAccordion title={<TranslatedText text="Shipping & Delivery Details" />} icon="fa-truck">
@@ -400,9 +573,11 @@ export default function ProductDetailPage() {
 
       <ActiveProductReviews productId={product.id} />
 
+      {pdpShowRelatedProducts && (
       <RelatedProducts
         currentProductId={product.id}
         categoryId={product.category_id}
+        heading={pdpRelatedProductsHeading}
         onWishlistToggle={(p) => {
           if (isInWishlist(p.id)) {
             removeFromWishlist(p.id);
@@ -413,6 +588,7 @@ export default function ProductDetailPage() {
         }}
         isInWishlist={isInWishlist}
       />
+      )}
     </div>
   );
 }

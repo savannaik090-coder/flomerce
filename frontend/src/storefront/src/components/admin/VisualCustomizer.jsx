@@ -16,6 +16,7 @@ import TrendingNowEditor from './TrendingNowEditor.jsx';
 import BrandStoryEditor from './BrandStoryEditor.jsx';
 import CheckoutEditor from './CheckoutEditor.jsx';
 import ProductPoliciesEditor from './ProductPoliciesEditor.jsx';
+import ProductPageEditor from './ProductPageEditor.jsx';
 import NavbarEditor from './NavbarEditor.jsx';
 import BookAppointmentEditor from './BookAppointmentEditor.jsx';
 import ContactEditor from './ContactEditor.jsx';
@@ -78,6 +79,7 @@ const PAGE_SECTIONS = [
 
 const SETTINGS_SECTIONS = [
   { id: 'checkout', label: 'Checkout', icon: 'fa-shopping-bag' },
+  { id: 'product-page', label: 'Product Page', icon: 'fa-box-open' },
   { id: 'product-policies', label: 'Product Policies', icon: 'fa-shield-alt' },
   { id: 'terms', label: 'Terms & Conditions', icon: 'fa-file-contract', page: '/terms' },
   { id: 'privacy', label: 'Privacy Policy', icon: 'fa-user-shield', page: '/privacy-policy' },
@@ -176,14 +178,39 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   const homepageSections = useMemo(() => getHomepageSections(resolvedTheme), [resolvedTheme]);
 
   const storeBaseUrl = getStoreUrl(siteConfig);
+  // Holds the path to a representative product page, used when the user opens
+  // the "Product Page" settings editor so the preview iframe lands on an
+  // actual PDP instead of the homepage. Resolved lazily once per site.
+  const [previewProductPath, setPreviewProductPath] = useState(null);
+  const previewProductFetchRef = useRef(false);
+
+  useEffect(() => {
+    if (activeSection !== 'product-page') return;
+    if (previewProductPath || previewProductFetchRef.current) return;
+    if (!siteConfig?.id) return;
+    previewProductFetchRef.current = true;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/products?siteId=${encodeURIComponent(siteConfig.id)}&limit=1`);
+        const json = await res.json();
+        const list = json?.data || json?.products || (Array.isArray(json) ? json : []);
+        const first = Array.isArray(list) ? list[0] : null;
+        if (first?.id) setPreviewProductPath(`/product/${first.id}`);
+      } catch (e) {
+        console.warn('[customizer] could not load preview product:', e);
+      }
+    })();
+  }, [activeSection, siteConfig?.id, previewProductPath]);
+
   const currentPage = useMemo(() => {
     if (!activeSection) return '/';
     const page = PAGE_SECTIONS.find(p => p.id === activeSection);
     if (page) return page.page;
     const settingsPage = SETTINGS_SECTIONS.find(s => s.id === activeSection);
     if (settingsPage?.page) return settingsPage.page;
+    if (activeSection === 'product-page' && previewProductPath) return previewProductPath;
     return '/';
-  }, [activeSection]);
+  }, [activeSection, previewProductPath]);
   const previewUrl = storeBaseUrl ? `${storeBaseUrl}${currentPage}` : '';
 
   useEffect(() => {
@@ -450,6 +477,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       }
       case 'contact-us': return <ContactEditor {...props} />;
       case 'checkout': return <CheckoutEditor {...props} />;
+      case 'product-page': return <ProductPageEditor {...props} />;
       case 'product-policies': return <ProductPoliciesEditor {...props} />;
       case 'about-us': return <AboutUsEditor {...props} />;
       case 'faq': return <FAQSection />;

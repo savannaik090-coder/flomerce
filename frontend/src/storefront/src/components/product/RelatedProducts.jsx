@@ -15,7 +15,7 @@ function shuffleArray(arr) {
   return shuffled;
 }
 
-export default function RelatedProducts({ currentProductId, categoryId, onWishlistToggle, isInWishlist }) {
+export default function RelatedProducts({ currentProductId, categoryId, onWishlistToggle, isInWishlist, heading }) {
   const { siteConfig } = useContext(SiteContext);
   const theme = useTheme();
   const Card = theme.id === 'modern' ? ProductCardModern : ProductCard;
@@ -52,7 +52,7 @@ export default function RelatedProducts({ currentProductId, categoryId, onWishli
 
   return (
     <section className="related-products-section">
-      <h2 className="section-title"><TranslatedText text="You May Also Like" /></h2>
+      <h2 className="section-title"><TranslatedText text={heading || "You May Also Like"} /></h2>
       <div className="related-products-scroll">
         {products.map(product => (
           <Card
