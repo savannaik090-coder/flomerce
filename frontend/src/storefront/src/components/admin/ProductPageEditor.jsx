@@ -4,6 +4,7 @@ import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
 const PDP_SETTING_KEYS = [
+  'pdpLayoutVariant',
   'pdpShowMrp',
   'pdpShowFeaturedBadge',
   'pdpShowLowStockCue',
@@ -18,7 +19,14 @@ const PDP_SETTING_KEYS = [
   'pdpRelatedProductsHeading',
 ];
 
+// Phase 4 layout variants. Keep this list aligned with the CSS hooks in
+// `frontend/src/storefront/src/styles/product-detail.css` (`.pdp-layout-*`)
+// and the renderer's `LAYOUT_VARIANTS` whitelist below — adding a value here
+// without a matching CSS rule will silently fall back to the classic look.
+const LAYOUT_VARIANTS = ['classic', 'sticky'];
+
 const DEFAULTS = {
+  pdpLayoutVariant: 'classic',
   pdpShowMrp: true,
   pdpShowFeaturedBadge: true,
   pdpShowLowStockCue: true,
@@ -43,6 +51,11 @@ function readFromSettings(settings) {
     } else if (typeof DEFAULTS[key] === 'number') {
       const n = Number(settings[key]);
       out[key] = Number.isFinite(n) && n >= 0 ? n : DEFAULTS[key];
+    } else if (key === 'pdpLayoutVariant') {
+      // Whitelist gate: an unknown variant string from a stale DB or hand-edit
+      // would otherwise leak through to the storefront and yield no styling.
+      const v = String(settings[key]);
+      out[key] = LAYOUT_VARIANTS.includes(v) ? v : DEFAULTS[key];
     } else {
       out[key] = String(settings[key]);
     }
@@ -212,6 +225,68 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
             <i className="fas fa-circle-exclamation" style={{ marginInlineEnd: 8 }} />{status.slice(6)}
           </div>
         )}
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header"><h3 className="card-title"><i className="fas fa-table-columns" style={{ marginInlineEnd: 8, color: '#64748b' }} />Layout</h3></div>
+          <div className="card-body">
+            <p style={{ ...helpStyle, marginTop: 0, marginBottom: 12 }}>
+              Pick how the product page is laid out. All your settings below apply to either layout — switching is non-destructive.
+            </p>
+            <div role="radiogroup" aria-label="Product page layout" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {[
+                {
+                  value: 'classic',
+                  title: 'Classic',
+                  blurb: 'Two-column layout with the gallery on the left and a scroll-along right column. Best for catalogs that lean on rich descriptions.',
+                },
+                {
+                  value: 'sticky',
+                  title: 'Conversion Sticky',
+                  blurb: 'The right buy-panel stays pinned while shoppers scroll the gallery, with conversion-focused spacing and a more prominent CTA stack.',
+                },
+              ].map(opt => {
+                const active = fields.pdpLayoutVariant === opt.value;
+                const inputId = `pdp-layout-${opt.value}`;
+                return (
+                  <label
+                    key={opt.value}
+                    htmlFor={inputId}
+                    style={{
+                      display: 'block',
+                      padding: 14,
+                      border: `2px solid ${active ? '#2563eb' : '#e2e8f0'}`,
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      background: active ? '#eff6ff' : '#fff',
+                      transition: 'border-color 0.15s, background 0.15s',
+                    }}
+                  >
+                    <input
+                      id={inputId}
+                      type="radio"
+                      name="pdpLayoutVariant"
+                      value={opt.value}
+                      checked={active}
+                      onChange={() => update('pdpLayoutVariant', opt.value)}
+                      style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span aria-hidden="true" style={{
+                        display: 'inline-block', width: 16, height: 16, borderRadius: '50%',
+                        border: `2px solid ${active ? '#2563eb' : '#cbd5e1'}`,
+                        background: active ? '#2563eb' : '#fff',
+                        boxShadow: active ? 'inset 0 0 0 3px #fff' : 'none',
+                        flexShrink: 0,
+                      }} />
+                      <strong style={{ fontSize: 14, color: '#0f172a' }}>{opt.title}</strong>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.45 }}>{opt.blurb}</div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header"><h3 className="card-title"><i className="fas fa-tag" style={{ marginInlineEnd: 8, color: '#64748b' }} />Pricing &amp; Highlights</h3></div>

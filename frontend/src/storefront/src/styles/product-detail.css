@@ -1206,3 +1206,117 @@
     font-size: 13px;
     margin-bottom: 16px;
 }
+
+/* =========================================================================
+   Phase 4 — PDP "Conversion Sticky" layout variant.
+   Owned by `frontend/src/storefront/src/components/admin/ProductPageEditor.jsx`
+   (setting `pdpLayoutVariant`); rendered by `ProductDetailPage.jsx` which
+   tags the page root with `pdp-layout-classic` or `pdp-layout-sticky`.
+
+   Goal: keep the right-hand buy panel pinned while the shopper scrolls the
+   gallery, with conversion-focused spacing and a more emphatic CTA stack.
+   All the page's child markup is unchanged — these are layered overrides.
+   ========================================================================= */
+
+.pdp-layout-sticky .product-detail-container {
+    grid-template-columns: 1.35fr 1fr;
+    gap: 3rem;
+    align-items: start;
+    max-width: 1280px;
+}
+
+/* Sticky variant inverts the classic stickiness: the gallery (left) scrolls
+   with the page while the buy-panel (right) stays pinned. The base stylesheet
+   has `.product-detail-left { position: sticky }` for the classic layout, so
+   we explicitly unstick it here — without this override BOTH columns would
+   be sticky, which contradicts the variant's UX intent. */
+.pdp-layout-sticky .product-detail-left {
+    position: static;
+    top: auto;
+}
+
+/* Anchor the right buy-panel so it tracks the gallery on scroll. We use a
+   max-height + overflow guard so very tall option/spec stacks still scroll
+   inside the panel instead of clipping below the viewport. */
+.pdp-layout-sticky .product-detail-right {
+    position: sticky;
+    top: 110px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    padding-inline-end: 4px;
+    padding-top: 4px;
+    /* Hide the scrollbar in the buy-panel — keeps the layout calm. */
+    scrollbar-width: none;
+}
+.pdp-layout-sticky .product-detail-right::-webkit-scrollbar { display: none; }
+
+/* Slightly tighten the title and lift the price + MRP row so it reads as
+   the primary above-the-fold focal point. */
+.pdp-layout-sticky .product-detail-info .product-title {
+    font-size: 30px;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+}
+.pdp-layout-sticky .product-detail-info .product-price {
+    font-size: 28px;
+}
+
+/* Promote the CTA stack: stack vertically, full-width, taller hit areas.
+   Add to Cart becomes the secondary action; Buy Now stays the primary.
+   The DOM order of the buttons is re-arranged in the JSX (see
+   `ProductDetailPage.jsx` — Buy Now → Add to Cart → Wishlist for the
+   sticky variant) so visual, focus, and screen-reader order all match.
+   We deliberately do NOT use CSS `order` here, which would desync tab flow. */
+.pdp-layout-sticky .product-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+}
+.pdp-layout-sticky .product-actions .add-to-cart-btn,
+.pdp-layout-sticky .product-actions .buy-now-btn,
+.pdp-layout-sticky .product-actions .add-to-wishlist-btn {
+    width: 100%;
+    height: 52px;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    border-radius: 8px;
+}
+
+/* Tablet: drop the sticky behaviour for BOTH columns and keep the tightened
+   CTA stack. The base stylesheet keeps `.product-detail-left` sticky until
+   768px, but for the sticky variant we want the columns to flow naturally
+   here — otherwise the gallery would still pin at this width. */
+@media (max-width: 1024px) {
+    .pdp-layout-sticky .product-detail-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+    .pdp-layout-sticky .product-detail-left {
+        position: static;
+        top: auto;
+    }
+    .pdp-layout-sticky .product-detail-right {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
+}
+
+/* Mobile: revert to flat single-column flow so nothing is clipped. The base
+   stylesheet's @media (max-width: 768px) already collapses the grid; this
+   block makes sure the sticky overrides don't fight it. */
+@media (max-width: 768px) {
+    .pdp-layout-sticky .product-detail-container {
+        grid-template-columns: 1fr;
+    }
+    .pdp-layout-sticky .product-detail-right {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        padding-top: 0;
+    }
+    .pdp-layout-sticky .product-detail-info .product-title {
+        font-size: 22px;
+    }
+}

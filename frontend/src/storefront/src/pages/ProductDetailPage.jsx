@@ -242,6 +242,13 @@ export default function ProductDetailPage() {
   const pol = (key) => settings[key] || categoryDefaults[key] || '';
 
   // ===== PDP display toggles (managed in admin → Visual Customizer → Settings → Product Page) =====
+  // Phase 4: layout variant picker (admin-managed). Whitelist guard so a typo
+  // in the stored settings can never produce an unstyled page — unknown values
+  // fall back to the original "classic" layout.
+  const pdpLayoutVariant = (() => {
+    const v = settings.pdpLayoutVariant;
+    return v === 'sticky' ? 'sticky' : 'classic';
+  })();
   const pdpShowMrp = settings.pdpShowMrp !== false;
   const pdpShowFeaturedBadge = settings.pdpShowFeaturedBadge !== false;
   const pdpShowLowStockCue = settings.pdpShowLowStockCue !== false;
@@ -320,7 +327,7 @@ export default function ProductDetailPage() {
   const hasAnySpec = hasSpecWeight || hasSpecDims || customSpecs.length > 0;
 
   return (
-    <div className={isModern ? 'modern-theme' : ''}>
+    <div className={`${isModern ? 'modern-theme ' : ''}pdp-layout-${pdpLayoutVariant}`}>
       <div className="product-detail-container">
         <ProductGallery
           images={product.images}
@@ -480,28 +487,46 @@ export default function ProductDetailPage() {
               </div>
             )}
 
+            {/* CTA stack. The Conversion-Sticky variant promotes Buy Now to
+                the primary action — we reorder the actual DOM nodes (not just
+                visual `order`) so keyboard tab-flow and screen-reader order
+                match what the shopper sees. */}
             <div className="product-actions">
-              <button
-                className="add-to-cart-btn"
-                onClick={handleAddToCart}
-                disabled={isOutOfStock}
-              >
-                {isOutOfStock ? <TranslatedText text="OUT OF STOCK" /> : <TranslatedText text="ADD TO CART" />}
-              </button>
-              <button
-                className="buy-now-btn"
-                onClick={handleBuyNow}
-                disabled={isOutOfStock}
-              >
-                <TranslatedText text="BUY NOW" />
-              </button>
-              <button
-                className={`add-to-wishlist-btn${productInWishlist ? ' active' : ''}`}
-                onClick={handleWishlistToggle}
-              >
-                <i className="fas fa-heart" />
-                {productInWishlist ? <TranslatedText text="REMOVE FROM WISHLIST" /> : <TranslatedText text="ADD TO WISHLIST" />}
-              </button>
+              {(() => {
+                const addToCartBtn = (
+                  <button
+                    key="atc"
+                    className="add-to-cart-btn"
+                    onClick={handleAddToCart}
+                    disabled={isOutOfStock}
+                  >
+                    {isOutOfStock ? <TranslatedText text="OUT OF STOCK" /> : <TranslatedText text="ADD TO CART" />}
+                  </button>
+                );
+                const buyNowBtn = (
+                  <button
+                    key="buy"
+                    className="buy-now-btn"
+                    onClick={handleBuyNow}
+                    disabled={isOutOfStock}
+                  >
+                    <TranslatedText text="BUY NOW" />
+                  </button>
+                );
+                const wishlistBtn = (
+                  <button
+                    key="wish"
+                    className={`add-to-wishlist-btn${productInWishlist ? ' active' : ''}`}
+                    onClick={handleWishlistToggle}
+                  >
+                    <i className="fas fa-heart" />
+                    {productInWishlist ? <TranslatedText text="REMOVE FROM WISHLIST" /> : <TranslatedText text="ADD TO WISHLIST" />}
+                  </button>
+                );
+                return pdpLayoutVariant === 'sticky'
+                  ? [buyNowBtn, addToCartBtn, wishlistBtn]
+                  : [addToCartBtn, buyNowBtn, wishlistBtn];
+              })()}
             </div>
 
             {pdpShowTrustBadges && (
