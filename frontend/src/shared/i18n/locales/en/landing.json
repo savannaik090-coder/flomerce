@@ -213,11 +213,11 @@
     "trialBadge": "FREE TRIAL",
     "popularBadge": "POPULAR",
     "enterpriseBadge": "ENTERPRISE",
-    "trialTitle": "7-Day Free Trial",
-    "trialFor7Days": "for 7 days",
+    "trialTitle": "14-Day Free Trial",
+    "trialForDays": "for 14 days",
     "trialFeatures": {
       "createSites": "Create up to 5 websites",
-      "fullAccess": "Full access for 7 days",
+      "fullAccess": "Full access for 14 days",
       "noCard": "No credit card required",
       "upgradeAnytime": "Upgrade anytime"
     },

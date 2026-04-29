@@ -306,7 +306,7 @@ async function updateSubscription(request, env, user) {
     }
 
     const periodEnd = new Date();
-    periodEnd.setDate(periodEnd.getDate() + 7);
+    periodEnd.setDate(periodEnd.getDate() + 14);
 
     await env.DB.prepare(
       `INSERT INTO subscriptions (id, user_id, site_id, plan, billing_cycle, amount, status, current_period_start, current_period_end, created_at)
@@ -321,7 +321,7 @@ async function updateSubscription(request, env, user) {
       `UPDATE sites SET subscription_plan = 'trial', subscription_expires_at = ?, updated_at = datetime('now') WHERE user_id = ? AND COALESCE(subscription_plan, '') != 'enterprise'`
     ).bind(periodEnd.toISOString(), user.id).run();
 
-    return successResponse(null, 'Your 7-day free trial has started!');
+    return successResponse(null, 'Your 14-day free trial has started!');
   } catch (error) {
     console.error('Update subscription error:', error);
     return errorResponse('Failed to start trial', 500);

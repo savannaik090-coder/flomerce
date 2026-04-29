@@ -41,7 +41,7 @@ export default function RefundPolicyPage() {
 
           <section>
             <h2>3. Free Trial</h2>
-            <p>Flomerce offers a 7-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you choose to subscribe to a paid plan.</p>
+            <p>Flomerce offers a 14-day free trial for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you choose to subscribe to a paid plan.</p>
           </section>
 
           <section>

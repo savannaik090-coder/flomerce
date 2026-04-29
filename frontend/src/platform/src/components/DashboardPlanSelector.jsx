@@ -307,7 +307,7 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
           setPostPayment({ state: 'creating-site', message: '' });
           await onCreateSite();
         }
-        setPostPayment({ state: 'success', message: "Your 7-day free trial has started! Enjoy full access to all features." });
+        setPostPayment({ state: 'success', message: "Your 14-day free trial has started! Enjoy full access to all features." });
       } else {
         setPostPayment({ state: 'error', message: data.error || "Failed to start trial. Please try again." });
       }
@@ -388,7 +388,7 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
                 ? "Start with a free trial or subscribe to a plan to create and manage your websites."
                 : isExpired
                   ? "Your subscription has expired and all your websites are disabled. Subscribe to a plan for each site to restore access."
-                  : "Start a 7-day free trial to create up to 5 websites. No credit card required."}
+                  : "Start a 14-day free trial to create up to 5 websites. No credit card required."}
           </p>
         </div>
       )}
@@ -442,14 +442,14 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
               background: '#10b981', color: 'white', padding: '2px 12px', borderRadius: '12px',
               fontSize: '0.75rem', fontWeight: 700
             }}>FREE TRIAL</span>
-            <h3 style={{ marginBottom: '0.5rem' }}>7-Day Free Trial</h3>
+            <h3 style={{ marginBottom: '0.5rem' }}>14-Day Free Trial</h3>
             <p style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
               ₹0
-              <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> for 7 days</span>
+              <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}> for 14 days</span>
             </p>
             <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'start', fontSize: '0.875rem', color: '#64748b' }}>
               <li style={{ marginBottom: '0.5rem' }}>✓ Create up to 5 websites</li>
-              <li style={{ marginBottom: '0.5rem' }}>✓ Full access for 7 days</li>
+              <li style={{ marginBottom: '0.5rem' }}>✓ Full access for 14 days</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ No credit card required</li>
               <li style={{ marginBottom: '0.5rem' }}>✓ Upgrade anytime during trial</li>
             </ul>

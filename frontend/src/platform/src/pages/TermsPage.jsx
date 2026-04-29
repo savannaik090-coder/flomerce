@@ -73,7 +73,7 @@ export default function TermsPage() {
 
           <section>
             <h2>6. Free Trial</h2>
-            <p>We offer a 7-day free trial period for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
+            <p>We offer a 14-day free trial period for new users. During the trial period, you have full access to the platform features at no cost. No payment information is required to start a free trial. At the end of the trial, your account will be suspended and your website will be disabled unless you subscribe to a paid plan. We reserve the right to modify or discontinue the free trial at any time.</p>
           </section>
 
           <section>

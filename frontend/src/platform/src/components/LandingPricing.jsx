@@ -176,7 +176,7 @@ export default function LandingPricing() {
           <h3>{t('pricing.trialTitle')}</h3>
           <div className="lp-plan-price">
             <span className="lp-price-amount">&#8377;0</span>
-            <span className="lp-price-period">{t('pricing.trialFor7Days')}</span>
+            <span className="lp-price-period">{t('pricing.trialForDays')}</span>
           </div>
           <ul className="lp-plan-features">
             <li>{t('pricing.trialFeatures.createSites')}</li>

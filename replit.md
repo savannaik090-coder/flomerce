@@ -31,7 +31,7 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
 - **Plan Limits:** Hard limits for Basic/Standard/Pro plans, with enterprise plans allowing overage.
 
 ### Plan-Based Feature Gating
-- **Plan hierarchy:** Trial (full Pro access, 5 sites max, 7-day expiry) → Starter → Growth → Pro → Enterprise.
+- **Plan hierarchy:** Trial (full Pro access, 5 sites max, 14-day expiry) → Starter → Growth → Pro → Enterprise.
 - **Count limits:** Sites (trial: 5), Staff (starter: 5, growth: 25), Inventory locations (starter: 2, growth: 50). Enforced in `sites-worker.js`, `site-admin-worker.js`, `inventory-locations-worker.js`.
 - **Feature flags:** Reviews, Blog, Advanced SEO (incl. per-page/category/product SEO), and Coupons are available from Starter onwards (matches Shopify/Wix/Dukaan industry norms). Push Notifications (manual), Revenue analytics, Appointment Booking, and Remove "Powered by Flomerce" branding require Growth+. Push Notifications (automated) requires Pro+.
 - **Backend enforcement:** `checkFeatureAccess(env, siteId, feature)` and `checkCountLimit(env, siteId, limitType)` in `backend/utils/usage-tracker.js`. Feature checks use `request.clone().json()` fallback to extract `siteId` from body when query param is missing. `GET /api/plan-limits` endpoint returns all limits for a site (incl. `appointmentBooking`, `removeBranding`). Storefront appointment endpoint (`POST /api/email/appointment`) gates on `appointmentBooking` when `siteId` is provided in the body. Removing branding is enforced storefront-side: the Footer renders "Powered by Flomerce" unless `settings.footer.hideBranding === true` AND `siteConfig.subscriptionPlan` is Growth+, so a downgraded merchant automatically loses the toggle's effect.
