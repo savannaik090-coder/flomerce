@@ -67,7 +67,7 @@ const AccordionItem = ({ title, content }: { title: string; content: string }) =
         onClick={() => setIsOpen(!isOpen)}
         className="flex w-full items-center justify-between text-left focus:outline-none"
       >
-        <span className="font-['Playfair_Display'] text-lg text-[#2a2520] tracking-wide">{title}</span>
+        <span className="font-sans text-xs uppercase tracking-[0.18em] text-[#2a2520] font-medium">{title}</span>
         {isOpen ? <ChevronUp className="w-4 h-4 text-[#B08C4C]" /> : <ChevronDown className="w-4 h-4 text-[#B08C4C]" />}
       </button>
       {isOpen && (
