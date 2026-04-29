@@ -1723,39 +1723,41 @@
   line-height: 1.4;
 }
 .landing-page .lp-plan-price {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 .landing-page .lp-price-original {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--lp-faint);
   text-decoration: line-through;
   font-weight: 500;
 }
 .landing-page .lp-price-amount {
-  font-size: 2rem;
+  font-size: 2.75rem;
   font-weight: 800;
   color: var(--lp-ink);
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 .landing-page .lp-price-period {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--lp-muted);
-  font-weight: 500;
+  font-weight: 600;
 }
 .landing-page .lp-price-save {
-  font-size: 0.66rem;
-  background: rgba(16, 185, 129, 0.10);
+  font-size: 0.7rem;
+  background: rgba(16, 185, 129, 0.12);
   color: #047857;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 999px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  margin-left: 0.15rem;
 }
-.landing-page .lp-price-monthly {
+.landing-page .lp-price-billed {
   font-size: 0.8rem;
   color: var(--lp-muted);
   margin: 0 0 1.1rem;

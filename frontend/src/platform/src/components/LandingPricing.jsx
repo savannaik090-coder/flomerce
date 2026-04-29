@@ -191,6 +191,11 @@ export default function LandingPricing() {
           const price = planGroup.prices[duration];
           const originalPrice = planGroup.original_prices?.[duration];
           const savingsPercent = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+          const months = DURATION_MONTHS[duration] || 1;
+          const perMonth = months > 1 ? Math.round(price / months) : price;
+          const originalPerMonth = originalPrice && months > 1
+            ? Math.round(originalPrice / months)
+            : originalPrice;
 
           return (
             <div key={planGroup.name} className={`lp-plan-card${planGroup.is_popular ? ' lp-plan-popular' : ''}`}>
@@ -200,18 +205,20 @@ export default function LandingPricing() {
                 <p className="lp-plan-tagline">{planGroup.tagline}</p>
               )}
               <div className="lp-plan-price">
-                {originalPrice && (
-                  <span className="lp-price-original">&#8377;{originalPrice}</span>
+                {originalPerMonth && (
+                  <span className="lp-price-original">&#8377;{originalPerMonth}</span>
                 )}
-                <span className="lp-price-amount">&#8377;{price}</span>
-                <span className="lp-price-period">/ {durationText(duration)}</span>
+                <span className="lp-price-amount">&#8377;{perMonth}</span>
+                <span className="lp-price-period">{t('pricing.perMonth')}</span>
                 {savingsPercent > 0 && (
                   <span className="lp-price-save">{t('pricing.saveOff', { percent: savingsPercent })}</span>
                 )}
               </div>
-              {DURATION_MONTHS[duration] > 1 && (
-                <p className="lp-price-monthly">&#8377;{Math.round(price / DURATION_MONTHS[duration])}{t('pricing.perMonth')}</p>
-              )}
+              <p className="lp-price-billed">
+                {months > 1
+                  ? t('pricing.billedTotal', { total: price.toLocaleString('en-IN'), period: durationText(duration) })
+                  : t('pricing.billedMonthly')}
+              </p>
               <div className="lp-plan-features-wrap">
                 {planGroup.featureGroups.map((g, gi) => {
                   // Hide the heading element entirely for the single
