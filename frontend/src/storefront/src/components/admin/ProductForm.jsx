@@ -10,11 +10,16 @@ const GST_RATES = [0, 3, 5, 12, 18, 28];
 
 const DEFAULT_FORM = {
   name: '',
+  short_description: '',
   price: '',
+  compare_price: '',
   stock: '',
+  low_stock_threshold: '',
   category_id: '',
   subcategory_id: '',
   description: '',
+  tags: '',
+  is_featured: false,
   images: [],
   mainImageIndex: 0,
   hsn_code: '',
@@ -25,6 +30,8 @@ const DEFAULT_FORM = {
   breadth: '',
   height: '',
 };
+
+const SHORT_DESCRIPTION_MAX = 160;
 
 const DEFAULT_OPTIONS = {
   colors: [],
@@ -182,13 +189,25 @@ export default function ProductForm({ product, onSave, onCancel }) {
           dims = typeof product.dimensions === 'string' ? JSON.parse(product.dimensions) : product.dimensions;
         } catch { dims = {}; }
       }
+      let tagsStr = '';
+      if (product.tags) {
+        try {
+          const tagsArr = Array.isArray(product.tags) ? product.tags : JSON.parse(product.tags || '[]');
+          tagsStr = Array.isArray(tagsArr) ? tagsArr.join(', ') : '';
+        } catch { tagsStr = ''; }
+      }
       setForm({
         name: product.name || '',
+        short_description: product.short_description || '',
         price: product.price || '',
+        compare_price: product.compare_price != null ? String(product.compare_price) : '',
         stock: product.stock ?? '',
+        low_stock_threshold: product.low_stock_threshold != null ? String(product.low_stock_threshold) : '',
         category_id: product.category_id || '',
         subcategory_id: product.subcategory_id || '',
         description: product.description || '',
+        tags: tagsStr,
+        is_featured: product.is_featured === 1 || product.is_featured === true,
         images: imgs,
         mainImageIndex: product.main_image_index || 0,
         hsn_code: product.hsn_code || '',
@@ -259,6 +278,21 @@ export default function ProductForm({ product, onSave, onCancel }) {
     const errs = {};
     if (!form.name.trim()) errs.name = "Product name is required.";
     if (!form.price || parseFloat(form.price) < 1) errs.price = "Price must be at least 1.";
+    if (form.compare_price !== '' && Number.isFinite(parseFloat(form.compare_price))) {
+      const cp = parseFloat(form.compare_price);
+      const sp = parseFloat(form.price);
+      if (cp <= 0) {
+        errs.compare_price = "MRP must be greater than zero.";
+      } else if (Number.isFinite(sp) && cp <= sp) {
+        errs.compare_price = "MRP must be higher than the selling price.";
+      }
+    }
+    if (form.low_stock_threshold !== '') {
+      const lst = Number(form.low_stock_threshold);
+      if (!Number.isFinite(lst) || lst < 0 || !Number.isInteger(lst)) {
+        errs.low_stock_threshold = "Enter a whole number of 0 or more.";
+      }
+    }
     if (locations.length > 0) {
       const hasNegative = Object.values(locationStocks).some(v => v !== '' && parseInt(v) < 0);
       if (hasNegative) errs.stock = "Stock per location cannot be negative.";
@@ -309,14 +343,30 @@ export default function ProductForm({ product, onSave, onCancel }) {
       if (form.length !== '' && Number.isFinite(parseFloat(form.length))) dimsPayload.length = parseFloat(form.length);
       if (form.breadth !== '' && Number.isFinite(parseFloat(form.breadth))) dimsPayload.breadth = parseFloat(form.breadth);
       if (form.height !== '' && Number.isFinite(parseFloat(form.height))) dimsPayload.height = parseFloat(form.height);
+      const tagsArr = form.tags
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+      const comparePriceNum = form.compare_price !== '' && Number.isFinite(parseFloat(form.compare_price))
+        ? parseFloat(form.compare_price)
+        : null;
+      const lowStockNum = form.low_stock_threshold !== '' && Number.isFinite(parseInt(form.low_stock_threshold))
+        ? Math.max(0, parseInt(form.low_stock_threshold))
+        : null;
       const payload = {
         siteId: siteConfig.id,
         name: form.name.trim(),
+        shortDescription: form.short_description.trim() || null,
         price: parseFloat(form.price),
+        comparePrice: comparePriceNum,
         stock: totalStock,
+        lowStockThreshold: lowStockNum,
         categoryId: form.category_id,
         subcategoryId: form.subcategory_id || null,
         description: form.description.trim(),
+        tags: tagsArr,
+        isFeatured: !!form.is_featured,
         images: form.images,
         mainImageIndex: form.mainImageIndex,
         options: cleanedOptions,
@@ -488,9 +538,26 @@ export default function ProductForm({ product, onSave, onCancel }) {
               {errors.name && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.name}</p>}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+                <span>Short Description</span>
+                <span style={{ fontWeight: 400, color: form.short_description.length > SHORT_DESCRIPTION_MAX ? '#ef4444' : '#94a3b8', fontSize: 11 }}>
+                  {form.short_description.length}/{SHORT_DESCRIPTION_MAX}
+                </span>
+              </label>
+              <input
+                type="text"
+                value={form.short_description}
+                onChange={e => setForm(p => ({ ...p, short_description: e.target.value.slice(0, SHORT_DESCRIPTION_MAX) }))}
+                placeholder="One-line subtitle shown under the product name"
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              />
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Appears under the product name on the product page and in listings.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: locations.length === 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Price *</label>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Selling Price *</label>
                 <input
                   type="number"
                   min="1"
@@ -501,6 +568,34 @@ export default function ProductForm({ product, onSave, onCancel }) {
                   style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.price ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
                 />
                 {errors.price && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.price}</p>}
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>MRP / Compare-at Price</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.compare_price}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setForm(p => ({ ...p, compare_price: v }));
+                    if (errors.compare_price) setErrors(p => { const n = { ...p }; delete n.compare_price; return n; });
+                  }}
+                  placeholder="Optional"
+                  style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.compare_price ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                />
+                {(() => {
+                  if (errors.compare_price) {
+                    return <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.compare_price}</p>;
+                  }
+                  const cp = parseFloat(form.compare_price);
+                  const sp = parseFloat(form.price);
+                  if (Number.isFinite(cp) && Number.isFinite(sp) && cp > sp) {
+                    const pct = Math.round(((cp - sp) / cp) * 100);
+                    return <p style={{ fontSize: 11, color: '#16a34a', marginTop: 4, fontWeight: 600 }}>Shows as {pct}% off on the product page</p>;
+                  }
+                  return <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Strike-through price for showing a discount.</p>;
+                })()}
               </div>
               {locations.length === 0 && (
                 <div>
@@ -600,6 +695,70 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 style={{ width: '100%', padding: '10px 12px', border: `1px solid ${errors.description ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
               />
               {errors.description && <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{errors.description}</p>}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Tags</label>
+              <input
+                type="text"
+                value={form.tags}
+                onChange={e => setForm(p => ({ ...p, tags: e.target.value }))}
+                placeholder="e.g., temple, festive, bridal"
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              />
+              {(() => {
+                const previewTags = form.tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 20);
+                if (previewTags.length === 0) {
+                  return <p style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Comma-separated. Used for search and filters. Max 20 tags.</p>;
+                }
+                return (
+                  <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap' }}>
+                    {previewTags.map((t, i) => (
+                      <span key={i} style={chipStyle(true)}>{t}</span>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div style={{ marginTop: 16, padding: '14px 16px', background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: '#854d0e', marginBottom: 10 }}>Visibility &amp; Alerts</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!form.is_featured}
+                      onChange={e => setForm(p => ({ ...p, is_featured: e.target.checked }))}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                    <span>Featured product</span>
+                  </label>
+                  <p style={{ fontSize: 11, color: '#64748b', marginTop: 4, marginBottom: 0 }}>Highlights this product on the storefront and shows a "Featured" badge.</p>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Low-stock alert at</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={form.low_stock_threshold}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setForm(p => ({ ...p, low_stock_threshold: v }));
+                        if (errors.low_stock_threshold) setErrors(p => { const n = { ...p }; delete n.low_stock_threshold; return n; });
+                      }}
+                      placeholder="3"
+                      style={{ width: 90, padding: '8px 10px', border: `1px solid ${errors.low_stock_threshold ? '#ef4444' : '#e2e8f0'}`, borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                    />
+                    <span style={{ fontSize: 12, color: '#64748b' }}>units left</span>
+                  </div>
+                  {errors.low_stock_threshold
+                    ? <p style={{ color: '#ef4444', fontSize: 12, marginTop: 4, marginBottom: 0 }}>{errors.low_stock_threshold}</p>
+                    : <p style={{ fontSize: 11, color: '#64748b', marginTop: 4, marginBottom: 0 }}>Triggers "Only X left" urgency on the product page. Default is 3.</p>}
+                </div>
+              </div>
             </div>
 
             {siteConfig?.settings?.gstEnabled && (

@@ -368,7 +368,7 @@ async function getProduct(env, productId, siteId, subdomain, lang) {
 async function createProduct(request, env, user, ctx) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, lowStockThreshold, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate } = data;
 
     if (!siteId || !name || price === undefined) {
       return errorResponse('Site ID, name and price are required');
@@ -452,7 +452,7 @@ async function createProduct(request, env, user, ctx) {
       costPrice || null,
       autoSku,
       stock || 0,
-      3,
+      (lowStockThreshold !== null && lowStockThreshold !== undefined && lowStockThreshold !== '' && Number.isFinite(Number(lowStockThreshold)) && Number(lowStockThreshold) >= 0) ? Number(lowStockThreshold) : 3,
       weight || null,
       dimensions ? JSON.stringify(dimensions) : null,
       images ? JSON.stringify(images) : '[]',
