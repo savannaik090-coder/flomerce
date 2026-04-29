@@ -16,8 +16,8 @@ export const modules: ModuleMap = {
   "./components/mockups/industry-showcase/JewellerySpotlightPlusTiles.tsx": () => import("../components/mockups/industry-showcase/JewellerySpotlightPlusTiles.tsx"),
   "./components/mockups/industry-showcase/PhonePreview.tsx": () => import("../components/mockups/industry-showcase/PhonePreview.tsx"),
   "./components/mockups/industry-showcase/VibrantTiles.tsx": () => import("../components/mockups/industry-showcase/VibrantTiles.tsx"),
-  "./components/mockups/landing-hero/VideoBackdrop.tsx": () => import("../components/mockups/landing-hero/VideoBackdrop.tsx"),
   "./components/mockups/pdp-classic/ConversionSticky.tsx": () => import("../components/mockups/pdp-classic/ConversionSticky.tsx"),
   "./components/mockups/pdp-classic/EditorialClassic.tsx": () => import("../components/mockups/pdp-classic/EditorialClassic.tsx"),
-  "./components/mockups/pdp-classic/VisualHero.tsx": () => import("../components/mockups/pdp-classic/VisualHero.tsx")
+  "./components/mockups/pdp-classic/VisualHero.tsx": () => import("../components/mockups/pdp-classic/VisualHero.tsx"),
+  "./components/mockups/landing-hero/VideoBackdrop.tsx": () => import("../components/mockups/landing-hero/VideoBackdrop.tsx")
 };
