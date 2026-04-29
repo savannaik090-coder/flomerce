@@ -423,7 +423,7 @@
     height: 100%;
     background-color: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
-    z-index: 1000;
+    z-index: 99999;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -574,10 +574,12 @@
     background: rgba(201, 148, 154, 0.04);
 }
 
-/* Classic boutique modal refresh — scoped, modern unaffected */
+/* Classic boutique modal refresh — scoped, modern unaffected.
+   The modal is portalled directly to document.body so the
+   `body:has(.category-page:not(.modern-theme))` selector still
+   matches when a non-modern category page is mounted. */
 body:has(.category-page:not(.modern-theme)) .filter-modal-overlay {
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
+    background-color: rgba(0, 0, 0, 0.55);
 }
 
 body:has(.category-page:not(.modern-theme)) .filter-modal-content {

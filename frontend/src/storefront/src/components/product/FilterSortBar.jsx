@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import TranslatedText from '../TranslatedText';
 export default function FilterSortBar({ onSort, onFilter, currentSort, currentFilters, subcategories = [] }) {
   const SORT_OPTIONS = [
@@ -91,7 +92,7 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
         </div>
       </div>
 
-      {filterOpen && (
+      {filterOpen && createPortal(
         <div className="filter-modal-overlay" onClick={() => setFilterOpen(false)}>
           <div className="filter-modal-content" onClick={e => e.stopPropagation()}>
             <div className="filter-modal-header">
@@ -155,7 +156,8 @@ export default function FilterSortBar({ onSort, onFilter, currentSort, currentFi
               <button className="clear-filter-btn" onClick={handleClearFilter}><TranslatedText text="Clear All" /></button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
