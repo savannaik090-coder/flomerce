@@ -77,14 +77,15 @@
 }
 
 /* ---------- SUBCATEGORY CHIP ROW (sticky pills) ---------- */
-/* NOTE: no z-index here — adding one creates a stacking context that
-   would trap the filter modal beneath this strip. Sticky elements
-   already render above non-positioned siblings (the product grid). */
+/* z-index 51 (one above .shop-filter-row at 50) so the chip row sits
+   above the filter strip when scrolled. Modal is portalled to <body>
+   so neither sticky strip can trap it. */
 .subcategory-chip-row-wrap {
     background: #fbf8f3;
     border-bottom: 1px solid #ebe2d3;
     position: sticky;
     top: 95px;
+    z-index: 51;
 }
 
 .subcategory-chip-row {
@@ -172,6 +173,11 @@
 .category-page:not(.modern-theme) .shop-filter-row {
     position: sticky;
     top: 95px;
+    /* Lift the entire sticky strip into its own stacking layer so the
+       sort dropdown inside paints reliably above the product grid below.
+       Safe to raise now that the filter modal is portalled to <body>
+       and no longer lives inside this stacking context. */
+    z-index: 50;
     background: #fbf8f3;
     border-bottom: 1px solid #ebe2d3;
 }
