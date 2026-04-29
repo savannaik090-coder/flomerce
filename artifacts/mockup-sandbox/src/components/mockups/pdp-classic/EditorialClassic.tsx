@@ -169,7 +169,7 @@ export function EditorialClassic() {
                 <span className="group-hover:underline underline-offset-4">{product.reviews.avg} ({product.reviews.total} Reviews)</span>
               </a>
 
-              <h1 className="font-['Playfair_Display'] text-4xl lg:text-5xl leading-tight mb-4 text-[#2a2520]">{product.name}</h1>
+              <h1 className="text-4xl lg:text-5xl leading-tight mb-4 text-[#2a2520]">{product.name}</h1>
               <p className="text-lg text-[#5a5550] italic font-light mb-8 max-w-md mx-auto lg:mx-0">{product.short_description}</p>
               
               <div className="flex items-end justify-center lg:justify-start space-x-4 mb-2">
@@ -285,32 +285,13 @@ export function EditorialClassic() {
           </div>
         </div>
 
-        {/* Story Section */}
-        <div className="py-24 border-y border-[#d4af37]/30 mb-24 max-w-4xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="font-['Playfair_Display'] text-3xl italic text-[#B08C4C]">The Story</h2>
-            <div className="w-px h-16 bg-[#B08C4C]/40 mx-auto mt-8"></div>
-          </div>
-          <div 
-            className="prose-custom"
-            dangerouslySetInnerHTML={{ __html: product.description }} 
-          />
-          <div className="flex flex-wrap gap-3 mt-12 justify-center">
-            {product.tags.map(tag => (
-              <span key={tag} className="text-xs uppercase tracking-widest text-[#888] border border-[#d4af37]/20 px-4 py-1.5 rounded-full">
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-
         {/* Reviews Section */}
         <div id="reviews" className="mb-32">
-          <h2 className="font-['Playfair_Display'] text-3xl text-center mb-16">Press & Praise</h2>
+          <h2 className="text-3xl text-center mb-16">Press & Praise</h2>
           <div className="grid grid-cols-1 md:grid-cols-12 gap-16 lg:gap-24">
             <div className="md:col-span-4 lg:col-span-3">
               <div className="sticky top-12">
-                <div className="text-6xl font-['Playfair_Display'] mb-2">{product.reviews.avg}</div>
+                <div className="text-6xl mb-2">{product.reviews.avg}</div>
                 <div className="flex text-[#d4af37] mb-2">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className={`w-5 h-5 ${i < Math.floor(product.reviews.avg) ? 'fill-current' : ''}`} />
@@ -346,7 +327,7 @@ export function EditorialClassic() {
                 <div key={i} className="pb-12 border-b border-[#d4af37]/20 last:border-0">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <div className="font-['Playfair_Display'] text-lg mb-1">{review.author}</div>
+                      <div className="text-lg mb-1">{review.author}</div>
                       <div className="text-xs text-[#888] flex items-center space-x-2">
                         <span>{review.date}</span>
                         {review.verified && (
@@ -372,7 +353,7 @@ export function EditorialClassic() {
 
         {/* Related Products */}
         <div>
-          <h2 className="font-['Playfair_Display'] text-3xl text-center mb-16 italic text-[#5a5550]">From the same atelier</h2>
+          <h2 className="text-3xl text-center mb-16 italic text-[#5a5550]">From the same atelier</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10">
             {product.related.map((item, i) => {
               const relDiscount = item.compare_at_price 
@@ -384,7 +365,7 @@ export function EditorialClassic() {
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out" />
                   </div>
                   <div className="text-center">
-                    <h3 className="font-['Playfair_Display'] text-lg mb-2 text-[#2a2520]">{item.name}</h3>
+                    <h3 className="text-lg mb-2 text-[#2a2520]">{item.name}</h3>
                     <div className="flex items-center justify-center space-x-3">
                       <span className="text-[#2a2520]">₹{item.price.toLocaleString('en-IN')}</span>
                       {item.compare_at_price && (
