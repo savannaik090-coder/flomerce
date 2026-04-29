@@ -83,9 +83,9 @@ export default function OwnerAdminPage() {
     plainDirty: false,
     monthly_price: '',
     cycles: {
-      'monthly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
-      '3months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
-      '6months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+      'monthly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: '' },
+      '3months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: '' },
+      '6months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: '' },
       'yearly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 10 },
     }
   });
@@ -185,9 +185,9 @@ export default function OwnerAdminPage() {
   const tierLabel = (tier) => TIER_LABELS[tier] || `Tier ${tier}`;
 
   const emptyCycles = () => ({
-    'monthly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
-    '3months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
-    '6months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 0 },
+    'monthly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: '' },
+    '3months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: '' },
+    '6months': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: '' },
     'yearly': { enabled: false, razorpay_plan_id: '', discount_type: 'percent', discount_value: 10 },
   });
 
@@ -1739,8 +1739,9 @@ export default function OwnerAdminPage() {
                                     value={cyc.discount_value}
                                     onChange={e => {
                                       const raw = e.target.value;
-                                      // Keep empty string as 0 in state so the input stays controlled.
-                                      const next = raw === '' ? 0 : (parseFloat(raw) || 0);
+                                      // Preserve empty string so the input shows blank/placeholder
+                                      // instead of a stuck "0". Save flow already coerces '' to 0.
+                                      const next = raw === '' ? '' : (parseFloat(raw) || 0);
                                       updateCycle(key, 'discount_value', next);
                                     }}
                                     placeholder={dType === 'flat' ? 'e.g. 500' : '0'}
