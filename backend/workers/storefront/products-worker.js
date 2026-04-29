@@ -3,9 +3,28 @@ import { cachedJsonResponse, purgeStorefrontCache } from '../../utils/cache.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, hasPermission } from './site-admin-worker.js';
 import { checkUsageLimit, estimateRowBytes, trackD1Write, trackD1Delete, trackD1Update, removeMediaFile } from '../../utils/usage-tracker.js';
-import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn, getSiteConfig } from '../../utils/site-db.js';
+import { resolveSiteDBById, resolveSiteDBBySubdomain, checkMigrationLock, ensureProductOptionsColumn, ensureProductSubcategoryColumn, ensureProductSpecificationsColumn, getSiteConfig } from '../../utils/site-db.js';
 import { triggerAutoNotification } from './notifications-worker.js';
 import { translateContentBatch, isTargetSupported } from '../../utils/server-translator.js';
+
+// Phase 3: tolerant parser for the `specifications` column. We always store a
+// JSON array of `{ label, value }` rows, but some legacy/test rows may contain
+// malformed JSON — fall back to an empty list rather than 500-ing the PDP.
+function safeParseSpecs(raw) {
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(v)) return [];
+    return v
+      .filter(r => r && typeof r === 'object')
+      .map(r => ({
+        label: typeof r.label === 'string' ? r.label : '',
+        value: typeof r.value === 'string' ? r.value : '',
+      }))
+      .filter(r => r.label.trim() && r.value.trim());
+  } catch {
+    return [];
+  }
+}
 
 // Returns true when the merchant has Shiprocket switched on. Used to enforce
 // the per-product shipping-weight requirement only for stores that actually
@@ -256,6 +275,7 @@ async function getProducts(env, { siteId, subdomain, category, categoryId, subca
       images: product.images ? JSON.parse(product.images) : [],
       tags: product.tags ? JSON.parse(product.tags) : [],
       options: product.options ? JSON.parse(product.options) : null,
+      specifications: product.specifications ? safeParseSpecs(product.specifications) : [],
     }));
 
     if (lang && siteId) {
@@ -341,6 +361,7 @@ async function getProduct(env, productId, siteId, subdomain, lang) {
       images: product.images ? JSON.parse(product.images) : [],
       tags: product.tags ? JSON.parse(product.tags) : [],
       options: product.options ? JSON.parse(product.options) : null,
+      specifications: product.specifications ? safeParseSpecs(product.specifications) : [],
       variants: variantResults.map(v => ({
         ...v,
         attributes: v.attributes ? JSON.parse(v.attributes) : {},
@@ -368,7 +389,7 @@ async function getProduct(env, productId, siteId, subdomain, lang) {
 async function createProduct(request, env, user, ctx) {
   try {
     const data = await request.json();
-    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, lowStockThreshold, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate } = data;
+    const { siteId, name, description, shortDescription, price, comparePrice, costPrice, sku, stock, lowStockThreshold, categoryId, subcategoryId, images, thumbnailUrl, mainImageIndex, tags, isFeatured, weight, dimensions, options, hsnCode, gstRate, specifications } = data;
 
     if (!siteId || !name || price === undefined) {
       return errorResponse('Site ID, name and price are required');
@@ -408,6 +429,7 @@ async function createProduct(request, env, user, ctx) {
     const db = await resolveSiteDBById(env, siteId);
     await ensureProductOptionsColumn(db, siteId);
     await ensureProductSubcategoryColumn(db, siteId);
+    await ensureProductSpecificationsColumn(db, siteId);
 
     let resolvedThumbnail = thumbnailUrl || null;
     if (!resolvedThumbnail && Array.isArray(images) && images.length > 0) {
@@ -427,7 +449,17 @@ async function createProduct(request, env, user, ctx) {
     const autoSku = sku || ('SKU-' + productId.substring(0, 8).toUpperCase());
 
     const optionsStr = options ? JSON.stringify(options) : null;
-    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku: autoSku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr, hsn_code: hsnCode, gst_rate: gstRate };
+    // Normalise admin payload -> persisted JSON. Drop blank rows, trim, cap at
+    // 20 so a buggy client cannot blow up the row size or the rendered list.
+    const cleanedSpecs = Array.isArray(specifications)
+      ? specifications
+          .filter(r => r && typeof r === 'object' && typeof r.label === 'string' && typeof r.value === 'string')
+          .map(r => ({ label: r.label.trim(), value: r.value.trim() }))
+          .filter(r => r.label && r.value)
+          .slice(0, 20)
+      : [];
+    const specsStr = cleanedSpecs.length > 0 ? JSON.stringify(cleanedSpecs) : null;
+    const rowData = { id: productId, site_id: siteId, category_id: categoryId, subcategory_id: subcategoryId, name, slug, description, short_description: shortDescription, price, compare_price: comparePrice, cost_price: costPrice, sku: autoSku, stock, images, thumbnail_url: resolvedThumbnail, tags, is_featured: isFeatured, weight, dimensions, options: optionsStr, hsn_code: hsnCode, gst_rate: gstRate, specifications: specsStr };
     const rowBytes = estimateRowBytes(rowData);
 
     const usageCheck = await checkUsageLimit(env, siteId, 'd1', rowBytes);
@@ -436,8 +468,8 @@ async function createProduct(request, env, user, ctx) {
     }
 
     const runInsert = () => db.prepare(
-      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, hsn_code, gst_rate, row_size_bytes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      `INSERT INTO products (id, site_id, category_id, subcategory_id, name, slug, description, short_description, price, compare_price, cost_price, sku, stock, low_stock_threshold, weight, dimensions, images, thumbnail_url, tags, is_featured, options, hsn_code, gst_rate, specifications, row_size_bytes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
     ).bind(
       productId,
       siteId,
@@ -462,19 +494,23 @@ async function createProduct(request, env, user, ctx) {
       optionsStr,
       hsnCode || null,
       gstRate != null ? gstRate : 0,
+      specsStr,
       rowBytes
     ).run();
 
     try {
       await runInsert();
     } catch (insertErr) {
-      if (insertErr.message && (insertErr.message.includes('options') || insertErr.message.includes('hsn_code') || insertErr.message.includes('gst_rate'))) {
+      if (insertErr.message && (insertErr.message.includes('options') || insertErr.message.includes('hsn_code') || insertErr.message.includes('gst_rate') || insertErr.message.includes('specifications'))) {
         if (insertErr.message.includes('options')) {
           await ensureProductOptionsColumn(db, siteId);
         }
         if (insertErr.message.includes('hsn_code') || insertErr.message.includes('gst_rate')) {
           try { await db.prepare('ALTER TABLE products ADD COLUMN hsn_code TEXT').run(); } catch (e) {}
           try { await db.prepare('ALTER TABLE products ADD COLUMN gst_rate REAL DEFAULT 0').run(); } catch (e) {}
+        }
+        if (insertErr.message.includes('specifications')) {
+          await ensureProductSpecificationsColumn(db, siteId);
         }
         await runInsert();
       } else {
@@ -551,9 +587,24 @@ async function updateProduct(request, env, user, productId, ctx) {
 
     const db = await resolveSiteDBById(env, resolvedSiteId);
     await ensureProductSubcategoryColumn(db, resolvedSiteId);
+    await ensureProductSpecificationsColumn(db, resolvedSiteId);
 
     const updates = await request.json();
-    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'subcategory_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options', 'hsn_code', 'gst_rate'];
+    const allowedFields = ['name', 'description', 'short_description', 'price', 'compare_price', 'cost_price', 'sku', 'stock', 'low_stock_threshold', 'category_id', 'subcategory_id', 'images', 'thumbnail_url', 'tags', 'is_featured', 'is_active', 'weight', 'dimensions', 'options', 'hsn_code', 'gst_rate', 'specifications'];
+
+    // Mirror createProduct's spec normalisation so updates can't sneak in
+    // blank rows, untrimmed strings, or more than 20 entries via the API.
+    if ('specifications' in updates) {
+      const raw = updates.specifications;
+      const cleaned = Array.isArray(raw)
+        ? raw
+            .filter(r => r && typeof r === 'object' && typeof r.label === 'string' && typeof r.value === 'string')
+            .map(r => ({ label: r.label.trim(), value: r.value.trim() }))
+            .filter(r => r.label && r.value)
+            .slice(0, 20)
+        : [];
+      updates.specifications = cleaned.length > 0 ? cleaned : null;
+    }
 
     // If the merchant tries to clear weight while Shiprocket is on, reject —
     // the product would become un-shippable. Updates that don't touch weight
@@ -620,13 +671,16 @@ async function updateProduct(request, env, user, productId, ctx) {
     try {
       await runUpdate();
     } catch (updateErr) {
-      if (updateErr.message && (updateErr.message.includes('options') || updateErr.message.includes('hsn_code') || updateErr.message.includes('gst_rate'))) {
+      if (updateErr.message && (updateErr.message.includes('options') || updateErr.message.includes('hsn_code') || updateErr.message.includes('gst_rate') || updateErr.message.includes('specifications'))) {
         if (updateErr.message.includes('options')) {
           await ensureProductOptionsColumn(db, resolvedSiteId);
         }
         if (updateErr.message.includes('hsn_code') || updateErr.message.includes('gst_rate')) {
           try { await db.prepare('ALTER TABLE products ADD COLUMN hsn_code TEXT').run(); } catch (e) {}
           try { await db.prepare('ALTER TABLE products ADD COLUMN gst_rate REAL DEFAULT 0').run(); } catch (e) {}
+        }
+        if (updateErr.message.includes('specifications')) {
+          await ensureProductSpecificationsColumn(db, resolvedSiteId);
         }
         await runUpdate();
       } else {

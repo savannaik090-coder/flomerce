@@ -285,13 +285,39 @@ export default function ProductDetailPage() {
   })();
 
   // Specs — only show when at least one value exists.
+  // `dimensions` is JSON-encoded TEXT in the DB (length/breadth/height live
+  // inside that blob, not as top-level columns). Parse defensively so the
+  // panel never blows up on a malformed string.
   const specWeight = Number(product.weight);
-  const specLength = Number(product.length);
-  const specBreadth = Number(product.breadth);
-  const specHeight = Number(product.height);
+  const specDims = (() => {
+    let d = product.dimensions;
+    if (typeof d === 'string') {
+      try { d = JSON.parse(d); } catch { d = null; }
+    }
+    if (!d || typeof d !== 'object') return null;
+    const l = Number(d.length);
+    const b = Number(d.breadth);
+    const h = Number(d.height);
+    if (![l, b, h].every(v => Number.isFinite(v) && v > 0)) return null;
+    return { length: l, breadth: b, height: h };
+  })();
+  // Phase 3: flexible category-agnostic spec rows the merchant added on the
+  // product form. Trust the worker's `safeParseSpecs` to hand us a clean
+  // array, but be tolerant of legacy strings.
+  const customSpecs = (() => {
+    let s = product.specifications;
+    if (typeof s === 'string') {
+      try { s = JSON.parse(s); } catch { s = null; }
+    }
+    if (!Array.isArray(s)) return [];
+    return s
+      .filter(r => r && typeof r === 'object' && typeof r.label === 'string' && typeof r.value === 'string')
+      .map(r => ({ label: r.label.trim(), value: r.value.trim() }))
+      .filter(r => r.label && r.value);
+  })();
   const hasSpecWeight = Number.isFinite(specWeight) && specWeight > 0;
-  const hasSpecDims = [specLength, specBreadth, specHeight].every(v => Number.isFinite(v) && v > 0);
-  const hasAnySpec = hasSpecWeight || hasSpecDims;
+  const hasSpecDims = !!specDims;
+  const hasAnySpec = hasSpecWeight || hasSpecDims || customSpecs.length > 0;
 
   return (
     <div className={isModern ? 'modern-theme' : ''}>
@@ -524,9 +550,15 @@ export default function ProductDetailPage() {
                   {hasSpecDims && (
                     <div>
                       <span style={{ color: '#64748b' }}><TranslatedText text="Dimensions" />: </span>
-                      <strong>{specLength} × {specBreadth} × {specHeight} cm</strong>
+                      <strong>{specDims.length} × {specDims.breadth} × {specDims.height} cm</strong>
                     </div>
                   )}
+                  {customSpecs.map((row, i) => (
+                    <div key={`spec-${i}`}>
+                      <span style={{ color: '#64748b' }}><TranslatedText text={row.label} />: </span>
+                      <strong><TranslatedText text={row.value} /></strong>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

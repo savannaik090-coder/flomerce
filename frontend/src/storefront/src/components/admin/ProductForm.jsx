@@ -29,7 +29,10 @@ const DEFAULT_FORM = {
   length: '',
   breadth: '',
   height: '',
+  specifications: [],
 };
+
+const MAX_SPECIFICATIONS = 20;
 
 const SHORT_DESCRIPTION_MAX = 160;
 
@@ -221,6 +224,22 @@ export default function ProductForm({ product, onSave, onCancel }) {
         length: dims?.length != null ? String(dims.length) : '',
         breadth: dims?.breadth != null ? String(dims.breadth) : '',
         height: dims?.height != null ? String(dims.height) : '',
+        specifications: (() => {
+          // Phase 3: tolerate legacy strings (DB may hand us already-parsed
+          // arrays, JSON strings, or null) so reopening an old product doesn't
+          // wipe its specs.
+          let s = product.specifications;
+          if (typeof s === 'string') {
+            try { s = JSON.parse(s); } catch { s = null; }
+          }
+          if (!Array.isArray(s)) return [];
+          return s
+            .filter(r => r && typeof r === 'object')
+            .map(r => ({
+              label: typeof r.label === 'string' ? r.label : '',
+              value: typeof r.value === 'string' ? r.value : '',
+            }));
+        })(),
       });
       if (product.options && typeof product.options === 'object') {
         const opts = {
@@ -378,6 +397,10 @@ export default function ProductForm({ product, onSave, onCancel }) {
           return form.weight_unit === 'kg' ? Math.round(w * 1000) : Math.round(w);
         })(),
         dimensions: Object.keys(dimsPayload).length > 0 ? dimsPayload : null,
+        specifications: (Array.isArray(form.specifications) ? form.specifications : [])
+          .map(r => ({ label: (r?.label || '').trim(), value: (r?.value || '').trim() }))
+          .filter(r => r.label && r.value)
+          .slice(0, MAX_SPECIFICATIONS),
       };
       let savedProductId = product?.id;
       if (isEdit) {
@@ -882,6 +905,105 @@ export default function ProductForm({ product, onSave, onCancel }) {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Specifications</h3>
+          </div>
+          <div className="card-body">
+            <p style={{ fontSize: 12, color: '#64748b', marginTop: 0, marginBottom: 12 }}>
+              Add label/value pairs that show in the Specifications panel on the product page. Use whatever fits your catalog —
+              {' '}<em>Material</em>, <em>Origin</em>, <em>Hallmark</em>, <em>Warranty</em>, <em>Care</em>, etc. Up to {MAX_SPECIFICATIONS} rows.
+            </p>
+            {(form.specifications || []).length === 0 && (
+              <div style={{
+                padding: '14px 16px', background: '#f8fafc', border: '1px dashed #cbd5e1',
+                borderRadius: 8, color: '#64748b', fontSize: 13, marginBottom: 12,
+              }}>
+                No specifications yet. Click "Add specification" below to add your first row.
+              </div>
+            )}
+            {(form.specifications || []).map((row, idx) => (
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr auto', gap: 8, marginBottom: 8, alignItems: 'start' }}>
+                <input
+                  type="text"
+                  value={row.label || ''}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setForm(p => {
+                      const next = [...(p.specifications || [])];
+                      next[idx] = { ...next[idx], label: v };
+                      return { ...p, specifications: next };
+                    });
+                  }}
+                  placeholder="Label (e.g., Material)"
+                  maxLength={60}
+                  aria-label={`Specification label ${idx + 1}`}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                />
+                <input
+                  type="text"
+                  value={row.value || ''}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setForm(p => {
+                      const next = [...(p.specifications || [])];
+                      next[idx] = { ...next[idx], value: v };
+                      return { ...p, specifications: next };
+                    });
+                  }}
+                  placeholder="Value (e.g., 92.5% Sterling Silver)"
+                  maxLength={200}
+                  aria-label={`Specification value ${idx + 1}`}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(p => {
+                      const next = [...(p.specifications || [])];
+                      next.splice(idx, 1);
+                      return { ...p, specifications: next };
+                    });
+                  }}
+                  aria-label={`Remove specification ${idx + 1}`}
+                  style={{
+                    padding: '8px 10px', background: '#fff', border: '1px solid #fecaca',
+                    color: '#b91c1c', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+                  }}
+                >
+                  <i className="fas fa-trash" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setForm(p => {
+                  const cur = Array.isArray(p.specifications) ? p.specifications : [];
+                  if (cur.length >= MAX_SPECIFICATIONS) return p;
+                  return { ...p, specifications: [...cur, { label: '', value: '' }] };
+                });
+              }}
+              disabled={(form.specifications || []).length >= MAX_SPECIFICATIONS}
+              style={{
+                marginTop: 4, padding: '8px 14px',
+                background: (form.specifications || []).length >= MAX_SPECIFICATIONS ? '#e2e8f0' : '#0f172a',
+                color: (form.specifications || []).length >= MAX_SPECIFICATIONS ? '#94a3b8' : '#fff',
+                border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                cursor: (form.specifications || []).length >= MAX_SPECIFICATIONS ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <i className="fas fa-plus" style={{ marginRight: 6 }} />
+              Add specification
+            </button>
+            {(form.specifications || []).length >= MAX_SPECIFICATIONS && (
+              <p style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                Reached the {MAX_SPECIFICATIONS}-row limit.
+              </p>
+            )}
           </div>
         </div>
 

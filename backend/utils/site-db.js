@@ -67,6 +67,26 @@ export async function ensureProductSubcategoryColumn(db, cacheKey) {
   }
 }
 
+const _specsMigratedDBs = new Set();
+
+// Phase 3: per-tenant online migration for the flexible `specifications`
+// JSON column. Older site DBs were created before migration 0025 so we lazily
+// add the column the first time the worker touches that DB.
+export async function ensureProductSpecificationsColumn(db, cacheKey) {
+  const key = cacheKey || 'default';
+  if (_specsMigratedDBs.has(key)) return;
+  try {
+    const cols = await db.prepare("PRAGMA table_info(products)").all();
+    const hasSpecs = cols.results?.some(c => c.name === 'specifications');
+    if (!hasSpecs) {
+      await db.prepare("ALTER TABLE products ADD COLUMN specifications TEXT").run();
+    }
+    _specsMigratedDBs.add(key);
+  } catch (e) {
+    console.error('ensureProductSpecificationsColumn error:', e.message || e);
+  }
+}
+
 /**
  * One-shot ensure of the shiprocket_* columns on the per-shard `orders` and
  * `guest_orders` tables. New shards created after Shiprocket integration
