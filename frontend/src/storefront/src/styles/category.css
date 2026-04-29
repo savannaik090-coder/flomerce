@@ -242,6 +242,7 @@
     align-items: center;
     gap: 8px;
     position: relative;
+    z-index: 9000;
     cursor: pointer;
 }
 
@@ -266,7 +267,7 @@
     width: 230px;
     background: #ffffff;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
-    z-index: 1000;
+    z-index: 9000;
     border-radius: 12px;
     border: 1px solid #e8e1d6;
     opacity: 0;
@@ -467,30 +468,29 @@
     font-weight: 600;
     margin: 0;
     color: #333;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
 }
 
 .close-filter-modal {
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 22px;
     cursor: pointer;
-    color: #888;
+    color: #999;
     transition: color 0.2s ease;
     padding: 4px;
-    line-height: 1;
 }
 
 .close-filter-modal:hover {
-    color: #333;
+    color: #b5727a;
 }
 
 .filter-modal-body {
-    padding: 24px 30px;
+    padding: 24px;
 }
 
 .filter-section {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .filter-section:last-child {
@@ -499,12 +499,11 @@
 
 .filter-section h3 {
     font-family: var(--font-primary);
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     margin: 0 0 14px;
-    color: #c9949a;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    color: #444;
+    letter-spacing: 0.3px;
 }
 
 .filter-options {
@@ -520,13 +519,13 @@
     font-family: var(--font-primary);
     font-size: 14px;
     cursor: pointer;
-    color: #333;
+    color: #555;
     transition: color 0.2s ease;
     padding: 4px 0;
 }
 
 .filter-option-label:hover {
-    color: #c9949a;
+    color: #b5727a;
 }
 
 .filter-modal-footer {
@@ -538,9 +537,9 @@
 }
 
 .apply-filter-btn, .clear-filter-btn {
-    padding: 12px 24px;
+    padding: 12px 20px;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-family: var(--font-primary);
     font-size: 14px;
     font-weight: 500;
@@ -550,28 +549,24 @@
 }
 
 .apply-filter-btn {
-    background: linear-gradient(135deg, #c9949a, #b88991);
+    background: #c9949a;
     color: white;
     flex: 1;
-    box-shadow: 0 2px 8px rgba(201, 148, 154, 0.25);
 }
 
 .apply-filter-btn:hover {
-    background: linear-gradient(135deg, #b88991, #a87c84);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(201, 148, 154, 0.35);
+    background: #b5727a;
 }
 
 .clear-filter-btn {
     background: transparent;
-    color: #999;
-    border: 1px solid #e8e0d8;
+    color: #888;
+    border: 1px solid #ddd;
 }
 
 .clear-filter-btn:hover {
-    border-color: #c9949a;
-    color: #c9949a;
-    background: rgba(201, 148, 154, 0.04);
+    border-color: #bbb;
+    color: #666;
 }
 
 /* Classic boutique modal refresh — scoped, modern unaffected.
@@ -598,6 +593,17 @@ body:has(.category-page:not(.modern-theme)) .filter-modal-header {
 body:has(.category-page:not(.modern-theme)) .filter-modal-header h2 {
     font-size: 22px;
     font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+body:has(.category-page:not(.modern-theme)) .close-filter-modal {
+    font-size: 24px;
+    color: #888;
+    line-height: 1;
+}
+
+body:has(.category-page:not(.modern-theme)) .close-filter-modal:hover {
+    color: #333;
 }
 
 body:has(.category-page:not(.modern-theme)) .filter-modal-body {
@@ -612,10 +618,15 @@ body:has(.category-page:not(.modern-theme)) .filter-section h3 {
     font-size: 11px;
     color: #888;
     letter-spacing: 0.2em;
+    text-transform: uppercase;
 }
 
 body:has(.category-page:not(.modern-theme)) .filter-options {
     gap: 10px;
+}
+
+body:has(.category-page:not(.modern-theme)) .filter-option-label {
+    color: #333;
 }
 
 body:has(.category-page:not(.modern-theme)) .filter-option-label:hover {
