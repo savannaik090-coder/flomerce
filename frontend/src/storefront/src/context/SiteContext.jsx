@@ -271,9 +271,11 @@ export function SiteProvider({ children }) {
 
   // Resolve the theme bundle that the storefront actually consumes. If the
   // merchant has no theme_config yet (super-old site, brand new SDK paint
-  // before the API answers), fall back to a single Brand scheme synthesized
-  // from primary/secondary so SchemeScope and downstream components always
-  // have something valid to render.
+  // before the API answers), synthesize Brand + Inverse + Accent from
+  // primary/secondary/accent — same shape the backend seeds on new sites
+  // — so SchemeScope renders correctly AND the visual customizer's Theme
+  // tab + per-section dropdowns have real schemes to switch between
+  // without requiring a backend migration of legacy rows.
   const resolvedTheme = useMemo(() => {
     const cfg = effectiveSiteConfig;
     if (!cfg) return null;
@@ -281,19 +283,53 @@ export function SiteProvider({ children }) {
     if (tc && Array.isArray(tc.schemes) && tc.schemes.length > 0) {
       return tc;
     }
-    const fallbackBrand = {
-      id: 'brand',
-      name: 'Brand',
-      isDefault: true,
-      background: '#ffffff',
-      text: '#111111',
-      button: cfg.primaryColor || '#000000',
-      buttonText: '#ffffff',
-      secondaryButton: '#f1f5f9',
-      link: cfg.primaryColor || '#000000',
-      accent: '#b08c4c',
+    const primary = cfg.primaryColor || '#603000';
+    const accent = '#b08c4c';
+    const pickReadable = (bg) => {
+      if (typeof bg !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(bg)) return '#ffffff';
+      const n = parseInt(bg.slice(1), 16);
+      const r = ((n >> 16) & 0xff) / 255;
+      const g = ((n >> 8) & 0xff) / 255;
+      const b = (n & 0xff) / 255;
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 0.55 ? '#111111' : '#ffffff';
     };
-    return { schemes: [fallbackBrand], sectionAssignments: {} };
+    const shift = (hex, factor) => {
+      if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return hex;
+      const n = parseInt(hex.slice(1), 16);
+      let r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+      if (factor >= 0) {
+        r = Math.round(r + (255 - r) * factor);
+        g = Math.round(g + (255 - g) * factor);
+        b = Math.round(b + (255 - b) * factor);
+      } else {
+        const f = 1 + factor;
+        r = Math.round(r * f); g = Math.round(g * f); b = Math.round(b * f);
+      }
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    };
+    const brand = {
+      id: 'brand', name: 'Brand', isDefault: true,
+      background: '#ffffff', text: '#111111',
+      button: primary, buttonText: pickReadable(primary),
+      secondaryButton: shift(primary, 0.85),
+      link: primary, accent,
+    };
+    const inverseBg = shift(primary, -0.4);
+    const inverse = {
+      id: 'inverse', name: 'Inverse', isDefault: false,
+      background: inverseBg, text: '#ffffff',
+      button: '#ffffff', buttonText: '#111111',
+      secondaryButton: shift(inverseBg, 0.15),
+      link: '#f5deb3', accent,
+    };
+    const accentScheme = {
+      id: 'accent', name: 'Accent', isDefault: false,
+      background: '#fdfaf3', text: '#1f1a14',
+      button: accent, buttonText: pickReadable(accent),
+      secondaryButton: shift(accent, 0.78),
+      link: primary, accent,
+    };
+    return { schemes: [brand, inverse, accentScheme], sectionAssignments: {} };
   }, [effectiveSiteConfig]);
 
   // Inject the Brand (default) scheme into the document root so the very

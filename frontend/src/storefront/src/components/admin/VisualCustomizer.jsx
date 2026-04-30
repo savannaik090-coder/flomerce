@@ -115,37 +115,46 @@ const SCHEMEABLE_SECTIONS = new Set([
 ]);
 
 export default function VisualCustomizer({ currentPlan, onBack }) {
-  const { siteConfig } = useContext(SiteContext);
+  // CRITICAL: pull `themeConfig` (the *resolved* theme) from context instead
+  // of reaching into `siteConfig.themeConfig` directly. The resolved value is
+  // never null — if a legacy site has no `theme_config` row in the DB,
+  // SiteContext synthesizes Brand + Inverse + Accent on the fly so the
+  // customizer's Theme tab and per-section dropdowns always have real
+  // schemes to work with. Reading from `siteConfig.themeConfig` would leave
+  // `themeDraft` null on those legacy sites and the SchemeAssignmentBar
+  // would never render — which is exactly the bug a merchant would describe
+  // as "I can't see any color customization in per-section editors".
+  const { siteConfig, themeConfig } = useContext(SiteContext);
   const confirm = useConfirm();
 
-  // Theme draft: starts as a deep copy of the saved theme so per-section
+  // Theme draft: starts as a deep copy of the resolved theme so per-section
   // dropdowns and the Theme tab can mutate it freely without touching the
   // server. The Theme tab has its own Save button; per-section assignment
   // changes auto-save (parallels the visibility-toggle behavior).
-  const [themeDraft, setThemeDraft] = useState(() => deepClone(siteConfig?.themeConfig));
-  const themeSavedRef = useRef(JSON.stringify(siteConfig?.themeConfig || {}));
+  const [themeDraft, setThemeDraft] = useState(() => deepClone(themeConfig));
+  const themeSavedRef = useRef(JSON.stringify(siteConfig?.themeConfig || themeConfig || {}));
   // Mirror of themeDraft kept in a ref so async callbacks (like the
   // post-save dirty re-check after an assignment auto-save) read the
   // latest value rather than the closed-over snapshot from when the
   // callback was scheduled.
-  const themeDraftRef = useRef(siteConfig?.themeConfig || null);
+  const themeDraftRef = useRef(themeConfig || null);
   const [themeHasChanges, setThemeHasChanges] = useState(false);
   const [themeSaving, setThemeSaving] = useState(false);
 
-  // Resync the draft whenever the canonical theme on the server changes
-  // (e.g. after a successful save, or if the merchant refreshes the site
-  // config). This keeps the editor in sync with the source of truth.
+  // Resync the draft whenever the canonical theme changes (saved or
+  // recomputed). We compare against the saved baseline only — if the
+  // merchant has unsaved edits, we don't stomp them.
   useEffect(() => {
-    const incoming = siteConfig?.themeConfig;
-    const incomingStr = JSON.stringify(incoming || {});
-    if (incomingStr !== themeSavedRef.current) {
+    const incoming = siteConfig?.themeConfig || themeConfig;
+    if (!incoming) return;
+    const incomingStr = JSON.stringify(incoming);
+    if (incomingStr !== themeSavedRef.current && !themeHasChanges) {
       themeSavedRef.current = incomingStr;
       const cloned = deepClone(incoming);
       setThemeDraft(cloned);
       themeDraftRef.current = cloned;
-      setThemeHasChanges(false);
     }
-  }, [siteConfig?.themeConfig]);
+  }, [siteConfig?.themeConfig, themeConfig, themeHasChanges]);
 
   // Keep the ref synced on every draft change.
   useEffect(() => { themeDraftRef.current = themeDraft; }, [themeDraft]);
