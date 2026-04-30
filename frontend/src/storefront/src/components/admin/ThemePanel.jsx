@@ -46,6 +46,7 @@ export default function ThemePanel({
   onSave,
   onDirty,
   onResetAllToDefault,
+  onResetBrandToDefault,
 }) {
   const schemes = (themeConfig && themeConfig.schemes) || [];
   const [editingId, setEditingId] = useState(() => schemes[0]?.id || null);
@@ -294,6 +295,59 @@ export default function ThemePanel({
           {saving ? "Saving..." : hasChanges ? "Save Theme" : "All Changes Saved"}
         </button>
 
+        {/* Two-tier reset zone. The merchant gets two related-but-distinct
+            actions; the explainer above makes the difference legible so
+            they don't fire the wrong one and lose more than they meant to.
+            Both actions are confirmed via window.confirm — destructive
+            enough to warrant a click-through, light enough to not need a
+            full custom modal component. */}
+        {(onResetBrandToDefault || onResetAllToDefault) && (
+          <div
+            style={{
+              marginTop: 16, padding: 12,
+              background: '#f8fafc', border: '1px solid #e2e8f0',
+              borderRadius: 10, fontSize: 11, color: '#475569',
+              lineHeight: 1.5,
+            }}
+          >
+            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 6, fontSize: 12 }}>
+              <i className="fas fa-info-circle" style={{ marginInlineEnd: 6, color: '#3b82f6' }} />
+              What's the difference?
+            </div>
+            <div style={{ marginBottom: 4 }}>
+              <strong>Reset Brand colors</strong> — restores the Brand scheme above to the platform's default brown / gold palette. Your scheme assignments and per-section overrides are kept.
+            </div>
+            <div>
+              <strong>Reset entire site</strong> — clears every per-section scheme assignment and every per-section color override. Your saved schemes (including any custom Brand colors) are kept.
+            </div>
+          </div>
+        )}
+
+        {/* New: reset just the Brand scheme to the platform default palette.
+            Useful when the merchant has tweaked Brand into a corner and
+            wants a clean starting point without losing their per-section
+            assignments / overrides. */}
+        {onResetBrandToDefault && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Reset the Brand scheme back to the platform default brown / gold colors?\n\nThis only changes the Brand scheme above. Your scheme assignments and per-section color overrides are kept.')) {
+                onResetBrandToDefault();
+              }
+            }}
+            style={{
+              width: '100%', marginTop: 8, padding: '10px 16px',
+              background: '#fff', color: '#0f172a',
+              border: '1px solid #cbd5e1', borderRadius: 10,
+              fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <i className="fas fa-palette" style={{ marginInlineEnd: 6, fontSize: 10 }} />
+            Reset Brand colors to platform default
+          </button>
+        )}
+
         {/* Global "back to original design" escape hatch. Wipes every
             section's overrides AND every scheme assignment, returning the
             entire storefront to its pre-feature look. The schemes
@@ -302,7 +356,7 @@ export default function ThemePanel({
           <button
             type="button"
             onClick={() => {
-              if (window.confirm('Reset every section back to the original design? This clears your scheme assignments and per-section colour overrides. Your schemes themselves stay saved.')) {
+              if (window.confirm('Reset every section back to the default design?\n\nThis clears your scheme assignments and per-section color overrides. Your schemes themselves (including custom Brand colors) stay saved.')) {
                 onResetAllToDefault();
               }
             }}

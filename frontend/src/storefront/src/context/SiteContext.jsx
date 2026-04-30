@@ -280,6 +280,12 @@ export function SiteProvider({ children }) {
         ...(_themePatch.sectionAssignments && typeof _themePatch.sectionAssignments === 'object'
           ? { sectionAssignments: { ..._themePatch.sectionAssignments } }
           : {}),
+        // Forward the opt-in flag when the customizer sends one (e.g. after
+        // Reset Brand). Boolean check is intentional — `undefined` means
+        // "patch doesn't touch the flag" so we keep the saved value.
+        ...(typeof _themePatch.applyBrandAsDefault === 'boolean'
+          ? { applyBrandAsDefault: _themePatch.applyBrandAsDefault }
+          : {}),
       };
     }
     // Per-section color overrides live in settings.sectionColorOverrides.
@@ -368,12 +374,50 @@ export function SiteProvider({ children }) {
     return { schemes: [brand, inverse, accentScheme], sectionAssignments: {} };
   }, [effectiveSiteConfig]);
 
-  // NOTE: We intentionally DO NOT inject the Brand scheme onto :root. Doing
-  // so would override the static --color-* variables defined in
-  // styles/variables.css (the original storefront design tokens) and change
-  // every section's colours site-wide. The merchant explicitly asked for
-  // pristine pre-feature rendering — the storefront uses variables.css as-is
-  // until they customise something via SchemeScope.
+  // Inject the active Brand scheme as :root design tokens — but ONLY when
+  // the site has opted in to Brand-as-default painting. New sites (created
+  // via the wizard with the Brand Colors step) and any site whose merchant
+  // has saved through the Theme tab are flagged `applyBrandAsDefault: true`
+  // by the backend; legacy sites that have never customized stay `false`
+  // and keep their pristine variables.css look.
+  //
+  // This is what makes Brand a real default theme: every storefront element
+  // referencing `var(--color-primary)` (buttons, accents, links throughout
+  // the chrome) automatically inherits the merchant's colors site-wide,
+  // not just inside SchemeScope-wrapped sections.
+  useEffect(() => {
+    if (typeof document === 'undefined' || !resolvedTheme) return;
+    const root = document.documentElement;
+    if (!root) return;
+    const def = Array.isArray(resolvedTheme.schemes)
+      ? resolvedTheme.schemes.find(s => s.isDefault)
+      : null;
+    const opted = !!resolvedTheme.applyBrandAsDefault;
+    // Token list mirrors variables.css so every existing reference picks
+    // up merchant colors transparently. We touch only color tokens — never
+    // typography, radius, spacing — to keep the visual contract narrow.
+    const TOKENS = [
+      ['--color-primary', def?.button],
+      ['--color-secondary', def?.secondaryButton],
+      ['--color-accent', def?.accent],
+    ];
+    if (opted && def) {
+      for (const [name, value] of TOKENS) {
+        if (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)) {
+          root.style.setProperty(name, value);
+        }
+      }
+    } else {
+      // Opted-out (legacy site) → clear any tokens we may have set in a
+      // prior render so the static variables.css values shine through.
+      for (const [name] of TOKENS) root.style.removeProperty(name);
+    }
+    return () => {
+      // Don't aggressively clear on unmount — the storefront keeps the
+      // SiteProvider mounted for the lifetime of the page, and clearing
+      // here would briefly flash the platform defaults during HMR.
+    };
+  }, [resolvedTheme]);
 
   // Helper used by SchemeScope to look up the scheme assigned to a given
   // section. Falls back to the default scheme when the section has no
@@ -390,21 +434,38 @@ export function SiteProvider({ children }) {
     };
   }, [resolvedTheme]);
 
-  // Returns the scheme assigned to a section ONLY when the merchant has
-  // explicitly picked a non-default scheme. Returns null when the section
-  // is on the default scheme (or has no assignment at all). SchemeScope
-  // uses this to decide whether to inject any CSS — null + no overrides
-  // means "leave the section completely untouched, original storefront
-  // CSS shows through". This is the invariant that guarantees the
-  // pre-feature look is preserved by default.
+  // Returns the scheme SchemeScope should actively paint on a given
+  // section. Returns null to mean "leave the section's original CSS alone".
+  //
+  // Behavior is two-tier so we can ship Brand-as-default-theme without
+  // visually breaking legacy sites:
+  //   - Non-default scheme assigned → always paint that scheme. (Status quo.)
+  //   - Default scheme assigned + applyBrandAsDefault=true → paint Brand.
+  //     This is the new path for wizard-created sites and any site whose
+  //     merchant has saved through the Theme tab.
+  //   - Default scheme assigned + applyBrandAsDefault=false → return null,
+  //     preserving the pristine pre-feature look. Legacy invariant intact.
   const getExplicitSchemeForSection = useMemo(() => {
     return (sectionId) => {
       if (!resolvedTheme || !Array.isArray(resolvedTheme.schemes)) return null;
       const assignments = resolvedTheme.sectionAssignments || {};
       const targetId = sectionId ? assignments[sectionId] : null;
-      if (!targetId) return null;
       const def = resolvedTheme.schemes.find(s => s.isDefault);
-      if (def && def.id === targetId) return null; // explicit-default == no recolor
+      const opted = !!resolvedTheme.applyBrandAsDefault;
+      if (!targetId) {
+        // No explicit assignment for this section. On opted-in sites that
+        // means "use site default (Brand)" — paint the Brand scheme. On
+        // legacy untouched sites the flag is false, so we return null and
+        // the storefront keeps its pre-feature original design. This is
+        // also the path taken when the merchant picks "Use site default
+        // (Brand)" from the per-section dropdown (which sends null).
+        return opted && def ? def : null;
+      }
+      if (def && def.id === targetId) {
+        // Brand scheme explicitly assigned. Only paint when opted in,
+        // otherwise honour the legacy "untouched stays pristine" rule.
+        return opted ? def : null;
+      }
       return resolvedTheme.schemes.find(s => s.id === targetId) || null;
     };
   }, [resolvedTheme]);

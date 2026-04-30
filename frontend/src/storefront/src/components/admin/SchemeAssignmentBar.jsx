@@ -102,7 +102,7 @@ export default function SchemeAssignmentBar({
             cursor: 'pointer',
           }}
         >
-          <option value={DEFAULT_VALUE}>Default (use original design)</option>
+          <option value={DEFAULT_VALUE}>Use site default (Brand)</option>
           {schemes.map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}

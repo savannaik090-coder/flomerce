@@ -20,6 +20,20 @@ const SEO_DESCRIPTION_TEMPLATES = {
   general: 'Shop online at {brand}. Explore our curated collection with secure checkout, easy returns & fast delivery.',
 };
 
+// Category-tuned color presets for the wizard's Brand Colors step. Each
+// preset maps a business category to a (primary, accent) pair that fits
+// the typical aesthetic of that vertical. The "general" preset matches
+// the platform default brown/gold so a merchant who skips this step ends
+// up with the exact same palette they'd get from "Reset Brand to platform
+// default" later. Hex values must round-trip cleanly through the
+// backend's clampHex validator (lowercase, 6 chars).
+const BRAND_COLOR_PRESETS = {
+  jewellery: { primary: '#7c1d1d', accent: '#c9a45c', label: 'Maroon & Gold' },
+  clothing:  { primary: '#1f2937', accent: '#ef4444', label: 'Slate & Red' },
+  beauty:    { primary: '#be185d', accent: '#fbbf24', label: 'Rose & Amber' },
+  general:   { primary: '#603000', accent: '#b08c4c', label: 'Brown & Gold' },
+};
+
 const DEFAULT_CATEGORIES_BY_TYPE = {
   jewellery: [
     { name: 'New Arrivals', subtitle: 'Discover our latest exquisite collections' },
@@ -112,6 +126,15 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
   // makes a Hindi merchant land on Hindi categories even if the wizard's UI
   // language was English.
   const [categoriesTouched, setCategoriesTouched] = useState(draft?.categoriesTouched || false);
+  // Brand Colors step state. `colorsTouched` distinguishes "merchant
+  // explicitly chose colors" from "merchant skipped" — the skip path sends
+  // no color fields so the backend falls back to the platform default
+  // brown/gold palette. When the merchant selects their business category
+  // in step 1 we pre-fill the picker with that category's preset, but
+  // colorsTouched stays false until they actually interact with the step.
+  const [primaryColor, setPrimaryColor] = useState(draft?.primaryColor || '');
+  const [accentColor, setAccentColor] = useState(draft?.accentColor || '');
+  const [colorsTouched, setColorsTouched] = useState(draft?.colorsTouched || false);
 
   const debounceRef = useRef(null);
   const latestCheckRef = useRef('');
@@ -161,15 +184,30 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
     saveWizardDraft({
       step, businessCategory, selectedTemplate, selectedTheme,
       subdomain, brandName, categories, seoTitle, seoDescription, seoTouched,
-      categoriesTouched,
+      categoriesTouched, primaryColor, accentColor, colorsTouched,
     });
-  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, categoriesTouched]);
+  }, [step, businessCategory, selectedTemplate, selectedTheme, subdomain, brandName, categories, seoTitle, seoDescription, seoTouched, categoriesTouched, primaryColor, accentColor, colorsTouched]);
 
   const handleBusinessCategorySelect = (catId) => {
     setBusinessCategory(catId);
     if (!categoriesTouched) {
       const defaults = getDefaultCategories(catId);
       setCategories(defaults);
+    }
+    // Pre-fill the color pickers with the category preset so when the
+    // merchant lands on the Brand Colors step it shows a sensible starting
+    // palette. We only seed when colors are still untouched — never
+    // overwrite a merchant's explicit choice if they jump back to step 1.
+    // Marking colorsTouched=true here is intentional: the merchant has
+    // visibly accepted the preset (it shows in the live preview on step 4)
+    // so we treat it as their choice and submit it. The "I'll pick colors
+    // later" skip button is the only path that opts back out by clearing
+    // the colors and resetting colorsTouched=false.
+    if (!colorsTouched) {
+      const preset = BRAND_COLOR_PRESETS[catId] || BRAND_COLOR_PRESETS.general;
+      setPrimaryColor(preset.primary);
+      setAccentColor(preset.accent);
+      setColorsTouched(true);
     }
   };
 
@@ -247,6 +285,23 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
           };
         })
       : [];
+    // Brand color payload: only sent when the merchant explicitly
+    // interacted with the Brand Colors step. Skipping the step (or never
+    // touching it) leaves these undefined, and the backend falls back to
+    // the platform default brown/gold palette via PLATFORM_DEFAULT_*
+    // constants. We re-validate hex format client-side as a courtesy so
+    // the merchant gets a clean wizard error instead of an obscure 400.
+    const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+    const colorPayload = {};
+    if (colorsTouched) {
+      if (primaryColor && HEX_RE.test(primaryColor)) {
+        colorPayload.primaryColor = primaryColor.toLowerCase();
+      }
+      if (accentColor && HEX_RE.test(accentColor)) {
+        colorPayload.accentColor = accentColor.toLowerCase();
+      }
+    }
+
     return {
       subdomain: subdomain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
       brandName,
@@ -258,6 +313,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
       seoTitle: finalSeoTitle,
       seoDescription: finalSeoDescription,
       categories: finalCategories,
+      ...colorPayload,
     };
   };
 
@@ -515,12 +571,145 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button className="btn btn-outline" onClick={() => setStep(2)} style={{ flex: 1 }}>Back</button>
               <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>Skip</button>
-              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>Next: Categories</button>
+              <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>Next: Brand Colors</button>
             </div>
           </div>
         )}
 
-        {step === 4 && (
+        {step === 4 && (() => {
+          // Live preview helpers. We mirror what the storefront does at
+          // render time: a card with a primary button, an accent badge,
+          // and a sample heading so the merchant sees how their colors
+          // will look together before committing.
+          const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+          const validPrimary = HEX_RE.test(primaryColor) ? primaryColor : '#603000';
+          const validAccent = HEX_RE.test(accentColor) ? accentColor : '#b08c4c';
+          const pickReadable = (bg) => {
+            if (!HEX_RE.test(bg)) return '#ffffff';
+            const n = parseInt(bg.slice(1), 16);
+            const r = ((n >> 16) & 0xff) / 255;
+            const g = ((n >> 8) & 0xff) / 255;
+            const b = (n & 0xff) / 255;
+            return (0.299 * r + 0.587 * g + 0.114 * b) > 0.55 ? '#111111' : '#ffffff';
+          };
+          const preset = BRAND_COLOR_PRESETS[businessCategory] || BRAND_COLOR_PRESETS.general;
+          return (
+          <div>
+            <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Brand Colors</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Pick the two colors that define your store. <strong>Primary</strong> is used for buttons and headings; <strong>accent</strong> highlights prices, badges, and links. You can change these any time from Site → Theme.
+            </p>
+
+            {/* Category preset shortcut. Clicking applies the preset and
+                marks colors as touched so they survive into createSite. */}
+            <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Suggested for {(BUSINESS_CATEGORIES.find(c => c.id === businessCategory) || {}).name || 'your store'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPrimaryColor(preset.primary);
+                  setAccentColor(preset.accent);
+                  setColorsTouched(true);
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.5rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer' }}
+              >
+                <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '4px', background: preset.primary, border: '1px solid rgba(0,0,0,0.1)' }} />
+                <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '4px', background: preset.accent, border: '1px solid rgba(0,0,0,0.1)' }} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{preset.label}</span>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>Primary color</label>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0 0 0.4rem' }}>Buttons, headings, links</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="color"
+                    value={HEX_RE.test(primaryColor) ? primaryColor : '#603000'}
+                    onChange={(e) => { setPrimaryColor(e.target.value); setColorsTouched(true); }}
+                    style={{ width: '48px', height: '40px', padding: '2px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', background: 'transparent' }}
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={(e) => { setPrimaryColor(e.target.value); setColorsTouched(true); }}
+                    placeholder="#603000"
+                    maxLength={7}
+                    style={{ flex: 1, fontFamily: 'monospace' }}
+                  />
+                </div>
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>Accent color</label>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0 0 0.4rem' }}>Prices, badges, hover</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="color"
+                    value={HEX_RE.test(accentColor) ? accentColor : '#b08c4c'}
+                    onChange={(e) => { setAccentColor(e.target.value); setColorsTouched(true); }}
+                    style={{ width: '48px', height: '40px', padding: '2px', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', background: 'transparent' }}
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={(e) => { setAccentColor(e.target.value); setColorsTouched(true); }}
+                    placeholder="#b08c4c"
+                    maxLength={7}
+                    style={{ flex: 1, fontFamily: 'monospace' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Live preview. Mirrors a typical storefront card so the
+                merchant sees both colors interacting (button readability,
+                accent badge contrast) before they commit. */}
+            <div style={{ padding: '1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0 0 0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Preview</p>
+              <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <h3 style={{ margin: 0, color: validPrimary, fontSize: '1.25rem', fontWeight: 700 }}>{brandName || 'Sample Product'}</h3>
+                  <span style={{ background: validAccent, color: pickReadable(validAccent), padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 600 }}>NEW</span>
+                </div>
+                <p style={{ margin: '0 0 0.75rem', color: '#374151', fontSize: '0.875rem' }}>A short description of how your store will look with these colors.</p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" style={{ background: validPrimary, color: pickReadable(validPrimary), padding: '0.5rem 1rem', border: 'none', borderRadius: '6px', fontSize: '0.875rem', fontWeight: 600, cursor: 'default' }}>
+                    Add to Cart
+                  </button>
+                  <span style={{ color: validAccent, fontSize: '1rem', fontWeight: 700, alignSelf: 'center' }}>$49.99</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
+              <button
+                className="btn btn-outline"
+                onClick={() => {
+                  // "I'll pick colors later" — clear any picker state so
+                  // the createSite call sends nothing for primaryColor/
+                  // accentColor and the backend uses the platform default.
+                  setColorsTouched(false);
+                  setPrimaryColor('');
+                  setAccentColor('');
+                  setStep(5);
+                }}
+                style={{ flex: 1 }}
+              >
+                I'll pick colors later
+              </button>
+              <button className="btn btn-primary" onClick={() => setStep(5)} style={{ flex: 1 }}>
+                Next: Categories
+              </button>
+            </div>
+          </div>
+          );
+        })()}
+
+        {step === 5 && (
           <div>
             <h2 style={{ marginBottom: '0.5rem', fontWeight: 800 }}>Product Categories</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
@@ -567,7 +756,7 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
             </div>
             {error && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setStep(3)} style={{ flex: 1 }}>Back</button>
+              <button className="btn btn-outline" onClick={() => setStep(4)} style={{ flex: 1 }}>Back</button>
               <button className="btn btn-primary" onClick={handleCreate} disabled={creating || !agreedTerms} style={{ flex: 1 }}>
                 {creating ? "Creating..." : "Create Website"}
               </button>

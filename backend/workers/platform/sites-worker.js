@@ -4,7 +4,14 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
-import { buildDefaultThemeConfig, normalizeThemeConfig, ensureThemeConfig } from '../../utils/theme-config.js';
+import {
+  buildDefaultThemeConfig,
+  normalizeThemeConfig,
+  ensureThemeConfig,
+  PLATFORM_DEFAULT_PRIMARY,
+  PLATFORM_DEFAULT_SECONDARY,
+  PLATFORM_DEFAULT_ACCENT,
+} from '../../utils/theme-config.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 // English-only wizard seed (System A removed). The platform UI is English; the
@@ -442,7 +449,7 @@ async function createSite(request, env, user) {
   
   try {
     const body = await request.json();
-    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, theme } = body;
+    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, accentColor, theme } = body;
     let logoUrl = body.logoUrl || null;
     const logoBase64 = body.logo || null;
     const faviconBase64 = body.favicon || null;
@@ -602,6 +609,15 @@ async function createSite(request, env, user) {
     const finalSeoTitle = seoTitle || wizardSeed.seoTitle(category, safeBrand);
     const finalSeoDescription = seoDescription || wizardSeed.seoDescription(category, safeBrand);
 
+    // Resolved palette for the new site. We always have a valid hex in the
+    // DB so legacy code that reads primary_color/secondary_color directly
+    // never sees nulls. The wizard "I'll pick colors later" path leaves
+    // these undefined → we fall back to the platform default brown/gold so
+    // the storefront harmonizes with its existing chrome from day one.
+    const seededPrimary = primaryColor || PLATFORM_DEFAULT_PRIMARY;
+    const seededSecondary = secondaryColor || PLATFORM_DEFAULT_SECONDARY;
+    const seededAccent = accentColor || PLATFORM_DEFAULT_ACCENT;
+
     const configData = {
       site_id: siteId,
       brand_name: safeBrand,
@@ -613,8 +629,8 @@ async function createSite(request, env, user) {
       phone: phone || null,
       email: email || null,
       address: address || null,
-      primary_color: primaryColor || '#000000',
-      secondary_color: secondaryColor || '#ffffff',
+      primary_color: seededPrimary,
+      secondary_color: seededSecondary,
     };
     const configBytes = estimateRowBytes(configData);
 
@@ -626,10 +642,15 @@ async function createSite(request, env, user) {
     const settingsJson = JSON.stringify(initialSettings);
 
     // Seed the per-section color scheme system from the merchant's chosen
-    // primary/secondary colors so the storefront has a usable theme on day
-    // one — Brand, Inverse, and Accent schemes are derived automatically.
+    // primary/secondary/accent colors so the storefront has a usable theme
+    // on day one — Brand, Inverse, and Accent schemes are derived
+    // automatically. `applyBrandAsDefault: true` opts new sites in to the
+    // Brand scheme actively painting; legacy sites without this flag stay
+    // on their pristine hardcoded look (read-time backfill preserves false).
     const themeConfigJson = JSON.stringify(
-      buildDefaultThemeConfig(primaryColor, secondaryColor, null)
+      buildDefaultThemeConfig(seededPrimary, seededSecondary, seededAccent, {
+        applyBrandAsDefault: true,
+      })
     );
 
     await siteDB.prepare(
@@ -646,8 +667,8 @@ async function createSite(request, env, user) {
       phone || null,
       email || null,
       address || null,
-      primaryColor || '#000000',
-      secondaryColor || '#ffffff',
+      seededPrimary,
+      seededSecondary,
       settingsJson,
       themeConfigJson,
       configBytes
@@ -825,6 +846,12 @@ async function updateSite(request, env, user, siteId, ctx) {
         } else if (dbKey === 'theme_config') {
           // Validate the entire theme blob server-side so a bad client value
           // can never reach the storefront. Throws → 400.
+          //
+          // forceApplyBrandAsDefault: any save through the merchant Theme
+          // tab opts the site in to Brand-as-default painting. Legacy sites
+          // that have never touched the Theme tab keep applyBrandAsDefault
+          // = false (read-time backfill preserves it) so their hardcoded
+          // look survives until the merchant explicitly customizes.
           let normalized;
           try {
             normalized = normalizeThemeConfig(
@@ -832,6 +859,7 @@ async function updateSite(request, env, user, siteId, ctx) {
               existingConfig?.primary_color,
               existingConfig?.secondary_color,
               null,
+              { forceApplyBrandAsDefault: true },
             );
           } catch (themeErr) {
             return errorResponse(themeErr.message || 'Invalid theme_config', 400);
@@ -927,6 +955,9 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
           setClause.push(`${dbKey} = ?`);
           values.push(JSON.stringify(mergedSettings));
         } else if (dbKey === 'theme_config') {
+          // See updateSite — admin saves also opt the site in to Brand
+          // painting, so an admin fixing a merchant's theme produces the
+          // same active behavior as the merchant doing it themselves.
           let normalized;
           try {
             normalized = normalizeThemeConfig(
@@ -934,6 +965,7 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
               existingConfig?.primary_color,
               existingConfig?.secondary_color,
               null,
+              { forceApplyBrandAsDefault: true },
             );
           } catch (themeErr) {
             return errorResponse(themeErr.message || 'Invalid theme_config', 400);

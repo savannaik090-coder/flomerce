@@ -14,6 +14,15 @@
 
 export const MAX_SCHEMES = 5;
 
+// Platform-default palette. Used when (a) the merchant skips the wizard's
+// Brand Colors step, (b) the merchant clicks "Reset Brand to platform
+// default" in the Theme tab, or (c) the wizard never collected colors at
+// all (legacy entry points). Kept in sync with storefront/styles/variables.css
+// so the painted Brand scheme harmonizes with the storefront's chrome.
+export const PLATFORM_DEFAULT_PRIMARY = '#603000';
+export const PLATFORM_DEFAULT_SECONDARY = '#5a3f2a';
+export const PLATFORM_DEFAULT_ACCENT = '#b08c4c';
+
 export const SECTION_IDS = [
   // Homepage / chrome
   'navbar', 'promo-banner', 'hero-slider', 'welcome-banner',
@@ -101,9 +110,13 @@ export function emptyScheme(name = 'Scheme') {
 // the secondary; Accent leans on the existing accent color as the dominant
 // button.
 export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
-  const primary = clampHex(primaryColor, '#603000');
-  const secondary = clampHex(secondaryColor, '#ffffff');
-  const accent = clampHex(accentColor, '#b08c4c');
+  const primary = clampHex(primaryColor, PLATFORM_DEFAULT_PRIMARY);
+  // `secondary` was historically computed but never used. Kept as the
+  // optional 2nd merchant color in case future palettes want it; for now
+  // Brand derives secondaryButton from `primary` so the scheme remains
+  // visually coherent without forcing the merchant to pick a 3rd color.
+  const _secondary = clampHex(secondaryColor, PLATFORM_DEFAULT_SECONDARY);
+  const accent = clampHex(accentColor, PLATFORM_DEFAULT_ACCENT);
 
   const brand = {
     id: 'brand',
@@ -156,20 +169,48 @@ export function buildDefaultAssignments() {
   return map;
 }
 
-export function buildDefaultThemeConfig(primaryColor, secondaryColor, accentColor) {
+export function buildDefaultThemeConfig(primaryColor, secondaryColor, accentColor, options) {
+  // `applyBrandAsDefault` controls whether the storefront actively paints
+  // the Brand scheme over sections whose assignment === Brand. When the
+  // flag is `true`, Brand functions as a real theme (the wizard's "Brand
+  // Colors" output, or any merchant who has touched the Theme tab). When
+  // `false`/undefined, the storefront falls back to its hardcoded look so
+  // legacy sites that never customized stay visually identical.
+  const applyBrandAsDefault = !!(options && options.applyBrandAsDefault);
   return {
     schemes: buildDefaultSchemes(primaryColor, secondaryColor, accentColor),
     sectionAssignments: buildDefaultAssignments(),
+    applyBrandAsDefault,
   };
+}
+
+// Build a fresh Brand scheme using the platform default palette. Used by
+// the "Reset Brand to platform default" button in the Theme tab so the
+// merchant can wipe their customizations without losing the rest of the
+// theme config (other schemes, assignments, overrides).
+export function buildPlatformDefaultBrandScheme() {
+  const [brand] = buildDefaultSchemes(
+    PLATFORM_DEFAULT_PRIMARY,
+    PLATFORM_DEFAULT_SECONDARY,
+    PLATFORM_DEFAULT_ACCENT,
+  );
+  return brand;
 }
 
 // Validate + normalize incoming theme config. Throws on hard errors so the
 // HTTP handler can return a 400. Coerces missing pieces back to the seeded
 // defaults rather than silently dropping them, so a partial PUT doesn't
 // destroy the merchant's other schemes.
-export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, fallbackAccent) {
+export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, fallbackAccent, options) {
+  // `forceApplyBrandAsDefault` (truthy) overrides whatever flag is on the
+  // input — used by the merchant PUT path so any save through the Theme
+  // tab opts the site in to Brand painting. Read-time backfill calls
+  // pass nothing, so legacy untouched sites stay opted-out.
+  const forceApply = !!(options && options.forceApplyBrandAsDefault);
   if (!input || typeof input !== 'object') {
-    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent);
+    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent, {
+      applyBrandAsDefault: forceApply,
+    });
   }
 
   const schemesIn = Array.isArray(input.schemes) ? input.schemes : [];
@@ -208,7 +249,9 @@ export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, 
   });
 
   if (schemes.length === 0) {
-    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent);
+    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent, {
+      applyBrandAsDefault: forceApply || !!input.applyBrandAsDefault,
+    });
   }
 
   // Exactly one default. If multiple flagged, keep the first; if none, mark first.
@@ -253,7 +296,13 @@ export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, 
     }
   }
 
-  return { schemes, sectionAssignments };
+  // Preserve the applyBrandAsDefault flag through round-trips. The PUT
+  // path passes forceApplyBrandAsDefault=true so any merchant edit opts
+  // the site in; read-time backfill leaves the input value untouched
+  // (legacy rows have no flag → stays false → pristine look preserved).
+  const applyBrandAsDefault = forceApply || !!input.applyBrandAsDefault;
+
+  return { schemes, sectionAssignments, applyBrandAsDefault };
 }
 
 // Read-time backfill: if a site's theme_config is null/empty (legacy row

@@ -317,6 +317,197 @@ const RULES = {
       ], property: 'color' },
     ],
   },
+
+  // ─── Page-level sections ────────────────────────────────────────────────
+  // The following 9 entries cover the routes that App.jsx wraps in
+  // SchemeScope but that previously had no rules — meaning the wrapper
+  // existed but painted nothing. Each entry uses the page's own root class
+  // for background + text, plus the most prominent CTA class for button.
+  // For pages that lack any class names (Terms / Privacy use inline
+  // styles), we paint the SchemeScope wrapper itself via the special "&"
+  // selector so background still flows through.
+
+  'product-page': {
+    background: [
+      { selectors: ['.product-detail-container', '.pdp-specs-panel'], property: 'background-color' },
+      { selectors: ['.product-detail-container'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '.product-title', '.product-detail-info',
+        '.product-option-label', '.product-option-selected',
+        '.policy-accordion-title', '.policy-item-label',
+      ], property: 'color' },
+    ],
+    button: [
+      { selectors: ['.add-to-cart-btn', '.buy-now-btn'], property: 'background-color' },
+      { selectors: ['.add-to-cart-btn', '.buy-now-btn'], property: 'background' },
+    ],
+    buttonText: [
+      { selectors: ['.add-to-cart-btn', '.buy-now-btn'], property: 'color' },
+    ],
+    accent: [
+      { selectors: ['.product-price', '.price'], property: 'color' },
+    ],
+  },
+
+  'checkout': {
+    // Checkout pages have no single root class — they're wrapped by
+    // App.jsx's <SchemeScope sectionId="checkout">, so we paint the
+    // wrapper itself ("&") for background. Classic uses .wp-* prefixes
+    // for inner elements (Playfair/Lora theme), modern uses .mn-checkout.
+    background: [
+      { selectors: ['&', '.mn-checkout'], property: 'background-color' },
+      { selectors: ['&', '.mn-checkout'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '&', '.mn-checkout',
+        '.wp-cols', '.wp-main-col', '.wp-saved-addr',
+        '.mn-cart-item-info', '.mn-cart-item-total',
+      ], property: 'color' },
+    ],
+    button: [
+      { selectors: ['.wp-primary-btn', '.continue', '.mn-cart-actions button', '.mn-cart-footer button'], property: 'background-color' },
+      { selectors: ['.wp-primary-btn', '.continue', '.mn-cart-actions button', '.mn-cart-footer button'], property: 'background' },
+    ],
+    buttonText: [
+      { selectors: ['.wp-primary-btn', '.continue', '.mn-cart-actions button', '.mn-cart-footer button'], property: 'color' },
+    ],
+    secondaryButton: [
+      { selectors: ['.wp-outline-btn'], property: 'border-color' },
+      { selectors: ['.wp-outline-btn'], property: 'color' },
+    ],
+  },
+
+  'about-us': {
+    background: [
+      { selectors: ['.about-page', '.about-content-section'], property: 'background-color' },
+      { selectors: ['.about-page'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '.about-page',
+        '.about-hero-label', '.about-hero h1', '.about-hero p',
+        '.about-content-section-eyebrow', '.about-content-section-text',
+        '.about-story-text',
+      ], property: 'color' },
+    ],
+    accent: [
+      { selectors: ['.about-hero-divider', '.about-content-section-divider', '.about-story-image-accent'], property: 'background-color' },
+    ],
+  },
+
+  'contact-us': {
+    background: [
+      { selectors: ['.contact-page', '.contact-section'], property: 'background-color' },
+      { selectors: ['.contact-page'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '.contact-page',
+        '.contact-hero', '.contact-hero-content',
+        '.contact-info', '.contact-details',
+      ], property: 'color' },
+    ],
+    button: [
+      { selectors: ['.contact-submit-btn'], property: 'background-color' },
+      { selectors: ['.contact-submit-btn'], property: 'background' },
+    ],
+    buttonText: [
+      { selectors: ['.contact-submit-btn'], property: 'color' },
+    ],
+  },
+
+  'book-appointment': {
+    background: [
+      { selectors: ['.book-appointment-page', '.appointment-container', '.appointment-form'], property: 'background-color' },
+      { selectors: ['.book-appointment-page'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '.book-appointment-page',
+        '.appointment-header', '.appointment-header h1', '.appointment-header p',
+        '.appt-form-group label',
+      ], property: 'color' },
+    ],
+    button: [
+      { selectors: ['.appt-submit-btn'], property: 'background-color' },
+      { selectors: ['.appt-submit-btn'], property: 'background' },
+    ],
+    buttonText: [
+      { selectors: ['.appt-submit-btn'], property: 'color' },
+    ],
+    accent: [
+      // .appointment-type is the WRAPPER; the selectable cards inside are
+      // .type-option (with .selected for the active one). Targeting the
+      // wrapper does nothing visible.
+      { selectors: ['.type-option.selected', '.type-option:hover'], property: 'border-color' },
+    ],
+  },
+
+  'faq': {
+    background: [
+      { selectors: ['.faq-page', '.faq-list', '.faq-question', '.faq-answer'], property: 'background-color' },
+      { selectors: ['.faq-page'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '.faq-page',
+        '.faq-header', '.faq-header h1', '.faq-header p',
+        '.faq-question-text', '.faq-answer-text',
+      ], property: 'color' },
+    ],
+    accent: [
+      { selectors: ['.faq-question-icon'], property: 'color' },
+    ],
+  },
+
+  'blog': {
+    background: [
+      { selectors: ['.blog-list-page', '.blog-post-page', '.blog-card'], property: 'background-color' },
+      { selectors: ['.blog-list-page', '.blog-post-page'], property: 'background' },
+    ],
+    text: [
+      { selectors: [
+        '.blog-list-page', '.blog-post-page',
+        '.blog-header', '.blog-header h1', '.blog-header p',
+        '.blog-card-title', '.blog-card-excerpt', '.blog-card-meta',
+        '.blog-post-title', '.blog-post-meta', '.blog-post-content',
+      ], property: 'color' },
+    ],
+    link: [
+      { selectors: ['.blog-card-read-more', '.blog-post-back'], property: 'color' },
+    ],
+  },
+
+  'terms': {
+    // TermsPage uses inline styles and has no class names. Paint the
+    // SchemeScope wrapper itself ("&") so background still flows through;
+    // text inherits from the wrapper since the inline styles only set
+    // layout properties (maxWidth, margin, padding), not color.
+    background: [
+      { selectors: ['&'], property: 'background-color' },
+    ],
+    text: [
+      { selectors: ['&', '& h1', '& h2', '& h3', '& p', '& li'], property: 'color' },
+    ],
+    link: [
+      { selectors: ['& a'], property: 'color' },
+    ],
+  },
+
+  'privacy': {
+    background: [
+      { selectors: ['&'], property: 'background-color' },
+    ],
+    text: [
+      { selectors: ['&', '& h1', '& h2', '& h3', '& p', '& li'], property: 'color' },
+    ],
+    link: [
+      { selectors: ['& a'], property: 'color' },
+    ],
+  },
 };
 
 // Slots that each section actually uses (drives the per-section override UI).

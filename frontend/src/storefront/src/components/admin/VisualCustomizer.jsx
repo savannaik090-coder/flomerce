@@ -327,6 +327,10 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       _themePatch: {
         schemes: draft.schemes,
         sectionAssignments: draft.sectionAssignments,
+        // Forward the opt-in flag so the live preview reflects Reset
+        // Brand and any future opt-in toggles immediately, before the
+        // PUT round-trips and the iframe re-fetches.
+        applyBrandAsDefault: draft.applyBrandAsDefault,
       },
     });
   }, [sendPreviewUpdate]);
@@ -450,6 +454,85 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     await saveThemeConfig(themeDraft);
     refreshPreview();
   }, [themeDraft, saveThemeConfig]);
+
+  // "Reset Brand colors to platform default" — replaces the Brand scheme
+  // (id === 'brand') in themeDraft with a freshly-built one using the
+  // platform default brown / gold palette, while leaving every other
+  // scheme, every section assignment, and every per-section override
+  // intact. Saves immediately so the merchant sees the change without
+  // having to also click "Save Theme". Mirrors theme-config.js's
+  // buildPlatformDefaultBrandScheme + buildDefaultSchemes.
+  const resetBrandToDefault = useCallback(() => {
+    const PLATFORM_PRIMARY = '#603000';
+    const PLATFORM_SECONDARY = '#5a3f2a';
+    const PLATFORM_ACCENT = '#b08c4c';
+    const pickReadable = (hex) => {
+      const n = parseInt((hex || '#000000').replace('#', ''), 16);
+      const r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+      return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111111' : '#ffffff';
+    };
+    const shift = (hex, factor) => {
+      const n = parseInt((hex || '#000000').replace('#', ''), 16);
+      let r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
+      if (factor >= 0) {
+        r = Math.round(r + (255 - r) * factor);
+        g = Math.round(g + (255 - g) * factor);
+        b = Math.round(b + (255 - b) * factor);
+      } else {
+        const f = 1 + factor;
+        r = Math.round(r * f); g = Math.round(g * f); b = Math.round(b * f);
+      }
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    };
+    // Mirror backend buildDefaultSchemes EXACTLY: secondaryButton derives
+    // from `primary`, NOT from `secondary`. Drift here would cause the
+    // frontend reset to produce a Brand that differs from a fresh
+    // wizard-created site, so the rule is "keep these two paths byte-equal".
+    const freshBrand = {
+      id: 'brand', name: 'Brand', isDefault: true,
+      background: '#ffffff', text: '#111111',
+      button: PLATFORM_PRIMARY, buttonText: pickReadable(PLATFORM_PRIMARY),
+      secondaryButton: shift(PLATFORM_PRIMARY, 0.85),
+      link: PLATFORM_PRIMARY, accent: PLATFORM_ACCENT,
+    };
+    setThemeDraft(prev => {
+      const base = prev || {};
+      const existing = Array.isArray(base.schemes) ? base.schemes : [];
+      const hasBrand = existing.some(s => s && s.id === 'brand');
+      const nextSchemes = hasBrand
+        ? existing.map(s => (s && s.id === 'brand') ? freshBrand : s)
+        : [freshBrand, ...existing];
+      const next = {
+        ...base,
+        schemes: nextSchemes,
+        applyBrandAsDefault: true,
+      };
+      pushThemePreview(next);
+
+      // Serialize through the same queue used by per-section assignment
+      // saves (themeAssignSaveRef). Without this, an in-flight assignment
+      // PUT could land AFTER our reset PUT and clobber the fresh Brand
+      // scheme with the stale schemes payload it carried.
+      themeAssignSaveRef.current.queued = next;
+      (async () => {
+        if (themeAssignSaveRef.current.inflight) return;
+        themeAssignSaveRef.current.inflight = true;
+        try {
+          while (themeAssignSaveRef.current.queued) {
+            const toSave = themeAssignSaveRef.current.queued;
+            themeAssignSaveRef.current.queued = null;
+            await saveThemeConfig(toSave);
+          }
+        } finally {
+          themeAssignSaveRef.current.inflight = false;
+          const draftStr = JSON.stringify(themeDraftRef.current || {});
+          setThemeHasChanges(draftStr !== themeSavedRef.current);
+          refreshPreview();
+        }
+      })();
+      return next;
+    });
+  }, [pushThemePreview, saveThemeConfig]);
 
   // ===== Per-section colour overrides =========================================
   // Lives in settings.sectionColorOverrides[sectionId][slotKey]. Auto-saves on
@@ -1094,6 +1177,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   onChange={applyThemeDraft}
                   onSave={handleThemeSave}
                   onResetAllToDefault={resetAllSectionsToDefault}
+                  onResetBrandToDefault={resetBrandToDefault}
                 />
               )}
 
