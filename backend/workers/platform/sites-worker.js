@@ -444,11 +444,47 @@ async function getSite(env, user, siteId) {
 }
 
 async function createSite(request, env, user) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse('Invalid request body', 400);
+  }
+  const result = await createSiteForUser(env, user, body);
+  if (result.success) {
+    return successResponse(result.data, 'Site created successfully');
+  }
+  return errorResponse(result.error, result.status || 500, result.code);
+}
+
+/**
+ * Provision a new site for a user from wizard form data.
+ *
+ * Used by:
+ *  - The HTTP handler `createSite(request, env, user)` (foreground POST /api/sites).
+ *  - The post-payment subscription activation flow in payments-worker.js
+ *    (`verifySubscriptionPayment` and `handleSubscriptionActivated` webhook),
+ *    which persist the wizard form data on the `pending_subscriptions` row
+ *    BEFORE Razorpay opens, then call this function once the subscription is
+ *    active so the website is guaranteed to be created even if the browser
+ *    closes between Razorpay success and the verify call.
+ *
+ * Returns a structured result the caller can map to either an HTTP response
+ * or a stored error string on the pending row:
+ *   { success: true, data: { id, subdomain } }
+ *   { success: false, error: string, code?: string, status?: number }
+ *
+ * IMPORTANT: This function must remain side-effect-safe to call after a
+ * successful subscription activation. On any failure path it rolls back any
+ * partially created `sites` / `site_usage` rows so the caller can store the
+ * error and let the user retry without a half-created site lingering.
+ */
+export async function createSiteForUser(env, user, body) {
   let siteId = null;
   let finalSubdomain = null;
-  
+
   try {
-    const body = await request.json();
+    body = body || {};
     const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, accentColor, theme } = body;
     let logoUrl = body.logoUrl || null;
     const logoBase64 = body.logo || null;
@@ -463,11 +499,11 @@ async function createSite(request, env, user) {
     const contentLanguageRaw = (body.content_language || body.contentLanguage || 'en');
     const contentLanguage = typeof contentLanguageRaw === 'string' ? contentLanguageRaw.trim() : 'en';
     if (!SUPPORTED_LOCALES.has(contentLanguage)) {
-      return errorResponse('Unsupported content language', 400, 'INVALID_CONTENT_LANGUAGE');
+      return { success: false, error: 'Unsupported content language', code: 'INVALID_CONTENT_LANGUAGE', status: 400 };
     }
 
     if (!brandName) {
-      return errorResponse('Brand name is required');
+      return { success: false, error: 'Brand name is required', status: 400 };
     }
 
     const activeSub = await env.DB.prepare(
@@ -484,18 +520,18 @@ async function createSite(request, env, user) {
         const limitMsg = userPlan === 'trial'
           ? `Trial plan allows up to ${planConfig.maxSites} websites. Upgrade to a paid plan to create more.`
           : `Your plan allows up to ${planConfig.maxSites} websites. Upgrade to create more.`;
-        return errorResponse(limitMsg, 403, 'PLAN_LIMIT_REACHED');
+        return { success: false, error: limitMsg, code: 'PLAN_LIMIT_REACHED', status: 403 };
       }
     }
 
     if (subdomain.length < 3) {
-      return errorResponse('Subdomain must be at least 3 characters', 400, 'INVALID_SUBDOMAIN');
+      return { success: false, error: 'Subdomain must be at least 3 characters', code: 'INVALID_SUBDOMAIN', status: 400 };
     }
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(subdomain)) {
-      return errorResponse('Subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)', 400, 'INVALID_SUBDOMAIN');
+      return { success: false, error: 'Subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)', code: 'INVALID_SUBDOMAIN', status: 400 };
     }
     if (isReservedSubdomain(subdomain)) {
-      return errorResponse('This subdomain is reserved and cannot be used. Please choose a different name.', 400, 'SUBDOMAIN_RESERVED');
+      return { success: false, error: 'This subdomain is reserved and cannot be used. Please choose a different name.', code: 'SUBDOMAIN_RESERVED', status: 400 };
     }
 
     const existingSubdomain = await env.DB.prepare(
@@ -503,7 +539,7 @@ async function createSite(request, env, user) {
     ).bind(subdomain).first();
 
     if (existingSubdomain) {
-      return errorResponse('This subdomain is already taken. Please choose a different brand name.', 400, 'SUBDOMAIN_TAKEN');
+      return { success: false, error: 'This subdomain is already taken. Please choose a different brand name.', code: 'SUBDOMAIN_TAKEN', status: 400 };
     }
 
     const activeShard = await env.DB.prepare(
@@ -511,7 +547,7 @@ async function createSite(request, env, user) {
     ).first();
 
     if (!activeShard) {
-      return errorResponse('No active shard available. Please contact support.', 500);
+      return { success: false, error: 'No active shard available. Please contact support.', code: 'NO_SHARD', status: 500 };
     }
 
     finalSubdomain = subdomain;
@@ -713,7 +749,7 @@ async function createSite(request, env, user) {
       console.error('Check subscription for new site failed (non-fatal):', subErr);
     }
 
-    return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');
+    return { success: true, data: { id: siteId, subdomain: finalSubdomain } };
   } catch (error) {
     console.error('Create site error:', error);
     if (siteId) {
@@ -726,9 +762,9 @@ async function createSite(request, env, user) {
       }
     }
     if (error.message && error.message.includes('UNIQUE constraint failed')) {
-      return errorResponse('Subdomain already taken', 400, 'SUBDOMAIN_TAKEN');
+      return { success: false, error: 'Subdomain already taken', code: 'SUBDOMAIN_TAKEN', status: 400 };
     }
-    return errorResponse('Failed to create site: ' + error.message, 500);
+    return { success: false, error: 'Failed to create site: ' + (error.message || 'Unknown error'), status: 500 };
   }
 }
 

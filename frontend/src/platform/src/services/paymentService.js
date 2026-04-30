@@ -18,11 +18,37 @@ export async function getPlanTranslations(lang) {
   return apiRequest(`/api/i18n/plans/${encodeURIComponent(lang)}`);
 }
 
-export async function createSubscription(planId, siteId) {
+// `pendingSiteData` is the wizard form payload (brandName, subdomain, theme,
+// colours, contact, content_language, etc) the user just submitted. Passing
+// it here lets the backend persist it on the pending_subscriptions row so
+// the site can be auto-created the moment the subscription activates —
+// either via the verify endpoint we call from the Razorpay success handler,
+// or via Razorpay's webhook if the browser closes first. Only meaningful
+// when creating a brand-new site (no `siteId`); ignored on plan changes.
+export async function createSubscription(planId, siteId, pendingSiteData = null) {
+  const payload = { planId, siteId };
+  if (!siteId && pendingSiteData) {
+    payload.pendingSiteData = pendingSiteData;
+  }
   return apiRequest('/api/payments/subscription', {
     method: 'POST',
-    body: JSON.stringify({ planId, siteId }),
+    body: JSON.stringify(payload),
   });
+}
+
+// Dashboard reconciliation: did the user pay for a plan but never get a
+// site? Returns { pendingSite: null } when there's nothing to recover, or
+// { pendingSite: { hasPending: true, brandName, planName, lastError, ... } }
+// when the post-payment auto-create either failed or never ran.
+export async function getPendingSiteStatus() {
+  return apiRequest('/api/payments/pending-site');
+}
+
+// Manually retry creating the user's most recent pending site using the
+// form data we stored before Razorpay opened. Backend refuses unless the
+// matching subscription is already active.
+export async function retryPendingSiteCreation() {
+  return apiRequest('/api/payments/pending-site/retry', { method: 'POST' });
 }
 
 export async function verifySubscriptionPayment(data) {

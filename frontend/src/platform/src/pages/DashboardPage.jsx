@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getUserSites, deleteSite, createSite } from '../services/siteService.js';
-import { getUserProfile, cancelSubscription } from '../services/paymentService.js';
+import { getUserProfile, cancelSubscription, getPendingSiteStatus, retryPendingSiteCreation } from '../services/paymentService.js';
 import SiteCard from '../components/SiteCard.jsx';
 import SiteCreationWizard, { clearWizardDraft } from '../components/SiteCreationWizard.jsx';
 import PlanSelector from '../components/DashboardPlanSelector.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import '../styles/dashboard.css';
-import { PLATFORM_DOMAIN } from '../config.js';
+import { PLATFORM_DOMAIN, SUPPORT_EMAIL } from '../config.js';
 import AlertModal, { isPlanError } from '../../../shared/ui/AlertModal.jsx';
 import { useToast } from '../../../shared/ui/Toast.jsx';
 import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
@@ -52,6 +52,13 @@ export default function DashboardPage() {
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(null);
   const [planLimitMsg, setPlanLimitMsg] = useState(null);
+  // Reconciliation banner: surfaces a "you paid but your website didn't show up"
+  // case detected by polling /api/payments/pending-site on dashboard load.
+  // Populated when the backend has a pending_subscriptions row that still has
+  // stored wizard form data (i.e. auto-create either failed or never ran).
+  const [pendingSiteStatus, setPendingSiteStatus] = useState(null);
+  const [pendingSiteRetrying, setPendingSiteRetrying] = useState(false);
+  const [pendingSiteMsg, setPendingSiteMsg] = useState('');
 
   const navigateDashboard = useCallback((page, siteId = null) => {
     setActivePage(page);
@@ -91,13 +98,64 @@ export default function DashboardPage() {
     } catch (e) {}
   }, [setUser]);
 
+  // Reconciliation check on dashboard load: ask the server if there's a
+  // pending_subscriptions row with stored wizard form data for this user.
+  // We surface this as a banner so the user can retry / contact support
+  // without losing the data they typed in the wizard.
+  const loadPendingSite = useCallback(async () => {
+    try {
+      const result = await getPendingSiteStatus();
+      const data = result?.data || result;
+      const ps = data?.pendingSite ?? null;
+      // The server auto-attempts site creation during this status check.
+      // If it just created the site for us, drop the wizard draft + reload
+      // sites so the new site shows up without a manual refresh.
+      if (data?.justCreated) {
+        try { clearWizardDraft(); } catch {}
+        try { await loadSites(); } catch {}
+      }
+      setPendingSiteStatus(ps);
+    } catch (e) {
+      // Treat reconciliation as best-effort — never block the dashboard.
+      console.warn('Failed to load pending site status:', e?.message || e);
+      setPendingSiteStatus(null);
+    }
+  }, [loadSites]);
+
+  const handleRetryPendingSite = useCallback(async () => {
+    setPendingSiteRetrying(true);
+    setPendingSiteMsg('');
+    try {
+      const result = await retryPendingSiteCreation();
+      const data = result?.data || result;
+      if (data?.siteCreated) {
+        // Clear the locally cached wizard draft only after the server
+        // confirms the site exists — otherwise we'd lose the user's typing.
+        try { clearWizardDraft(); } catch {}
+        setPendingSiteStatus(null);
+        setPendingSiteMsg('');
+        toast.success('Your website is ready! Refreshing your dashboard…');
+        await Promise.all([loadSites(), loadProfile()]);
+      } else {
+        const reason = data?.siteCreationError || result?.message || result?.error || 'Site creation failed';
+        setPendingSiteMsg(reason);
+        await loadPendingSite();
+      }
+    } catch (e) {
+      setPendingSiteMsg(e?.message || 'Retry failed. Please try again or contact support.');
+      await loadPendingSite();
+    } finally {
+      setPendingSiteRetrying(false);
+    }
+  }, [loadSites, loadProfile, loadPendingSite, toast]);
+
   useEffect(() => {
     if (isAuthenticated) {
-      Promise.all([loadSites(), loadProfile()]).then(() => {
+      Promise.all([loadSites(), loadProfile(), loadPendingSite()]).then(() => {
         setDataLoaded(true);
       });
     }
-  }, [isAuthenticated, loadSites, loadProfile]);
+  }, [isAuthenticated, loadSites, loadProfile, loadPendingSite]);
 
   const [urlRestored, setUrlRestored] = useState(false);
   useEffect(() => {
@@ -253,13 +311,29 @@ export default function DashboardPage() {
     setShowPlanOverlay(false);
     setPendingSiteData(null);
     setPlanOverlaySiteId(null);
-    await Promise.all([loadSites(), loadProfile()]);
+    // After the plan/payment flow closes we always re-poll pending-site so
+    // that a server-side auto-create failure (e.g. SUBDOMAIN_TAKEN) shows up
+    // as the reconciliation banner. If the site WAS created, the banner
+    // will be empty because the backend deleted the pending row.
+    await Promise.all([loadSites(), loadProfile(), loadPendingSite()]);
+    // The user typed wizard data and finished payment. If the site is now
+    // present in the sites list, drop the local draft so the wizard doesn't
+    // re-prefill on next "Create site" click.
+    try {
+      const fresh = await getUserSites();
+      const list = fresh.data || fresh.sites || [];
+      if (list.length > 0) clearWizardDraft();
+    } catch {}
   };
 
   const handlePlanOverlayClose = () => {
     setShowPlanOverlay(false);
     setPendingSiteData(null);
     setPlanOverlaySiteId(null);
+    // The user might have actually completed payment but closed the overlay
+    // before we could reload (e.g. browser nav). Re-poll so the reconciliation
+    // banner appears if there's a pending row.
+    loadPendingSite();
   };
 
   const handleCreateSiteClick = () => {
@@ -891,6 +965,66 @@ export default function DashboardPage() {
 
               {renderTrialBanner()}
 
+              {pendingSiteStatus?.hasPending && (
+                <div
+                  style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fcd34d',
+                    borderRadius: 12,
+                    padding: '16px 18px',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.5 }}>
+                      <strong style={{ fontWeight: 700 }}>
+                        Your payment went through, but your website hasn't been created yet
+                        {pendingSiteStatus.brandName ? ` — "${pendingSiteStatus.brandName}"` : ''}
+                        .
+                      </strong>
+                      <div style={{ marginTop: 6 }}>
+                        Your {pendingSiteStatus.planName ? <strong>{pendingSiteStatus.planName}</strong> : 'plan'} subscription is active and your payment is safe. We saved everything you typed in the wizard, so you can finish creating your website now without re-entering anything.
+                      </div>
+                      {pendingSiteStatus.lastError && (
+                        <div style={{ marginTop: 6, color: '#7f1d1d' }}>
+                          Last error: <code style={{ background: '#fee2e2', padding: '2px 6px', borderRadius: 4 }}>{pendingSiteStatus.lastError}</code>
+                        </div>
+                      )}
+                      {pendingSiteMsg && (
+                        <div style={{ marginTop: 6, color: '#7f1d1d' }}>
+                          {pendingSiteMsg}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-primary"
+                      disabled={pendingSiteRetrying}
+                      onClick={handleRetryPendingSite}
+                      style={{ fontSize: '0.875rem' }}
+                    >
+                      {pendingSiteRetrying ? 'Creating your website…' : 'Retry creating my website'}
+                    </button>
+                    <a
+                      className="btn btn-outline"
+                      href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("My website wasn't created after payment")}${pendingSiteStatus.razorpaySubscriptionId ? `&body=${encodeURIComponent(`Subscription ID: ${pendingSiteStatus.razorpaySubscriptionId}\nLast error: ${pendingSiteStatus.lastError || '(none)'}\n`)}` : ''}`}
+                      style={{ fontSize: '0.875rem', textDecoration: 'none' }}
+                    >
+                      Contact support
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {sitesLoading ? (
                 <p style={{ color: 'var(--text-muted)' }}>Loading your websites...</p>
               ) : sites.length === 0 ? (
@@ -1349,6 +1483,7 @@ export default function DashboardPage() {
             isFirstTime={!profileData?.hadSubscription}
             onClose={handlePlanOverlayClose}
             onCreateSite={pendingSiteData ? handleCreatePendingSite : null}
+            pendingSiteData={pendingSiteData}
           />
         );
       })()}
