@@ -132,6 +132,37 @@ export default function ProductDetailPage() {
     } : null,
   });
 
+  // Phase 4: layout variant picker (admin-managed). Whitelist guard so a typo
+  // in the stored settings can never produce an unstyled page — unknown values
+  // fall back to the original "classic" layout. Computed up here (BEFORE any
+  // conditional early returns) so the Lora-injection useEffect below stays
+  // above the loading/error guards and never violates Rules of Hooks.
+  const pdpLayoutVariant = (() => {
+    const v = siteConfig?.settings?.pdpLayoutVariant;
+    return v === 'sticky' ? 'sticky' : 'classic';
+  })();
+
+  // The Conversion-Sticky variant uses Lora as its serif voice (the original
+  // mockup also paired it with Playfair Display, but the user has explicitly
+  // ruled out Playfair on the PDP — so Lora carries both body and headings
+  // here). Inject the Google Fonts <link> only when this variant is active so
+  // the classic PDP doesn't pay the network cost. Cleaned up on unmount /
+  // when the merchant flips the variant back to classic.
+  useEffect(() => {
+    if (pdpLayoutVariant !== 'sticky') return;
+    const linkId = 'pdp-sticky-lora-font';
+    if (document.getElementById(linkId)) return;
+    const link = document.createElement('link');
+    link.id = linkId;
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap';
+    document.head.appendChild(link);
+    return () => {
+      const el = document.getElementById(linkId);
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    };
+  }, [pdpLayoutVariant]);
+
   const productOptions = product?.options || null;
   const hasColors = productOptions?.colors?.length > 0;
   const hasCustomOptions = productOptions?.customOptions?.length > 0;
@@ -242,13 +273,9 @@ export default function ProductDetailPage() {
   const pol = (key) => settings[key] || categoryDefaults[key] || '';
 
   // ===== PDP display toggles (managed in admin → Visual Customizer → Settings → Product Page) =====
-  // Phase 4: layout variant picker (admin-managed). Whitelist guard so a typo
-  // in the stored settings can never produce an unstyled page — unknown values
-  // fall back to the original "classic" layout.
-  const pdpLayoutVariant = (() => {
-    const v = settings.pdpLayoutVariant;
-    return v === 'sticky' ? 'sticky' : 'classic';
-  })();
+  // (`pdpLayoutVariant` + the Lora <link> useEffect are hoisted above the
+  // loading/error early returns near the top of this component to keep hook
+  // ordering stable across renders.)
   const pdpShowMrp = settings.pdpShowMrp !== false;
   const pdpShowFeaturedBadge = settings.pdpShowFeaturedBadge !== false;
   const pdpShowLowStockCue = settings.pdpShowLowStockCue !== false;
@@ -530,7 +557,7 @@ export default function ProductDetailPage() {
             </div>
 
             {pdpShowTrustBadges && (
-              <div style={{
+              <div className="pdp-trust-badges-row" style={{
                 display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
                 marginTop: 16, padding: '14px 12px',
                 background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10,
@@ -554,7 +581,7 @@ export default function ProductDetailPage() {
             )}
 
             {pdpShowSpecsPanel && hasAnySpec && (
-              <div style={{
+              <div className="pdp-specs-panel" style={{
                 marginTop: 16, padding: '12px 14px',
                 background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
               }}>

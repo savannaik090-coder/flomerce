@@ -1209,35 +1209,52 @@
 
 /* =========================================================================
    Phase 4 — PDP "Conversion Sticky" layout variant.
+
    Owned by `frontend/src/storefront/src/components/admin/ProductPageEditor.jsx`
    (setting `pdpLayoutVariant`); rendered by `ProductDetailPage.jsx` which
    tags the page root with `pdp-layout-classic` or `pdp-layout-sticky`.
 
-   Goal: keep the right-hand buy panel pinned while the shopper scrolls the
-   gallery, with conversion-focused spacing and a more emphatic CTA stack.
-   All the page's child markup is unchanged — these are layered overrides.
+   Visual identity is ported from
+   `artifacts/mockup-sandbox/src/components/mockups/pdp-classic/ConversionSticky.tsx`
+   and adapted to the storefront's plain-CSS + Font Awesome stack:
+       Background  #faf6ef   warm cream
+       Body text   #2a2520   dark brown
+       Brand brown #603000   primary accent (titles, CTAs, borders)
+       Gold        #b08c4c   discount badge, low-stock pulse, accents
+       Beige       #c8b99a   primary CTA fill (Buy Now)
+       Star gold   #d4af37   review stars
+       Muted rose  #8a4a52   wishlist hover/active (AA-compliant on cream + white)
+       Mid brown   #6b5b48   meta labels, MRP strike, ghost-state wishlist text
+
+   The mockup paired Lora with Playfair Display; the user has explicitly ruled
+   out Playfair on the PDP, so Lora carries both body and headings here. The
+   Lora <link> is injected by `ProductDetailPage.jsx` only when this variant
+   is active.
    ========================================================================= */
 
+/* ---------- Page chrome ---------- */
+.pdp-layout-sticky {
+    background: #faf6ef;
+    color: #2a2520;
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+}
 .pdp-layout-sticky .product-detail-container {
     grid-template-columns: 1.35fr 1fr;
     gap: 3rem;
     align-items: start;
     max-width: 1280px;
+    background: transparent;
 }
 
-/* Sticky variant inverts the classic stickiness: the gallery (left) scrolls
-   with the page while the buy-panel (right) stays pinned. The base stylesheet
-   has `.product-detail-left { position: sticky }` for the classic layout, so
-   we explicitly unstick it here — without this override BOTH columns would
-   be sticky, which contradicts the variant's UX intent. */
+/* The base stylesheet pins the gallery (left) for the classic layout. The
+   sticky variant inverts that — gallery scrolls, buy-panel pins. */
 .pdp-layout-sticky .product-detail-left {
     position: static;
     top: auto;
 }
 
-/* Anchor the right buy-panel so it tracks the gallery on scroll. We use a
-   max-height + overflow guard so very tall option/spec stacks still scroll
-   inside the panel instead of clipping below the viewport. */
+/* Right-hand buy-panel tracks the gallery on scroll. The max-height + scroll
+   guard keeps tall option/spec stacks usable inside the panel. */
 .pdp-layout-sticky .product-detail-right {
     position: sticky;
     top: 110px;
@@ -1245,48 +1262,294 @@
     overflow-y: auto;
     padding-inline-end: 4px;
     padding-top: 4px;
-    /* Hide the scrollbar in the buy-panel — keeps the layout calm. */
     scrollbar-width: none;
 }
 .pdp-layout-sticky .product-detail-right::-webkit-scrollbar { display: none; }
 
-/* Slightly tighten the title and lift the price + MRP row so it reads as
-   the primary above-the-fold focal point. */
-.pdp-layout-sticky .product-detail-info .product-title {
-    font-size: 30px;
-    letter-spacing: -0.01em;
-    margin-bottom: 12px;
+/* ---------- Gallery ---------- */
+.pdp-layout-sticky .main-image-container {
+    background: #ffffff;
+    border: 1px solid rgba(96, 48, 0, 0.08);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(96, 48, 0, 0.04);
 }
-.pdp-layout-sticky .product-detail-info .product-price {
-    font-size: 28px;
+.pdp-layout-sticky .product-thumbnail {
+    border-radius: 6px;
+    border: 1px solid rgba(96, 48, 0, 0.10);
+}
+.pdp-layout-sticky .product-thumbnail.active {
+    border-color: #603000;
+    box-shadow: 0 0 0 2px #603000, 0 0 0 4px #faf6ef;
 }
 
-/* Promote the CTA stack: stack vertically, full-width, taller hit areas.
-   Add to Cart becomes the secondary action; Buy Now stays the primary.
-   The DOM order of the buttons is re-arranged in the JSX (see
-   `ProductDetailPage.jsx` — Buy Now → Add to Cart → Wishlist for the
-   sticky variant) so visual, focus, and screen-reader order all match.
-   We deliberately do NOT use CSS `order` here, which would desync tab flow. */
+/* ---------- Title block ---------- */
+.pdp-layout-sticky .product-detail-info .product-title {
+    font-family: 'Lora', Georgia, serif;
+    color: #603000;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-bottom: 10px;
+}
+
+/* "Featured" pill in the header — restyle the inline-style pill that JSX
+   ships. We can target the wrapper around the title + featured badge by
+   relying on the `.product-detail-info` parent; the pill itself uses
+   inline styles so we only adjust the surrounding spacing. */
+.pdp-layout-sticky .product-detail-info {
+    color: #2a2520;
+}
+.pdp-layout-sticky .product-detail-info > div:first-child + h1.product-title {
+    margin-top: 14px;
+}
+
+/* ---------- Pricing card ---------- */
+/* Wrap the price row in a soft white card to mirror the mockup's pricing
+   panel. The JSX uses `.price`, so we restyle that container in-place. */
+.pdp-layout-sticky .product-detail-info .price {
+    background: #ffffff;
+    border: 1px solid rgba(96, 48, 0, 0.08);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 2px rgba(96, 48, 0, 0.04);
+    margin-bottom: 22px;
+    align-items: baseline;
+}
+.pdp-layout-sticky .product-detail-info .product-price {
+    font-family: 'Lora', Georgia, serif;
+    font-size: 30px;
+    font-weight: 600;
+    color: #2a2520;
+    letter-spacing: -0.01em;
+}
+/* The discount badge is rendered via inline styles, so we soften the
+   strike-through MRP and let the badge live as-is. */
+.pdp-layout-sticky .product-detail-info .price > span:nth-child(2) {
+    color: #6b5b48 !important;
+}
+
+/* ---------- Meta items (SKU / Availability / Category) ---------- */
+.pdp-layout-sticky .product-meta {
+    border-top-color: rgba(96, 48, 0, 0.10);
+    border-bottom-color: rgba(96, 48, 0, 0.10);
+    padding: 14px 0;
+    margin-bottom: 22px;
+}
+.pdp-layout-sticky .meta-label {
+    color: #6b5b48;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+}
+.pdp-layout-sticky .meta-value {
+    color: #2a2520;
+    font-size: 13px;
+}
+.pdp-layout-sticky .meta-value.in-stock { color: #4a6926; }
+.pdp-layout-sticky .meta-value.out-of-stock { color: #b04a3c; }
+
+/* ---------- Option swatches & chips ---------- */
+.pdp-layout-sticky .product-option-label {
+    color: #2a2520;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+}
+.pdp-layout-sticky .product-color-swatch {
+    border: 2px solid transparent;
+    box-shadow: 0 0 0 1px rgba(96, 48, 0, 0.12);
+}
+.pdp-layout-sticky .product-color-swatch.selected {
+    border-color: #603000;
+    box-shadow: 0 0 0 1px #603000, 0 0 0 3px #faf6ef;
+    transform: scale(1.06);
+}
+.pdp-layout-sticky .product-option-chip {
+    background: #ffffff;
+    border: 1px solid rgba(96, 48, 0, 0.20);
+    color: #2a2520;
+    border-radius: 4px;
+    padding: 9px 16px;
+    font-size: 13px;
+}
+.pdp-layout-sticky .product-option-chip:hover {
+    border-color: rgba(96, 48, 0, 0.55);
+}
+.pdp-layout-sticky .product-option-chip.selected {
+    background: #603000;
+    color: #ffffff;
+    border-color: #603000;
+}
+
+/* ---------- CTA stack (Buy Now → Add to Cart → Wishlist) ---------- */
+/* DOM order is reordered in JSX (see `ProductDetailPage.jsx`) so visual,
+   focus, and screen-reader order all match — no CSS `order` shenanigans. */
 .pdp-layout-sticky .product-actions {
     display: flex;
     flex-direction: column;
     gap: 10px;
     margin-top: 8px;
+    margin-bottom: 4px;
 }
 .pdp-layout-sticky .product-actions .add-to-cart-btn,
 .pdp-layout-sticky .product-actions .buy-now-btn,
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn {
     width: 100%;
-    height: 52px;
+    height: 54px;
+    font-family: 'Lora', Georgia, serif;
     font-size: 15px;
+    font-weight: 600;
     letter-spacing: 0.04em;
-    border-radius: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+/* Buy Now — primary, warm beige fill */
+.pdp-layout-sticky .product-actions .buy-now-btn {
+    background: #c8b99a;
+    color: #2a2520;
+    border: 1px solid #c8b99a;
+    box-shadow: 0 1px 2px rgba(96, 48, 0, 0.08);
+}
+.pdp-layout-sticky .product-actions .buy-now-btn:hover:not(:disabled) {
+    background: #b5a585;
+    border-color: #b5a585;
+    box-shadow: 0 2px 6px rgba(96, 48, 0, 0.12);
+}
+/* Add to Cart — secondary, outlined brown */
+.pdp-layout-sticky .product-actions .add-to-cart-btn {
+    background: transparent;
+    color: #603000;
+    border: 1px solid #603000;
+}
+.pdp-layout-sticky .product-actions .add-to-cart-btn:hover:not(:disabled) {
+    background: rgba(96, 48, 0, 0.05);
+}
+/* Wishlist — quiet ghost. Colors here are used for 13px text and 1px
+   borders on a cream/white background, so we use values that clear WCAG
+   AA for normal text (≥4.5:1) instead of the original pale pink. */
+.pdp-layout-sticky .product-actions .add-to-wishlist-btn {
+    background: transparent;
+    color: #6b5b48;
+    border: 1px solid rgba(96, 48, 0, 0.20);
+    height: 46px;
+    font-size: 13px;
+}
+.pdp-layout-sticky .product-actions .add-to-wishlist-btn:hover {
+    color: #8a4a52;
+    border-color: #8a4a52;
+}
+.pdp-layout-sticky .product-actions .add-to-wishlist-btn.active {
+    color: #8a4a52;
+    border-color: #8a4a52;
+}
+.pdp-layout-sticky .product-actions .add-to-wishlist-btn.active i.fas.fa-heart {
+    color: #8a4a52;
 }
 
-/* Tablet: drop the sticky behaviour for BOTH columns and keep the tightened
-   CTA stack. The base stylesheet keeps `.product-detail-left` sticky until
-   768px, but for the sticky variant we want the columns to flow naturally
-   here — otherwise the gallery would still pin at this width. */
+.pdp-layout-sticky .product-actions button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ---------- Trust badges row ---------- */
+/* The wrapper uses inline styles for layout, but we attach a real class
+   (`.pdp-trust-badges-row`) in JSX so we never have to rely on fragile
+   inline-style attribute substring selectors that break the moment React
+   reorders or normalizes the style string. */
+.pdp-layout-sticky .pdp-trust-badges-row {
+    background: rgba(255, 255, 255, 0.6) !important;
+    border-color: rgba(96, 48, 0, 0.10) !important;
+    border-radius: 10px !important;
+    margin-top: 18px !important;
+}
+.pdp-layout-sticky .pdp-trust-badges-row i.fas {
+    color: #603000 !important;
+}
+.pdp-layout-sticky .pdp-trust-badges-row span {
+    color: #4a3d2f !important;
+}
+
+/* ---------- Specifications panel ---------- */
+.pdp-layout-sticky .pdp-specs-panel {
+    background: #ffffff !important;
+    border-color: rgba(96, 48, 0, 0.08) !important;
+}
+.pdp-layout-sticky .pdp-specs-panel h4,
+.pdp-layout-sticky .pdp-specs-panel h4 i.fas {
+    color: #603000 !important;
+}
+.pdp-layout-sticky .pdp-specs-panel > div {
+    color: #2a2520 !important;
+}
+.pdp-layout-sticky .pdp-specs-panel > div span {
+    color: #6b5b48 !important;
+}
+
+/* ---------- Description ---------- */
+.pdp-layout-sticky .product-description-section h3 {
+    font-family: 'Lora', Georgia, serif;
+    color: #603000;
+    font-weight: 600;
+    font-size: 18px;
+    border-bottom: 1px solid rgba(96, 48, 0, 0.12);
+    padding-bottom: 8px;
+}
+.pdp-layout-sticky .product-description-section p {
+    color: #2a2520;
+    line-height: 1.7;
+    font-size: 14px;
+}
+
+/* ---------- Policy accordions (shipping / returns / care) ---------- */
+.pdp-layout-sticky .product-policies-accordions {
+    border-top: 1px solid rgba(96, 48, 0, 0.10);
+    margin-top: 18px;
+    padding-top: 6px;
+}
+.pdp-layout-sticky .policy-accordion {
+    border-bottom: 1px solid rgba(96, 48, 0, 0.10);
+}
+.pdp-layout-sticky .policy-accordion-header {
+    color: #2a2520;
+    font-family: 'Lora', Georgia, serif;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 14px 0;
+}
+.pdp-layout-sticky .policy-accordion-header:hover {
+    color: #603000;
+}
+.pdp-layout-sticky .policy-accordion-arrow {
+    color: #6b5b48;
+}
+.pdp-layout-sticky .policy-accordion-content {
+    color: #6b5b48;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+/* ---------- Below-the-fold sections ---------- */
+.pdp-layout-sticky .related-products-container,
+.pdp-layout-sticky .product-reviews-container,
+.pdp-layout-sticky .related-products,
+.pdp-layout-sticky .product-reviews {
+    background: transparent;
+}
+.pdp-layout-sticky .related-products h2,
+.pdp-layout-sticky .product-reviews h2,
+.pdp-layout-sticky .related-products-title,
+.pdp-layout-sticky .reviews-title {
+    font-family: 'Lora', Georgia, serif;
+    color: #603000;
+    font-weight: 600;
+}
+
+/* ---------- Tablet ---------- */
 @media (max-width: 1024px) {
     .pdp-layout-sticky .product-detail-container {
         grid-template-columns: 1fr 1fr;
@@ -1303,9 +1566,7 @@
     }
 }
 
-/* Mobile: revert to flat single-column flow so nothing is clipped. The base
-   stylesheet's @media (max-width: 768px) already collapses the grid; this
-   block makes sure the sticky overrides don't fight it. */
+/* ---------- Mobile ---------- */
 @media (max-width: 768px) {
     .pdp-layout-sticky .product-detail-container {
         grid-template-columns: 1fr;
@@ -1317,6 +1578,12 @@
         padding-top: 0;
     }
     .pdp-layout-sticky .product-detail-info .product-title {
-        font-size: 22px;
+        font-size: 24px;
+    }
+    .pdp-layout-sticky .product-detail-info .product-price {
+        font-size: 24px;
+    }
+    .pdp-layout-sticky .product-detail-info .price {
+        padding: 14px;
     }
 }
