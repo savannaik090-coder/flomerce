@@ -490,7 +490,8 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     // wizard-created site, so the rule is "keep these two paths byte-equal".
     const freshBrand = {
       id: 'brand', name: 'Brand', isDefault: true,
-      background: '#ffffff', text: '#111111',
+      background: '#ffffff', text: '#333333',
+      headingText: '#333333', mutedText: '#888888', border: '#eeeeee',
       button: PLATFORM_PRIMARY, buttonText: pickReadable(PLATFORM_PRIMARY),
       secondaryButton: shift(PLATFORM_PRIMARY, 0.85),
       link: PLATFORM_PRIMARY, accent: PLATFORM_ACCENT,

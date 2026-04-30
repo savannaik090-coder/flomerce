@@ -349,9 +349,13 @@ export function SiteProvider({ children }) {
       }
       return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
     };
+    // 10-slot shape — kept byte-equal to backend buildDefaultSchemes so a
+    // legacy site whose theme_config never made it through the backend
+    // still renders with the same Brand/Inverse/Accent palettes.
     const brand = {
       id: 'brand', name: 'Brand', isDefault: true,
-      background: '#ffffff', text: '#111111',
+      background: '#ffffff', text: '#333333',
+      headingText: '#333333', mutedText: '#888888', border: '#eeeeee',
       button: primary, buttonText: pickReadable(primary),
       secondaryButton: shift(primary, 0.85),
       link: primary, accent,
@@ -360,6 +364,7 @@ export function SiteProvider({ children }) {
     const inverse = {
       id: 'inverse', name: 'Inverse', isDefault: false,
       background: inverseBg, text: '#ffffff',
+      headingText: '#ffffff', mutedText: '#d8c8b8', border: shift(inverseBg, 0.25),
       button: '#ffffff', buttonText: '#111111',
       secondaryButton: shift(inverseBg, 0.15),
       link: '#f5deb3', accent,
@@ -367,6 +372,7 @@ export function SiteProvider({ children }) {
     const accentScheme = {
       id: 'accent', name: 'Accent', isDefault: false,
       background: '#fdfaf3', text: '#1f1a14',
+      headingText: '#1f1a14', mutedText: '#8a7a5a', border: '#e8dcc6',
       button: accent, buttonText: pickReadable(accent),
       secondaryButton: shift(accent, 0.78),
       link: primary, accent,

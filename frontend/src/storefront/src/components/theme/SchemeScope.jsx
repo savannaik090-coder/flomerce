@@ -82,7 +82,28 @@ function effectiveToCssVars(eff) {
   if (!eff) return {};
   const vars = {};
   if (eff.background) vars['--scheme-bg'] = eff.background;
-  if (eff.text) vars['--scheme-text'] = eff.text;
+  if (eff.text) {
+    vars['--scheme-text'] = eff.text;
+    vars['--color-text'] = eff.text;
+  }
+  // New 10-slot expansion: separate heading, muted, and border tokens so
+  // merchants can fine-tune the classic look without affecting body copy.
+  // Aliases to legacy --color-* vars keep the existing template CSS in
+  // sync without us having to rewrite every selector.
+  if (eff.headingText) {
+    vars['--scheme-heading-text'] = eff.headingText;
+  }
+  if (eff.mutedText) {
+    vars['--scheme-muted-text'] = eff.mutedText;
+    vars['--color-text-muted'] = eff.mutedText;
+    vars['--color-text-light'] = eff.mutedText;
+  }
+  if (eff.border) {
+    vars['--scheme-border'] = eff.border;
+    vars['--color-border'] = eff.border;
+    vars['--color-border-light'] = eff.border;
+    vars['--color-border-dark'] = eff.border;
+  }
   if (eff.button) {
     vars['--scheme-button'] = eff.button;
     vars['--color-primary'] = eff.button;

@@ -20,18 +20,20 @@ const SEO_DESCRIPTION_TEMPLATES = {
   general: 'Shop online at {brand}. Explore our curated collection with secure checkout, easy returns & fast delivery.',
 };
 
-// Category-tuned color presets for the wizard's Brand Colors step. Each
-// preset maps a business category to a (primary, accent) pair that fits
-// the typical aesthetic of that vertical. The "general" preset matches
-// the platform default brown/gold so a merchant who skips this step ends
-// up with the exact same palette they'd get from "Reset Brand to platform
-// default" later. Hex values must round-trip cleanly through the
-// backend's clampHex validator (lowercase, 6 chars).
+// Brand Colors preset for the wizard. All categories share the same
+// classic platform default (brown / gold) so
+// every new site starts looking exactly like the classic template out of
+// the box, regardless of business vertical. The merchant can still edit
+// these colors freely in the wizard or, later, in the Theme tab — the
+// uniform default just removes the "surprise repaint" effect that used to
+// happen when picking a category. Hex values must round-trip cleanly
+// through the backend's clampHex validator (lowercase, 6 chars).
+const CLASSIC_DEFAULT_PRESET = { primary: '#603000', accent: '#b08c4c', label: 'Classic defaults' };
 const BRAND_COLOR_PRESETS = {
-  jewellery: { primary: '#7c1d1d', accent: '#c9a45c', label: 'Maroon & Gold' },
-  clothing:  { primary: '#1f2937', accent: '#ef4444', label: 'Slate & Red' },
-  beauty:    { primary: '#be185d', accent: '#fbbf24', label: 'Rose & Amber' },
-  general:   { primary: '#603000', accent: '#b08c4c', label: 'Brown & Gold' },
+  jewellery: CLASSIC_DEFAULT_PRESET,
+  clothing:  CLASSIC_DEFAULT_PRESET,
+  beauty:    CLASSIC_DEFAULT_PRESET,
+  general:   CLASSIC_DEFAULT_PRESET,
 };
 
 const DEFAULT_CATEGORIES_BY_TYPE = {
@@ -600,11 +602,12 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               Pick the two colors that define your store. <strong>Primary</strong> is used for buttons and headings; <strong>accent</strong> highlights prices, badges, and links. You can change these any time from Site → Theme.
             </p>
 
-            {/* Category preset shortcut. Clicking applies the preset and
-                marks colors as touched so they survive into createSite. */}
+            {/* Classic-defaults shortcut. One-click "use the platform's
+                default brown / gold". Same preset for every business
+                category — see CLASSIC_DEFAULT_PRESET. */}
             <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Suggested for {(BUSINESS_CATEGORIES.find(c => c.id === businessCategory) || {}).name || 'your store'}
+                Use the classic defaults
               </p>
               <button
                 type="button"

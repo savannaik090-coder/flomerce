@@ -23,6 +23,16 @@ export const PLATFORM_DEFAULT_PRIMARY = '#603000';
 export const PLATFORM_DEFAULT_SECONDARY = '#5a3f2a';
 export const PLATFORM_DEFAULT_ACCENT = '#b08c4c';
 
+// Per-slot classic defaults for the additional 3 slots (headingText,
+// mutedText, border). These mirror the classic template's CSS variables
+// (`--color-text`, `--color-text-muted`, `--color-border`). When an older
+// saved scheme is read back without these slots, normalizeThemeConfig
+// fills them with these values so the merchant's existing palette stays
+// intact and the new slots show the classic look out of the box.
+export const PLATFORM_DEFAULT_HEADING_TEXT = '#333333';
+export const PLATFORM_DEFAULT_MUTED_TEXT = '#888888';
+export const PLATFORM_DEFAULT_BORDER = '#eeeeee';
+
 export const SECTION_IDS = [
   // Homepage / chrome
   'navbar', 'promo-banner', 'hero-slider', 'welcome-banner',
@@ -95,7 +105,10 @@ export function emptyScheme(name = 'Scheme') {
     name,
     isDefault: false,
     background: '#ffffff',
-    text: '#111111',
+    text: '#333333',
+    headingText: PLATFORM_DEFAULT_HEADING_TEXT,
+    mutedText: PLATFORM_DEFAULT_MUTED_TEXT,
+    border: PLATFORM_DEFAULT_BORDER,
     button: '#000000',
     buttonText: '#ffffff',
     secondaryButton: '#f1f5f9',
@@ -118,12 +131,19 @@ export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
   const _secondary = clampHex(secondaryColor, PLATFORM_DEFAULT_SECONDARY);
   const accent = clampHex(accentColor, PLATFORM_DEFAULT_ACCENT);
 
+  // Brand mirrors the classic template's CSS variables exactly so a fresh
+  // site looks identical to the platform default. Heading/body text use
+  // #333, muted text uses #888, borders use #eee — matching the classic
+  // `--color-text`, `--color-text-muted`, `--color-border` defaults.
   const brand = {
     id: 'brand',
     name: 'Brand',
     isDefault: true,
     background: '#ffffff',
-    text: '#111111',
+    text: '#333333',
+    headingText: PLATFORM_DEFAULT_HEADING_TEXT,
+    mutedText: PLATFORM_DEFAULT_MUTED_TEXT,
+    border: PLATFORM_DEFAULT_BORDER,
     button: primary,
     buttonText: pickReadableText(primary),
     secondaryButton: shiftHex(primary, 0.85),
@@ -138,6 +158,9 @@ export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
     isDefault: false,
     background: inverseBg,
     text: '#ffffff',
+    headingText: '#ffffff',
+    mutedText: '#d8c8b8',
+    border: shiftHex(inverseBg, 0.25),
     button: '#ffffff',
     buttonText: '#111111',
     secondaryButton: shiftHex(inverseBg, 0.15),
@@ -151,6 +174,9 @@ export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
     isDefault: false,
     background: '#fdfaf3',
     text: '#1f1a14',
+    headingText: '#1f1a14',
+    mutedText: '#8a7a5a',
+    border: '#e8dcc6',
     button: accent,
     buttonText: pickReadableText(accent),
     secondaryButton: shiftHex(accent, 0.78),
@@ -244,6 +270,14 @@ export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, 
       secondaryButton: requireHex(s.secondaryButton, `${label} → secondary button`),
       link: requireHex(s.link, `${label} → link`),
       accent: requireHex(s.accent, `${label} → accent`),
+      // New slots added in the 10-slot expansion. Older saved schemes
+      // don't carry these — `clampHex` falls back to the classic platform
+      // defaults so old data round-trips cleanly without any migration
+      // and the merchant's existing palette stays intact. New writes
+      // always include real values (the merchant Theme tab sends all 10).
+      headingText: clampHex(s.headingText, PLATFORM_DEFAULT_HEADING_TEXT),
+      mutedText: clampHex(s.mutedText, PLATFORM_DEFAULT_MUTED_TEXT),
+      border: clampHex(s.border, PLATFORM_DEFAULT_BORDER),
     };
     return out;
   });

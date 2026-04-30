@@ -40,10 +40,18 @@ export const AA_LARGE = 3;
 // each warning chip individually.
 export function evaluateScheme(scheme) {
   if (!scheme) return [];
+  // 10-slot expansion: separate heading and muted text get their own
+  // contrast checks against background. Older schemes that don't carry
+  // the new slots fall back to the body `text` value so the row still
+  // renders something useful instead of a 1:1 ratio warning.
+  const headingText = scheme.headingText || scheme.text;
+  const mutedText = scheme.mutedText || scheme.text;
   const pairs = [
-    { label: 'Text on background', a: scheme.text, b: scheme.background, threshold: AA_TEXT },
+    { label: 'Heading text on background', a: headingText, b: scheme.background, threshold: AA_TEXT },
+    { label: 'Body text on background', a: scheme.text, b: scheme.background, threshold: AA_TEXT },
+    { label: 'Muted text on background', a: mutedText, b: scheme.background, threshold: AA_LARGE },
     { label: 'Button text on button', a: scheme.buttonText, b: scheme.button, threshold: AA_TEXT },
-    { label: 'Text on secondary button', a: scheme.text, b: scheme.secondaryButton, threshold: AA_TEXT },
+    { label: 'Body text on secondary button', a: scheme.text, b: scheme.secondaryButton, threshold: AA_TEXT },
     { label: 'Link on background', a: scheme.link, b: scheme.background, threshold: AA_TEXT },
     { label: 'Accent on background', a: scheme.accent, b: scheme.background, threshold: AA_LARGE },
   ];
