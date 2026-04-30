@@ -371,9 +371,18 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   const setSchemeForSection = useCallback((sectionId, schemeId) => {
     setThemeDraft(prev => {
       if (!prev) return prev;
+      // schemeId === '' (or null/undefined) means "use the default design" —
+      // remove the assignment entirely so SchemeScope renders the section
+      // pristine (no CSS injected, original storefront design wins).
+      const isClear = !schemeId;
+      const buildAssignments = (base) => {
+        const a = { ...(base || {}) };
+        if (isClear) delete a[sectionId]; else a[sectionId] = schemeId;
+        return a;
+      };
       const next = {
         ...prev,
-        sectionAssignments: { ...(prev.sectionAssignments || {}), [sectionId]: schemeId },
+        sectionAssignments: buildAssignments(prev.sectionAssignments),
       };
 
       // Build a save payload that:
@@ -397,7 +406,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       }
       const savePayload = {
         ...savedBase,
-        sectionAssignments: { ...(savedBase.sectionAssignments || {}), [sectionId]: schemeId },
+        sectionAssignments: buildAssignments(savedBase.sectionAssignments),
       };
 
       themeAssignSaveRef.current.queued = savePayload;
@@ -539,7 +548,12 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     });
   }, [sendPreviewUpdate, flushOverridesSave]);
 
-  const resetOverridesForSection = useCallback((sectionId) => {
+  // "Reset to default design" for one section. Clears BOTH the per-section
+  // colour overrides AND any explicit scheme assignment, so SchemeScope
+  // renders the section pristine (no CSS injected → original storefront
+  // design wins). Both flows save independently so the merchant sees the
+  // section snap back to original immediately.
+  const resetSectionToDefault = useCallback((sectionId) => {
     if (!sectionId) return;
     overridesDirtyRef.current = true;
     setOverridesDraft(prev => {
@@ -550,7 +564,80 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       flushOverridesSave();
       return next;
     });
-  }, [sendPreviewUpdate, flushOverridesSave]);
+    // Clearing the scheme assignment goes through setSchemeForSection's
+    // own queued/save path — it knows how to delete the key cleanly and
+    // pushes its own theme preview message.
+    setSchemeForSection(sectionId, null);
+  }, [sendPreviewUpdate, flushOverridesSave, setSchemeForSection]);
+
+  // Backwards-compat alias for any callers still using the old name.
+  const resetOverridesForSection = resetSectionToDefault;
+
+  // "Reset entire site to default design" — wipes every section's
+  // overrides AND every scheme assignment in one shot. Schemes themselves
+  // are preserved (the merchant might still want to use them later); only
+  // the assignments and overrides are cleared.
+  const resetAllSectionsToDefault = useCallback(() => {
+    overridesDirtyRef.current = true;
+
+    // CRITICAL: do BOTH the patch computation AND the clear inside ONE
+    // setState updater. React guarantees `prev` here is the live current
+    // value. The previous bug was calling setOverridesDraft({}) and then
+    // a second setOverridesDraft(prev=>...) — by the time the second ran,
+    // prev was already {} and no null patches were sent.
+    setOverridesDraft(prev => {
+      const wipePatch = {};
+      for (const k of Object.keys(prev || {})) wipePatch[k] = null;
+      if (Object.keys(wipePatch).length > 0) {
+        sendPreviewUpdate({ _overridesPatch: wipePatch });
+      }
+      return {};
+    });
+
+    // Drop the accumulator's stored override patches so an iframe reload
+    // doesn't replay them back into existence.
+    if (accumulatedSettingsRef.current) {
+      accumulatedSettingsRef.current = {
+        ...accumulatedSettingsRef.current,
+        _overridesPatch: {},
+      };
+    }
+
+    // Queue the empty save.
+    overridesQueueRef.current = {};
+    flushOverridesSave();
+
+    // Clear all assignments via the same save path used by setSchemeForSection.
+    setThemeDraft(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, sectionAssignments: {} };
+      const queuedAlready = themeAssignSaveRef.current.queued;
+      let savedBase = queuedAlready;
+      if (!savedBase || !Array.isArray(savedBase.schemes)) {
+        try { savedBase = JSON.parse(themeSavedRef.current || '{}'); } catch (e) { savedBase = null; }
+      }
+      if (!savedBase || !Array.isArray(savedBase.schemes)) savedBase = next;
+      const savePayload = { ...savedBase, sectionAssignments: {} };
+      themeAssignSaveRef.current.queued = savePayload;
+      (async () => {
+        if (themeAssignSaveRef.current.inflight) return;
+        themeAssignSaveRef.current.inflight = true;
+        try {
+          while (themeAssignSaveRef.current.queued) {
+            const toSave = themeAssignSaveRef.current.queued;
+            themeAssignSaveRef.current.queued = null;
+            await saveThemeConfig(toSave);
+          }
+        } finally {
+          themeAssignSaveRef.current.inflight = false;
+          const draftStr = JSON.stringify(themeDraftRef.current || {});
+          setThemeHasChanges(draftStr !== themeSavedRef.current);
+        }
+      })();
+      pushThemePreview(next);
+      return next;
+    });
+  }, [sendPreviewUpdate, flushOverridesSave, saveThemeConfig, pushThemePreview]);
 
   const sendScrollToSection = useCallback((sectionId) => {
     try {
@@ -1006,6 +1093,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   hasChanges={themeHasChanges}
                   onChange={applyThemeDraft}
                   onSave={handleThemeSave}
+                  onResetAllToDefault={resetAllSectionsToDefault}
                 />
               )}
 
@@ -1086,20 +1174,29 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         {/* Per-section colour overrides — collapsible, lives below the
             scheme dropdown. Lets the merchant tweak individual slots (e.g.
             promo banner background) without redefining a whole scheme. */}
-        {activeSection && SECTION_SLOTS[activeSection] && themeDraft && (
-          <SectionColorOverrides
-            sectionId={activeSection}
-            scheme={(() => {
-              const assignments = themeDraft.sectionAssignments || {};
-              const targetId = assignments[activeSection];
-              const found = targetId ? themeDraft.schemes?.find(s => s.id === targetId) : null;
-              return found || themeDraft.schemes?.find(s => s.isDefault) || themeDraft.schemes?.[0] || null;
-            })()}
-            overrides={overridesDraft[activeSection] || {}}
-            onChange={(slot, val) => setOverrideForSection(activeSection, slot, val)}
-            onResetAll={() => resetOverridesForSection(activeSection)}
-          />
-        )}
+        {activeSection && SECTION_SLOTS[activeSection] && themeDraft && (() => {
+          // Mirror SiteContext.getExplicitSchemeForSection: only treat the
+          // section as "themed" when it's been assigned a NON-default scheme.
+          // When it's on Default, scheme is null — the panel then says
+          // "this section uses the original design" and shows no scheme hex.
+          const assignments = themeDraft.sectionAssignments || {};
+          const targetId = assignments[activeSection];
+          const def = themeDraft.schemes?.find(s => s.isDefault) || null;
+          const isExplicit = !!(targetId && (!def || def.id !== targetId));
+          const explicitScheme = isExplicit
+            ? (themeDraft.schemes?.find(s => s.id === targetId) || null)
+            : null;
+          return (
+            <SectionColorOverrides
+              sectionId={activeSection}
+              scheme={explicitScheme}
+              hasExplicitAssignment={isExplicit}
+              overrides={overridesDraft[activeSection] || {}}
+              onChange={(slot, val) => setOverrideForSection(activeSection, slot, val)}
+              onResetToDefault={() => resetSectionToDefault(activeSection)}
+            />
+          );
+        })()}
         {renderEditor()}
       </div>
     </div>

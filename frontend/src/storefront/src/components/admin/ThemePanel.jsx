@@ -45,6 +45,7 @@ export default function ThemePanel({
   onChange,
   onSave,
   onDirty,
+  onResetAllToDefault,
 }) {
   const schemes = (themeConfig && themeConfig.schemes) || [];
   const [editingId, setEditingId] = useState(() => schemes[0]?.id || null);
@@ -292,6 +293,31 @@ export default function ThemePanel({
         >
           {saving ? "Saving..." : hasChanges ? "Save Theme" : "All Changes Saved"}
         </button>
+
+        {/* Global "back to original design" escape hatch. Wipes every
+            section's overrides AND every scheme assignment, returning the
+            entire storefront to its pre-feature look. The schemes
+            themselves are preserved — only assignments + overrides reset. */}
+        {onResetAllToDefault && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Reset every section back to the original design? This clears your scheme assignments and per-section colour overrides. Your schemes themselves stay saved.')) {
+                onResetAllToDefault();
+              }
+            }}
+            style={{
+              width: '100%', marginTop: 8, padding: '10px 16px',
+              background: '#fff', color: '#dc2626',
+              border: '1px solid #fecaca', borderRadius: 10,
+              fontSize: 12, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <i className="fas fa-undo" style={{ marginInlineEnd: 6, fontSize: 10 }} />
+            Reset entire site to default design
+          </button>
+        )}
       </div>
     </div>
   );

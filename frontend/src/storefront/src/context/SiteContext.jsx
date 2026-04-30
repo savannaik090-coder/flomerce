@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
-import { schemeToCssVars } from '../components/theme/SchemeScope.jsx';
 
 export const SiteContext = createContext(null);
 
@@ -270,11 +269,16 @@ export function SiteProvider({ children }) {
     // merchant is editing without losing the rest of their config.
     if (_themePatch && typeof _themePatch === 'object') {
       const baseTheme = siteConfig.themeConfig || {};
+      // sectionAssignments is REPLACED (not merged) when present, because
+      // the customizer always sends the merchant's full intended assignment
+      // map. Without replace, a cleared assignment (delete key from draft)
+      // would silently fall back to the saved value — meaning "Reset to
+      // default design" wouldn't take effect in the live preview until save.
       merged.themeConfig = {
         ...baseTheme,
         ...(Array.isArray(_themePatch.schemes) ? { schemes: _themePatch.schemes } : {}),
         ...(_themePatch.sectionAssignments && typeof _themePatch.sectionAssignments === 'object'
-          ? { sectionAssignments: { ...(baseTheme.sectionAssignments || {}), ...(_themePatch.sectionAssignments || {}) } }
+          ? { sectionAssignments: { ..._themePatch.sectionAssignments } }
           : {}),
       };
     }
@@ -364,21 +368,12 @@ export function SiteProvider({ children }) {
     return { schemes: [brand, inverse, accentScheme], sectionAssignments: {} };
   }, [effectiveSiteConfig]);
 
-  // Inject the Brand (default) scheme into the document root so the very
-  // first paint already uses the merchant's colors. SchemeScope still wraps
-  // each section to override per-section, but elements that aren't inside a
-  // SchemeScope (loading screens, error pages, mid-page modals…) stay on
-  // brand. This is what stops the "flash of unstyled colors".
-  useEffect(() => {
-    if (typeof document === 'undefined' || !resolvedTheme) return;
-    const brand = resolvedTheme.schemes.find(s => s.isDefault) || resolvedTheme.schemes[0];
-    if (!brand) return;
-    const vars = schemeToCssVars(brand);
-    const root = document.documentElement;
-    for (const [k, v] of Object.entries(vars)) {
-      root.style.setProperty(k, v);
-    }
-  }, [resolvedTheme]);
+  // NOTE: We intentionally DO NOT inject the Brand scheme onto :root. Doing
+  // so would override the static --color-* variables defined in
+  // styles/variables.css (the original storefront design tokens) and change
+  // every section's colours site-wide. The merchant explicitly asked for
+  // pristine pre-feature rendering — the storefront uses variables.css as-is
+  // until they customise something via SchemeScope.
 
   // Helper used by SchemeScope to look up the scheme assigned to a given
   // section. Falls back to the default scheme when the section has no
@@ -392,6 +387,25 @@ export function SiteProvider({ children }) {
       const found = targetId ? resolvedTheme.schemes.find(s => s.id === targetId) : null;
       if (found) return found;
       return resolvedTheme.schemes.find(s => s.isDefault) || resolvedTheme.schemes[0];
+    };
+  }, [resolvedTheme]);
+
+  // Returns the scheme assigned to a section ONLY when the merchant has
+  // explicitly picked a non-default scheme. Returns null when the section
+  // is on the default scheme (or has no assignment at all). SchemeScope
+  // uses this to decide whether to inject any CSS — null + no overrides
+  // means "leave the section completely untouched, original storefront
+  // CSS shows through". This is the invariant that guarantees the
+  // pre-feature look is preserved by default.
+  const getExplicitSchemeForSection = useMemo(() => {
+    return (sectionId) => {
+      if (!resolvedTheme || !Array.isArray(resolvedTheme.schemes)) return null;
+      const assignments = resolvedTheme.sectionAssignments || {};
+      const targetId = sectionId ? assignments[sectionId] : null;
+      if (!targetId) return null;
+      const def = resolvedTheme.schemes.find(s => s.isDefault);
+      if (def && def.id === targetId) return null; // explicit-default == no recolor
+      return resolvedTheme.schemes.find(s => s.id === targetId) || null;
     };
   }, [resolvedTheme]);
 
@@ -418,6 +432,7 @@ export function SiteProvider({ children }) {
       refetchSite: () => subdomain && fetchSiteConfig(subdomain, true),
       themeConfig: resolvedTheme,
       getSchemeForSection,
+      getExplicitSchemeForSection,
       getOverridesForSection,
     }}>
       {children}

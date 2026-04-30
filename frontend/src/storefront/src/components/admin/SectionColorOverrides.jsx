@@ -8,20 +8,25 @@ const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 // of the section's colour slots without redefining a whole scheme.
 //
 // The component is purely presentational — it receives:
-//   * sectionId            (string)
-//   * scheme               (the resolved scheme being applied to this section)
-//   * overrides            (current overrides for this section, may be {})
-//   * onChange(slot, val)  (single-slot edit; called with null to clear)
-//   * onResetAll()         (clear every override for this section)
+//   * sectionId             (string)
+//   * scheme                (the resolved scheme being applied — may be null
+//                            when the section is on Default = original design)
+//   * overrides             (current overrides for this section, may be {})
+//   * hasExplicitAssignment (true if the section is on a non-default scheme)
+//   * onChange(slot, val)   (single-slot edit; called with null to clear)
+//   * onResetToDefault()    (clear overrides AND scheme assignment for this
+//                            section — restores the section to its original
+//                            pre-feature design)
 //
 // Slot list is derived from sectionSelectors.js so it never drifts from what
 // SchemeScope actually knows how to recolor.
-export default function SectionColorOverrides({ sectionId, scheme, overrides, onChange, onResetAll }) {
+export default function SectionColorOverrides({ sectionId, scheme, overrides, hasExplicitAssignment, onChange, onResetToDefault }) {
   const [open, setOpen] = useState(false);
   const slots = SECTION_SLOTS[sectionId];
   if (!slots || slots.length === 0) return null;
 
   const overrideCount = overrides ? Object.keys(overrides).filter(k => overrides[k] && HEX_RE.test(overrides[k])).length : 0;
+  const customised = overrideCount > 0 || hasExplicitAssignment;
   const effective = resolveSectionColors(scheme, overrides);
 
   return (
@@ -59,8 +64,9 @@ export default function SectionColorOverrides({ sectionId, scheme, overrides, on
       {open && (
         <div style={{ padding: '4px 12px 12px', borderTop: '1px solid #f1f5f9' }}>
           <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 12px' }}>
-            Override individual colors for this section only. Cleared cells fall
-            back to the assigned scheme.
+            {scheme
+              ? <>Pick a colour to override the assigned scheme for this section only. Empty cells use the scheme&#39;s value.</>
+              : <>This section is currently using the original design. Pick a colour below to start customising it.</>}
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -77,10 +83,10 @@ export default function SectionColorOverrides({ sectionId, scheme, overrides, on
             ))}
           </div>
 
-          {overrideCount > 0 && (
+          {customised && (
             <button
               type="button"
-              onClick={onResetAll}
+              onClick={onResetToDefault}
               style={{
                 marginTop: 12, padding: '6px 10px',
                 background: '#fef2f2', border: '1px solid #fecaca',
@@ -89,7 +95,7 @@ export default function SectionColorOverrides({ sectionId, scheme, overrides, on
               }}
             >
               <i className="fas fa-undo" style={{ marginInlineEnd: 5, fontSize: 9 }} />
-              Reset all to scheme
+              Reset this section to default design
             </button>
           )}
         </div>
@@ -120,11 +126,13 @@ function SlotRow({ slot, label, schemeColor, overrideColor, effectiveColor, onCh
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{label}</div>
         <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>
-          {hasOverride ? (
-            <>Override · scheme is <code style={{ background: '#fff', padding: '0 4px', borderRadius: 3 }}>{schemeColor || '—'}</code></>
-          ) : (
-            <>Using scheme color</>
-          )}
+          {hasOverride
+            ? (schemeColor
+                ? <>Custom · scheme is <code style={{ background: '#fff', padding: '0 4px', borderRadius: 3 }}>{schemeColor}</code></>
+                : <>Custom (overrides original)</>)
+            : (schemeColor
+                ? <>Using scheme color</>
+                : <>Using original design</>)}
         </div>
       </div>
       <input
@@ -152,7 +160,7 @@ function SlotRow({ slot, label, schemeColor, overrideColor, effectiveColor, onCh
         <button
           type="button"
           onClick={() => onChange(null)}
-          title="Reset to scheme"
+          title="Clear override"
           style={{
             width: 26, height: 26, padding: 0,
             background: '#fff', border: '1px solid #e2e8f0',
