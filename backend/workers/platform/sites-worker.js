@@ -3,7 +3,7 @@ import { PLATFORM_DOMAIN } from '../../config.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
-import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
+import { resolveSiteDBById, getSiteConfig, getSiteWithConfig, ensureThemeConfigColumn } from '../../utils/site-db.js';
 import {
   buildDefaultThemeConfig,
   normalizeThemeConfig,
@@ -569,6 +569,12 @@ export async function createSiteForUser(env, user, body) {
 
     const siteDB = await resolveSiteDBById(env, siteId);
 
+    // Self-heal `site_config.theme_config` on shards that pre-date the
+    // per-section color scheme system. Without this, the INSERT below
+    // crashes with `D1_ERROR: table site_config has no column named
+    // theme_config` and blocks site creation entirely.
+    await ensureThemeConfigColumn(siteDB, `theme-config-col:${activeShard.id}`);
+
     if (logoBase64 && !logoUrl && logoBase64.startsWith('data:')) {
       try {
         const matches = logoBase64.match(/^data:([^;]+);base64,(.+)$/);
@@ -843,6 +849,18 @@ async function updateSite(request, env, user, siteId, ctx) {
 
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
+
+    // Self-heal `site_config.theme_config` on legacy shards before any
+    // read or write that might touch the column. Cheap no-op once the
+    // worker isolate has confirmed the column exists.
+    const wantsThemeConfig = Object.keys(updates).some((k) => {
+      const dbKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
+      return dbKey === 'theme_config';
+    });
+    if (wantsThemeConfig) {
+      await ensureThemeConfigColumn(siteDB, `theme-config-col:${siteId}`);
+    }
+
     const existingConfig = await siteDB.prepare(
       'SELECT * FROM site_config WHERE site_id = ?'
     ).bind(siteId).first();
@@ -954,6 +972,18 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
   try {
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
+
+    // Self-heal `site_config.theme_config` on legacy shards before any
+    // read or write that might touch the column. Cheap no-op once the
+    // worker isolate has confirmed the column exists.
+    const wantsThemeConfig = Object.keys(updates).some((k) => {
+      const dbKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
+      return dbKey === 'theme_config';
+    });
+    if (wantsThemeConfig) {
+      await ensureThemeConfigColumn(siteDB, `theme-config-col:${siteId}`);
+    }
+
     const existingConfig = await siteDB.prepare(
       'SELECT * FROM site_config WHERE site_id = ?'
     ).bind(siteId).first();
