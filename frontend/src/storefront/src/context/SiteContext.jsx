@@ -93,7 +93,19 @@ export function SiteProvider({ children }) {
     function handleMessage(event) {
       if (!event.data) return;
       if (event.data.type === 'FLOMERCE_PREVIEW_UPDATE') {
-        setPreviewSettings(prev => ({ ...(prev || {}), ...event.data.settings }));
+        // Shallow-merge top-level keys, but `_overridesPatch` needs per-section
+        // accumulation: editing navbar after promo must not drop the unsaved
+        // promo preview. Each per-section value is the FULL replacement state
+        // for that section (or null = remove that section's overrides).
+        setPreviewSettings(prev => {
+          const next = { ...(prev || {}), ...event.data.settings };
+          const incoming = event.data.settings || {};
+          if (incoming._overridesPatch && typeof incoming._overridesPatch === 'object') {
+            const prevPatch = (prev && prev._overridesPatch) || {};
+            next._overridesPatch = { ...prevPatch, ...incoming._overridesPatch };
+          }
+          return next;
+        });
         return;
       }
       if (event.data.type === 'FLOMERCE_SCROLL_TO_SECTION' && event.data.sectionId) {
@@ -266,6 +278,26 @@ export function SiteProvider({ children }) {
           : {}),
       };
     }
+    // Per-section color overrides live in settings.sectionColorOverrides.
+    // Live-preview patches arrive as `_overridesPatch: { sectionId: {...} }`.
+    // Each per-section value is the FULL intended state for that section
+    // (the customizer always sends the complete next slots map computed
+    // from its local draft), so we REPLACE rather than slot-merge — that
+    // way clearing a slot in the customizer actually removes it from the
+    // preview. `null` means "drop all overrides for this section".
+    const overridesPatch = settingsOverrides && settingsOverrides._overridesPatch;
+    if (overridesPatch && typeof overridesPatch === 'object') {
+      const baseOverrides = (siteConfig.settings && siteConfig.settings.sectionColorOverrides) || {};
+      const mergedOverrides = { ...baseOverrides };
+      for (const [secId, slots] of Object.entries(overridesPatch)) {
+        if (slots && typeof slots === 'object' && Object.keys(slots).length > 0) {
+          mergedOverrides[secId] = { ...slots };
+        } else {
+          delete mergedOverrides[secId];
+        }
+      }
+      merged.settings = { ...merged.settings, sectionColorOverrides: mergedOverrides };
+    }
     return merged;
   }, [previewSettings, siteConfig]);
 
@@ -363,6 +395,20 @@ export function SiteProvider({ children }) {
     };
   }, [resolvedTheme]);
 
+  // Per-section colour overrides live alongside the assigned scheme. These
+  // are arbitrary { background?, text?, button?, ... } maps that take
+  // precedence over the assigned scheme on a per-slot basis. Source of
+  // truth: settings.sectionColorOverrides[sectionId].
+  const getOverridesForSection = useMemo(() => {
+    return (sectionId) => {
+      if (!sectionId) return null;
+      const settings = effectiveSiteConfig?.settings;
+      if (!settings || !settings.sectionColorOverrides) return null;
+      const found = settings.sectionColorOverrides[sectionId];
+      return (found && typeof found === 'object') ? found : null;
+    };
+  }, [effectiveSiteConfig]);
+
   return (
     <SiteContext.Provider value={{
       siteConfig: effectiveSiteConfig,
@@ -372,6 +418,7 @@ export function SiteProvider({ children }) {
       refetchSite: () => subdomain && fetchSiteConfig(subdomain, true),
       themeConfig: resolvedTheme,
       getSchemeForSection,
+      getOverridesForSection,
     }}>
       {children}
     </SiteContext.Provider>

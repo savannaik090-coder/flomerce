@@ -26,6 +26,8 @@ import PromoBannerEditor from './PromoBannerEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import ThemePanel from './ThemePanel.jsx';
 import SchemeAssignmentBar from './SchemeAssignmentBar.jsx';
+import SectionColorOverrides from './SectionColorOverrides.jsx';
+import { SECTION_SLOTS } from '../theme/sectionSelectors.js';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
 import { useConfirm } from '../../../../shared/ui/ConfirmDialog.jsx';
@@ -298,7 +300,16 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   }, []);
 
   const sendPreviewUpdate = useCallback((settingsPatch) => {
-    accumulatedSettingsRef.current = { ...accumulatedSettingsRef.current, ...settingsPatch };
+    // Most keys shallow-merge, but `_overridesPatch` needs per-section
+    // accumulation so editing a second section doesn't drop the first
+    // section's unsaved preview when the iframe reloads and we replay
+    // accumulatedSettingsRef.
+    const prev = accumulatedSettingsRef.current || {};
+    const next = { ...prev, ...settingsPatch };
+    if (settingsPatch && settingsPatch._overridesPatch && typeof settingsPatch._overridesPatch === 'object') {
+      next._overridesPatch = { ...(prev._overridesPatch || {}), ...settingsPatch._overridesPatch };
+    }
+    accumulatedSettingsRef.current = next;
     try {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
@@ -430,6 +441,116 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     await saveThemeConfig(themeDraft);
     refreshPreview();
   }, [themeDraft, saveThemeConfig]);
+
+  // ===== Per-section colour overrides =========================================
+  // Lives in settings.sectionColorOverrides[sectionId][slotKey]. Auto-saves on
+  // each edit (parallels toggleSectionVisibility) so the merchant doesn't need
+  // a separate Save button — feedback is the live preview itself.
+  //
+  // The serialized save pattern below ensures rapid colour-picker drags don't
+  // queue dozens of requests; we always send the LATEST full overrides map.
+  const sectionOverrides = useMemo(() => {
+    const settings = siteConfig?.settings;
+    if (!settings || typeof settings !== 'object') return {};
+    const ov = settings.sectionColorOverrides;
+    return (ov && typeof ov === 'object') ? ov : {};
+  }, [siteConfig?.settings]);
+
+  // Local optimistic copy so the customizer reflects edits instantly even
+  // though `siteConfig` only updates after the save round-trip finishes.
+  const [overridesDraft, setOverridesDraft] = useState({});
+
+  const overridesQueueRef = useRef(null);
+  const overridesInflightRef = useRef(false);
+  // Marks the draft as dirty (user-edited locally). While dirty, we DO NOT
+  // overwrite the draft with whatever siteConfig.settings reports, otherwise
+  // a stale refetch could snap the inputs back to old values mid-edit.
+  const overridesDirtyRef = useRef(false);
+
+  useEffect(() => {
+    if (overridesDirtyRef.current) return;
+    if (overridesQueueRef.current || overridesInflightRef.current) return;
+    setOverridesDraft(sectionOverrides);
+  }, [sectionOverrides]);
+
+  const flushOverridesSave = useCallback(async () => {
+    if (overridesInflightRef.current) return;
+    if (!siteConfig?.id) return;
+    overridesInflightRef.current = true;
+    try {
+      while (overridesQueueRef.current) {
+        const toSave = overridesQueueRef.current;
+        overridesQueueRef.current = null;
+        try {
+          const token = sessionStorage.getItem('site_admin_token');
+          const res = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `SiteAdmin ${token}` : '',
+            },
+            body: JSON.stringify({ settings: { sectionColorOverrides: toSave } }),
+          });
+          if (!res.ok) throw new Error('save failed');
+        } catch (e) {
+          console.error('[overrides] save failed:', e);
+        }
+      }
+      // Once the queue fully drains we can let server-side state win again,
+      // unblocking the resync useEffect for any future siteConfig refetches.
+      overridesDirtyRef.current = false;
+    } finally {
+      overridesInflightRef.current = false;
+    }
+  }, [siteConfig?.id]);
+
+  const setOverrideForSection = useCallback((sectionId, slotKey, value) => {
+    if (!sectionId || !slotKey) return;
+    const allowed = SECTION_SLOTS[sectionId] || [];
+    if (!allowed.includes(slotKey)) return;
+    overridesDirtyRef.current = true;
+    setOverridesDraft(prev => {
+      const sectionPrev = (prev && prev[sectionId]) || {};
+      let nextSection;
+      if (value === null || value === undefined || value === '') {
+        const { [slotKey]: _, ...rest } = sectionPrev;
+        nextSection = rest;
+      } else {
+        nextSection = { ...sectionPrev, [slotKey]: value };
+      }
+      const next = { ...(prev || {}) };
+      if (Object.keys(nextSection).length === 0) {
+        delete next[sectionId];
+      } else {
+        next[sectionId] = nextSection;
+      }
+      // Live preview: send a tiny patch with just the section that changed.
+      // SiteContext merges per-section so other unrelated overrides survive.
+      sendPreviewUpdate({
+        _overridesPatch: {
+          [sectionId]: Object.keys(nextSection).length === 0 ? null : nextSection,
+        },
+      });
+      // Queue the FULL map for save (backend shallow-merges settings, so we
+      // must send the entire sectionColorOverrides blob, not a diff).
+      overridesQueueRef.current = next;
+      flushOverridesSave();
+      return next;
+    });
+  }, [sendPreviewUpdate, flushOverridesSave]);
+
+  const resetOverridesForSection = useCallback((sectionId) => {
+    if (!sectionId) return;
+    overridesDirtyRef.current = true;
+    setOverridesDraft(prev => {
+      const next = { ...(prev || {}) };
+      delete next[sectionId];
+      sendPreviewUpdate({ _overridesPatch: { [sectionId]: null } });
+      overridesQueueRef.current = next;
+      flushOverridesSave();
+      return next;
+    });
+  }, [sendPreviewUpdate, flushOverridesSave]);
 
   const sendScrollToSection = useCallback((sectionId) => {
     try {
@@ -960,6 +1081,23 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             sectionId={activeSection}
             themeConfig={themeDraft}
             onAssign={setSchemeForSection}
+          />
+        )}
+        {/* Per-section colour overrides — collapsible, lives below the
+            scheme dropdown. Lets the merchant tweak individual slots (e.g.
+            promo banner background) without redefining a whole scheme. */}
+        {activeSection && SECTION_SLOTS[activeSection] && themeDraft && (
+          <SectionColorOverrides
+            sectionId={activeSection}
+            scheme={(() => {
+              const assignments = themeDraft.sectionAssignments || {};
+              const targetId = assignments[activeSection];
+              const found = targetId ? themeDraft.schemes?.find(s => s.id === targetId) : null;
+              return found || themeDraft.schemes?.find(s => s.isDefault) || themeDraft.schemes?.[0] || null;
+            })()}
+            overrides={overridesDraft[activeSection] || {}}
+            onChange={(slot, val) => setOverrideForSection(activeSection, slot, val)}
+            onResetAll={() => resetOverridesForSection(activeSection)}
           />
         )}
         {renderEditor()}

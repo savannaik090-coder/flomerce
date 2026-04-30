@@ -1,68 +1,97 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useContext, useId, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { buildScopedCSS, resolveSectionColors } from './sectionSelectors.js';
 
-// SchemeScope wraps a section in a div that injects the resolved scheme's
-// 7 color tokens as CSS custom properties on itself, scoping all descendants
-// to the merchant's chosen colors for that section.
+// SchemeScope wraps a section. Two layers of recoloring run in parallel:
 //
-// CRITICAL: in addition to the new --scheme-* tokens, this also overrides
-// the legacy --color-primary / --color-secondary / --color-accent variables.
-// That means existing CSS files (which use var(--color-primary) extensively)
-// automatically pick up the section's scheme without needing a mass
-// hex-replacement pass — a key strategy for shipping this without rewriting
-// 70 stylesheets.
+//   1. CSS variables (--scheme-*, plus legacy --color-* aliases) on the
+//      wrapper div. Any CSS that uses var(--scheme-*) or var(--color-primary)
+//      automatically picks up the section's colors.
 //
-// Usage:
-//   <SchemeScope sectionId="hero-slider">
-//     <HeroSlider />
-//   </SchemeScope>
+//   2. A scoped <style> block (built from sectionSelectors.js) that emits
+//      high-specificity rules with !important. This is the layer that
+//      actually beats the existing hardcoded `!important` declarations in
+//      the storefront stylesheets — without that, schemes are a no-op for
+//      every legacy section.
+//
+// Per-section overrides come from siteConfig.settings.sectionColorOverrides
+// via SiteContext.getOverridesForSection(sectionId). Overrides take precedence
+// over the assigned scheme on a per-slot basis.
 export default function SchemeScope({ sectionId, as: Tag = 'div', style, className, children, ...rest }) {
   const ctx = useContext(SiteContext);
+  // Stable unique scope id per <SchemeScope> instance so the emitted CSS
+  // doesn't leak into other sections that share the same sectionId.
+  const reactId = useId();
+  const scopeId = useMemo(() => reactId.replace(/[^a-zA-Z0-9_-]/g, '_'), [reactId]);
+
   const scheme = useMemo(() => {
     if (ctx?.getSchemeForSection) return ctx.getSchemeForSection(sectionId);
     return null;
   }, [ctx, sectionId]);
 
-  if (!scheme) {
+  const overrides = useMemo(() => {
+    if (ctx?.getOverridesForSection) return ctx.getOverridesForSection(sectionId);
+    return null;
+  }, [ctx, sectionId]);
+
+  const effective = useMemo(() => resolveSectionColors(scheme, overrides), [scheme, overrides]);
+
+  const scopedCss = useMemo(() => {
+    if (!effective || Object.keys(effective).length === 0) return '';
+    return buildScopedCSS(scopeId, sectionId, scheme, overrides);
+  }, [scopeId, sectionId, scheme, overrides, effective]);
+
+  if (!scheme && !overrides) {
     // No theme resolved yet — render children unwrapped so initial paint
     // doesn't lose CSS context.
     return <>{children}</>;
   }
 
-  const cssVars = schemeToCssVars(scheme);
+  const cssVars = effectiveToCssVars(effective);
   const merged = { ...cssVars, ...(style || {}) };
   return (
     <Tag
       className={className}
       style={merged}
-      data-flomerce-scheme={scheme.id}
+      data-flomerce-scope={scopeId}
+      data-flomerce-scheme={scheme?.id}
       data-flomerce-section={sectionId}
       {...rest}
     >
+      {scopedCss && (
+        <style data-flomerce-scope-css={scopeId} dangerouslySetInnerHTML={{ __html: scopedCss }} />
+      )}
       {children}
     </Tag>
   );
 }
 
+function effectiveToCssVars(eff) {
+  if (!eff) return {};
+  const vars = {};
+  if (eff.background) vars['--scheme-bg'] = eff.background;
+  if (eff.text) vars['--scheme-text'] = eff.text;
+  if (eff.button) {
+    vars['--scheme-button'] = eff.button;
+    vars['--color-primary'] = eff.button;
+    vars['--color-primary-dark'] = eff.button;
+  }
+  if (eff.buttonText) vars['--scheme-button-text'] = eff.buttonText;
+  if (eff.secondaryButton) {
+    vars['--scheme-secondary-button'] = eff.secondaryButton;
+    vars['--color-secondary'] = eff.secondaryButton;
+    vars['--color-primary-light'] = eff.secondaryButton;
+  }
+  if (eff.link) vars['--scheme-link'] = eff.link;
+  if (eff.accent) {
+    vars['--scheme-accent'] = eff.accent;
+    vars['--color-accent'] = eff.accent;
+    vars['--color-accent-light'] = eff.accent;
+    vars['--color-accent-gold'] = eff.accent;
+  }
+  return vars;
+}
+
 export function schemeToCssVars(scheme) {
-  if (!scheme) return {};
-  return {
-    '--scheme-bg': scheme.background,
-    '--scheme-text': scheme.text,
-    '--scheme-button': scheme.button,
-    '--scheme-button-text': scheme.buttonText,
-    '--scheme-secondary-button': scheme.secondaryButton,
-    '--scheme-link': scheme.link,
-    '--scheme-accent': scheme.accent,
-    // Legacy variable overrides — every existing var(--color-primary) etc.
-    // in the codebase resolves through these, so changing a scheme instantly
-    // recolors every section assigned to it without touching the stylesheets.
-    '--color-primary': scheme.button,
-    '--color-primary-light': scheme.secondaryButton,
-    '--color-primary-dark': scheme.button,
-    '--color-secondary': scheme.secondaryButton,
-    '--color-accent': scheme.accent,
-    '--color-accent-light': scheme.accent,
-    '--color-accent-gold': scheme.accent,
-  };
+  return effectiveToCssVars(scheme);
 }
