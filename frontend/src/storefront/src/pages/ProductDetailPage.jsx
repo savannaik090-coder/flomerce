@@ -132,24 +132,9 @@ export default function ProductDetailPage() {
     } : null,
   });
 
-  // Phase 4: layout variant picker (admin-managed). Whitelist guard so a typo
-  // in the stored settings can never produce an unstyled page — unknown values
-  // fall back to the original "classic" layout. Computed up here (BEFORE any
-  // conditional early returns) so the Lora-injection useEffect below stays
-  // above the loading/error guards and never violates Rules of Hooks.
-  const pdpLayoutVariant = (() => {
-    const v = siteConfig?.settings?.pdpLayoutVariant;
-    return v === 'sticky' ? 'sticky' : 'classic';
-  })();
-
-  // The Conversion-Sticky variant uses Lora as its serif voice (the original
-  // mockup also paired it with Playfair Display, but the user has explicitly
-  // ruled out Playfair on the PDP — so Lora carries both body and headings
-  // here). Inject the Google Fonts <link> only when this variant is active so
-  // the classic PDP doesn't pay the network cost. Cleaned up on unmount /
-  // when the merchant flips the variant back to classic.
+  // The PDP uses Lora as its serif voice across the page. Inject the Google
+  // Fonts <link> on mount and clean it up on unmount.
   useEffect(() => {
-    if (pdpLayoutVariant !== 'sticky') return;
     const linkId = 'pdp-sticky-lora-font';
     if (document.getElementById(linkId)) return;
     const link = document.createElement('link');
@@ -161,7 +146,7 @@ export default function ProductDetailPage() {
       const el = document.getElementById(linkId);
       if (el && el.parentNode) el.parentNode.removeChild(el);
     };
-  }, [pdpLayoutVariant]);
+  }, []);
 
   const productOptions = product?.options || null;
   const hasColors = productOptions?.colors?.length > 0;
@@ -273,9 +258,6 @@ export default function ProductDetailPage() {
   const pol = (key) => settings[key] || categoryDefaults[key] || '';
 
   // ===== PDP display toggles (managed in admin → Visual Customizer → Settings → Product Page) =====
-  // (`pdpLayoutVariant` + the Lora <link> useEffect are hoisted above the
-  // loading/error early returns near the top of this component to keep hook
-  // ordering stable across renders.)
   const pdpShowMrp = settings.pdpShowMrp !== false;
   const pdpShowFeaturedBadge = settings.pdpShowFeaturedBadge !== false;
   const pdpShowLowStockCue = settings.pdpShowLowStockCue !== false;
@@ -354,7 +336,7 @@ export default function ProductDetailPage() {
   const hasAnySpec = hasSpecWeight || hasSpecDims || customSpecs.length > 0;
 
   return (
-    <div className={`${isModern ? 'modern-theme ' : ''}pdp-layout-${pdpLayoutVariant}`}>
+    <div className={`${isModern ? 'modern-theme ' : ''}pdp-layout-sticky`}>
       <div className="product-detail-container">
         <ProductGallery
           images={product.images}
@@ -431,13 +413,10 @@ export default function ProductDetailPage() {
 
             {showLowStockCue && (
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#fff7ed', color: '#9a3412',
-                border: '1px solid #fed7aa', borderRadius: 8,
-                padding: '8px 12px', fontSize: 13, fontWeight: 600,
+                color: '#dc2626',
+                fontSize: 13, fontWeight: 600,
                 margin: '8px 0 0',
               }}>
-                <i className="fas fa-fire" style={{ color: '#ea580c' }} />
                 <TranslatedText text={`Only ${product.stock} left in stock`} />
               </div>
             )}
@@ -514,46 +493,31 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* CTA stack. The Conversion-Sticky variant promotes Buy Now to
-                the primary action — we reorder the actual DOM nodes (not just
-                visual `order`) so keyboard tab-flow and screen-reader order
-                match what the shopper sees. */}
+            {/* CTA stack — Buy Now is the primary action, followed by Add to
+                Cart and the Wishlist toggle. Order matches what the shopper
+                sees so keyboard tab-flow and screen-reader order line up. */}
             <div className="product-actions">
-              {(() => {
-                const addToCartBtn = (
-                  <button
-                    key="atc"
-                    className="add-to-cart-btn"
-                    onClick={handleAddToCart}
-                    disabled={isOutOfStock}
-                  >
-                    {isOutOfStock ? <TranslatedText text="OUT OF STOCK" /> : <TranslatedText text="ADD TO CART" />}
-                  </button>
-                );
-                const buyNowBtn = (
-                  <button
-                    key="buy"
-                    className="buy-now-btn"
-                    onClick={handleBuyNow}
-                    disabled={isOutOfStock}
-                  >
-                    <TranslatedText text="BUY NOW" />
-                  </button>
-                );
-                const wishlistBtn = (
-                  <button
-                    key="wish"
-                    className={`add-to-wishlist-btn${productInWishlist ? ' active' : ''}`}
-                    onClick={handleWishlistToggle}
-                  >
-                    <i className="fas fa-heart" />
-                    {productInWishlist ? <TranslatedText text="REMOVE FROM WISHLIST" /> : <TranslatedText text="ADD TO WISHLIST" />}
-                  </button>
-                );
-                return pdpLayoutVariant === 'sticky'
-                  ? [buyNowBtn, addToCartBtn, wishlistBtn]
-                  : [addToCartBtn, buyNowBtn, wishlistBtn];
-              })()}
+              <button
+                className="buy-now-btn"
+                onClick={handleBuyNow}
+                disabled={isOutOfStock}
+              >
+                <TranslatedText text="BUY NOW" />
+              </button>
+              <button
+                className="add-to-cart-btn"
+                onClick={handleAddToCart}
+                disabled={isOutOfStock}
+              >
+                {isOutOfStock ? <TranslatedText text="OUT OF STOCK" /> : <TranslatedText text="ADD TO CART" />}
+              </button>
+              <button
+                className={`add-to-wishlist-btn${productInWishlist ? ' active' : ''}`}
+                onClick={handleWishlistToggle}
+              >
+                <i className="fas fa-heart" />
+                {productInWishlist ? <TranslatedText text="REMOVE FROM WISHLIST" /> : <TranslatedText text="ADD TO WISHLIST" />}
+              </button>
             </div>
 
             {pdpShowTrustBadges && (

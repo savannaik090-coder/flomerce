@@ -817,7 +817,7 @@
 }
 
 .related-products-scroll .product-item {
-    flex: 0 0 300px;
+    flex: 0 0 380px;
     scroll-snap-align: start;
     animation: none;
     opacity: 1;
@@ -825,7 +825,7 @@
 }
 
 .related-products-scroll .product-image {
-    height: 380px;
+    height: 480px;
 }
 
 .product-policies-accordions {
@@ -846,10 +846,10 @@
     background: none;
     border: none;
     cursor: pointer;
-    font-family: var(--font-primary, 'Segoe UI', system-ui, -apple-system, sans-serif);
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
     font-size: 14px;
-    font-weight: 500;
-    color: #333;
+    font-weight: 600;
+    color: #2a2520;
     letter-spacing: 0.3px;
     text-align: start;
 }
@@ -862,18 +862,18 @@
 
 .policy-accordion-title i {
     font-size: 14px;
-    color: #999;
+    color: #6b5b48;
     width: 18px;
     text-align: center;
 }
 
 .policy-accordion.open .policy-accordion-title i {
-    color: #b5727a;
+    color: #603000;
 }
 
 .policy-accordion-arrow {
     font-size: 12px;
-    color: #999;
+    color: #6b5b48;
     transition: transform 0.3s ease;
 }
 
@@ -900,20 +900,20 @@
     display: flex;
     gap: 8px;
     padding: 6px 0;
-    font-family: var(--font-primary, sans-serif);
+    font-family: 'Lora', Georgia, 'Times New Roman', serif;
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.65;
 }
 
 .policy-item-label {
-    color: #888;
+    color: #6b5b48;
     font-weight: 600;
     min-width: 110px;
     flex-shrink: 0;
 }
 
 .policy-item-value {
-    color: #555;
+    color: #2a2520;
 }
 
 .product-detail-loading {
@@ -1046,11 +1046,11 @@
     }
 
     .related-products-scroll .product-item {
-        flex: 0 0 250px;
+        flex: 0 0 300px;
     }
 
     .related-products-scroll .product-image {
-        height: 320px;
+        height: 400px;
     }
 }
 
@@ -1099,11 +1099,11 @@
     }
 
     .related-products-scroll .product-item {
-        flex: 0 0 220px;
+        flex: 0 0 260px;
     }
 
     .related-products-scroll .product-image {
-        height: 280px;
+        height: 340px;
     }
 }
 
