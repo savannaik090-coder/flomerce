@@ -240,7 +240,26 @@ export async function getSiteWithConfig(env, siteRow) {
   if (!siteRow || !siteRow.id) return siteRow;
   const config = await getSiteConfig(env, siteRow.id);
   const { site_id, ...configData } = config;
-  return { ...siteRow, ...configData };
+  // Lazy-import to keep this util tree-shakeable for callers that don't
+  // need the theme system.
+  const merged = { ...siteRow, ...configData };
+  try {
+    const { ensureThemeConfig } = await import('./theme-config.js');
+    // Always backfill — read-time guarantees the storefront receives a
+    // structurally valid theme even for legacy site_config rows that pre-date
+    // the column. The result is sent back as a parsed object (not a string)
+    // so the storefront doesn't have to JSON.parse it again.
+    merged.theme_config = ensureThemeConfig(
+      configData.theme_config,
+      configData.primary_color,
+      configData.secondary_color,
+      null,
+    );
+  } catch (e) {
+    // If anything goes wrong, just leave whatever string came from the DB.
+    console.error('ensureThemeConfig failed:', e.message || e);
+  }
+  return merged;
 }
 
 export async function resolveSiteDBBySubdomain(env, subdomain) {

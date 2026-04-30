@@ -8,6 +8,7 @@ import { isPlanAtLeast } from '../../utils/plan.js';
 import LanguageSwitcher from '../LanguageSwitcher.jsx';
 import TranslatedText from '../TranslatedText.jsx';
 import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
+import SchemeScope from '../theme/SchemeScope.jsx';
 
 export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { translate: tx } = useShopperTranslation();
@@ -92,15 +93,23 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
         const isSingle = validMsgs.length <= 1;
         const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
 
+        // Wrap the promo banner in its own SchemeScope so it can be themed
+        // independently from the surrounding nav. The classic promo banner
+        // physically lives inside <header> so React-DOM-wise it would inherit
+        // the navbar scheme without this explicit boundary.
+        const wrap = (node) => (
+          <SchemeScope sectionId="promo-banner">{node}</SchemeScope>
+        );
+
         if (isSingle) {
           if (validMsgs.length === 1) {
-            return (
+            return wrap(
               <div className="promo-banner" style={{ justifyContent: 'center' }}>
                 <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>{validMsgs[0]}</p>
               </div>
             );
           }
-          return (
+          return wrap(
             <div className="promo-banner" style={{ justifyContent: 'center' }}>
               <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>
                 {siteConfig?.brandName
@@ -112,7 +121,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
         }
 
         const block = validMsgs.flatMap((m, i) => i < validMsgs.length - 1 ? [m, sep] : [m]);
-        return (
+        return wrap(
           <div className="promo-banner">
             <p className="banner-text">
               {block}{sep}{block}{sep}{block}{sep}{block}

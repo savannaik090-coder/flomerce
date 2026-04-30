@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import { useSiteConfig } from '../hooks/useSiteConfig.js';
 import { getCategories } from '../services/categoryService.js';
 import { useSEO } from '../hooks/useSEO.js';
+import SchemeScope from '../components/theme/SchemeScope.jsx';
 import '../styles/hero.css';
 import '../styles/categories.css';
 import '../styles/featured-video.css';
@@ -119,51 +120,65 @@ export default function HomePage() {
   if (isModern) {
     return (
       <div className="home-page">
-        <ActiveHero />
-        {orderedSections.map((item) => renderSection(item))}
-        <ChooseByCategoryModern categories={allCategories} />
-        <TrendingNow />
-        <BrandStory />
-        <ProductShowcase />
-        <ActiveCustomerReviews />
-        <FirstVisitBanner />
+        <SchemeScope sectionId="hero-slider"><ActiveHero /></SchemeScope>
+        <SchemeScope sectionId="categories">{orderedSections.map((item) => renderSection(item))}</SchemeScope>
+        <SchemeScope sectionId="categories"><ChooseByCategoryModern categories={allCategories} /></SchemeScope>
+        <SchemeScope sectionId="trending-now"><TrendingNow /></SchemeScope>
+        <SchemeScope sectionId="brand-story"><BrandStory /></SchemeScope>
+        <SchemeScope sectionId="categories"><ProductShowcase /></SchemeScope>
+        <SchemeScope sectionId="customer-reviews"><ActiveCustomerReviews /></SchemeScope>
+        <SchemeScope sectionId="welcome-banner"><FirstVisitBanner /></SchemeScope>
       </div>
     );
   }
 
   return (
     <div className="home-page">
-      <HeroSlider />
+      <SchemeScope sectionId="hero-slider"><HeroSlider /></SchemeScope>
       {orderedSections.length > 0 && orderedSections[0].type === 'category' ? (
-        <CategorySection key={orderedSections[0].id} category={orderedSections[0].data} />
+        <SchemeScope key={orderedSections[0].id} sectionId="categories">
+          <CategorySection category={orderedSections[0].data} />
+        </SchemeScope>
       ) : orderedSections.length > 0 && orderedSections[0].type === 'subcategory' ? (
-        <SubcategorySection key={orderedSections[0].id} section={orderedSections[0].data} />
+        <SchemeScope key={orderedSections[0].id} sectionId="categories">
+          <SubcategorySection section={orderedSections[0].data} />
+        </SchemeScope>
       ) : null}
-      <ChooseByCategory categories={allCategories} />
+      <SchemeScope sectionId="categories"><ChooseByCategory categories={allCategories} /></SchemeScope>
       {orderedSections.length > 1 && orderedSections[1].type === 'category' ? (
-        <CategorySection key={orderedSections[1].id} category={orderedSections[1].data} />
+        <SchemeScope key={orderedSections[1].id} sectionId="categories">
+          <CategorySection category={orderedSections[1].data} />
+        </SchemeScope>
       ) : orderedSections.length > 1 && orderedSections[1].type === 'subcategory' ? (
-        <SubcategorySection key={orderedSections[1].id} section={orderedSections[1].data} />
+        <SchemeScope key={orderedSections[1].id} sectionId="categories">
+          <SubcategorySection section={orderedSections[1].data} />
+        </SchemeScope>
       ) : null}
-      <WatchAndBuy />
-      <FeaturedVideoSection />
+      <SchemeScope sectionId="watchbuy"><WatchAndBuy /></SchemeScope>
+      <SchemeScope sectionId="featured-video"><FeaturedVideoSection /></SchemeScope>
       {orderedSections.length > 2 && orderedSections[2].type === 'category' ? (
-        <CategorySection key={orderedSections[2].id} category={orderedSections[2].data} />
+        <SchemeScope key={orderedSections[2].id} sectionId="categories">
+          <CategorySection category={orderedSections[2].data} />
+        </SchemeScope>
       ) : orderedSections.length > 2 && orderedSections[2].type === 'subcategory' ? (
-        <SubcategorySection key={orderedSections[2].id} section={orderedSections[2].data} />
+        <SchemeScope key={orderedSections[2].id} sectionId="categories">
+          <SubcategorySection section={orderedSections[2].data} />
+        </SchemeScope>
       ) : null}
-      <ShopTheLook />
+      <SchemeScope sectionId="shop-the-look"><ShopTheLook /></SchemeScope>
       {orderedSections.slice(3).map((item) => (
-        item.type === 'category' ? (
-          <CategorySection key={item.id} category={item.data} />
-        ) : (
-          <SubcategorySection key={item.id} section={item.data} />
-        )
+        <SchemeScope key={item.id} sectionId="categories">
+          {item.type === 'category' ? (
+            <CategorySection category={item.data} />
+          ) : (
+            <SubcategorySection section={item.data} />
+          )}
+        </SchemeScope>
       ))}
-      <ProductShowcase />
-      <StoreLocations />
-      <ActiveCustomerReviews />
-      <FirstVisitBanner />
+      <SchemeScope sectionId="categories"><ProductShowcase /></SchemeScope>
+      <SchemeScope sectionId="store-locations"><StoreLocations /></SchemeScope>
+      <SchemeScope sectionId="customer-reviews"><ActiveCustomerReviews /></SchemeScope>
+      <SchemeScope sectionId="welcome-banner"><FirstVisitBanner /></SchemeScope>
     </div>
   );
 }

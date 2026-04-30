@@ -24,6 +24,8 @@ import FAQSection from './FAQSection.jsx';
 import BlogSection from './BlogSection.jsx';
 import PromoBannerEditor from './PromoBannerEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
+import ThemePanel from './ThemePanel.jsx';
+import SchemeAssignmentBar from './SchemeAssignmentBar.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
 import { useConfirm } from '../../../../shared/ui/ConfirmDialog.jsx';
@@ -95,9 +97,59 @@ function getViewport() {
   return 'desktop';
 }
 
+function deepClone(value) {
+  if (value === null || value === undefined) return value;
+  try { return JSON.parse(JSON.stringify(value)); } catch (e) { return value; }
+}
+
+// Sections that can carry a per-section color scheme. Page-level surfaces
+// (about/contact/faq/blog) and settings-driven surfaces (checkout/PDP/
+// policies/terms/privacy) are included so the merchant can theme them too.
+const SCHEMEABLE_SECTIONS = new Set([
+  'navbar', 'promo-banner', 'hero-slider', 'welcome-banner',
+  'categories', 'watchbuy', 'featured-video', 'shop-the-look',
+  'store-locations', 'trending-now', 'brand-story',
+  'customer-reviews', 'footer',
+  'about-us', 'contact-us', 'book-appointment', 'faq', 'blog',
+  'checkout', 'product-page', 'product-policies', 'terms', 'privacy',
+]);
+
 export default function VisualCustomizer({ currentPlan, onBack }) {
   const { siteConfig } = useContext(SiteContext);
   const confirm = useConfirm();
+
+  // Theme draft: starts as a deep copy of the saved theme so per-section
+  // dropdowns and the Theme tab can mutate it freely without touching the
+  // server. The Theme tab has its own Save button; per-section assignment
+  // changes auto-save (parallels the visibility-toggle behavior).
+  const [themeDraft, setThemeDraft] = useState(() => deepClone(siteConfig?.themeConfig));
+  const themeSavedRef = useRef(JSON.stringify(siteConfig?.themeConfig || {}));
+  // Mirror of themeDraft kept in a ref so async callbacks (like the
+  // post-save dirty re-check after an assignment auto-save) read the
+  // latest value rather than the closed-over snapshot from when the
+  // callback was scheduled.
+  const themeDraftRef = useRef(siteConfig?.themeConfig || null);
+  const [themeHasChanges, setThemeHasChanges] = useState(false);
+  const [themeSaving, setThemeSaving] = useState(false);
+
+  // Resync the draft whenever the canonical theme on the server changes
+  // (e.g. after a successful save, or if the merchant refreshes the site
+  // config). This keeps the editor in sync with the source of truth.
+  useEffect(() => {
+    const incoming = siteConfig?.themeConfig;
+    const incomingStr = JSON.stringify(incoming || {});
+    if (incomingStr !== themeSavedRef.current) {
+      themeSavedRef.current = incomingStr;
+      const cloned = deepClone(incoming);
+      setThemeDraft(cloned);
+      themeDraftRef.current = cloned;
+      setThemeHasChanges(false);
+    }
+  }, [siteConfig?.themeConfig]);
+
+  // Keep the ref synced on every draft change.
+  useEffect(() => { themeDraftRef.current = themeDraft; }, [themeDraft]);
+
   const [activeSection, setActiveSection] = useState(null);
   const [previewDevice, setPreviewDevice] = useState('desktop');
   const [previewKey, setPreviewKey] = useState(0);
@@ -245,6 +297,131 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     } catch (e) { console.warn('[preview] postMessage failed:', e); }
   }, []);
 
+  // Push the current theme draft into the live preview as a `_themePatch`.
+  // SiteContext recognises this key and overlays the theme on top of the
+  // saved one, so the storefront recolors immediately as the merchant edits
+  // schemes or reassigns sections.
+  const pushThemePreview = useCallback((draft) => {
+    if (!draft) return;
+    sendPreviewUpdate({
+      _themePatch: {
+        schemes: draft.schemes,
+        sectionAssignments: draft.sectionAssignments,
+      },
+    });
+  }, [sendPreviewUpdate]);
+
+  // Persist the entire theme blob. Called by the Theme tab's Save button and
+  // by per-section assignment changes (which auto-save like visibility).
+  const saveThemeConfig = useCallback(async (theme) => {
+    if (!siteConfig?.id || !theme) return false;
+    setThemeSaving(true);
+    try {
+      const token = sessionStorage.getItem('site_admin_token');
+      const res = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `SiteAdmin ${token}` : '',
+        },
+        body: JSON.stringify({ themeConfig: theme }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      themeSavedRef.current = JSON.stringify(theme);
+      setThemeHasChanges(false);
+      return true;
+    } catch (e) {
+      console.error('Failed to save theme:', e);
+      return false;
+    } finally {
+      setThemeSaving(false);
+    }
+  }, [siteConfig?.id]);
+
+  // Per-section assignment change: optimistic UI update + preview push +
+  // serialized auto-save (mirrors toggleSectionVisibility's pattern so two
+  // rapid changes don't race the server).
+  //
+  // CRITICAL: the auto-save payload is built from the *saved* theme + the
+  // new assignments only, NOT from the live themeDraft. If we sent the
+  // full draft, a merchant who is mid-edit on a color in the Theme tab
+  // would have those uncommitted color changes silently persisted by an
+  // unrelated dropdown click — surprising and not what they asked for.
+  const themeAssignSaveRef = useRef({ inflight: false, queued: null });
+  const setSchemeForSection = useCallback((sectionId, schemeId) => {
+    setThemeDraft(prev => {
+      if (!prev) return prev;
+      const next = {
+        ...prev,
+        sectionAssignments: { ...(prev.sectionAssignments || {}), [sectionId]: schemeId },
+      };
+
+      // Build a save payload that:
+      // (a) uses the last-saved theme as the base, NOT the live themeDraft,
+      //     so we don't commit pending Theme-tab color edits.
+      // (b) merges into ANY already-queued payload from a previous rapid
+      //     dropdown change, so two clicks in quick succession don't drop
+      //     the first one. Without this, the second queued payload would
+      //     re-derive from themeSavedRef and overwrite the first
+      //     assignment back to its original value.
+      const queuedAlready = themeAssignSaveRef.current.queued;
+      let savedBase = queuedAlready;
+      if (!savedBase || !Array.isArray(savedBase.schemes)) {
+        try { savedBase = JSON.parse(themeSavedRef.current || '{}'); } catch (e) { savedBase = null; }
+      }
+      if (!savedBase || !Array.isArray(savedBase.schemes)) {
+        // Fallback: if we somehow have no saved baseline yet (very early
+        // first paint), use the draft minus any in-flight changes — at
+        // worst the merchant's first action saves what they currently see.
+        savedBase = next;
+      }
+      const savePayload = {
+        ...savedBase,
+        sectionAssignments: { ...(savedBase.sectionAssignments || {}), [sectionId]: schemeId },
+      };
+
+      themeAssignSaveRef.current.queued = savePayload;
+      (async () => {
+        if (themeAssignSaveRef.current.inflight) return;
+        themeAssignSaveRef.current.inflight = true;
+        try {
+          while (themeAssignSaveRef.current.queued) {
+            const toSave = themeAssignSaveRef.current.queued;
+            themeAssignSaveRef.current.queued = null;
+            await saveThemeConfig(toSave);
+          }
+        } finally {
+          themeAssignSaveRef.current.inflight = false;
+          // Preserve "has unsaved color edits" dirty flag — saveThemeConfig
+          // clears themeHasChanges, but if the live draft still differs
+          // from the saved baseline (because the merchant is mid-color-edit
+          // in the Theme tab) we must restore the dirty indicator so the
+          // Save Theme button stays clickable. Reading from the ref ensures
+          // we see the LATEST draft, not the snapshot from when the
+          // callback was scheduled.
+          const draftStr = JSON.stringify(themeDraftRef.current || {});
+          setThemeHasChanges(draftStr !== themeSavedRef.current);
+        }
+      })();
+      pushThemePreview(next);
+      return next;
+    });
+  }, [saveThemeConfig, pushThemePreview]);
+
+  // Theme tab: applies a draft (e.g. an edited scheme), updates the dirty
+  // flag, and pushes a live preview without saving.
+  const applyThemeDraft = useCallback((next) => {
+    setThemeDraft(next);
+    setThemeHasChanges(JSON.stringify(next || {}) !== themeSavedRef.current);
+    pushThemePreview(next);
+  }, [pushThemePreview]);
+
+  const handleThemeSave = useCallback(async () => {
+    if (!themeDraft) return;
+    await saveThemeConfig(themeDraft);
+    refreshPreview();
+  }, [themeDraft, saveThemeConfig]);
+
   const sendScrollToSection = useCallback((sectionId) => {
     try {
       if (iframeRef.current?.contentWindow) {
@@ -280,6 +457,20 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
 
   const handleIframeLoad = useCallback(() => {
     iframeLoadedRef.current = true;
+    // Replay any preview-only state we accumulated before the iframe
+    // reload (refresh button, route change, theme save → preview refresh)
+    // so unsaved theme/scheme/visibility patches survive across reloads.
+    // Without this, a merchant editing colors then triggering any preview
+    // refresh would lose all in-flight previews and see the saved state.
+    try {
+      const accumulated = accumulatedSettingsRef.current;
+      if (accumulated && Object.keys(accumulated).length > 0 && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          { type: 'FLOMERCE_PREVIEW_UPDATE', settings: accumulated },
+          '*',
+        );
+      }
+    } catch (e) { console.warn('[preview] replay on load failed:', e); }
     if (!activeSection) return;
     const isPageSection =
       PAGE_SECTIONS.some(p => p.id === activeSection) ||
@@ -515,6 +706,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                     { id: 'sections', label: "Sections", icon: 'fa-layer-group' },
                     { id: 'pages', label: "Pages", icon: 'fa-file-alt' },
                     { id: 'settings', label: "Settings", icon: 'fa-cog' },
+                    { id: 'theme', label: "Theme", icon: 'fa-palette' },
                   ].map(tab => (
                     <button
                       key={tab.id}
@@ -677,6 +869,16 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                 </div>
               )}
 
+              {sidebarTab === 'theme' && (
+                <ThemePanel
+                  themeConfig={themeDraft}
+                  saving={themeSaving}
+                  hasChanges={themeHasChanges}
+                  onChange={applyThemeDraft}
+                  onSave={handleThemeSave}
+                />
+              )}
+
               {sidebarTab === 'settings' && (
                 <div style={{ padding: '8px 12px' }}>
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
@@ -740,6 +942,17 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
         </span>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        {/* Per-section color scheme dropdown — sits at the top of every
+            editor so the merchant can switch this section's palette without
+            navigating to the Theme tab. Only shown for sections we know how
+            to theme. */}
+        {activeSection && SCHEMEABLE_SECTIONS.has(activeSection) && themeDraft && (
+          <SchemeAssignmentBar
+            sectionId={activeSection}
+            themeConfig={themeDraft}
+            onAssign={setSchemeForSection}
+          />
+        )}
         {renderEditor()}
       </div>
     </div>

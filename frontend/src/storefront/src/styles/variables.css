@@ -56,6 +56,16 @@
     --product-image-height: 480px;
     --product-image-height-md: 380px;
     --product-image-height-sm: 320px;
+    /* Scheme tokens — defaults map to the seeded brand palette. SchemeScope
+       and SiteContext override these per section so any element styled with
+       var(--scheme-*) instantly recolors when the merchant changes a scheme. */
+    --scheme-bg: #ffffff;
+    --scheme-text: #111111;
+    --scheme-button: #603000;
+    --scheme-button-text: #ffffff;
+    --scheme-secondary-button: #f1f5f9;
+    --scheme-link: #603000;
+    --scheme-accent: #b08c4c;
 }
 
 * {
