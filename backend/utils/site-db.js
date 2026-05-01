@@ -158,47 +158,6 @@ export async function ensureAddressCountryColumn(db, cacheKey) {
   }
 }
 
-const _themeConfigMigratedDBs = new Set();
-
-/**
- * One-shot ensure of the `site_config.theme_config` column. New shards
- * created after the per-section color scheme system landed already get
- * this from getSiteSchemaStatements, but live shards that pre-date that
- * change need the column added lazily — otherwise the createSite INSERT
- * (which lists `theme_config` explicitly) crashes with
- * `D1_ERROR: table site_config has no column named theme_config`,
- * blocking every new site creation on the affected shard.
- *
- * Cached as "migrated" only when the ALTER (or the existence check)
- * actually succeeds, so transient failures get retried on the next
- * request instead of being silently skipped for the worker isolate's
- * lifetime.
- */
-export async function ensureThemeConfigColumn(db, cacheKey) {
-  const key = cacheKey || 'default';
-  if (_themeConfigMigratedDBs.has(key)) return;
-  try {
-    const cols = await db.prepare("PRAGMA table_info(site_config)").all();
-    const hasThemeConfig = cols.results?.some(c => c.name === 'theme_config');
-    if (!hasThemeConfig) {
-      try {
-        await db.prepare("ALTER TABLE site_config ADD COLUMN theme_config TEXT").run();
-      } catch (e) {
-        const msg = String(e?.message || e);
-        // Race / "duplicate column" — safe to ignore. Other failures
-        // surface so the next request retries.
-        if (!/duplicate column|already exists/i.test(msg)) {
-          console.error('ensureThemeConfigColumn ALTER:', msg);
-          return;
-        }
-      }
-    }
-    _themeConfigMigratedDBs.add(key);
-  } catch (e) {
-    console.error('ensureThemeConfigColumn error:', e.message || e);
-  }
-}
-
 export function resolveSiteDB(env, site) {
   if (!site) {
     throw new Error('resolveSiteDB: site object is required');

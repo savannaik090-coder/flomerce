@@ -151,7 +151,7 @@
 }
 
 .home-category-scroll-arrow:hover {
-    background: var(--color-accent-gold, #d4af37);
+    background: #d4af37;
     color: white;
     transform: translateY(-50%) scale(1.1);
 }
@@ -181,7 +181,7 @@
 }
 
 .home-category-view-all:hover {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent-gold, #d4af37) 75%, black), var(--color-accent-gold, #d4af37));
+    background: linear-gradient(135deg, #b8941f, #d4af37);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(212,175,55,0.4);
     color: white;

@@ -4,7 +4,6 @@ import { validateSiteAdmin, hasPermission } from '../storefront/site-admin-worke
 import { updateProductStock } from '../storefront/products-worker.js';
 import { sendOrderEmails } from '../storefront/orders-worker.js';
 import { resolveSiteDBById, getSiteConfig, ensureShiprocketColumns } from '../../utils/site-db.js';
-import { createSiteForUser } from './sites-worker.js';
 import { estimateRowBytes, trackD1Update } from '../../utils/usage-tracker.js';
 import {
   normalizeFeatureGroups as normalizePlanFeatureGroups,
@@ -43,20 +42,6 @@ export async function handlePayments(request, env, path, ctx) {
       const op = pathParts[4];
       if (orderId && op === 'refund' && request.method === 'POST') {
         return handleRefundOrder(request, env, orderId);
-      }
-      return errorResponse('Not found', 404);
-    }
-    case 'pending-site': {
-      // Reconciliation endpoints used by the dashboard to recover from a
-      // payment-succeeded-but-site-creation-failed (or browser-closed) case.
-      //   GET  /api/payments/pending-site         → status for current user
-      //   POST /api/payments/pending-site/retry   → retry creation from stored form data
-      const op = pathParts[3];
-      if (!op && request.method === 'GET') {
-        return getPendingSiteStatus(request, env);
-      }
-      if (op === 'retry' && request.method === 'POST') {
-        return retryPendingSiteCreation(request, env);
       }
       return errorResponse('Not found', 404);
     }
@@ -449,236 +434,6 @@ async function fetchRazorpaySubscriptionEntity(env, subId) {
   }
 }
 
-/**
- * Persist a failed auto-creation attempt on the pending_subscriptions row.
- * Keeps the row around (so the dashboard reconciliation can surface the
- * error and offer a Retry button) and increments the attempt counter.
- */
-async function markPendingCreationFailed(env, subId, errorMsg, code) {
-  try {
-    const display = code ? `[${code}] ${errorMsg}` : errorMsg;
-    await env.DB.prepare(
-      `UPDATE pending_subscriptions
-       SET site_creation_error = ?,
-           site_creation_attempts = COALESCE(site_creation_attempts, 0) + 1
-       WHERE razorpay_subscription_id = ?`
-    ).bind(display, subId).run();
-  } catch (e) {
-    console.error('Failed to mark pending site creation failure:', e);
-  }
-}
-
-/**
- * Auto-create a site for a `pending_subscriptions` row whose Razorpay
- * subscription has just been activated (via verify endpoint OR webhook).
- *
- * Behaviour by case:
- *  - No stored form data on the row (existing-site upgrade, or row predates
- *    the form-data column): just delete the pending row. Returns
- *    { siteCreated: false, hadFormData: false }.
- *  - Stored form data + creation succeeds: links the new site_id onto the
- *    subscription row, deletes the pending row, returns
- *    { siteCreated: true, siteId, subdomain, hadFormData: true }.
- *  - Stored form data + creation fails: KEEPS the pending row, stores the
- *    error string + increments attempts, returns
- *    { siteCreated: false, hadFormData: true, error, code }.
- *
- * Caller MUST treat this as best-effort and never throw out of it — payment
- * activation has already committed by the time this runs.
- */
-async function attemptPendingSiteCreation(env, pending) {
-  const subId = pending.razorpay_subscription_id;
-  const formDataRaw = pending.site_form_data;
-
-  if (!formDataRaw) {
-    try {
-      await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(subId).run();
-    } catch {}
-    return { siteCreated: false, hadFormData: false };
-  }
-
-  let formData;
-  try {
-    formData = JSON.parse(formDataRaw);
-  } catch (parseErr) {
-    const errMsg = 'Stored site form data is corrupt: ' + (parseErr.message || 'parse failed');
-    await markPendingCreationFailed(env, subId, errMsg);
-    return { siteCreated: false, hadFormData: true, error: errMsg };
-  }
-
-  const userRecord = { id: pending.user_id };
-
-  let result;
-  try {
-    result = await createSiteForUser(env, userRecord, formData);
-  } catch (createErr) {
-    console.error('createSiteForUser threw unexpectedly:', createErr);
-    const errMsg = 'Site creation crashed: ' + (createErr.message || 'unknown');
-    await markPendingCreationFailed(env, subId, errMsg);
-    return { siteCreated: false, hadFormData: true, error: errMsg };
-  }
-
-  if (result && result.success) {
-    try {
-      await env.DB.prepare(
-        `UPDATE subscriptions SET site_id = ?, updated_at = datetime('now') WHERE razorpay_subscription_id = ? AND site_id IS NULL`
-      ).bind(result.data.id, subId).run();
-    } catch (linkErr) {
-      console.error('Failed to link new site to subscription (non-fatal):', linkErr);
-    }
-    try {
-      await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(subId).run();
-    } catch {}
-    return { siteCreated: true, siteId: result.data.id, subdomain: result.data.subdomain, hadFormData: true };
-  }
-
-  const errMsg = (result && result.error) || 'Unknown site creation failure';
-  await markPendingCreationFailed(env, subId, errMsg, result && result.code);
-  return { siteCreated: false, hadFormData: true, error: errMsg, code: result && result.code };
-}
-
-/**
- * GET /api/payments/pending-site
- *
- * Returns the current user's pending-site status. Used by the dashboard on
- * load to detect "I paid but my site never showed up" cases. Critically:
- *
- *   1. ONLY rows whose Razorpay subscription is already active in our
- *      `subscriptions` table are considered. Pending rows for abandoned /
- *      never-paid checkouts are filtered out so the user never sees a
- *      misleading "your payment went through" banner for a payment that
- *      didn't happen.
- *   2. If a matching active sub exists, this endpoint AUTO-ATTEMPTS site
- *      creation before returning. That way a user who lands on the
- *      dashboard right after Razorpay (or hours later, doesn't matter)
- *      gets their site created during the request — no Retry click needed
- *      unless creation actually fails.
- *
- * Always returns 200 with a `pendingSite` field that is null when there's
- * nothing to reconcile, so the frontend can call this unconditionally.
- */
-async function getPendingSiteStatus(request, env) {
-  try {
-    const user = await validateAuth(request, env);
-    if (!user) return errorResponse('Unauthorized', 401);
-
-    let row;
-    try {
-      // INNER JOIN on subscriptions + WHERE status='active' enforces rule #1:
-      // an abandoned-checkout pending row (no matching active sub) is invisible.
-      row = await env.DB.prepare(
-        `SELECT ps.id, ps.razorpay_subscription_id, ps.user_id, ps.site_id,
-                ps.plan_id, ps.site_form_data, ps.site_creation_error,
-                ps.site_creation_attempts, ps.created_at,
-                sp.plan_name, sp.billing_cycle, sp.display_price
-         FROM pending_subscriptions ps
-         JOIN subscriptions s
-           ON s.razorpay_subscription_id = ps.razorpay_subscription_id
-          AND s.status = 'active'
-         LEFT JOIN subscription_plans sp ON ps.plan_id = sp.id
-         WHERE ps.user_id = ?
-           AND ps.site_form_data IS NOT NULL
-         ORDER BY ps.created_at DESC LIMIT 1`
-      ).bind(user.id).first();
-    } catch (e) {
-      // pending_subscriptions table may not exist yet on a brand-new env
-      // (it is lazily created when the first subscription is initiated).
-      // Treat that as "nothing pending" rather than 500.
-      return successResponse({ pendingSite: null });
-    }
-
-    if (!row) {
-      return successResponse({ pendingSite: null });
-    }
-
-    // Rule #2: try to actually create the site now. attemptPendingSiteCreation
-    // is idempotent — on success it deletes the pending row, so a subsequent
-    // dashboard load will return pendingSite:null. On failure it records the
-    // error and we surface it as the banner below.
-    const creation = await attemptPendingSiteCreation(env, row);
-    if (creation.siteCreated) {
-      return successResponse({ pendingSite: null, justCreated: { siteId: creation.siteId, subdomain: creation.subdomain } });
-    }
-
-    let brandName = null;
-    try {
-      const fd = row.site_form_data ? JSON.parse(row.site_form_data) : null;
-      brandName = fd?.brandName || null;
-    } catch {}
-
-    return successResponse({
-      pendingSite: {
-        hasPending: true,
-        razorpaySubscriptionId: row.razorpay_subscription_id,
-        planName: row.plan_name || null,
-        billingCycle: row.billing_cycle || null,
-        brandName,
-        lastError: creation.error || row.site_creation_error || null,
-        attempts: (row.site_creation_attempts || 0) + (creation.hadFormData ? 1 : 0),
-        createdAt: row.created_at,
-      },
-    });
-  } catch (err) {
-    console.error('getPendingSiteStatus error:', err);
-    return errorResponse('Failed to fetch pending site status', 500);
-  }
-}
-
-/**
- * POST /api/payments/pending-site/retry
- *
- * Retry site creation for the current user's most recent pending row that
- * has stored form data. The corresponding Razorpay subscription must already
- * be active in our `subscriptions` table — otherwise we refuse, because
- * activation must come from the verify endpoint or webhook (we won't fake it
- * here). Returns the same shape the verify endpoint uses for siteCreated.
- */
-async function retryPendingSiteCreation(request, env) {
-  try {
-    const user = await validateAuth(request, env);
-    if (!user) return errorResponse('Unauthorized', 401);
-
-    let pending;
-    try {
-      pending = await env.DB.prepare(
-        `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
-         FROM pending_subscriptions ps
-         LEFT JOIN subscription_plans sp ON ps.plan_id = sp.id
-         WHERE ps.user_id = ? AND ps.site_form_data IS NOT NULL
-         ORDER BY ps.created_at DESC LIMIT 1`
-      ).bind(user.id).first();
-    } catch (e) {
-      return errorResponse('No pending site found', 404);
-    }
-
-    if (!pending) {
-      return errorResponse('No pending site found', 404);
-    }
-
-    // Refuse to "create out of nothing": the subscription must have been
-    // activated already (by verify or webhook). This guards against the
-    // case where Razorpay payment failed and the user is hammering Retry.
-    const activeSub = await env.DB.prepare(
-      `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
-    ).bind(pending.razorpay_subscription_id).first();
-
-    if (!activeSub) {
-      return errorResponse('Your subscription has not been activated yet. If you completed payment, please wait a moment and try again — Razorpay sometimes takes up to a minute to confirm.', 409, 'SUBSCRIPTION_NOT_ACTIVE');
-    }
-
-    const creation = await attemptPendingSiteCreation(env, pending);
-    return successResponse({
-      siteCreated: creation.siteCreated,
-      siteId: creation.siteId || null,
-      subdomain: creation.subdomain || null,
-      siteCreationError: creation.error || null,
-    }, creation.siteCreated ? 'Site created successfully' : (creation.error || 'Site creation failed'));
-  } catch (err) {
-    console.error('retryPendingSiteCreation error:', err);
-    return errorResponse('Failed to retry site creation', 500);
-  }
-}
-
 async function verifySubscriptionPayment(request, env, { razorpay_subscription_id, razorpay_payment_id, razorpay_signature }) {
   try {
     const keySecret = env.RAZORPAY_KEY_SECRET;
@@ -706,31 +461,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
     ).bind(razorpay_subscription_id).first();
 
     if (existingActive) {
-      // Webhook beat us to activation. Even so, the pending row may still
-      // be present (with form data) — either because the webhook activated
-      // the sub but couldn't create the site (transient error), or because
-      // the webhook attempted creation and it failed. Try again here so the
-      // user's verify-call response includes the freshly-created siteId
-      // when possible.
-      const dupPending = await env.DB.prepare(
-        `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
-         FROM pending_subscriptions ps
-         LEFT JOIN subscription_plans sp ON ps.plan_id = sp.id
-         WHERE ps.razorpay_subscription_id = ? AND ps.user_id = ?`
-      ).bind(razorpay_subscription_id, user.id).first();
-      const creation = dupPending
-        ? await attemptPendingSiteCreation(env, dupPending)
-        : { siteCreated: false, hadFormData: false };
-      return successResponse({
-        verified: true,
-        planActivated: true,
-        duplicate: true,
-        siteCreated: creation.siteCreated,
-        siteId: creation.siteId || null,
-        subdomain: creation.subdomain || null,
-        siteCreationError: creation.error || null,
-        hadPendingSiteData: creation.hadFormData || false,
-      }, 'Subscription already activated');
+      return successResponse({ verified: true, planActivated: true, duplicate: true }, 'Subscription already activated');
     }
 
     const pending = await env.DB.prepare(
@@ -747,28 +478,7 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
           `SELECT id FROM subscriptions WHERE razorpay_subscription_id = ? AND status = 'active'`
         ).bind(razorpay_subscription_id).first();
         if (retryActive) {
-          // Same dual-path concern as the upper duplicate branch — try
-          // pending site creation in case the webhook activated but the
-          // pending row is still around.
-          const retryDupPending = await env.DB.prepare(
-            `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
-             FROM pending_subscriptions ps
-             LEFT JOIN subscription_plans sp ON ps.plan_id = sp.id
-             WHERE ps.razorpay_subscription_id = ? AND ps.user_id = ?`
-          ).bind(razorpay_subscription_id, user.id).first();
-          const retryDupCreation = retryDupPending
-            ? await attemptPendingSiteCreation(env, retryDupPending)
-            : { siteCreated: false, hadFormData: false };
-          return successResponse({
-            verified: true,
-            planActivated: true,
-            duplicate: true,
-            siteCreated: retryDupCreation.siteCreated,
-            siteId: retryDupCreation.siteId || null,
-            subdomain: retryDupCreation.subdomain || null,
-            siteCreationError: retryDupCreation.error || null,
-            hadPendingSiteData: retryDupCreation.hadFormData || false,
-          }, 'Subscription already activated');
+          return successResponse({ verified: true, planActivated: true, duplicate: true }, 'Subscription already activated');
         }
         const retryPending = await env.DB.prepare(
           `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
@@ -780,18 +490,8 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
           const retryEntity = await fetchRazorpaySubscriptionEntity(env, razorpay_subscription_id);
           const retryActivated = await activateSubscription(env, user.id, retryPending.plan_name, retryPending.billing_cycle, razorpay_payment_id, razorpay_subscription_id, retryPending.display_price, retryPending.site_id || null, retryEntity);
           if (retryActivated) {
-            const creation = await attemptPendingSiteCreation(env, retryPending);
-            return successResponse({
-              verified: true,
-              planActivated: true,
-              siteCreated: creation.siteCreated,
-              siteId: creation.siteId || null,
-              subdomain: creation.subdomain || null,
-              siteCreationError: creation.error || null,
-              hadPendingSiteData: creation.hadFormData || false,
-            }, creation.siteCreated
-              ? 'Subscription payment verified, plan activated, and site created'
-              : 'Subscription payment verified and plan activated');
+            try { await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(razorpay_subscription_id).run(); } catch {}
+            return successResponse({ verified: true, planActivated: true }, 'Subscription payment verified and plan activated');
           }
         }
       }
@@ -805,25 +505,11 @@ async function verifySubscriptionPayment(request, env, { razorpay_subscription_i
       return errorResponse('Failed to activate subscription', 500);
     }
 
-    // The pending row stores the wizard form data the user submitted before
-    // Razorpay opened. Now that the subscription is active, auto-create the
-    // site server-side so the website is guaranteed even if the browser
-    // closes between Razorpay success and this verify call. The helper keeps
-    // the pending row + records the error on failure so dashboard
-    // reconciliation can offer a Retry button.
-    const creation = await attemptPendingSiteCreation(env, pending);
+    try {
+      await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(razorpay_subscription_id).run();
+    } catch {}
 
-    return successResponse({
-      verified: true,
-      planActivated: true,
-      siteCreated: creation.siteCreated,
-      siteId: creation.siteId || null,
-      subdomain: creation.subdomain || null,
-      siteCreationError: creation.error || null,
-      hadPendingSiteData: creation.hadFormData || false,
-    }, creation.siteCreated
-      ? 'Subscription payment verified, plan activated, and site created'
-      : 'Subscription payment verified and plan activated');
+    return successResponse({ verified: true, planActivated: true }, 'Subscription payment verified and plan activated');
   } catch (error) {
     console.error('Verify subscription payment error:', error);
     return errorResponse('Subscription payment verification failed', 500);
@@ -1033,14 +719,7 @@ async function getUserSubscription(env, user) {
 
 async function createRazorpaySubscription(request, env, user) {
   try {
-    const body = await request.json();
-    const { planId, siteId } = body;
-    // pendingSiteData: optional wizard form payload to persist server-side BEFORE
-    // Razorpay opens. After the subscription is activated (verify endpoint OR
-    // webhook), the site is auto-created from this payload so the website is
-    // guaranteed even if the browser closes between Razorpay success and verify.
-    // Only allowed when creating a brand-new site (no existing siteId).
-    const pendingSiteData = (!siteId && body && typeof body.pendingSiteData === 'object') ? body.pendingSiteData : null;
+    const { planId, siteId } = await request.json();
 
     if (!planId) {
       return errorResponse('Plan ID is required');
@@ -1158,62 +837,12 @@ async function createRazorpaySubscription(request, env, user) {
       try {
         await env.DB.prepare(`ALTER TABLE pending_subscriptions ADD COLUMN site_id TEXT`).run();
       } catch (e) {}
-      // site_form_data: serialized wizard form payload used to auto-provision
-      //   the site after the subscription activates. Stored only when the user
-      //   is creating a brand-new site (no pre-existing siteId). Cleared
-      //   together with the row when site creation succeeds.
-      // site_creation_error: last error string from a failed auto-create
-      //   attempt. Surfaced to the dashboard so the user sees what went wrong
-      //   (e.g. "Subdomain already taken") and can retry/edit.
-      // site_creation_attempts: counter so we can cap retries server-side and
-      //   detect rows that need manual intervention.
-      try { await env.DB.prepare(`ALTER TABLE pending_subscriptions ADD COLUMN site_form_data TEXT`).run(); } catch (e) {}
-      try { await env.DB.prepare(`ALTER TABLE pending_subscriptions ADD COLUMN site_creation_error TEXT`).run(); } catch (e) {}
-      try { await env.DB.prepare(`ALTER TABLE pending_subscriptions ADD COLUMN site_creation_attempts INTEGER DEFAULT 0`).run(); } catch (e) {}
-
-      let serializedFormData = null;
-      if (pendingSiteData) {
-        try {
-          serializedFormData = JSON.stringify(pendingSiteData);
-        } catch (jsonErr) {
-          console.error('Failed to serialize pendingSiteData:', jsonErr);
-          // For a brand-new-site flow, losing the form data here would mean
-          // the user could pay and end up with no website and no way for the
-          // server to recover. Abort BEFORE returning the subscriptionId so
-          // checkout never opens.
-          if (!siteId) {
-            try {
-              await fetch(`https://api.razorpay.com/v1/subscriptions/${razorpaySub.id}/cancel`, {
-                method: 'POST',
-                headers: { Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}` },
-              });
-            } catch (cancelErr) {
-              console.error('Failed to roll back Razorpay sub after persist failure:', cancelErr);
-            }
-            return errorResponse('Could not save your website details. Please try again.', 500);
-          }
-        }
-      }
 
       await env.DB.prepare(
-        `INSERT INTO pending_subscriptions (id, user_id, site_id, plan_id, razorpay_subscription_id, site_form_data, site_creation_attempts, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))`
-      ).bind(generateId(), user.id, siteId || null, plan.id, razorpaySub.id, serializedFormData).run();
+        `INSERT INTO pending_subscriptions (id, user_id, site_id, plan_id, razorpay_subscription_id, created_at) VALUES (?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(generateId(), user.id, siteId || null, plan.id, razorpaySub.id).run();
     } catch (dbErr) {
-      console.error('Failed to store pending subscription:', dbErr);
-      // Same protection: for a new-site flow we MUST have the pending row
-      // before checkout opens, otherwise the activation handlers cannot
-      // create the site post-payment and the user is stuck.
-      if (!siteId && pendingSiteData) {
-        try {
-          await fetch(`https://api.razorpay.com/v1/subscriptions/${razorpaySub.id}/cancel`, {
-            method: 'POST',
-            headers: { Authorization: `Basic ${btoa(`${keyId}:${keySecret}`)}` },
-          });
-        } catch (cancelErr) {
-          console.error('Failed to roll back Razorpay sub after persist failure:', cancelErr);
-        }
-        return errorResponse('Could not save your website details. Please try again.', 500);
-      }
+      console.error('Failed to store pending subscription (non-fatal):', dbErr);
     }
 
     // NOTE: We do NOT cancel the old higher-tier subscription here. If the user abandons
@@ -1405,29 +1034,6 @@ async function handleSubscriptionActivated(env, entity) {
 
     if (existingActive) {
       console.log('Subscription already activated:', subId);
-      // Even if the sub is already marked active, the pending row may still
-      // be around with unresolved site creation (verify endpoint activated
-      // but this webhook is the FIRST event that retries creation, or the
-      // previous attempt failed transiently). Try once more so we don't
-      // depend solely on the user opening the dashboard.
-      try {
-        const dupPending = await env.DB.prepare(
-          `SELECT ps.*, sp.plan_name, sp.billing_cycle, sp.display_price
-           FROM pending_subscriptions ps
-           LEFT JOIN subscription_plans sp ON ps.plan_id = sp.id
-           WHERE ps.razorpay_subscription_id = ? AND ps.site_form_data IS NOT NULL`
-        ).bind(subId).first();
-        if (dupPending) {
-          const dupCreation = await attemptPendingSiteCreation(env, dupPending);
-          if (dupCreation.siteCreated) {
-            console.log('Webhook (already-active path): auto-created site', dupCreation.siteId, 'for sub', subId);
-          } else if (dupCreation.hadFormData) {
-            console.error('Webhook (already-active path): site auto-creation failed for sub', subId, '-', dupCreation.error);
-          }
-        }
-      } catch (recoverErr) {
-        console.error('Webhook (already-active path): recovery attempt threw:', recoverErr);
-      }
       return;
     }
 
@@ -1439,22 +1045,10 @@ async function handleSubscriptionActivated(env, entity) {
     ).bind(subId).first();
 
     if (pending) {
-      const ok = await activateSubscription(env, pending.user_id, pending.plan_name, pending.billing_cycle, null, subId, pending.display_price, pending.site_id || null, entity);
-      if (ok) {
-        // Race window: the verify endpoint may have already auto-created the site.
-        // attemptPendingSiteCreation is idempotent because it deletes the pending
-        // row on success, so a re-entrant call here will find no row and no-op.
-        // If verify hasn't run (browser closed after Razorpay success), this is
-        // the path that actually creates the site for the user.
-        const creation = await attemptPendingSiteCreation(env, pending);
-        if (creation.hadFormData && !creation.siteCreated) {
-          console.error('Webhook: site auto-creation failed for sub', subId, '-', creation.error);
-        } else if (creation.siteCreated) {
-          console.log('Webhook: auto-created site', creation.siteId, 'for sub', subId);
-        }
-      } else {
-        console.error('Webhook: activateSubscription returned false for sub', subId);
-      }
+      await activateSubscription(env, pending.user_id, pending.plan_name, pending.billing_cycle, null, subId, pending.display_price, pending.site_id || null, entity);
+      try {
+        await env.DB.prepare(`DELETE FROM pending_subscriptions WHERE razorpay_subscription_id = ?`).bind(subId).run();
+      } catch {}
     } else {
       const notes = entity.notes || {};
       if (notes.userId && notes.planName) {

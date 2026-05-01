@@ -1,42 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { evaluateScheme, AA_TEXT } from '../../utils/contrast.js';
 
-// 10 color slots, grouped into three buckets so the editor stays scannable
-// even though the merchant has full per-slot control. Order within each
-// group goes from "biggest visual surface" → "smallest accent" so the
-// most-impactful pickers sit at the top of each group.
-const SLOT_GROUPS = [
-  {
-    label: 'Surfaces',
-    slots: [
-      { key: 'background', label: 'Background', help: 'Section / card surface' },
-      { key: 'border', label: 'Border', help: 'Dividers, card borders, lines' },
-    ],
-  },
-  {
-    label: 'Text',
-    slots: [
-      { key: 'headingText', label: 'Heading text', help: 'h1 – h6, product names' },
-      { key: 'text', label: 'Body text', help: 'Paragraphs, descriptions' },
-      { key: 'mutedText', label: 'Muted text', help: 'Captions, helper text, labels' },
-    ],
-  },
-  {
-    label: 'Interactive',
-    slots: [
-      { key: 'button', label: 'Primary button', help: 'Main CTA background' },
-      { key: 'buttonText', label: 'Button text', help: 'Label on primary CTA' },
-      { key: 'secondaryButton', label: 'Secondary button', help: 'Outline / quiet CTA' },
-      { key: 'link', label: 'Link', help: 'Inline links / highlights' },
-      { key: 'accent', label: 'Accent', help: 'Prices, badges, decorative' },
-    ],
-  },
+const SLOTS = [
+  { key: 'background', label: 'Background', help: 'Section surface' },
+  { key: 'text', label: 'Text', help: 'Body copy on background' },
+  { key: 'button', label: 'Button', help: 'Primary CTA' },
+  { key: 'buttonText', label: 'Button text', help: 'Label on primary CTA' },
+  { key: 'secondaryButton', label: 'Secondary button', help: 'Outline / quiet CTA' },
+  { key: 'link', label: 'Link', help: 'Inline links / highlights' },
+  { key: 'accent', label: 'Accent', help: 'Borders, badges, decorative' },
 ];
-
-// Flat list kept for any code that iterates every slot (e.g. validation,
-// preview, evaluateScheme). Derived from SLOT_GROUPS so the two never
-// drift.
-const SLOTS = SLOT_GROUPS.flatMap(g => g.slots);
 
 const MAX_SCHEMES = 5;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -47,22 +20,16 @@ function genSchemeId(base) {
 }
 
 function emptyScheme(name) {
-  // New scheme starts on the classic palette so it's a usable copy of the
-  // default look. The merchant tweaks slots from there rather than
-  // starting at black/white and having to rebuild a scheme by hand.
   return {
     id: genSchemeId(name),
     name,
     isDefault: false,
     background: '#ffffff',
-    text: '#333333',
-    headingText: '#333333',
-    mutedText: '#888888',
-    border: '#eeeeee',
-    button: '#603000',
+    text: '#111111',
+    button: '#000000',
     buttonText: '#ffffff',
     secondaryButton: '#f1f5f9',
-    link: '#603000',
+    link: '#1d4ed8',
     accent: '#b08c4c',
   };
 }
@@ -78,8 +45,6 @@ export default function ThemePanel({
   onChange,
   onSave,
   onDirty,
-  onResetAllToDefault,
-  onResetBrandToDefault,
 }) {
   const schemes = (themeConfig && themeConfig.schemes) || [];
   const [editingId, setEditingId] = useState(() => schemes[0]?.id || null);
@@ -234,32 +199,18 @@ export default function ThemePanel({
           )}
         </div>
 
-        {/* Live preview chip — exercises every group of slots so the
-            merchant sees heading, body, muted, border, button, and accent
-            all painted together before saving. */}
+        {/* Live preview chip — uses the same vars SchemeScope writes so the
+            merchant gets a ground-truth render of how the scheme looks. */}
         <div style={{
           padding: 14, borderRadius: 8, marginBottom: 14,
           background: editing.background, color: editing.text,
-          border: `1px solid ${editing.border || '#e2e8f0'}`,
+          border: '1px solid #e2e8f0',
         }}>
-          <div style={{
-            fontSize: 14, fontWeight: 700, marginBottom: 4,
-            color: editing.headingText || editing.text,
-          }}>
-            {editing.name || 'Sample heading'}
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>The quick brown fox</div>
+          <div style={{ fontSize: 12, marginBottom: 10, opacity: 0.85 }}>
+            Body text on a {editing.name.toLowerCase()} surface, with a <span style={{ color: editing.link, textDecoration: 'underline' }}>link</span>.
           </div>
-          <div style={{ fontSize: 12, marginBottom: 4, color: editing.text }}>
-            Body text on a {(editing.name || 'sample').toLowerCase()} surface,
-            with a <span style={{ color: editing.link, textDecoration: 'underline' }}>link</span>.
-          </div>
-          <div style={{ fontSize: 11, marginBottom: 10, color: editing.mutedText || '#94a3b8' }}>
-            Muted helper text — captions, hints, secondary info.
-          </div>
-          <div style={{
-            paddingTop: 10,
-            borderTop: `1px solid ${editing.border || '#e2e8f0'}`,
-            display: 'flex', gap: 8, flexWrap: 'wrap',
-          }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <span style={{
               display: 'inline-block', padding: '6px 14px',
               background: editing.button, color: editing.buttonText,
@@ -274,30 +225,17 @@ export default function ThemePanel({
           </div>
         </div>
 
-        {/* Grouped slot editor — each group has a small caption above so the
-            merchant can find the slot they want without scanning all 10. */}
-        {SLOT_GROUPS.map(group => (
-          <div key={group.label} style={{ marginBottom: 12 }}>
-            <div style={{
-              fontSize: 10, fontWeight: 700, color: '#64748b',
-              textTransform: 'uppercase', letterSpacing: 0.6,
-              marginBottom: 6, padding: '0 2px',
-            }}>
-              {group.label}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
-              {group.slots.map(slot => (
-                <ColorSlotRow
-                  key={slot.key}
-                  label={slot.label}
-                  help={slot.help}
-                  value={editing[slot.key]}
-                  onChange={(v) => updateField(slot.key, v)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+          {SLOTS.map(slot => (
+            <ColorSlotRow
+              key={slot.key}
+              label={slot.label}
+              help={slot.help}
+              value={editing[slot.key]}
+              onChange={(v) => updateField(slot.key, v)}
+            />
+          ))}
+        </div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
@@ -354,84 +292,6 @@ export default function ThemePanel({
         >
           {saving ? "Saving..." : hasChanges ? "Save Theme" : "All Changes Saved"}
         </button>
-
-        {/* Two-tier reset zone. The merchant gets two related-but-distinct
-            actions; the explainer above makes the difference legible so
-            they don't fire the wrong one and lose more than they meant to.
-            Both actions are confirmed via window.confirm — destructive
-            enough to warrant a click-through, light enough to not need a
-            full custom modal component. */}
-        {(onResetBrandToDefault || onResetAllToDefault) && (
-          <div
-            style={{
-              marginTop: 16, padding: 12,
-              background: '#f8fafc', border: '1px solid #e2e8f0',
-              borderRadius: 10, fontSize: 11, color: '#475569',
-              lineHeight: 1.5,
-            }}
-          >
-            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 6, fontSize: 12 }}>
-              <i className="fas fa-info-circle" style={{ marginInlineEnd: 6, color: '#3b82f6' }} />
-              What's the difference?
-            </div>
-            <div style={{ marginBottom: 4 }}>
-              <strong>Reset Brand colors</strong> — restores the Brand scheme above to the platform's default brown / gold palette. Your scheme assignments and per-section overrides are kept.
-            </div>
-            <div>
-              <strong>Reset entire site</strong> — clears every per-section scheme assignment and every per-section color override. Your saved schemes (including any custom Brand colors) are kept.
-            </div>
-          </div>
-        )}
-
-        {/* New: reset just the Brand scheme to the platform default palette.
-            Useful when the merchant has tweaked Brand into a corner and
-            wants a clean starting point without losing their per-section
-            assignments / overrides. */}
-        {onResetBrandToDefault && (
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm('Reset the Brand scheme back to the platform default brown / gold colors?\n\nThis only changes the Brand scheme above. Your scheme assignments and per-section color overrides are kept.')) {
-                onResetBrandToDefault();
-              }
-            }}
-            style={{
-              width: '100%', marginTop: 8, padding: '10px 16px',
-              background: '#fff', color: '#0f172a',
-              border: '1px solid #cbd5e1', borderRadius: 10,
-              fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <i className="fas fa-palette" style={{ marginInlineEnd: 6, fontSize: 10 }} />
-            Reset Brand colors to platform default
-          </button>
-        )}
-
-        {/* Global "back to original design" escape hatch. Wipes every
-            section's overrides AND every scheme assignment, returning the
-            entire storefront to its pre-feature look. The schemes
-            themselves are preserved — only assignments + overrides reset. */}
-        {onResetAllToDefault && (
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm('Reset every section back to the default design?\n\nThis clears your scheme assignments and per-section color overrides. Your schemes themselves (including custom Brand colors) stay saved.')) {
-                onResetAllToDefault();
-              }
-            }}
-            style={{
-              width: '100%', marginTop: 8, padding: '10px 16px',
-              background: '#fff', color: '#dc2626',
-              border: '1px solid #fecaca', borderRadius: 10,
-              fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <i className="fas fa-undo" style={{ marginInlineEnd: 6, fontSize: 10 }} />
-            Reset entire site to default design
-          </button>
-        )}
       </div>
     </div>
   );
@@ -464,16 +324,10 @@ function ColorSlotRow({ label, help, value, onChange }) {
         type="text"
         value={value || ''}
         onChange={(e) => {
-          // Sanitize: strip every character that isn't a hex digit, then
-          // re-prepend `#` and clamp to 6 hex chars. This prevents stray
-          // characters (`)`, `$`, extra letters) from entering the value
-          // when the user mistypes — those would otherwise corrupt the
-          // contrast checker (1.00:1) and the saved scheme.
-          const raw = e.target.value || '';
-          const hexOnly = raw.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
-          onChange(hexOnly ? '#' + hexOnly : '');
+          let v = e.target.value.trim();
+          if (v && !v.startsWith('#')) v = '#' + v;
+          onChange(v);
         }}
-        maxLength={7}
         spellCheck={false}
         style={{
           width: 92, padding: '6px 8px',

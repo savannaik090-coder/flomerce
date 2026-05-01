@@ -26,8 +26,6 @@ import PromoBannerEditor from './PromoBannerEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import ThemePanel from './ThemePanel.jsx';
 import SchemeAssignmentBar from './SchemeAssignmentBar.jsx';
-import SectionColorOverrides from './SectionColorOverrides.jsx';
-import { SECTION_SLOTS } from '../theme/sectionSelectors.js';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
 import { useConfirm } from '../../../../shared/ui/ConfirmDialog.jsx';
@@ -117,46 +115,37 @@ const SCHEMEABLE_SECTIONS = new Set([
 ]);
 
 export default function VisualCustomizer({ currentPlan, onBack }) {
-  // CRITICAL: pull `themeConfig` (the *resolved* theme) from context instead
-  // of reaching into `siteConfig.themeConfig` directly. The resolved value is
-  // never null — if a legacy site has no `theme_config` row in the DB,
-  // SiteContext synthesizes Brand + Inverse + Accent on the fly so the
-  // customizer's Theme tab and per-section dropdowns always have real
-  // schemes to work with. Reading from `siteConfig.themeConfig` would leave
-  // `themeDraft` null on those legacy sites and the SchemeAssignmentBar
-  // would never render — which is exactly the bug a merchant would describe
-  // as "I can't see any color customization in per-section editors".
-  const { siteConfig, themeConfig } = useContext(SiteContext);
+  const { siteConfig } = useContext(SiteContext);
   const confirm = useConfirm();
 
-  // Theme draft: starts as a deep copy of the resolved theme so per-section
+  // Theme draft: starts as a deep copy of the saved theme so per-section
   // dropdowns and the Theme tab can mutate it freely without touching the
   // server. The Theme tab has its own Save button; per-section assignment
   // changes auto-save (parallels the visibility-toggle behavior).
-  const [themeDraft, setThemeDraft] = useState(() => deepClone(themeConfig));
-  const themeSavedRef = useRef(JSON.stringify(siteConfig?.themeConfig || themeConfig || {}));
+  const [themeDraft, setThemeDraft] = useState(() => deepClone(siteConfig?.themeConfig));
+  const themeSavedRef = useRef(JSON.stringify(siteConfig?.themeConfig || {}));
   // Mirror of themeDraft kept in a ref so async callbacks (like the
   // post-save dirty re-check after an assignment auto-save) read the
   // latest value rather than the closed-over snapshot from when the
   // callback was scheduled.
-  const themeDraftRef = useRef(themeConfig || null);
+  const themeDraftRef = useRef(siteConfig?.themeConfig || null);
   const [themeHasChanges, setThemeHasChanges] = useState(false);
   const [themeSaving, setThemeSaving] = useState(false);
 
-  // Resync the draft whenever the canonical theme changes (saved or
-  // recomputed). We compare against the saved baseline only — if the
-  // merchant has unsaved edits, we don't stomp them.
+  // Resync the draft whenever the canonical theme on the server changes
+  // (e.g. after a successful save, or if the merchant refreshes the site
+  // config). This keeps the editor in sync with the source of truth.
   useEffect(() => {
-    const incoming = siteConfig?.themeConfig || themeConfig;
-    if (!incoming) return;
-    const incomingStr = JSON.stringify(incoming);
-    if (incomingStr !== themeSavedRef.current && !themeHasChanges) {
+    const incoming = siteConfig?.themeConfig;
+    const incomingStr = JSON.stringify(incoming || {});
+    if (incomingStr !== themeSavedRef.current) {
       themeSavedRef.current = incomingStr;
       const cloned = deepClone(incoming);
       setThemeDraft(cloned);
       themeDraftRef.current = cloned;
+      setThemeHasChanges(false);
     }
-  }, [siteConfig?.themeConfig, themeConfig, themeHasChanges]);
+  }, [siteConfig?.themeConfig]);
 
   // Keep the ref synced on every draft change.
   useEffect(() => { themeDraftRef.current = themeDraft; }, [themeDraft]);
@@ -300,16 +289,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   }, []);
 
   const sendPreviewUpdate = useCallback((settingsPatch) => {
-    // Most keys shallow-merge, but `_overridesPatch` needs per-section
-    // accumulation so editing a second section doesn't drop the first
-    // section's unsaved preview when the iframe reloads and we replay
-    // accumulatedSettingsRef.
-    const prev = accumulatedSettingsRef.current || {};
-    const next = { ...prev, ...settingsPatch };
-    if (settingsPatch && settingsPatch._overridesPatch && typeof settingsPatch._overridesPatch === 'object') {
-      next._overridesPatch = { ...(prev._overridesPatch || {}), ...settingsPatch._overridesPatch };
-    }
-    accumulatedSettingsRef.current = next;
+    accumulatedSettingsRef.current = { ...accumulatedSettingsRef.current, ...settingsPatch };
     try {
       if (iframeRef.current?.contentWindow) {
         iframeRef.current.contentWindow.postMessage({ type: 'FLOMERCE_PREVIEW_UPDATE', settings: settingsPatch }, '*');
@@ -327,10 +307,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       _themePatch: {
         schemes: draft.schemes,
         sectionAssignments: draft.sectionAssignments,
-        // Forward the opt-in flag so the live preview reflects Reset
-        // Brand and any future opt-in toggles immediately, before the
-        // PUT round-trips and the iframe re-fetches.
-        applyBrandAsDefault: draft.applyBrandAsDefault,
       },
     });
   }, [sendPreviewUpdate]);
@@ -375,18 +351,9 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   const setSchemeForSection = useCallback((sectionId, schemeId) => {
     setThemeDraft(prev => {
       if (!prev) return prev;
-      // schemeId === '' (or null/undefined) means "use the default design" —
-      // remove the assignment entirely so SchemeScope renders the section
-      // pristine (no CSS injected, original storefront design wins).
-      const isClear = !schemeId;
-      const buildAssignments = (base) => {
-        const a = { ...(base || {}) };
-        if (isClear) delete a[sectionId]; else a[sectionId] = schemeId;
-        return a;
-      };
       const next = {
         ...prev,
-        sectionAssignments: buildAssignments(prev.sectionAssignments),
+        sectionAssignments: { ...(prev.sectionAssignments || {}), [sectionId]: schemeId },
       };
 
       // Build a save payload that:
@@ -410,7 +377,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       }
       const savePayload = {
         ...savedBase,
-        sectionAssignments: buildAssignments(savedBase.sectionAssignments),
+        sectionAssignments: { ...(savedBase.sectionAssignments || {}), [sectionId]: schemeId },
       };
 
       themeAssignSaveRef.current.queued = savePayload;
@@ -454,274 +421,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     await saveThemeConfig(themeDraft);
     refreshPreview();
   }, [themeDraft, saveThemeConfig]);
-
-  // "Reset Brand colors to platform default" — replaces the Brand scheme
-  // (id === 'brand') in themeDraft with a freshly-built one using the
-  // platform default brown / gold palette, while leaving every other
-  // scheme, every section assignment, and every per-section override
-  // intact. Saves immediately so the merchant sees the change without
-  // having to also click "Save Theme". Mirrors theme-config.js's
-  // buildPlatformDefaultBrandScheme + buildDefaultSchemes.
-  const resetBrandToDefault = useCallback(() => {
-    const PLATFORM_PRIMARY = '#603000';
-    const PLATFORM_SECONDARY = '#5a3f2a';
-    const PLATFORM_ACCENT = '#b08c4c';
-    const pickReadable = (hex) => {
-      const n = parseInt((hex || '#000000').replace('#', ''), 16);
-      const r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
-      return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? '#111111' : '#ffffff';
-    };
-    const shift = (hex, factor) => {
-      const n = parseInt((hex || '#000000').replace('#', ''), 16);
-      let r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
-      if (factor >= 0) {
-        r = Math.round(r + (255 - r) * factor);
-        g = Math.round(g + (255 - g) * factor);
-        b = Math.round(b + (255 - b) * factor);
-      } else {
-        const f = 1 + factor;
-        r = Math.round(r * f); g = Math.round(g * f); b = Math.round(b * f);
-      }
-      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
-    };
-    // Mirror backend buildDefaultSchemes EXACTLY: secondaryButton derives
-    // from `primary`, NOT from `secondary`. Drift here would cause the
-    // frontend reset to produce a Brand that differs from a fresh
-    // wizard-created site, so the rule is "keep these two paths byte-equal".
-    const freshBrand = {
-      id: 'brand', name: 'Brand', isDefault: true,
-      background: '#f8f8f5', text: '#333333',
-      headingText: '#333333', mutedText: '#888888', border: '#eeeeee',
-      button: PLATFORM_PRIMARY, buttonText: pickReadable(PLATFORM_PRIMARY),
-      secondaryButton: shift(PLATFORM_PRIMARY, 0.85),
-      link: PLATFORM_PRIMARY, accent: PLATFORM_ACCENT,
-    };
-    setThemeDraft(prev => {
-      const base = prev || {};
-      const existing = Array.isArray(base.schemes) ? base.schemes : [];
-      const hasBrand = existing.some(s => s && s.id === 'brand');
-      const nextSchemes = hasBrand
-        ? existing.map(s => (s && s.id === 'brand') ? freshBrand : s)
-        : [freshBrand, ...existing];
-      const next = {
-        ...base,
-        schemes: nextSchemes,
-        applyBrandAsDefault: true,
-      };
-      pushThemePreview(next);
-
-      // Serialize through the same queue used by per-section assignment
-      // saves (themeAssignSaveRef). Without this, an in-flight assignment
-      // PUT could land AFTER our reset PUT and clobber the fresh Brand
-      // scheme with the stale schemes payload it carried.
-      themeAssignSaveRef.current.queued = next;
-      (async () => {
-        if (themeAssignSaveRef.current.inflight) return;
-        themeAssignSaveRef.current.inflight = true;
-        try {
-          while (themeAssignSaveRef.current.queued) {
-            const toSave = themeAssignSaveRef.current.queued;
-            themeAssignSaveRef.current.queued = null;
-            await saveThemeConfig(toSave);
-          }
-        } finally {
-          themeAssignSaveRef.current.inflight = false;
-          const draftStr = JSON.stringify(themeDraftRef.current || {});
-          setThemeHasChanges(draftStr !== themeSavedRef.current);
-          refreshPreview();
-        }
-      })();
-      return next;
-    });
-  }, [pushThemePreview, saveThemeConfig]);
-
-  // ===== Per-section colour overrides =========================================
-  // Lives in settings.sectionColorOverrides[sectionId][slotKey]. Auto-saves on
-  // each edit (parallels toggleSectionVisibility) so the merchant doesn't need
-  // a separate Save button — feedback is the live preview itself.
-  //
-  // The serialized save pattern below ensures rapid colour-picker drags don't
-  // queue dozens of requests; we always send the LATEST full overrides map.
-  const sectionOverrides = useMemo(() => {
-    const settings = siteConfig?.settings;
-    if (!settings || typeof settings !== 'object') return {};
-    const ov = settings.sectionColorOverrides;
-    return (ov && typeof ov === 'object') ? ov : {};
-  }, [siteConfig?.settings]);
-
-  // Local optimistic copy so the customizer reflects edits instantly even
-  // though `siteConfig` only updates after the save round-trip finishes.
-  const [overridesDraft, setOverridesDraft] = useState({});
-
-  const overridesQueueRef = useRef(null);
-  const overridesInflightRef = useRef(false);
-  // Marks the draft as dirty (user-edited locally). While dirty, we DO NOT
-  // overwrite the draft with whatever siteConfig.settings reports, otherwise
-  // a stale refetch could snap the inputs back to old values mid-edit.
-  const overridesDirtyRef = useRef(false);
-
-  useEffect(() => {
-    if (overridesDirtyRef.current) return;
-    if (overridesQueueRef.current || overridesInflightRef.current) return;
-    setOverridesDraft(sectionOverrides);
-  }, [sectionOverrides]);
-
-  const flushOverridesSave = useCallback(async () => {
-    if (overridesInflightRef.current) return;
-    if (!siteConfig?.id) return;
-    overridesInflightRef.current = true;
-    try {
-      while (overridesQueueRef.current) {
-        const toSave = overridesQueueRef.current;
-        overridesQueueRef.current = null;
-        try {
-          const token = sessionStorage.getItem('site_admin_token');
-          const res = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token ? `SiteAdmin ${token}` : '',
-            },
-            body: JSON.stringify({ settings: { sectionColorOverrides: toSave } }),
-          });
-          if (!res.ok) throw new Error('save failed');
-        } catch (e) {
-          console.error('[overrides] save failed:', e);
-        }
-      }
-      // Once the queue fully drains we can let server-side state win again,
-      // unblocking the resync useEffect for any future siteConfig refetches.
-      overridesDirtyRef.current = false;
-    } finally {
-      overridesInflightRef.current = false;
-    }
-  }, [siteConfig?.id]);
-
-  const setOverrideForSection = useCallback((sectionId, slotKey, value) => {
-    if (!sectionId || !slotKey) return;
-    const allowed = SECTION_SLOTS[sectionId] || [];
-    if (!allowed.includes(slotKey)) return;
-    overridesDirtyRef.current = true;
-    setOverridesDraft(prev => {
-      const sectionPrev = (prev && prev[sectionId]) || {};
-      let nextSection;
-      if (value === null || value === undefined || value === '') {
-        const { [slotKey]: _, ...rest } = sectionPrev;
-        nextSection = rest;
-      } else {
-        nextSection = { ...sectionPrev, [slotKey]: value };
-      }
-      const next = { ...(prev || {}) };
-      if (Object.keys(nextSection).length === 0) {
-        delete next[sectionId];
-      } else {
-        next[sectionId] = nextSection;
-      }
-      // Live preview: send a tiny patch with just the section that changed.
-      // SiteContext merges per-section so other unrelated overrides survive.
-      sendPreviewUpdate({
-        _overridesPatch: {
-          [sectionId]: Object.keys(nextSection).length === 0 ? null : nextSection,
-        },
-      });
-      // Queue the FULL map for save (backend shallow-merges settings, so we
-      // must send the entire sectionColorOverrides blob, not a diff).
-      overridesQueueRef.current = next;
-      flushOverridesSave();
-      return next;
-    });
-  }, [sendPreviewUpdate, flushOverridesSave]);
-
-  // "Reset to default design" for one section. Clears BOTH the per-section
-  // colour overrides AND any explicit scheme assignment, so SchemeScope
-  // renders the section pristine (no CSS injected → original storefront
-  // design wins). Both flows save independently so the merchant sees the
-  // section snap back to original immediately.
-  const resetSectionToDefault = useCallback((sectionId) => {
-    if (!sectionId) return;
-    overridesDirtyRef.current = true;
-    setOverridesDraft(prev => {
-      const next = { ...(prev || {}) };
-      delete next[sectionId];
-      sendPreviewUpdate({ _overridesPatch: { [sectionId]: null } });
-      overridesQueueRef.current = next;
-      flushOverridesSave();
-      return next;
-    });
-    // Clearing the scheme assignment goes through setSchemeForSection's
-    // own queued/save path — it knows how to delete the key cleanly and
-    // pushes its own theme preview message.
-    setSchemeForSection(sectionId, null);
-  }, [sendPreviewUpdate, flushOverridesSave, setSchemeForSection]);
-
-  // Backwards-compat alias for any callers still using the old name.
-  const resetOverridesForSection = resetSectionToDefault;
-
-  // "Reset entire site to default design" — wipes every section's
-  // overrides AND every scheme assignment in one shot. Schemes themselves
-  // are preserved (the merchant might still want to use them later); only
-  // the assignments and overrides are cleared.
-  const resetAllSectionsToDefault = useCallback(() => {
-    overridesDirtyRef.current = true;
-
-    // CRITICAL: do BOTH the patch computation AND the clear inside ONE
-    // setState updater. React guarantees `prev` here is the live current
-    // value. The previous bug was calling setOverridesDraft({}) and then
-    // a second setOverridesDraft(prev=>...) — by the time the second ran,
-    // prev was already {} and no null patches were sent.
-    setOverridesDraft(prev => {
-      const wipePatch = {};
-      for (const k of Object.keys(prev || {})) wipePatch[k] = null;
-      if (Object.keys(wipePatch).length > 0) {
-        sendPreviewUpdate({ _overridesPatch: wipePatch });
-      }
-      return {};
-    });
-
-    // Drop the accumulator's stored override patches so an iframe reload
-    // doesn't replay them back into existence.
-    if (accumulatedSettingsRef.current) {
-      accumulatedSettingsRef.current = {
-        ...accumulatedSettingsRef.current,
-        _overridesPatch: {},
-      };
-    }
-
-    // Queue the empty save.
-    overridesQueueRef.current = {};
-    flushOverridesSave();
-
-    // Clear all assignments via the same save path used by setSchemeForSection.
-    setThemeDraft(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, sectionAssignments: {} };
-      const queuedAlready = themeAssignSaveRef.current.queued;
-      let savedBase = queuedAlready;
-      if (!savedBase || !Array.isArray(savedBase.schemes)) {
-        try { savedBase = JSON.parse(themeSavedRef.current || '{}'); } catch (e) { savedBase = null; }
-      }
-      if (!savedBase || !Array.isArray(savedBase.schemes)) savedBase = next;
-      const savePayload = { ...savedBase, sectionAssignments: {} };
-      themeAssignSaveRef.current.queued = savePayload;
-      (async () => {
-        if (themeAssignSaveRef.current.inflight) return;
-        themeAssignSaveRef.current.inflight = true;
-        try {
-          while (themeAssignSaveRef.current.queued) {
-            const toSave = themeAssignSaveRef.current.queued;
-            themeAssignSaveRef.current.queued = null;
-            await saveThemeConfig(toSave);
-          }
-        } finally {
-          themeAssignSaveRef.current.inflight = false;
-          const draftStr = JSON.stringify(themeDraftRef.current || {});
-          setThemeHasChanges(draftStr !== themeSavedRef.current);
-        }
-      })();
-      pushThemePreview(next);
-      return next;
-    });
-  }, [sendPreviewUpdate, flushOverridesSave, saveThemeConfig, pushThemePreview]);
 
   const sendScrollToSection = useCallback((sectionId) => {
     try {
@@ -1177,8 +876,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   hasChanges={themeHasChanges}
                   onChange={applyThemeDraft}
                   onSave={handleThemeSave}
-                  onResetAllToDefault={resetAllSectionsToDefault}
-                  onResetBrandToDefault={resetBrandToDefault}
                 />
               )}
 
@@ -1256,32 +953,6 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
             onAssign={setSchemeForSection}
           />
         )}
-        {/* Per-section colour overrides — collapsible, lives below the
-            scheme dropdown. Lets the merchant tweak individual slots (e.g.
-            promo banner background) without redefining a whole scheme. */}
-        {activeSection && SECTION_SLOTS[activeSection] && themeDraft && (() => {
-          // Mirror SiteContext.getExplicitSchemeForSection: only treat the
-          // section as "themed" when it's been assigned a NON-default scheme.
-          // When it's on Default, scheme is null — the panel then says
-          // "this section uses the original design" and shows no scheme hex.
-          const assignments = themeDraft.sectionAssignments || {};
-          const targetId = assignments[activeSection];
-          const def = themeDraft.schemes?.find(s => s.isDefault) || null;
-          const isExplicit = !!(targetId && (!def || def.id !== targetId));
-          const explicitScheme = isExplicit
-            ? (themeDraft.schemes?.find(s => s.id === targetId) || null)
-            : null;
-          return (
-            <SectionColorOverrides
-              sectionId={activeSection}
-              scheme={explicitScheme}
-              hasExplicitAssignment={isExplicit}
-              overrides={overridesDraft[activeSection] || {}}
-              onChange={(slot, val) => setOverrideForSection(activeSection, slot, val)}
-              onResetToDefault={() => resetSectionToDefault(activeSection)}
-            />
-          );
-        })()}
         {renderEditor()}
       </div>
     </div>

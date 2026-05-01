@@ -3,15 +3,8 @@ import { PLATFORM_DOMAIN } from '../../config.js';
 import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
-import { resolveSiteDBById, getSiteConfig, getSiteWithConfig, ensureThemeConfigColumn } from '../../utils/site-db.js';
-import {
-  buildDefaultThemeConfig,
-  normalizeThemeConfig,
-  ensureThemeConfig,
-  PLATFORM_DEFAULT_PRIMARY,
-  PLATFORM_DEFAULT_SECONDARY,
-  PLATFORM_DEFAULT_ACCENT,
-} from '../../utils/theme-config.js';
+import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
+import { buildDefaultThemeConfig, normalizeThemeConfig, ensureThemeConfig } from '../../utils/theme-config.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 // English-only wizard seed (System A removed). The platform UI is English; the
@@ -444,48 +437,12 @@ async function getSite(env, user, siteId) {
 }
 
 async function createSite(request, env, user) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return errorResponse('Invalid request body', 400);
-  }
-  const result = await createSiteForUser(env, user, body);
-  if (result.success) {
-    return successResponse(result.data, 'Site created successfully');
-  }
-  return errorResponse(result.error, result.status || 500, result.code);
-}
-
-/**
- * Provision a new site for a user from wizard form data.
- *
- * Used by:
- *  - The HTTP handler `createSite(request, env, user)` (foreground POST /api/sites).
- *  - The post-payment subscription activation flow in payments-worker.js
- *    (`verifySubscriptionPayment` and `handleSubscriptionActivated` webhook),
- *    which persist the wizard form data on the `pending_subscriptions` row
- *    BEFORE Razorpay opens, then call this function once the subscription is
- *    active so the website is guaranteed to be created even if the browser
- *    closes between Razorpay success and the verify call.
- *
- * Returns a structured result the caller can map to either an HTTP response
- * or a stored error string on the pending row:
- *   { success: true, data: { id, subdomain } }
- *   { success: false, error: string, code?: string, status?: number }
- *
- * IMPORTANT: This function must remain side-effect-safe to call after a
- * successful subscription activation. On any failure path it rolls back any
- * partially created `sites` / `site_usage` rows so the caller can store the
- * error and let the user retry without a half-created site lingering.
- */
-export async function createSiteForUser(env, user, body) {
   let siteId = null;
   let finalSubdomain = null;
-
+  
   try {
-    body = body || {};
-    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, accentColor, theme, brandSchemeOverride } = body;
+    const body = await request.json();
+    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, theme } = body;
     let logoUrl = body.logoUrl || null;
     const logoBase64 = body.logo || null;
     const faviconBase64 = body.favicon || null;
@@ -499,11 +456,11 @@ export async function createSiteForUser(env, user, body) {
     const contentLanguageRaw = (body.content_language || body.contentLanguage || 'en');
     const contentLanguage = typeof contentLanguageRaw === 'string' ? contentLanguageRaw.trim() : 'en';
     if (!SUPPORTED_LOCALES.has(contentLanguage)) {
-      return { success: false, error: 'Unsupported content language', code: 'INVALID_CONTENT_LANGUAGE', status: 400 };
+      return errorResponse('Unsupported content language', 400, 'INVALID_CONTENT_LANGUAGE');
     }
 
     if (!brandName) {
-      return { success: false, error: 'Brand name is required', status: 400 };
+      return errorResponse('Brand name is required');
     }
 
     const activeSub = await env.DB.prepare(
@@ -520,18 +477,18 @@ export async function createSiteForUser(env, user, body) {
         const limitMsg = userPlan === 'trial'
           ? `Trial plan allows up to ${planConfig.maxSites} websites. Upgrade to a paid plan to create more.`
           : `Your plan allows up to ${planConfig.maxSites} websites. Upgrade to create more.`;
-        return { success: false, error: limitMsg, code: 'PLAN_LIMIT_REACHED', status: 403 };
+        return errorResponse(limitMsg, 403, 'PLAN_LIMIT_REACHED');
       }
     }
 
     if (subdomain.length < 3) {
-      return { success: false, error: 'Subdomain must be at least 3 characters', code: 'INVALID_SUBDOMAIN', status: 400 };
+      return errorResponse('Subdomain must be at least 3 characters', 400, 'INVALID_SUBDOMAIN');
     }
     if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(subdomain)) {
-      return { success: false, error: 'Subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)', code: 'INVALID_SUBDOMAIN', status: 400 };
+      return errorResponse('Subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)', 400, 'INVALID_SUBDOMAIN');
     }
     if (isReservedSubdomain(subdomain)) {
-      return { success: false, error: 'This subdomain is reserved and cannot be used. Please choose a different name.', code: 'SUBDOMAIN_RESERVED', status: 400 };
+      return errorResponse('This subdomain is reserved and cannot be used. Please choose a different name.', 400, 'SUBDOMAIN_RESERVED');
     }
 
     const existingSubdomain = await env.DB.prepare(
@@ -539,7 +496,7 @@ export async function createSiteForUser(env, user, body) {
     ).bind(subdomain).first();
 
     if (existingSubdomain) {
-      return { success: false, error: 'This subdomain is already taken. Please choose a different brand name.', code: 'SUBDOMAIN_TAKEN', status: 400 };
+      return errorResponse('This subdomain is already taken. Please choose a different brand name.', 400, 'SUBDOMAIN_TAKEN');
     }
 
     const activeShard = await env.DB.prepare(
@@ -547,7 +504,7 @@ export async function createSiteForUser(env, user, body) {
     ).first();
 
     if (!activeShard) {
-      return { success: false, error: 'No active shard available. Please contact support.', code: 'NO_SHARD', status: 500 };
+      return errorResponse('No active shard available. Please contact support.', 500);
     }
 
     finalSubdomain = subdomain;
@@ -568,12 +525,6 @@ export async function createSiteForUser(env, user, body) {
     ).run();
 
     const siteDB = await resolveSiteDBById(env, siteId);
-
-    // Self-heal `site_config.theme_config` on shards that pre-date the
-    // per-section color scheme system. Without this, the INSERT below
-    // crashes with `D1_ERROR: table site_config has no column named
-    // theme_config` and blocks site creation entirely.
-    await ensureThemeConfigColumn(siteDB, `theme-config-col:${activeShard.id}`);
 
     if (logoBase64 && !logoUrl && logoBase64.startsWith('data:')) {
       try {
@@ -651,15 +602,6 @@ export async function createSiteForUser(env, user, body) {
     const finalSeoTitle = seoTitle || wizardSeed.seoTitle(category, safeBrand);
     const finalSeoDescription = seoDescription || wizardSeed.seoDescription(category, safeBrand);
 
-    // Resolved palette for the new site. We always have a valid hex in the
-    // DB so legacy code that reads primary_color/secondary_color directly
-    // never sees nulls. The wizard "I'll pick colors later" path leaves
-    // these undefined → we fall back to the platform default brown/gold so
-    // the storefront harmonizes with its existing chrome from day one.
-    const seededPrimary = primaryColor || PLATFORM_DEFAULT_PRIMARY;
-    const seededSecondary = secondaryColor || PLATFORM_DEFAULT_SECONDARY;
-    const seededAccent = accentColor || PLATFORM_DEFAULT_ACCENT;
-
     const configData = {
       site_id: siteId,
       brand_name: safeBrand,
@@ -671,8 +613,8 @@ export async function createSiteForUser(env, user, body) {
       phone: phone || null,
       email: email || null,
       address: address || null,
-      primary_color: seededPrimary,
-      secondary_color: seededSecondary,
+      primary_color: primaryColor || '#000000',
+      secondary_color: secondaryColor || '#ffffff',
     };
     const configBytes = estimateRowBytes(configData);
 
@@ -684,43 +626,11 @@ export async function createSiteForUser(env, user, body) {
     const settingsJson = JSON.stringify(initialSettings);
 
     // Seed the per-section color scheme system from the merchant's chosen
-    // primary/secondary/accent colors so the storefront has a usable theme
-    // on day one — Brand, Inverse, and Accent schemes are derived
-    // automatically. `applyBrandAsDefault: true` opts new sites in to the
-    // Brand scheme actively painting; legacy sites without this flag stay
-    // on their pristine hardcoded look (read-time backfill preserves false).
-    let themeConfigForInsert = buildDefaultThemeConfig(
-      seededPrimary, seededSecondary, seededAccent,
-      { applyBrandAsDefault: true }
+    // primary/secondary colors so the storefront has a usable theme on day
+    // one — Brand, Inverse, and Accent schemes are derived automatically.
+    const themeConfigJson = JSON.stringify(
+      buildDefaultThemeConfig(primaryColor, secondaryColor, null)
     );
-    // The wizard's Brand Colors step now lets the merchant edit all 10
-    // slots of the Brand scheme (background, text, headingText, mutedText,
-    // border, button, buttonText, secondaryButton, link, accent) before
-    // creating the site. When the merchant customized any slot, the
-    // wizard sends the full edited Brand scheme as `brandSchemeOverride`.
-    // We slot it into the freshly-built theme_config and re-validate
-    // through normalizeThemeConfig so any bad hex value surfaces a 400
-    // before INSERT — the Inverse and Accent schemes still derive from
-    // the seed colors so the merchant gets a coherent 3-scheme palette.
-    if (brandSchemeOverride && typeof brandSchemeOverride === 'object') {
-      try {
-        const merged = {
-          ...themeConfigForInsert,
-          schemes: themeConfigForInsert.schemes.map((s) => (
-            s && s.id === 'brand'
-              ? { ...s, ...brandSchemeOverride, id: 'brand', name: 'Brand', isDefault: true }
-              : s
-          )),
-        };
-        themeConfigForInsert = normalizeThemeConfig(
-          merged, seededPrimary, seededSecondary, seededAccent,
-          { forceApplyBrandAsDefault: true }
-        );
-      } catch (themeErr) {
-        return { success: false, error: themeErr.message || 'Invalid brand colors', code: 'INVALID_BRAND_COLORS', status: 400 };
-      }
-    }
-    const themeConfigJson = JSON.stringify(themeConfigForInsert);
 
     await siteDB.prepare(
       `INSERT INTO site_config (site_id, brand_name, category, logo_url, favicon_url, seo_title, seo_description, phone, email, address, primary_color, secondary_color, settings, theme_config, row_size_bytes, created_at, updated_at)
@@ -736,8 +646,8 @@ export async function createSiteForUser(env, user, body) {
       phone || null,
       email || null,
       address || null,
-      seededPrimary,
-      seededSecondary,
+      primaryColor || '#000000',
+      secondaryColor || '#ffffff',
       settingsJson,
       themeConfigJson,
       configBytes
@@ -782,7 +692,7 @@ export async function createSiteForUser(env, user, body) {
       console.error('Check subscription for new site failed (non-fatal):', subErr);
     }
 
-    return { success: true, data: { id: siteId, subdomain: finalSubdomain } };
+    return successResponse({ id: siteId, subdomain: finalSubdomain }, 'Site created successfully');
   } catch (error) {
     console.error('Create site error:', error);
     if (siteId) {
@@ -795,9 +705,9 @@ export async function createSiteForUser(env, user, body) {
       }
     }
     if (error.message && error.message.includes('UNIQUE constraint failed')) {
-      return { success: false, error: 'Subdomain already taken', code: 'SUBDOMAIN_TAKEN', status: 400 };
+      return errorResponse('Subdomain already taken', 400, 'SUBDOMAIN_TAKEN');
     }
-    return { success: false, error: 'Failed to create site: ' + (error.message || 'Unknown error'), status: 500 };
+    return errorResponse('Failed to create site: ' + error.message, 500);
   }
 }
 
@@ -876,18 +786,6 @@ async function updateSite(request, env, user, siteId, ctx) {
 
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
-
-    // Self-heal `site_config.theme_config` on legacy shards before any
-    // read or write that might touch the column. Cheap no-op once the
-    // worker isolate has confirmed the column exists.
-    const wantsThemeConfig = Object.keys(updates).some((k) => {
-      const dbKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
-      return dbKey === 'theme_config';
-    });
-    if (wantsThemeConfig) {
-      await ensureThemeConfigColumn(siteDB, `theme-config-col:${siteId}`);
-    }
-
     const existingConfig = await siteDB.prepare(
       'SELECT * FROM site_config WHERE site_id = ?'
     ).bind(siteId).first();
@@ -927,12 +825,6 @@ async function updateSite(request, env, user, siteId, ctx) {
         } else if (dbKey === 'theme_config') {
           // Validate the entire theme blob server-side so a bad client value
           // can never reach the storefront. Throws → 400.
-          //
-          // forceApplyBrandAsDefault: any save through the merchant Theme
-          // tab opts the site in to Brand-as-default painting. Legacy sites
-          // that have never touched the Theme tab keep applyBrandAsDefault
-          // = false (read-time backfill preserves it) so their hardcoded
-          // look survives until the merchant explicitly customizes.
           let normalized;
           try {
             normalized = normalizeThemeConfig(
@@ -940,7 +832,6 @@ async function updateSite(request, env, user, siteId, ctx) {
               existingConfig?.primary_color,
               existingConfig?.secondary_color,
               null,
-              { forceApplyBrandAsDefault: true },
             );
           } catch (themeErr) {
             return errorResponse(themeErr.message || 'Invalid theme_config', 400);
@@ -999,18 +890,6 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
   try {
     const updates = await request.json();
     const siteDB = await resolveSiteDBById(env, siteId);
-
-    // Self-heal `site_config.theme_config` on legacy shards before any
-    // read or write that might touch the column. Cheap no-op once the
-    // worker isolate has confirmed the column exists.
-    const wantsThemeConfig = Object.keys(updates).some((k) => {
-      const dbKey = k.replace(/([A-Z])/g, '_$1').toLowerCase();
-      return dbKey === 'theme_config';
-    });
-    if (wantsThemeConfig) {
-      await ensureThemeConfigColumn(siteDB, `theme-config-col:${siteId}`);
-    }
-
     const existingConfig = await siteDB.prepare(
       'SELECT * FROM site_config WHERE site_id = ?'
     ).bind(siteId).first();
@@ -1048,9 +927,6 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
           setClause.push(`${dbKey} = ?`);
           values.push(JSON.stringify(mergedSettings));
         } else if (dbKey === 'theme_config') {
-          // See updateSite — admin saves also opt the site in to Brand
-          // painting, so an admin fixing a merchant's theme produces the
-          // same active behavior as the merchant doing it themselves.
           let normalized;
           try {
             normalized = normalizeThemeConfig(
@@ -1058,7 +934,6 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
               existingConfig?.primary_color,
               existingConfig?.secondary_color,
               null,
-              { forceApplyBrandAsDefault: true },
             );
           } catch (themeErr) {
             return errorResponse(themeErr.message || 'Invalid theme_config', 400);

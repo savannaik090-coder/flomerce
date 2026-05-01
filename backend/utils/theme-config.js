@@ -14,25 +14,6 @@
 
 export const MAX_SCHEMES = 5;
 
-// Platform-default palette. Used when (a) the merchant skips the wizard's
-// Brand Colors step, (b) the merchant clicks "Reset Brand to platform
-// default" in the Theme tab, or (c) the wizard never collected colors at
-// all (legacy entry points). Kept in sync with storefront/styles/variables.css
-// so the painted Brand scheme harmonizes with the storefront's chrome.
-export const PLATFORM_DEFAULT_PRIMARY = '#603000';
-export const PLATFORM_DEFAULT_SECONDARY = '#5a3f2a';
-export const PLATFORM_DEFAULT_ACCENT = '#b08c4c';
-
-// Per-slot classic defaults for the additional 3 slots (headingText,
-// mutedText, border). These mirror the classic template's CSS variables
-// (`--color-text`, `--color-text-muted`, `--color-border`). When an older
-// saved scheme is read back without these slots, normalizeThemeConfig
-// fills them with these values so the merchant's existing palette stays
-// intact and the new slots show the classic look out of the box.
-export const PLATFORM_DEFAULT_HEADING_TEXT = '#333333';
-export const PLATFORM_DEFAULT_MUTED_TEXT = '#888888';
-export const PLATFORM_DEFAULT_BORDER = '#eeeeee';
-
 export const SECTION_IDS = [
   // Homepage / chrome
   'navbar', 'promo-banner', 'hero-slider', 'welcome-banner',
@@ -105,10 +86,7 @@ export function emptyScheme(name = 'Scheme') {
     name,
     isDefault: false,
     background: '#ffffff',
-    text: '#333333',
-    headingText: PLATFORM_DEFAULT_HEADING_TEXT,
-    mutedText: PLATFORM_DEFAULT_MUTED_TEXT,
-    border: PLATFORM_DEFAULT_BORDER,
+    text: '#111111',
     button: '#000000',
     buttonText: '#ffffff',
     secondaryButton: '#f1f5f9',
@@ -123,31 +101,16 @@ export function emptyScheme(name = 'Scheme') {
 // the secondary; Accent leans on the existing accent color as the dominant
 // button.
 export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
-  const primary = clampHex(primaryColor, PLATFORM_DEFAULT_PRIMARY);
-  // `secondary` was historically computed but never used. Kept as the
-  // optional 2nd merchant color in case future palettes want it; for now
-  // Brand derives secondaryButton from `primary` so the scheme remains
-  // visually coherent without forcing the merchant to pick a 3rd color.
-  const _secondary = clampHex(secondaryColor, PLATFORM_DEFAULT_SECONDARY);
-  const accent = clampHex(accentColor, PLATFORM_DEFAULT_ACCENT);
+  const primary = clampHex(primaryColor, '#603000');
+  const secondary = clampHex(secondaryColor, '#ffffff');
+  const accent = clampHex(accentColor, '#b08c4c');
 
-  // Brand mirrors the classic template's CSS variables exactly so a fresh
-  // site looks identical to the platform default. Heading/body text use
-  // #333, muted text uses #888, borders use #eee — matching the classic
-  // `--color-text`, `--color-text-muted`, `--color-border` defaults.
-  // Background is #f8f8f5 (classic `--color-bg`), NOT pure white — every
-  // section in the classic template uses this cream surface (navbar, hero,
-  // categories, footer, etc.); painting them pure white was the visual
-  // regression merchants were reporting.
   const brand = {
     id: 'brand',
     name: 'Brand',
     isDefault: true,
-    background: '#f8f8f5',
-    text: '#333333',
-    headingText: PLATFORM_DEFAULT_HEADING_TEXT,
-    mutedText: PLATFORM_DEFAULT_MUTED_TEXT,
-    border: PLATFORM_DEFAULT_BORDER,
+    background: '#ffffff',
+    text: '#111111',
     button: primary,
     buttonText: pickReadableText(primary),
     secondaryButton: shiftHex(primary, 0.85),
@@ -162,9 +125,6 @@ export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
     isDefault: false,
     background: inverseBg,
     text: '#ffffff',
-    headingText: '#ffffff',
-    mutedText: '#d8c8b8',
-    border: shiftHex(inverseBg, 0.25),
     button: '#ffffff',
     buttonText: '#111111',
     secondaryButton: shiftHex(inverseBg, 0.15),
@@ -178,9 +138,6 @@ export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
     isDefault: false,
     background: '#fdfaf3',
     text: '#1f1a14',
-    headingText: '#1f1a14',
-    mutedText: '#8a7a5a',
-    border: '#e8dcc6',
     button: accent,
     buttonText: pickReadableText(accent),
     secondaryButton: shiftHex(accent, 0.78),
@@ -199,48 +156,20 @@ export function buildDefaultAssignments() {
   return map;
 }
 
-export function buildDefaultThemeConfig(primaryColor, secondaryColor, accentColor, options) {
-  // `applyBrandAsDefault` controls whether the storefront actively paints
-  // the Brand scheme over sections whose assignment === Brand. When the
-  // flag is `true`, Brand functions as a real theme (the wizard's "Brand
-  // Colors" output, or any merchant who has touched the Theme tab). When
-  // `false`/undefined, the storefront falls back to its hardcoded look so
-  // legacy sites that never customized stay visually identical.
-  const applyBrandAsDefault = !!(options && options.applyBrandAsDefault);
+export function buildDefaultThemeConfig(primaryColor, secondaryColor, accentColor) {
   return {
     schemes: buildDefaultSchemes(primaryColor, secondaryColor, accentColor),
     sectionAssignments: buildDefaultAssignments(),
-    applyBrandAsDefault,
   };
-}
-
-// Build a fresh Brand scheme using the platform default palette. Used by
-// the "Reset Brand to platform default" button in the Theme tab so the
-// merchant can wipe their customizations without losing the rest of the
-// theme config (other schemes, assignments, overrides).
-export function buildPlatformDefaultBrandScheme() {
-  const [brand] = buildDefaultSchemes(
-    PLATFORM_DEFAULT_PRIMARY,
-    PLATFORM_DEFAULT_SECONDARY,
-    PLATFORM_DEFAULT_ACCENT,
-  );
-  return brand;
 }
 
 // Validate + normalize incoming theme config. Throws on hard errors so the
 // HTTP handler can return a 400. Coerces missing pieces back to the seeded
 // defaults rather than silently dropping them, so a partial PUT doesn't
 // destroy the merchant's other schemes.
-export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, fallbackAccent, options) {
-  // `forceApplyBrandAsDefault` (truthy) overrides whatever flag is on the
-  // input — used by the merchant PUT path so any save through the Theme
-  // tab opts the site in to Brand painting. Read-time backfill calls
-  // pass nothing, so legacy untouched sites stay opted-out.
-  const forceApply = !!(options && options.forceApplyBrandAsDefault);
+export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, fallbackAccent) {
   if (!input || typeof input !== 'object') {
-    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent, {
-      applyBrandAsDefault: forceApply,
-    });
+    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent);
   }
 
   const schemesIn = Array.isArray(input.schemes) ? input.schemes : [];
@@ -274,22 +203,12 @@ export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, 
       secondaryButton: requireHex(s.secondaryButton, `${label} → secondary button`),
       link: requireHex(s.link, `${label} → link`),
       accent: requireHex(s.accent, `${label} → accent`),
-      // New slots added in the 10-slot expansion. Older saved schemes
-      // don't carry these — `clampHex` falls back to the classic platform
-      // defaults so old data round-trips cleanly without any migration
-      // and the merchant's existing palette stays intact. New writes
-      // always include real values (the merchant Theme tab sends all 10).
-      headingText: clampHex(s.headingText, PLATFORM_DEFAULT_HEADING_TEXT),
-      mutedText: clampHex(s.mutedText, PLATFORM_DEFAULT_MUTED_TEXT),
-      border: clampHex(s.border, PLATFORM_DEFAULT_BORDER),
     };
     return out;
   });
 
   if (schemes.length === 0) {
-    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent, {
-      applyBrandAsDefault: forceApply || !!input.applyBrandAsDefault,
-    });
+    return buildDefaultThemeConfig(fallbackPrimary, fallbackSecondary, fallbackAccent);
   }
 
   // Exactly one default. If multiple flagged, keep the first; if none, mark first.
@@ -334,13 +253,7 @@ export function normalizeThemeConfig(input, fallbackPrimary, fallbackSecondary, 
     }
   }
 
-  // Preserve the applyBrandAsDefault flag through round-trips. The PUT
-  // path passes forceApplyBrandAsDefault=true so any merchant edit opts
-  // the site in; read-time backfill leaves the input value untouched
-  // (legacy rows have no flag → stays false → pristine look preserved).
-  const applyBrandAsDefault = forceApply || !!input.applyBrandAsDefault;
-
-  return { schemes, sectionAssignments, applyBrandAsDefault };
+  return { schemes, sectionAssignments };
 }
 
 // Read-time backfill: if a site's theme_config is null/empty (legacy row

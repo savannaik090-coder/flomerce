@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
+import { schemeToCssVars } from '../components/theme/SchemeScope.jsx';
 
 export const SiteContext = createContext(null);
 
@@ -92,19 +93,7 @@ export function SiteProvider({ children }) {
     function handleMessage(event) {
       if (!event.data) return;
       if (event.data.type === 'FLOMERCE_PREVIEW_UPDATE') {
-        // Shallow-merge top-level keys, but `_overridesPatch` needs per-section
-        // accumulation: editing navbar after promo must not drop the unsaved
-        // promo preview. Each per-section value is the FULL replacement state
-        // for that section (or null = remove that section's overrides).
-        setPreviewSettings(prev => {
-          const next = { ...(prev || {}), ...event.data.settings };
-          const incoming = event.data.settings || {};
-          if (incoming._overridesPatch && typeof incoming._overridesPatch === 'object') {
-            const prevPatch = (prev && prev._overridesPatch) || {};
-            next._overridesPatch = { ...prevPatch, ...incoming._overridesPatch };
-          }
-          return next;
-        });
+        setPreviewSettings(prev => ({ ...(prev || {}), ...event.data.settings }));
         return;
       }
       if (event.data.type === 'FLOMERCE_SCROLL_TO_SECTION' && event.data.sectionId) {
@@ -269,55 +258,22 @@ export function SiteProvider({ children }) {
     // merchant is editing without losing the rest of their config.
     if (_themePatch && typeof _themePatch === 'object') {
       const baseTheme = siteConfig.themeConfig || {};
-      // sectionAssignments is REPLACED (not merged) when present, because
-      // the customizer always sends the merchant's full intended assignment
-      // map. Without replace, a cleared assignment (delete key from draft)
-      // would silently fall back to the saved value — meaning "Reset to
-      // default design" wouldn't take effect in the live preview until save.
       merged.themeConfig = {
         ...baseTheme,
         ...(Array.isArray(_themePatch.schemes) ? { schemes: _themePatch.schemes } : {}),
         ...(_themePatch.sectionAssignments && typeof _themePatch.sectionAssignments === 'object'
-          ? { sectionAssignments: { ..._themePatch.sectionAssignments } }
-          : {}),
-        // Forward the opt-in flag when the customizer sends one (e.g. after
-        // Reset Brand). Boolean check is intentional — `undefined` means
-        // "patch doesn't touch the flag" so we keep the saved value.
-        ...(typeof _themePatch.applyBrandAsDefault === 'boolean'
-          ? { applyBrandAsDefault: _themePatch.applyBrandAsDefault }
+          ? { sectionAssignments: { ...(baseTheme.sectionAssignments || {}), ...(_themePatch.sectionAssignments || {}) } }
           : {}),
       };
-    }
-    // Per-section color overrides live in settings.sectionColorOverrides.
-    // Live-preview patches arrive as `_overridesPatch: { sectionId: {...} }`.
-    // Each per-section value is the FULL intended state for that section
-    // (the customizer always sends the complete next slots map computed
-    // from its local draft), so we REPLACE rather than slot-merge — that
-    // way clearing a slot in the customizer actually removes it from the
-    // preview. `null` means "drop all overrides for this section".
-    const overridesPatch = settingsOverrides && settingsOverrides._overridesPatch;
-    if (overridesPatch && typeof overridesPatch === 'object') {
-      const baseOverrides = (siteConfig.settings && siteConfig.settings.sectionColorOverrides) || {};
-      const mergedOverrides = { ...baseOverrides };
-      for (const [secId, slots] of Object.entries(overridesPatch)) {
-        if (slots && typeof slots === 'object' && Object.keys(slots).length > 0) {
-          mergedOverrides[secId] = { ...slots };
-        } else {
-          delete mergedOverrides[secId];
-        }
-      }
-      merged.settings = { ...merged.settings, sectionColorOverrides: mergedOverrides };
     }
     return merged;
   }, [previewSettings, siteConfig]);
 
   // Resolve the theme bundle that the storefront actually consumes. If the
   // merchant has no theme_config yet (super-old site, brand new SDK paint
-  // before the API answers), synthesize Brand + Inverse + Accent from
-  // primary/secondary/accent — same shape the backend seeds on new sites
-  // — so SchemeScope renders correctly AND the visual customizer's Theme
-  // tab + per-section dropdowns have real schemes to switch between
-  // without requiring a backend migration of legacy rows.
+  // before the API answers), fall back to a single Brand scheme synthesized
+  // from primary/secondary so SchemeScope and downstream components always
+  // have something valid to render.
   const resolvedTheme = useMemo(() => {
     const cfg = effectiveSiteConfig;
     if (!cfg) return null;
@@ -325,104 +281,35 @@ export function SiteProvider({ children }) {
     if (tc && Array.isArray(tc.schemes) && tc.schemes.length > 0) {
       return tc;
     }
-    const primary = cfg.primaryColor || '#603000';
-    const accent = '#b08c4c';
-    const pickReadable = (bg) => {
-      if (typeof bg !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(bg)) return '#ffffff';
-      const n = parseInt(bg.slice(1), 16);
-      const r = ((n >> 16) & 0xff) / 255;
-      const g = ((n >> 8) & 0xff) / 255;
-      const b = (n & 0xff) / 255;
-      return (0.299 * r + 0.587 * g + 0.114 * b) > 0.55 ? '#111111' : '#ffffff';
+    const fallbackBrand = {
+      id: 'brand',
+      name: 'Brand',
+      isDefault: true,
+      background: '#ffffff',
+      text: '#111111',
+      button: cfg.primaryColor || '#000000',
+      buttonText: '#ffffff',
+      secondaryButton: '#f1f5f9',
+      link: cfg.primaryColor || '#000000',
+      accent: '#b08c4c',
     };
-    const shift = (hex, factor) => {
-      if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return hex;
-      const n = parseInt(hex.slice(1), 16);
-      let r = (n >> 16) & 0xff, g = (n >> 8) & 0xff, b = n & 0xff;
-      if (factor >= 0) {
-        r = Math.round(r + (255 - r) * factor);
-        g = Math.round(g + (255 - g) * factor);
-        b = Math.round(b + (255 - b) * factor);
-      } else {
-        const f = 1 + factor;
-        r = Math.round(r * f); g = Math.round(g * f); b = Math.round(b * f);
-      }
-      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
-    };
-    // 10-slot shape — kept byte-equal to backend buildDefaultSchemes so a
-    // legacy site whose theme_config never made it through the backend
-    // still renders with the same Brand/Inverse/Accent palettes.
-    const brand = {
-      id: 'brand', name: 'Brand', isDefault: true,
-      background: '#f8f8f5', text: '#333333',
-      headingText: '#333333', mutedText: '#888888', border: '#eeeeee',
-      button: primary, buttonText: pickReadable(primary),
-      secondaryButton: shift(primary, 0.85),
-      link: primary, accent,
-    };
-    const inverseBg = shift(primary, -0.4);
-    const inverse = {
-      id: 'inverse', name: 'Inverse', isDefault: false,
-      background: inverseBg, text: '#ffffff',
-      headingText: '#ffffff', mutedText: '#d8c8b8', border: shift(inverseBg, 0.25),
-      button: '#ffffff', buttonText: '#111111',
-      secondaryButton: shift(inverseBg, 0.15),
-      link: '#f5deb3', accent,
-    };
-    const accentScheme = {
-      id: 'accent', name: 'Accent', isDefault: false,
-      background: '#fdfaf3', text: '#1f1a14',
-      headingText: '#1f1a14', mutedText: '#8a7a5a', border: '#e8dcc6',
-      button: accent, buttonText: pickReadable(accent),
-      secondaryButton: shift(accent, 0.78),
-      link: primary, accent,
-    };
-    return { schemes: [brand, inverse, accentScheme], sectionAssignments: {} };
+    return { schemes: [fallbackBrand], sectionAssignments: {} };
   }, [effectiveSiteConfig]);
 
-  // Inject the active Brand scheme as :root design tokens — but ONLY when
-  // the site has opted in to Brand-as-default painting. New sites (created
-  // via the wizard with the Brand Colors step) and any site whose merchant
-  // has saved through the Theme tab are flagged `applyBrandAsDefault: true`
-  // by the backend; legacy sites that have never customized stay `false`
-  // and keep their pristine variables.css look.
-  //
-  // This is what makes Brand a real default theme: every storefront element
-  // referencing `var(--color-primary)` (buttons, accents, links throughout
-  // the chrome) automatically inherits the merchant's colors site-wide,
-  // not just inside SchemeScope-wrapped sections.
+  // Inject the Brand (default) scheme into the document root so the very
+  // first paint already uses the merchant's colors. SchemeScope still wraps
+  // each section to override per-section, but elements that aren't inside a
+  // SchemeScope (loading screens, error pages, mid-page modals…) stay on
+  // brand. This is what stops the "flash of unstyled colors".
   useEffect(() => {
     if (typeof document === 'undefined' || !resolvedTheme) return;
+    const brand = resolvedTheme.schemes.find(s => s.isDefault) || resolvedTheme.schemes[0];
+    if (!brand) return;
+    const vars = schemeToCssVars(brand);
     const root = document.documentElement;
-    if (!root) return;
-    const def = Array.isArray(resolvedTheme.schemes)
-      ? resolvedTheme.schemes.find(s => s.isDefault)
-      : null;
-    const opted = !!resolvedTheme.applyBrandAsDefault;
-    // Token list mirrors variables.css so every existing reference picks
-    // up merchant colors transparently. We touch only color tokens — never
-    // typography, radius, spacing — to keep the visual contract narrow.
-    const TOKENS = [
-      ['--color-primary', def?.button],
-      ['--color-secondary', def?.secondaryButton],
-      ['--color-accent', def?.accent],
-    ];
-    if (opted && def) {
-      for (const [name, value] of TOKENS) {
-        if (typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)) {
-          root.style.setProperty(name, value);
-        }
-      }
-    } else {
-      // Opted-out (legacy site) → clear any tokens we may have set in a
-      // prior render so the static variables.css values shine through.
-      for (const [name] of TOKENS) root.style.removeProperty(name);
+    for (const [k, v] of Object.entries(vars)) {
+      root.style.setProperty(k, v);
     }
-    return () => {
-      // Don't aggressively clear on unmount — the storefront keeps the
-      // SiteProvider mounted for the lifetime of the page, and clearing
-      // here would briefly flash the platform defaults during HMR.
-    };
   }, [resolvedTheme]);
 
   // Helper used by SchemeScope to look up the scheme assigned to a given
@@ -440,56 +327,6 @@ export function SiteProvider({ children }) {
     };
   }, [resolvedTheme]);
 
-  // Returns the scheme SchemeScope should actively paint on a given
-  // section. Returns null to mean "leave the section's original CSS alone".
-  //
-  // Behavior is two-tier so we can ship Brand-as-default-theme without
-  // visually breaking legacy sites:
-  //   - Non-default scheme assigned → always paint that scheme. (Status quo.)
-  //   - Default scheme assigned + applyBrandAsDefault=true → paint Brand.
-  //     This is the new path for wizard-created sites and any site whose
-  //     merchant has saved through the Theme tab.
-  //   - Default scheme assigned + applyBrandAsDefault=false → return null,
-  //     preserving the pristine pre-feature look. Legacy invariant intact.
-  const getExplicitSchemeForSection = useMemo(() => {
-    return (sectionId) => {
-      if (!resolvedTheme || !Array.isArray(resolvedTheme.schemes)) return null;
-      const assignments = resolvedTheme.sectionAssignments || {};
-      const targetId = sectionId ? assignments[sectionId] : null;
-      const def = resolvedTheme.schemes.find(s => s.isDefault);
-      const opted = !!resolvedTheme.applyBrandAsDefault;
-      if (!targetId) {
-        // No explicit assignment for this section. On opted-in sites that
-        // means "use site default (Brand)" — paint the Brand scheme. On
-        // legacy untouched sites the flag is false, so we return null and
-        // the storefront keeps its pre-feature original design. This is
-        // also the path taken when the merchant picks "Use site default
-        // (Brand)" from the per-section dropdown (which sends null).
-        return opted && def ? def : null;
-      }
-      if (def && def.id === targetId) {
-        // Brand scheme explicitly assigned. Only paint when opted in,
-        // otherwise honour the legacy "untouched stays pristine" rule.
-        return opted ? def : null;
-      }
-      return resolvedTheme.schemes.find(s => s.id === targetId) || null;
-    };
-  }, [resolvedTheme]);
-
-  // Per-section colour overrides live alongside the assigned scheme. These
-  // are arbitrary { background?, text?, button?, ... } maps that take
-  // precedence over the assigned scheme on a per-slot basis. Source of
-  // truth: settings.sectionColorOverrides[sectionId].
-  const getOverridesForSection = useMemo(() => {
-    return (sectionId) => {
-      if (!sectionId) return null;
-      const settings = effectiveSiteConfig?.settings;
-      if (!settings || !settings.sectionColorOverrides) return null;
-      const found = settings.sectionColorOverrides[sectionId];
-      return (found && typeof found === 'object') ? found : null;
-    };
-  }, [effectiveSiteConfig]);
-
   return (
     <SiteContext.Provider value={{
       siteConfig: effectiveSiteConfig,
@@ -499,8 +336,6 @@ export function SiteProvider({ children }) {
       refetchSite: () => subdomain && fetchSiteConfig(subdomain, true),
       themeConfig: resolvedTheme,
       getSchemeForSection,
-      getExplicitSchemeForSection,
-      getOverridesForSection,
     }}>
       {children}
     </SiteContext.Provider>

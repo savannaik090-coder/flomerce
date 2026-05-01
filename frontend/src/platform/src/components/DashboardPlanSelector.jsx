@@ -119,7 +119,7 @@ function PaymentProcessingOverlay({ state, message, onDone }) {
   );
 }
 
-export default function DashboardPlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite, pendingSiteData }) {
+export default function DashboardPlanSelector({ siteId: initialSiteId, currentPlan, currentStatus, scheduledPlan, scheduledStartAt, onUpgraded, isOverlay, hideTrial, onClose, isFirstTime, onCreateSite }) {
   const confirm = useConfirm();
   const [duration, setDuration] = useState(null);
   const [upgrading, setUpgrading] = useState(null);
@@ -223,13 +223,7 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
     setUpgrading(selectedPlan.id);
     try {
       const siteId = initialSiteId || null;
-      // Pass the wizard form payload only when creating a brand-new site so
-      // the backend can persist it on the pending_subscriptions row and
-      // auto-create the site as soon as the subscription activates (verify
-      // OR webhook). For plan changes on existing sites, pendingSiteData is
-      // not provided and the backend treats this as a regular activation.
-      const formDataForServer = (!siteId && pendingSiteData) ? pendingSiteData : null;
-      const res = await createSubscription(selectedPlan.id, siteId, formDataForServer);
+      const res = await createSubscription(selectedPlan.id, siteId);
 
       if (!res.subscriptionId) {
         setPostPayment({ state: 'error', message: res.error || "Failed to create subscription. Please try again." });
@@ -250,35 +244,13 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
               razorpay_signature: response.razorpay_signature,
             });
             if (verifyRes.verified || verifyRes.success) {
-              // New-site flow with server-side auto-creation:
-              //  - siteCreated=true → server already provisioned the site, nothing else to do here.
-              //  - hadPendingSiteData=true & siteCreated=false → activation succeeded but
-              //    site provisioning failed (e.g. SUBDOMAIN_TAKEN). The pending row
-              //    lives on; the dashboard reconciliation banner will surface the error
-              //    and offer Retry. Don't call the legacy onCreateSite() fallback —
-              //    that would race against the server's pending row.
-              //  - duplicate=true → webhook beat us to it; treat as success.
-              if (formDataForServer && verifyRes.hadPendingSiteData && !verifyRes.siteCreated) {
-                const reason = verifyRes.siteCreationError ? ` Reason: ${verifyRes.siteCreationError}` : '';
-                setPostPayment({
-                  state: 'success',
-                  message: `Your plan is active and your payment is safe.${reason} We couldn't auto-create your website yet — open your dashboard to retry, or contact support if it keeps failing.`,
-                });
-                return;
-              }
-              if (!initialSiteId && !formDataForServer && onCreateSite) {
-                // Legacy path (e.g. trial activation flow): plan selector was
-                // opened without prior wizard form data. Fall back to the
-                // browser-side createSite call.
+              if (!initialSiteId && onCreateSite) {
                 setPostPayment({ state: 'creating-site', message: '' });
                 try {
                   await onCreateSite();
                 } catch (siteErr) {
                   console.error('Site creation after payment failed:', siteErr);
-                  setPostPayment({
-                    state: 'success',
-                    message: "Your plan is active and your payment is safe. We couldn't finish creating your website automatically — open your dashboard to retry.",
-                  });
+                  setPostPayment({ state: 'success', message: "Your payment was successful and your plan is active! Your website will be created when you return to the dashboard." });
                   return;
                 }
               }
@@ -288,11 +260,7 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
             }
           } catch (verifyErr) {
             if (verifyErr?.message?.includes('already activated') || verifyErr?.message?.includes('will activate shortly')) {
-              // Webhook activated already; if a wizard payload was sent, the
-              // server will (or already did) auto-create the site. Don't
-              // double-create from the browser. The dashboard reconciliation
-              // banner will pick up any failure.
-              if (!initialSiteId && !formDataForServer && onCreateSite) {
+              if (!initialSiteId && onCreateSite) {
                 setPostPayment({ state: 'creating-site', message: '' });
                 try { await onCreateSite(); } catch (e) { console.error('Site creation after payment failed:', e); }
               }
