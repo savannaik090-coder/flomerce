@@ -148,7 +148,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       <nav className="navbar">
         <div className={`nav-container${isCentered ? ' nav-container--logo-center' : ''}`}>
           <div className="hamburger" onClick={() => setMenuOpen(true)}>
-            <PngIcon src="/images/icons/bars-staggered (2).png" alt={tx("Menu")} size={25} />
+            <PngIcon src="/images/icons/hamburger.png" alt={tx("Menu")} size={25} />
           </div>
 
           <Link to="/" className={`brand${isCentered ? ' brand--center' : ''}`}>
