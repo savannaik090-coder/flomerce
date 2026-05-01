@@ -36,7 +36,7 @@ function SelectedOptionsDisplay({ selectedOptions }) {
   }
   if (parts.length === 0) return null;
   return (
-    <div style={{ fontSize: 11, color: '#888', marginTop: 2, lineHeight: 1.4 }}>
+    <div style={{ fontSize: 11, color: 'var(--panel-muted, #888)', marginTop: 2, lineHeight: 1.4 }}>
       {parts.map((p, i) => (
         <React.Fragment key={i}>
           {i > 0 ? ' \u2022 ' : ''}

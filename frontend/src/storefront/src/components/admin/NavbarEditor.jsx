@@ -5,6 +5,8 @@ import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 
 function generateId() {
   return 'nav_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
@@ -42,6 +44,16 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [showCartIcon, setShowCartIcon] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  // Navigation Style — color/font customization (mirrors promo banner mechanism).
+  // Empty string means "use default": SiteContext skips setProperty so the CSS
+  // var fallback (the existing template default) takes over.
+  const [navBg, setNavBg] = useState('');
+  const [navLinkText, setNavLinkText] = useState('');
+  const [navLinkHover, setNavLinkHover] = useState('');
+  const [navIcon, setNavIcon] = useState('');
+  const [navFont, setNavFont] = useState('');
+  const [brandColor, setBrandColor] = useState('');
+  const [brandFont, setBrandFont] = useState('');
   const logoInputRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
@@ -54,10 +66,19 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon });
+    const current = JSON.stringify({
+      navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
+      navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+    });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon });
-  }, [navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon]);
+    if (onPreviewUpdate) onPreviewUpdate({
+      navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
+      navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+    });
+  }, [
+    navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
+    navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+  ]);
 
   async function loadCategories() {
     try {
@@ -84,13 +105,32 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         const posVal = settings.logoPosition || 'left';
         const accVal = settings.showAccountIcon !== false;
         const cartVal = settings.showCartIcon !== false;
+        const navBgVal = settings.navBg || '';
+        const navLinkTextVal = settings.navLinkText || '';
+        const navLinkHoverVal = settings.navLinkHover || '';
+        const navIconVal = settings.navIcon || '';
+        const navFontVal = settings.navFont || '';
+        const brandColorVal = settings.brandColor || '';
+        const brandFontVal = settings.brandFont || '';
         setNavbarMenus(menusVal);
         setLogoUrl(logoVal);
         setLogoSize(sizeVal);
         setLogoPosition(posVal);
         setShowAccountIcon(accVal);
         setShowCartIcon(cartVal);
-        serverValuesRef.current = JSON.stringify({ navbarMenus: menusVal, logoUrl: logoVal, logoSize: sizeVal, logoPosition: posVal, showAccountIcon: accVal, showCartIcon: cartVal });
+        setNavBg(navBgVal);
+        setNavLinkText(navLinkTextVal);
+        setNavLinkHover(navLinkHoverVal);
+        setNavIcon(navIconVal);
+        setNavFont(navFontVal);
+        setBrandColor(brandColorVal);
+        setBrandFont(brandFontVal);
+        serverValuesRef.current = JSON.stringify({
+          navbarMenus: menusVal, logoUrl: logoVal, logoSize: sizeVal, logoPosition: posVal,
+          showAccountIcon: accVal, showCartIcon: cartVal,
+          navBg: navBgVal, navLinkText: navLinkTextVal, navLinkHover: navLinkHoverVal,
+          navIcon: navIconVal, navFont: navFontVal, brandColor: brandColorVal, brandFont: brandFontVal,
+        });
       }
     } catch (e) {
       console.error('Failed to load navbar config:', e);
@@ -187,12 +227,21 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { navbarMenus: cleanMenus, logoSize, logoPosition, showAccountIcon, showCartIcon }, logoUrl: logoUrl || null }),
+        body: JSON.stringify({
+          settings: {
+            navbarMenus: cleanMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
+            navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+          },
+          logoUrl: logoUrl || null,
+        }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon });
+        serverValuesRef.current = JSON.stringify({
+          navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
+          navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+        });
         setHasChanges(false);
         // Save succeeded — clean up R2 (delete replaced original logo + any
         // intermediate uploads not in the final state).
@@ -601,6 +650,110 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Navigation Style</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Customize the navigation bar's colors and fonts. Leave a field blank to use the template default.
+            </p>
+
+            <div style={{
+              padding: 16,
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              marginBottom: 24,
+              background: navBg || '#f8f8f5',
+              transition: 'background 0.2s ease',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{
+                  fontFamily: brandFont || "'Playfair Display', serif",
+                  fontSize: 22,
+                  fontWeight: 600,
+                  color: brandColor || '#000',
+                }}>
+                  {siteConfig?.name || 'Your Brand'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                  {['Shop', 'About', 'Contact'].map((label, i) => (
+                    <span
+                      key={label}
+                      style={{
+                        fontFamily: navFont || 'inherit',
+                        color: i === 1 ? (navLinkHover || '#c59d5f') : (navLinkText || '#333'),
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                  <i className="fas fa-shopping-bag" style={{ color: navIcon || navLinkText || '#333', fontSize: 16 }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <AdminColorField
+                label="Navbar Background"
+                value={navBg}
+                fallback="#f8f8f5"
+                onChange={setNavBg}
+              />
+              <AdminColorField
+                label="Logo / Brand Color"
+                value={brandColor}
+                fallback="#000000"
+                onChange={setBrandColor}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <AdminFontPicker
+                label="Logo / Brand Font"
+                value={brandFont}
+                onChange={setBrandFont}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <AdminColorField
+                label="Nav Link Color"
+                value={navLinkText}
+                fallback="#333333"
+                onChange={setNavLinkText}
+              />
+              <AdminColorField
+                label="Nav Link Hover"
+                value={navLinkHover}
+                fallback="#c59d5f"
+                onChange={setNavLinkHover}
+              />
+              <AdminColorField
+                label="Icon Color"
+                value={navIcon}
+                fallback="#333333"
+                onChange={setNavIcon}
+              />
+            </div>
+
+            <AdminFontPicker
+              label="Nav Menu Font"
+              value={navFont}
+              onChange={setNavFont}
+            />
+
+            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, marginBottom: 0 }}>
+              <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
+              The mobile menu inherits these colors and fonts automatically.
+            </p>
           </div>
         </div>
 

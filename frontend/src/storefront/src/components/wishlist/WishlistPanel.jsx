@@ -47,7 +47,7 @@ export default function WishlistPanel({ isOpen, onClose }) {
 
         <div className="wishlist-items">
           {items.length === 0 ? (
-            <div className="empty-cart-message" style={{ textAlign: 'center', padding: '30px 0', color: '#888' }}>
+            <div className="empty-cart-message" style={{ textAlign: 'center', padding: '30px 0', color: 'var(--panel-muted, #888)' }}>
               <TranslatedText text="Your wishlist is empty" />
             </div>
           ) : (

@@ -2,68 +2,9 @@ import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
-
-// Curated font catalog. Each entry's `value` is the exact CSS font-family stack
-// applied to the banner; `face` is the same family used to render the swatch
-// preview in the admin picker. All Google Fonts here are loaded in
-// frontend/src/storefront/index.html.
-const FONT_GROUPS = [
-  {
-    label: 'Sans-Serif',
-    fonts: [
-      { name: 'Inter',       value: "'Inter', 'Helvetica Neue', sans-serif" },
-      { name: 'Poppins',     value: "'Poppins', sans-serif" },
-      { name: 'Lato',        value: "'Lato', sans-serif" },
-      { name: 'Montserrat',  value: "'Montserrat', sans-serif" },
-      { name: 'Raleway',     value: "'Raleway', sans-serif" },
-      { name: 'DM Sans',     value: "'DM Sans', sans-serif" },
-      { name: 'Work Sans',   value: "'Work Sans', sans-serif" },
-    ],
-  },
-  {
-    label: 'Serif',
-    fonts: [
-      { name: 'Playfair Display',    value: "'Playfair Display', serif" },
-      { name: 'DM Serif Display',    value: "'DM Serif Display', serif" },
-      { name: 'Cormorant Garamond',  value: "'Cormorant Garamond', serif" },
-      { name: 'Lora',                value: "'Lora', serif" },
-      { name: 'Merriweather',        value: "'Merriweather', serif" },
-    ],
-  },
-  {
-    label: 'Display',
-    fonts: [
-      { name: 'Bebas Neue',     value: "'Bebas Neue', sans-serif" },
-      { name: 'Oswald',         value: "'Oswald', sans-serif" },
-      { name: 'Anton',          value: "'Anton', sans-serif" },
-      { name: 'Abril Fatface',  value: "'Abril Fatface', serif" },
-      { name: 'Righteous',      value: "'Righteous', sans-serif" },
-      { name: 'Archivo Black',  value: "'Archivo Black', sans-serif" },
-    ],
-  },
-  {
-    label: 'Handwritten',
-    fonts: [
-      { name: 'Caveat',           value: "'Caveat', cursive" },
-      { name: 'Pacifico',         value: "'Pacifico', cursive" },
-      { name: 'Dancing Script',   value: "'Dancing Script', cursive" },
-      { name: 'Great Vibes',      value: "'Great Vibes', cursive" },
-      { name: 'Sacramento',       value: "'Sacramento', cursive" },
-      { name: 'Permanent Marker', value: "'Permanent Marker', cursive" },
-    ],
-  },
-  {
-    label: 'Monospace',
-    fonts: [
-      { name: 'Space Mono',     value: "'Space Mono', monospace" },
-      { name: 'JetBrains Mono', value: "'JetBrains Mono', monospace" },
-    ],
-  },
-];
-
-// Flat lookup so we can find a saved value's display name.
-const FONT_LOOKUP = FONT_GROUPS.flatMap(g => g.fonts.map(f => ({ ...f, group: g.label })));
 
 // Mirrors the per-template defaults declared in navbar.css / modern.css.
 // Used only to populate the color-picker swatch when no custom value is saved
@@ -279,25 +220,21 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
-              <ColorField
+              <AdminColorField
                 label="Background Color"
                 value={bgColor}
                 fallback={defaultBg}
                 onChange={setBgColor}
-                inputBase={inputBase}
-                fieldLabel={fieldLabel}
               />
-              <ColorField
+              <AdminColorField
                 label="Text Color"
                 value={textColor}
                 fallback={defaultText}
                 onChange={setTextColor}
-                inputBase={inputBase}
-                fieldLabel={fieldLabel}
               />
             </div>
 
-            <FontPicker value={fontFamily} onChange={setFontFamily} fieldLabel={fieldLabel} />
+            <AdminFontPicker value={fontFamily} onChange={setFontFamily} />
           </div>
         </div>
 
@@ -318,204 +255,3 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
   );
 }
 
-// ---------- Subcomponents ----------
-
-function ColorField({ label, value, fallback, onChange, inputBase, fieldLabel }) {
-  const display = value || fallback;
-  return (
-    <div>
-      <label style={fieldLabel}>{label}</label>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: 6,
-        border: '1px solid #e2e8f0',
-        borderRadius: 8,
-        background: '#fff',
-      }}>
-        <label style={{
-          position: 'relative',
-          width: 36,
-          height: 36,
-          borderRadius: 6,
-          background: display,
-          border: '1px solid #e2e8f0',
-          cursor: 'pointer',
-          flexShrink: 0,
-          boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.4)',
-        }}>
-          <input
-            type="color"
-            value={display}
-            onChange={e => onChange(e.target.value)}
-            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-          />
-        </label>
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={`default · ${fallback}`}
-          style={{
-            ...inputBase,
-            flex: 1,
-            border: 'none',
-            padding: '6px 4px',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            fontSize: 13,
-          }}
-        />
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            title="Reset to default"
-            style={{
-              padding: '6px 10px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: 6,
-              fontSize: 12,
-              color: '#475569',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >Reset</button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FontPicker({ value, onChange, fieldLabel }) {
-  const [activeGroup, setActiveGroup] = useState(() => {
-    const found = FONT_LOOKUP.find(f => f.value === value);
-    return found ? found.group : FONT_GROUPS[0].label;
-  });
-
-  const visibleFonts = FONT_GROUPS.find(g => g.label === activeGroup)?.fonts || [];
-  const selectedName = FONT_LOOKUP.find(f => f.value === value)?.name;
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <label style={{ ...fieldLabel, marginBottom: 0 }}>
-          Font Family
-          {selectedName && (
-            <span style={{ color: '#64748b', fontWeight: 400, marginLeft: 6 }}>· {selectedName}</span>
-          )}
-        </label>
-        {value && (
-          <button
-            type="button"
-            onClick={() => onChange('')}
-            style={{
-              fontSize: 12,
-              color: '#475569',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              textDecoration: 'underline',
-            }}
-          >Use template default</button>
-        )}
-      </div>
-
-      {/* Category tabs */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 6,
-        marginBottom: 12,
-        padding: 4,
-        background: '#f1f5f9',
-        borderRadius: 8,
-      }}>
-        {FONT_GROUPS.map(group => {
-          const active = group.label === activeGroup;
-          return (
-            <button
-              key={group.label}
-              type="button"
-              onClick={() => setActiveGroup(group.label)}
-              style={{
-                flex: '1 1 auto',
-                padding: '7px 10px',
-                background: active ? '#fff' : 'transparent',
-                color: active ? '#0f172a' : '#64748b',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 13,
-                fontWeight: active ? 600 : 500,
-                cursor: 'pointer',
-                boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                transition: 'all 120ms ease',
-              }}
-            >{group.label}</button>
-          );
-        })}
-      </div>
-
-      {/* Font cards grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-        gap: 10,
-      }}>
-        {visibleFonts.map(font => {
-          const selected = font.value === value;
-          return (
-            <button
-              key={font.name}
-              type="button"
-              onClick={() => onChange(font.value)}
-              style={{
-                position: 'relative',
-                padding: '14px 12px',
-                background: selected ? '#0f172a' : '#fff',
-                color: selected ? '#fff' : '#0f172a',
-                border: `1.5px solid ${selected ? '#0f172a' : '#e2e8f0'}`,
-                borderRadius: 8,
-                cursor: 'pointer',
-                textAlign: 'center',
-                transition: 'all 120ms ease',
-                fontFamily: font.value,
-              }}
-              onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = '#94a3b8'; }}
-              onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = '#e2e8f0'; }}
-            >
-              <div style={{ fontSize: 22, lineHeight: 1.1, marginBottom: 4 }}>Aa</div>
-              <div style={{
-                fontSize: 12,
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                opacity: selected ? 0.85 : 0.7,
-                fontWeight: 500,
-              }}>{font.name}</div>
-              {selected && (
-                <div style={{
-                  position: 'absolute',
-                  top: 6,
-                  right: 6,
-                  width: 16,
-                  height: 16,
-                  borderRadius: '50%',
-                  background: '#fff',
-                  color: '#0f172a',
-                  fontSize: 11,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontFamily: 'system-ui, sans-serif',
-                  fontWeight: 700,
-                  lineHeight: 1,
-                }}>✓</div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}

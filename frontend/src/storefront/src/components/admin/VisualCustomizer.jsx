@@ -23,6 +23,7 @@ import ContactEditor from './ContactEditor.jsx';
 import FAQSection from './FAQSection.jsx';
 import BlogSection from './BlogSection.jsx';
 import PromoBannerEditor from './PromoBannerEditor.jsx';
+import SidePanelsEditor from './SidePanelsEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
@@ -81,6 +82,7 @@ const SETTINGS_SECTIONS = [
   { id: 'checkout', label: 'Checkout', icon: 'fa-shopping-bag' },
   { id: 'product-page', label: 'Product Page', icon: 'fa-box-open' },
   { id: 'product-policies', label: 'Product Policies', icon: 'fa-shield-alt' },
+  { id: 'side-panels', label: 'Cart & Wishlist Panels', icon: 'fa-shopping-cart' },
   { id: 'terms', label: 'Terms & Conditions', icon: 'fa-file-contract', page: '/terms' },
   { id: 'privacy', label: 'Privacy Policy', icon: 'fa-user-shield', page: '/privacy-policy' },
 ];
@@ -479,6 +481,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
       case 'checkout': return <CheckoutEditor {...props} />;
       case 'product-page': return <ProductPageEditor {...props} />;
       case 'product-policies': return <ProductPoliciesEditor {...props} />;
+      case 'side-panels': return <SidePanelsEditor {...props} />;
       case 'about-us': return <AboutUsEditor {...props} />;
       case 'faq': return <FAQSection />;
       case 'blog': return <BlogSection />;

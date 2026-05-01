@@ -183,12 +183,16 @@
   }
 }
 
-/* --- Modern Navbar --- */
+/* --- Modern Navbar ---
+ * IMPORTANT: do NOT redeclare --nav-* / --brand-* on these selectors.
+ * Always consume via var(--nav-X, modernFallback) so a merchant value
+ * injected on :root by SiteContext overrides BOTH classic and modern templates.
+ */
 .mn-header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: #fff;
+  background: var(--nav-bg, #fff);
   border-bottom: 1px solid #eee;
 }
 
@@ -247,10 +251,10 @@
 }
 
 .mn-brand-text {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--brand-font, 'Inter', 'Helvetica Neue', sans-serif);
   font-size: 1.4rem;
   font-weight: 800;
-  color: #111;
+  color: var(--brand-color, #111);
   letter-spacing: -0.02em;
 }
 
@@ -283,9 +287,10 @@
   align-items: center;
   gap: 4px;
   padding: 8px 14px;
+  font-family: var(--nav-font, inherit);
   font-size: 0.8rem;
   font-weight: 500;
-  color: #333;
+  color: var(--nav-link-text, var(--nav-text, #333));
   text-decoration: none;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -295,7 +300,7 @@
 }
 
 .mn-nav-link:hover {
-  color: #000;
+  color: var(--nav-link-hover, #000);
 }
 
 .mn-chevron {
@@ -334,15 +339,16 @@
 .mn-dropdown-menu li > span {
   display: block;
   padding: 12px 20px;
+  font-family: var(--nav-font, inherit);
   font-size: 1.05rem;
-  color: #444;
+  color: var(--nav-link-text, var(--nav-text, #444));
   text-decoration: none;
   transition: background 0.15s;
 }
 
 .mn-dropdown-menu li a:hover {
   background: #f5f5f5;
-  color: #111;
+  color: var(--nav-link-hover, #111);
 }
 
 .mn-sub-group-toggle {
@@ -353,8 +359,9 @@
   padding: 12px 20px;
   border: none;
   background: none;
+  font-family: var(--nav-font, inherit);
   font-size: 1rem;
-  color: #444;
+  color: var(--nav-link-text, var(--nav-text, #444));
   cursor: pointer;
 }
 
@@ -397,16 +404,17 @@
   flex: 1;
   display: block;
   padding: 12px 8px 12px 20px;
+  font-family: var(--nav-font, inherit);
   font-size: 1.05rem;
   font-weight: 600;
-  color: #222;
+  color: var(--nav-link-text, var(--nav-text, #222));
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
 }
 
 .mn-grouped-cat-header .mn-grouped-cat-link:hover {
   background: #f5f5f5;
-  color: #111;
+  color: var(--nav-link-hover, #111);
 }
 
 .mn-subcategory-toggle {
@@ -414,14 +422,14 @@
   border: none;
   cursor: pointer;
   padding: 12px 18px 12px 8px;
-  color: #999;
+  color: var(--nav-link-text, #999);
   display: flex;
   align-items: center;
   transition: color 0.15s;
 }
 
 .mn-subcategory-toggle:hover {
-  color: #111;
+  color: var(--nav-link-hover, #111);
 }
 
 .mn-sub-group-open > .mn-grouped-cat-header .mn-subcategory-toggle .mn-chevron {
@@ -442,16 +450,17 @@
   height: 40px;
   border: none;
   background: none;
-  color: #333;
+  color: var(--nav-icon, var(--nav-text, #333));
   cursor: pointer;
   border-radius: 50%;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
   position: relative;
   text-decoration: none;
 }
 
 .mn-icon-btn:hover {
   background: #f5f5f5;
+  color: var(--nav-link-hover, var(--nav-icon, #111));
 }
 
 .mn-badge {
@@ -479,7 +488,7 @@
   height: 40px;
   border: none;
   background: none;
-  color: #333;
+  color: var(--nav-icon, var(--nav-text, #333));
   cursor: pointer;
 }
 
@@ -499,7 +508,7 @@
   inset-inline-start: -100%;
   width: min(320px, 85vw);
   height: 100vh;
-  background: #fff;
+  background: var(--nav-bg, #fff);
   z-index: 9999;
   transition: left 0.3s ease;
   display: flex;
@@ -520,9 +529,10 @@
 }
 
 .mn-mobile-title {
+  font-family: var(--brand-font, inherit);
   font-size: 1.1rem;
   font-weight: 700;
-  color: #111;
+  color: var(--brand-color, var(--nav-text, #111));
 }
 
 .mn-mobile-close {
@@ -533,7 +543,7 @@
   height: 36px;
   border: none;
   background: none;
-  color: #333;
+  color: var(--nav-icon, var(--nav-text, #333));
   cursor: pointer;
 }
 
@@ -582,12 +592,12 @@
   gap: 10px;
   padding: 10px 0;
   font-size: 0.9rem;
-  color: #333;
+  color: var(--nav-link-text, var(--nav-text, #333));
   text-decoration: none;
   border: none;
   background: none;
   cursor: pointer;
-  font-family: inherit;
+  font-family: var(--nav-font, inherit);
 }
 
 @media (max-width: 1024px) {
@@ -1147,35 +1157,41 @@
 
 /* ===== MODERN THEME PAGE OVERRIDES ===== */
 
-/* --- Modern Cart Panel --- */
+/* --- Modern Cart Panel ---
+ * IMPORTANT: do NOT redeclare --panel-* on these selectors. Always consume
+ * via var(--panel-X, modernFallback) so a merchant value injected on :root
+ * by SiteContext overrides BOTH classic and modern templates.
+ */
 .modern-theme .cart-panel {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--panel-font, 'Inter', 'Helvetica Neue', sans-serif);
+  color: var(--panel-text, inherit);
 }
 .modern-theme .cart-panel-header h3 {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--panel-font, 'Inter', 'Helvetica Neue', sans-serif);
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--panel-text, inherit);
 }
 .modern-theme .cart-item-price,
 .modern-theme .subtotal-amount {
-  color: #111;
+  color: var(--panel-text, #111);
   font-weight: 700;
 }
 .modern-theme .checkout-btn {
-  background: #111 !important;
-  color: #fff !important;
+  background: var(--panel-accent, #111);
+  color: var(--panel-accent-text, #fff);
   border-radius: 2px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--panel-font, 'Inter', sans-serif);
   font-weight: 600;
   letter-spacing: 0.5px;
 }
 .modern-theme .checkout-btn:hover {
-  background: #333 !important;
+  filter: brightness(0.85);
 }
 .modern-theme .view-cart-btn {
-  border-color: #111;
-  color: #111;
-  font-family: 'Inter', sans-serif;
+  border-color: var(--panel-text, #111);
+  color: var(--panel-text, #111);
+  font-family: var(--panel-font, 'Inter', sans-serif);
   border-radius: 2px;
 }
 .modern-theme .quantity-btn {
@@ -1184,32 +1200,34 @@
 
 /* --- Modern Wishlist Panel --- */
 .modern-theme .wishlist-panel {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--panel-font, 'Inter', 'Helvetica Neue', sans-serif);
+  color: var(--panel-text, inherit);
 }
 .modern-theme .wishlist-panel-header h3 {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--panel-font, 'Inter', 'Helvetica Neue', sans-serif);
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--panel-text, inherit);
 }
 .modern-theme .wishlist-item-price {
-  color: #111;
+  color: var(--panel-text, #111);
   font-weight: 700;
 }
 .modern-theme .remove-from-wishlist {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--panel-font, 'Inter', sans-serif);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-size: 11px;
   font-weight: 600;
-  color: #999;
-  border: 1px solid #ddd;
+  color: var(--panel-muted, #999);
+  border: 1px solid var(--panel-muted, #ddd);
   padding: 4px 12px;
   border-radius: 2px;
   transition: all 0.2s;
 }
 .modern-theme .remove-from-wishlist:hover {
-  color: #111;
-  border-color: #111;
+  color: var(--panel-text, #111);
+  border-color: var(--panel-text, #111);
 }
 
 /* --- Modern Category Page --- */

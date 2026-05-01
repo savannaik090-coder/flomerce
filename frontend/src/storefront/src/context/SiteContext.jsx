@@ -261,6 +261,24 @@ export function SiteProvider({ children }) {
     apply('--promo-bg', settings.promoBannerBg);
     apply('--promo-text', settings.promoBannerText);
     apply('--promo-font', settings.promoBannerFont);
+
+    // Navigation customization (classic + modern share these).
+    apply('--nav-bg', settings.navBg);
+    apply('--nav-text', settings.navText);
+    apply('--nav-link-text', settings.navLinkText);
+    apply('--nav-link-hover', settings.navLinkHover);
+    apply('--nav-icon', settings.navIcon);
+    apply('--nav-font', settings.navFont);
+    apply('--brand-color', settings.brandColor);
+    apply('--brand-font', settings.brandFont);
+
+    // Cart + wishlist side-panel customization (single shared block).
+    apply('--panel-bg', settings.panelBg);
+    apply('--panel-text', settings.panelText);
+    apply('--panel-muted', settings.panelMuted);
+    apply('--panel-accent', settings.panelAccent);
+    apply('--panel-accent-text', settings.panelAccentText);
+    apply('--panel-font', settings.panelFont);
   }, [effectiveSiteConfig]);
 
   return (

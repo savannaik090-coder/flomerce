@@ -143,7 +143,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           </Link>
 
           <div className={`nav-menu${menuOpen ? ' active' : ''}`} id="navMenu">
-            <i className="fa-solid fa-xmark meenu-close" onClick={closeMobileMenu} style={{ fontSize: 24, color: '#333', cursor: 'pointer' }}></i>
+            <i className="fa-solid fa-xmark meenu-close" onClick={closeMobileMenu} style={{ fontSize: 24, color: 'var(--nav-icon, var(--nav-text, #333))', cursor: 'pointer' }}></i>
 
             <ul className="nav-list">
               <li className="nav-item"><Link to="/" className="nav-link" onClick={closeMobileMenu}><TranslatedText text="Home" /></Link></li>
