@@ -19,6 +19,7 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
   const [menuOpen, setMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openSubGroups, setOpenSubGroups] = useState(new Set());
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +33,16 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
 
   const categories = siteConfig?.categories || [];
   const settings = siteConfig?.settings || {};
+  const navTransparent = settings.navTransparent === true;
+
+  useEffect(() => {
+    if (!navTransparent) { setScrolled(false); return; }
+    const THRESHOLD = 60;
+    const onScroll = () => setScrolled(window.scrollY > THRESHOLD);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [navTransparent]);
   const navbarMenus = settings.navbarMenus || [];
   const validMenus = navbarMenus.filter(menu => menu.name && menu.links && menu.links.length > 0 && menu.links.some(l => l.label && l.url));
   const hasCustomNavbar = validMenus.length > 0;
@@ -234,8 +245,14 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
     );
   }
 
+  const headerClass = [
+    'mn-header',
+    navTransparent && !scrolled ? 'mn-header--transparent' : '',
+    navTransparent && scrolled  ? 'mn-header--scrolled'     : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <header className="mn-header">
+    <header className={headerClass}>
       {siteConfig?.settings?.showPromoBanner !== false && (() => {
         const msgs = siteConfig?.settings?.promoBanner;
         const validMsgs = msgs && Array.isArray(msgs) ? msgs.filter(m => m.trim()) : [];

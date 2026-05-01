@@ -194,6 +194,29 @@
   z-index: 1000;
   background: var(--nav-bg, #fff);
   border-bottom: 1px solid #eee;
+  transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+/* ── Transparent-on-hero state (at top of page) ── */
+.mn-header--transparent {
+  background: transparent !important;
+  border-bottom-color: transparent !important;
+  box-shadow: none !important;
+}
+.mn-header--transparent .mn-nav-link,
+.mn-header--transparent .mn-brand-text,
+.mn-header--transparent .mn-icon-btn,
+.mn-header--transparent .mn-hamburger {
+  color: var(--nav-transparent-text, #ffffff);
+}
+.mn-header--transparent .mn-badge {
+  background: var(--nav-transparent-text, #fff);
+  color: var(--nav-bg, #111);
+}
+
+/* ── Scrolled state (faded to solid) ── */
+.mn-header--scrolled {
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
 }
 
 .mn-navbar {

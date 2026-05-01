@@ -271,6 +271,7 @@ export function SiteProvider({ children }) {
     apply('--nav-font', settings.navFont);
     apply('--brand-color', settings.brandColor);
     apply('--brand-font', settings.brandFont);
+    apply('--nav-transparent-text', settings.navTransparentText);
 
     // Cart + wishlist side-panel customization (single shared block).
     apply('--panel-bg', settings.panelBg);
