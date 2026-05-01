@@ -236,6 +236,41 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
 
   return (
     <header className="mn-header">
+      {siteConfig?.settings?.showPromoBanner !== false && (() => {
+        const msgs = siteConfig?.settings?.promoBanner;
+        const validMsgs = msgs && Array.isArray(msgs) ? msgs.filter(m => m.trim()) : [];
+        const isSingle = validMsgs.length <= 1;
+        const sep = <span style={{ padding: '0 30px', opacity: 0.5 }}>{'\u2726'}</span>;
+
+        if (isSingle) {
+          if (validMsgs.length === 1) {
+            return (
+              <div className="promo-banner modern-theme" style={{ justifyContent: 'center' }}>
+                <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>{validMsgs[0]}</p>
+              </div>
+            );
+          }
+          return (
+            <div className="promo-banner modern-theme" style={{ justifyContent: 'center' }}>
+              <p className="banner-text" style={{ animation: 'none', textAlign: 'center' }}>
+                {siteConfig?.brandName
+                  ? <TranslatedText text="Welcome to {{brand}}" vars={{ brand: siteConfig.brandName }} />
+                  : <TranslatedText text="Welcome to our store" />}
+              </p>
+            </div>
+          );
+        }
+
+        const block = validMsgs.flatMap((m, i) => i < validMsgs.length - 1 ? [m, sep] : [m]);
+        return (
+          <div className="promo-banner modern-theme">
+            <p className="banner-text">
+              {block}{sep}{block}{sep}{block}{sep}{block}
+            </p>
+          </div>
+        );
+      })()}
+
       <nav className="mn-navbar">
         <div className={`mn-nav-container${!isCentered ? ' mn-logo-left' : ''}`}>
           <button className="mn-hamburger" onClick={() => setMenuOpen(true)} aria-label={tx("Menu")}>
