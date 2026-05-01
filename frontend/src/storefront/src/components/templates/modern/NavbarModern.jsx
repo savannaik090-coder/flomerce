@@ -36,12 +36,20 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
   const navTransparent = settings.navTransparent === true;
 
   useEffect(() => {
-    if (!navTransparent) { setScrolled(false); return; }
+    if (!navTransparent) {
+      setScrolled(false);
+      document.body.classList.remove('mn-nav-transparent');
+      return;
+    }
+    document.body.classList.add('mn-nav-transparent');
     const THRESHOLD = 60;
     const onScroll = () => setScrolled(window.scrollY > THRESHOLD);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      document.body.classList.remove('mn-nav-transparent');
+    };
   }, [navTransparent]);
   const navbarMenus = settings.navbarMenus || [];
   const validMenus = navbarMenus.filter(menu => menu.name && menu.links && menu.links.length > 0 && menu.links.some(l => l.label && l.url));

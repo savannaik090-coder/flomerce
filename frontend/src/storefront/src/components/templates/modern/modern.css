@@ -197,7 +197,19 @@
   transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
 }
 
-/* ── Transparent-on-hero state (at top of page) ── */
+/* ── Transparent / scrolled states — both use position:fixed so the navbar
+     lifts out of document flow and the hero can fill the full viewport behind it.
+     The sticky default is overridden only while the feature is active.        ── */
+.mn-header--transparent,
+.mn-header--scrolled {
+  position: fixed;
+  width: 100%;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+/* Transparent state — clear background, invisible border */
 .mn-header--transparent {
   background: transparent !important;
   border-bottom-color: transparent !important;
@@ -214,9 +226,27 @@
   color: var(--nav-bg, #111);
 }
 
-/* ── Scrolled state (faded to solid) ── */
+/* Scrolled state — solid background with a soft drop-shadow */
 .mn-header--scrolled {
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+}
+
+/*
+ * Layout compensation when transparent navbar is active.
+ *
+ * The header is position:fixed so it no longer occupies document flow.
+ * main gets padding-top equal to the navbar height so content on non-hero
+ * pages starts correctly below the navbar.
+ *
+ * The hero section gets a negative margin-top to "pull" it back up behind
+ * the fixed navbar, so the hero image fills the full viewport from the very
+ * top — with the transparent navbar overlaying it.
+ */
+body.mn-nav-transparent main {
+  padding-top: 70px;
+}
+body.mn-nav-transparent .modern-hero {
+  margin-top: -70px;
 }
 
 .mn-navbar {
