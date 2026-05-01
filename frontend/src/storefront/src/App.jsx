@@ -245,6 +245,16 @@ function StorefrontShell() {
   usePageTracker();
 
   const isModern = theme.id === 'modern';
+
+  useEffect(() => {
+    if (isModern) {
+      document.body.classList.add('modern-theme');
+    } else {
+      document.body.classList.remove('modern-theme');
+    }
+    return () => document.body.classList.remove('modern-theme');
+  }, [isModern]);
+
   const ActiveNavbar = isModern ? NavbarModern : Navbar;
   const ActiveFooter = isModern ? FooterModern : Footer;
   const ActiveCheckout = isModern ? CheckoutPageModern : CheckoutPageClassic;

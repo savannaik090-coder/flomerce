@@ -3121,22 +3121,47 @@
 /*
  * Modern theme default CSS variable overrides.
  *
+ * Applied to document.body via App.jsx so every child element inherits.
  * These only take effect when a merchant has NOT saved a custom value —
  * because SiteContext injects merchant values onto :root with !important,
  * which wins over any element-scoped declaration. When no merchant value is
- * set, these provide Modern-appropriate defaults instead of falling through to
- * the Classic gold (#c8a97e) fallbacks baked into var() calls.
- *
- * Cart/wishlist panel: black accent, clean grey muted, white surface.
- * Nav: white background, near-black text, black hover.
+ * set, these override the Classic defaults from variables.css so the Modern
+ * template gets its own clean, dark aesthetic.
  */
 .modern-theme {
-  --panel-accent: #111111;
+  /* Global palette — replaces classic brown/gold/beige */
+  --color-bg:           #ffffff;
+  --color-bg-light:     #f9f9f9;
+  --color-primary:      #111111;
+  --color-primary-light:#333333;
+  --color-primary-dark: #000000;
+  --color-secondary:    #333333;
+  --color-accent:       #111111;
+  --color-accent-light: #333333;
+  --color-accent-gold:  #111111;
+
+  /* Typography — replaces classic Playfair Display / Lora */
+  --font-heading: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --font-body:    'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Shadow — replaces classic brownish card shadow */
+  --shadow-card: 0 5px 15px rgba(0, 0, 0, 0.08);
+
+  /* Cart & wishlist panels */
+  --panel-accent:      #111111;
   --panel-accent-text: #ffffff;
-  --panel-bg: #ffffff;
-  --panel-text: #111111;
-  --panel-muted: #999999;
-  --panel-font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --panel-bg:          #ffffff;
+  --panel-text:        #111111;
+  --panel-muted:       #999999;
+  --panel-font:        'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Nav defaults (also set on .mn-header below for specificity) */
+  --nav-bg:        #ffffff;
+  --nav-link-text: #111111;
+  --nav-link-hover:#000000;
+  --nav-icon:      #111111;
+  --brand-color:   #111111;
+  --brand-font:    'Inter', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .mn-header {
