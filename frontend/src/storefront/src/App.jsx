@@ -9,7 +9,6 @@ import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
 import NavbarModern from './components/templates/modern/NavbarModern.jsx';
 import FooterModern from './components/templates/modern/FooterModern.jsx';
-import SchemeScope from './components/theme/SchemeScope.jsx';
 import MobileBottomNav from './components/layout/MobileBottomNav.jsx';
 import SearchOverlay from './components/layout/SearchOverlay.jsx';
 import CartPanel from './components/cart/CartPanel.jsx';
@@ -253,35 +252,33 @@ function StorefrontShell() {
 
   return (
     <>
-      <SchemeScope sectionId="navbar" as="div">
-        <ActiveNavbar
-          onSearchOpen={openSearch}
-          onCartOpen={openCart}
-          onWishlistOpen={openWishlist}
-        />
-      </SchemeScope>
+      <ActiveNavbar
+        onSearchOpen={openSearch}
+        onCartOpen={openCart}
+        onWishlistOpen={openWishlist}
+      />
 
       <main>
         <React.Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/category/:slug" element={<CategoryPage />} />
-            <Route path="/product/:id" element={<SchemeScope sectionId="product-page"><ProductDetailPage /></SchemeScope>} />
+            <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<SchemeScope sectionId="checkout"><ActiveCheckout /></SchemeScope>} />
+            <Route path="/checkout" element={<ActiveCheckout />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />
-            <Route path="/about" element={<SchemeScope sectionId="about-us"><AboutPage /></SchemeScope>} />
-            <Route path="/contact" element={<SchemeScope sectionId="contact-us"><ContactPage /></SchemeScope>} />
-            <Route path="/book-appointment" element={<SchemeScope sectionId="book-appointment"><BookAppointmentPage /></SchemeScope>} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/book-appointment" element={<BookAppointmentPage />} />
             <Route path="/order-track" element={<OrderTrackPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
-            <Route path="/privacy-policy" element={<SchemeScope sectionId="privacy"><PrivacyPolicyPage /></SchemeScope>} />
-            <Route path="/terms" element={<SchemeScope sectionId="terms"><TermsPage /></SchemeScope>} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/return" element={<ReturnPage />} />
             <Route path="/return/:orderId" element={<ReturnPage />} />
             <Route path="/cancel" element={<CancelPage />} />
@@ -289,16 +286,14 @@ function StorefrontShell() {
             <Route path="/order-help" element={<OrderHelpPage />} />
             <Route path="/order-help/:orderId" element={<OrderHelpPage />} />
             <Route path="/review/:orderId" element={<ActiveReview />} />
-            <Route path="/faq" element={<SchemeScope sectionId="faq"><FaqPage /></SchemeScope>} />
-            <Route path="/blog" element={<SchemeScope sectionId="blog"><BlogListPage /></SchemeScope>} />
-            <Route path="/blog/:slug" element={<SchemeScope sectionId="blog"><BlogPostPage /></SchemeScope>} />
+            <Route path="/faq" element={<FaqPage />} />
+            <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/blog/:slug" element={<BlogPostPage />} />
           </Routes>
         </React.Suspense>
       </main>
 
-      <SchemeScope sectionId="footer" as="div">
-        <ActiveFooter />
-      </SchemeScope>
+      <ActiveFooter />
       <MobileBottomNav onCartOpen={openCart} />
       <WhatsAppButton />
       <SearchOverlay isOpen={searchOpen} onClose={closeSearch} />

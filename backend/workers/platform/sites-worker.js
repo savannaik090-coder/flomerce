@@ -4,7 +4,6 @@ import { validateAuth } from '../../utils/auth.js';
 import { validateSiteAdmin, handleStaffCRUD } from '../storefront/site-admin-worker.js';
 import { registerCustomHostname, deleteCustomHostname, findCustomHostname } from '../../utils/cloudflare.js';
 import { resolveSiteDBById, getSiteConfig, getSiteWithConfig } from '../../utils/site-db.js';
-import { buildDefaultThemeConfig, normalizeThemeConfig, ensureThemeConfig } from '../../utils/theme-config.js';
 import { trackD1Write, trackD1Update, estimateRowBytes, normalizePlanName, getPlanLimitsConfig, recordMediaFile } from '../../utils/usage-tracker.js';
 import { purgeStorefrontCache } from '../../utils/cache.js';
 // English-only wizard seed (System A removed). The platform UI is English; the
@@ -625,16 +624,9 @@ async function createSite(request, env, user) {
     }
     const settingsJson = JSON.stringify(initialSettings);
 
-    // Seed the per-section color scheme system from the merchant's chosen
-    // primary/secondary colors so the storefront has a usable theme on day
-    // one — Brand, Inverse, and Accent schemes are derived automatically.
-    const themeConfigJson = JSON.stringify(
-      buildDefaultThemeConfig(primaryColor, secondaryColor, null)
-    );
-
     await siteDB.prepare(
-      `INSERT INTO site_config (site_id, brand_name, category, logo_url, favicon_url, seo_title, seo_description, phone, email, address, primary_color, secondary_color, settings, theme_config, row_size_bytes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+      `INSERT INTO site_config (site_id, brand_name, category, logo_url, favicon_url, seo_title, seo_description, phone, email, address, primary_color, secondary_color, settings, row_size_bytes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
     ).bind(
       siteId,
       safeBrand,
@@ -649,7 +641,6 @@ async function createSite(request, env, user) {
       primaryColor || '#000000',
       secondaryColor || '#ffffff',
       settingsJson,
-      themeConfigJson,
       configBytes
     ).run();
     await trackD1Write(env, siteId, configBytes);
@@ -768,7 +759,7 @@ async function createUserCategories(env, db, siteId, categories) {
   }
 }
 
-const CONFIG_FIELDS = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings', 'currency', 'theme_config'];
+const CONFIG_FIELDS = ['brand_name', 'logo_url', 'favicon_url', 'primary_color', 'secondary_color', 'phone', 'email', 'address', 'social_links', 'settings', 'currency'];
 
 async function updateSite(request, env, user, siteId, ctx) {
   if (!siteId) {
@@ -822,22 +813,6 @@ async function updateSite(request, env, user, siteId, ctx) {
           const mergedSettings = { ...existingSettings, ...incoming };
           setClause.push(`${dbKey} = ?`);
           values.push(JSON.stringify(mergedSettings));
-        } else if (dbKey === 'theme_config') {
-          // Validate the entire theme blob server-side so a bad client value
-          // can never reach the storefront. Throws → 400.
-          let normalized;
-          try {
-            normalized = normalizeThemeConfig(
-              value,
-              existingConfig?.primary_color,
-              existingConfig?.secondary_color,
-              null,
-            );
-          } catch (themeErr) {
-            return errorResponse(themeErr.message || 'Invalid theme_config', 400);
-          }
-          setClause.push(`${dbKey} = ?`);
-          values.push(JSON.stringify(normalized));
         } else {
           setClause.push(`${dbKey} = ?`);
           values.push(typeof value === 'object' ? JSON.stringify(value) : value);
@@ -926,20 +901,6 @@ async function updateSiteAsAdmin(request, env, siteId, ctx) {
           const mergedSettings = { ...existingSettings, ...incoming };
           setClause.push(`${dbKey} = ?`);
           values.push(JSON.stringify(mergedSettings));
-        } else if (dbKey === 'theme_config') {
-          let normalized;
-          try {
-            normalized = normalizeThemeConfig(
-              value,
-              existingConfig?.primary_color,
-              existingConfig?.secondary_color,
-              null,
-            );
-          } catch (themeErr) {
-            return errorResponse(themeErr.message || 'Invalid theme_config', 400);
-          }
-          setClause.push(`${dbKey} = ?`);
-          values.push(JSON.stringify(normalized));
         } else {
           setClause.push(`${dbKey} = ?`);
           values.push(typeof value === 'object' ? JSON.stringify(value) : value);

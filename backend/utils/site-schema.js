@@ -429,7 +429,6 @@ export function getSiteSchemaStatements() {
       twitter_description TEXT,
       twitter_image TEXT,
       twitter_site TEXT,
-      theme_config TEXT,
       row_size_bytes INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
@@ -621,9 +620,6 @@ export function getSiteSchemaStatements() {
     'ALTER TABLE guest_orders ADD COLUMN refund_id TEXT',
     'ALTER TABLE guest_orders ADD COLUMN refund_amount REAL',
     'ALTER TABLE guest_orders ADD COLUMN refunded_at TEXT',
-    // Per-section color schemes (Brand/Inverse/Accent + custom). Stored as
-    // JSON: { schemes: [...], sectionAssignments: { sectionId: schemeId } }.
-    'ALTER TABLE site_config ADD COLUMN theme_config TEXT',
   ];
 
   return [...tables, ...indexes, ...addColumnMigrations];

@@ -1,6 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { PLATFORM_DOMAIN, PLATFORM_URL, API_BASE } from '../config.js';
-import { schemeToCssVars } from '../components/theme/SchemeScope.jsx';
 
 export const SiteContext = createContext(null);
 
@@ -156,15 +155,6 @@ export function SiteProvider({ children }) {
       if (typeof parsedSettings === 'string') {
         try { parsedSettings = JSON.parse(parsedSettings); } catch (e) { parsedSettings = {}; }
       }
-      // Backend always returns a structurally valid theme_config (parsed
-      // object), but we still defend against a string payload (older API
-      // builds) and silently fall back to nothing — SiteContext's resolver
-      // synthesises a Brand-only theme from primary/secondary in that case.
-      let parsedTheme = data.theme_config || null;
-      if (typeof parsedTheme === 'string') {
-        try { parsedTheme = JSON.parse(parsedTheme); } catch (e) { parsedTheme = null; }
-      }
-
       const config = {
         id: data.id,
         subdomain: data.subdomain,
@@ -175,7 +165,6 @@ export function SiteProvider({ children }) {
         faviconUrl: data.favicon_url,
         primaryColor: data.primary_color || '#000000',
         secondaryColor: data.secondary_color || '#ffffff',
-        themeConfig: parsedTheme,
         phone: data.phone || parsedSettings.phone || '',
         whatsapp: parsedSettings.whatsapp || '',
         showFloatingButton: parsedSettings.showFloatingButton !== false,
@@ -240,103 +229,18 @@ export function SiteProvider({ children }) {
 
   const effectiveSiteConfig = useMemo(() => {
     if (!previewSettings || !siteConfig) return siteConfig;
-    const {
-      logoUrl: pLogoUrl,
-      _previewCategories,
-      _themePatch,
-      ...settingsOverrides
-    } = previewSettings;
+    const { logoUrl: pLogoUrl, _previewCategories, ...settingsOverrides } = previewSettings;
     const merged = { ...siteConfig, settings: { ...(siteConfig.settings || {}), ...settingsOverrides } };
     if (pLogoUrl !== undefined) merged.logoUrl = pLogoUrl || null;
     if (Array.isArray(_previewCategories)) {
       merged.categories = _previewCategories;
       merged.settings._previewCategories = _previewCategories;
     }
-    // Theme patches arriving over postMessage replace either the schemes
-    // array, the assignments map, or both. Anything not in the patch falls
-    // back to the saved theme so the live preview shows exactly what the
-    // merchant is editing without losing the rest of their config.
-    if (_themePatch && typeof _themePatch === 'object') {
-      const baseTheme = siteConfig.themeConfig || {};
-      merged.themeConfig = {
-        ...baseTheme,
-        ...(Array.isArray(_themePatch.schemes) ? { schemes: _themePatch.schemes } : {}),
-        ...(_themePatch.sectionAssignments && typeof _themePatch.sectionAssignments === 'object'
-          ? { sectionAssignments: { ...(baseTheme.sectionAssignments || {}), ...(_themePatch.sectionAssignments || {}) } }
-          : {}),
-      };
-    }
     return merged;
   }, [previewSettings, siteConfig]);
 
-  // Resolve the theme bundle that the storefront actually consumes. If the
-  // merchant has no theme_config yet (super-old site, brand new SDK paint
-  // before the API answers), fall back to a single Brand scheme synthesized
-  // from primary/secondary so SchemeScope and downstream components always
-  // have something valid to render.
-  const resolvedTheme = useMemo(() => {
-    const cfg = effectiveSiteConfig;
-    if (!cfg) return null;
-    const tc = cfg.themeConfig;
-    if (tc && Array.isArray(tc.schemes) && tc.schemes.length > 0) {
-      return tc;
-    }
-    const fallbackBrand = {
-      id: 'brand',
-      name: 'Brand',
-      isDefault: true,
-      background: '#ffffff',
-      text: '#111111',
-      button: cfg.primaryColor || '#000000',
-      buttonText: '#ffffff',
-      secondaryButton: '#f1f5f9',
-      link: cfg.primaryColor || '#000000',
-      accent: '#b08c4c',
-    };
-    return { schemes: [fallbackBrand], sectionAssignments: {} };
-  }, [effectiveSiteConfig]);
-
-  // Inject the Brand (default) scheme into the document root so the very
-  // first paint already uses the merchant's colors. SchemeScope still wraps
-  // each section to override per-section, but elements that aren't inside a
-  // SchemeScope (loading screens, error pages, mid-page modals…) stay on
-  // brand. This is what stops the "flash of unstyled colors".
-  useEffect(() => {
-    if (typeof document === 'undefined' || !resolvedTheme) return;
-    const brand = resolvedTheme.schemes.find(s => s.isDefault) || resolvedTheme.schemes[0];
-    if (!brand) return;
-    const vars = schemeToCssVars(brand);
-    const root = document.documentElement;
-    for (const [k, v] of Object.entries(vars)) {
-      root.style.setProperty(k, v);
-    }
-  }, [resolvedTheme]);
-
-  // Helper used by SchemeScope to look up the scheme assigned to a given
-  // section. Falls back to the default scheme when the section has no
-  // explicit assignment, so newly-added sections render correctly without
-  // requiring a migration of existing theme_config blobs.
-  const getSchemeForSection = useMemo(() => {
-    return (sectionId) => {
-      if (!resolvedTheme || !Array.isArray(resolvedTheme.schemes)) return null;
-      const assignments = resolvedTheme.sectionAssignments || {};
-      const targetId = (sectionId && assignments[sectionId]) || null;
-      const found = targetId ? resolvedTheme.schemes.find(s => s.id === targetId) : null;
-      if (found) return found;
-      return resolvedTheme.schemes.find(s => s.isDefault) || resolvedTheme.schemes[0];
-    };
-  }, [resolvedTheme]);
-
   return (
-    <SiteContext.Provider value={{
-      siteConfig: effectiveSiteConfig,
-      loading,
-      error,
-      subdomain,
-      refetchSite: () => subdomain && fetchSiteConfig(subdomain, true),
-      themeConfig: resolvedTheme,
-      getSchemeForSection,
-    }}>
+    <SiteContext.Provider value={{ siteConfig: effectiveSiteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
       {children}
     </SiteContext.Provider>
   );
