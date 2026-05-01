@@ -679,166 +679,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         </div>
 
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Navigation Style</h3>
-          </div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Customize the navigation bar's colors and fonts. Leave a field blank to use the template default.
-            </p>
-
-            <div style={{
-              padding: 16,
-              borderRadius: 10,
-              border: '1px solid #e2e8f0',
-              marginBottom: 24,
-              background: navBg || '#f8f8f5',
-              transition: 'background 0.2s ease',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{
-                  fontFamily: brandFont || "'Playfair Display', serif",
-                  fontSize: 22,
-                  fontWeight: 600,
-                  color: brandColor || '#000',
-                }}>
-                  {siteConfig?.name || 'Your Brand'}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-                  {['Shop', 'About', 'Contact'].map((label, i) => (
-                    <span
-                      key={label}
-                      style={{
-                        fontFamily: navFont || 'inherit',
-                        color: i === 1 ? (navLinkHover || '#c59d5f') : (navLinkText || '#333'),
-                        fontSize: 13,
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      {label}
-                    </span>
-                  ))}
-                  <i className="fas fa-shopping-bag" style={{ color: navIcon || navLinkText || '#333', fontSize: 16 }} />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-              <AdminColorField
-                label="Navbar Background"
-                value={navBg}
-                fallback="#f8f8f5"
-                onChange={setNavBg}
-              />
-              <AdminColorField
-                label="Logo / Brand Color"
-                value={brandColor}
-                fallback="#000000"
-                onChange={setBrandColor}
-              />
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <AdminFontPicker
-                label="Logo / Brand Font"
-                value={brandFont}
-                onChange={setBrandFont}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-              <AdminColorField
-                label="Nav Link Color"
-                value={navLinkText}
-                fallback="#333333"
-                onChange={setNavLinkText}
-              />
-              <AdminColorField
-                label="Nav Link Hover"
-                value={navLinkHover}
-                fallback="#c59d5f"
-                onChange={setNavLinkHover}
-              />
-              <AdminColorField
-                label="Icon Color"
-                value={navIcon}
-                fallback="#333333"
-                onChange={setNavIcon}
-              />
-            </div>
-
-            <AdminFontPicker
-              label="Nav Menu Font"
-              value={navFont}
-              onChange={setNavFont}
-            />
-
-            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, marginBottom: 0 }}>
-              <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
-              The mobile menu inherits these colors and fonts automatically.
-            </p>
-          </div>
-        </div>
-
-        {/* ── Cart & Wishlist Panels ── */}
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Cart &amp; Wishlist Panels</h3>
-          </div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              These colors and font apply to both the cart and wishlist panels.
-              Leave any field blank to use the template default.
-            </p>
-
-            {/* Live mini-preview */}
-            {(() => {
-              const prevBg = panelBg || '#ffffff';
-              const prevText = panelText || '#333333';
-              const prevMuted = panelMuted || '#888888';
-              const prevAccent = panelAccent || '#c8a97e';
-              const prevAccentText = panelAccentText || '#ffffff';
-              const prevFont = panelFont || 'inherit';
-              return (
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginBottom: 24, background: prevBg, fontFamily: prevFont, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${prevMuted}` }}>
-                    <div style={{ color: prevText, fontSize: 17, fontWeight: 500 }}>Cart</div>
-                    <div style={{ background: '#f5f5f5', color: '#555', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>×</div>
-                  </div>
-                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 12 }}>
-                    <div style={{ width: 60, height: 60, borderRadius: 8, background: '#f1f5f9' }} />
-                    <div>
-                      <div style={{ color: prevText, fontWeight: 500, fontSize: 14, marginBottom: 4 }}>Sample item</div>
-                      <div style={{ color: prevMuted, fontSize: 13, marginBottom: 6 }}>Qty 1</div>
-                      <div style={{ color: prevAccent, fontWeight: 600, fontSize: 14 }}>$49.00</div>
-                    </div>
-                  </div>
-                  <div style={{ padding: '12px 16px', borderTop: `1px solid ${prevMuted}`, background: prevBg }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: prevText, fontWeight: 500, fontSize: 14, marginBottom: 10 }}>
-                      <span>Subtotal</span><span>$49.00</span>
-                    </div>
-                    <button type="button" disabled style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', borderRadius: 4, background: prevAccent, color: prevAccentText, fontWeight: 500, fontSize: 14, fontFamily: 'inherit', cursor: 'default' }}>
-                      Checkout
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-              <AdminColorField label="Background" value={panelBg} fallback="#ffffff" onChange={setPanelBg} />
-              <AdminColorField label="Text Color" value={panelText} fallback="#333333" onChange={setPanelText} />
-              <AdminColorField label="Muted Text / Borders" value={panelMuted} fallback="#888888" onChange={setPanelMuted} />
-              <AdminColorField label="Accent (Buttons, Price)" value={panelAccent} fallback="#c8a97e" onChange={setPanelAccent} />
-              <AdminColorField label="Accent Text" value={panelAccentText} fallback="#ffffff" onChange={setPanelAccentText} />
-            </div>
-            <AdminFontPicker label="Panel Font" value={panelFont} onChange={setPanelFont} />
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 className="card-title">Navbar Menu Groups</h3>
             <button
@@ -1158,6 +998,166 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Navigation Style</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Customize the navigation bar's colors and fonts. Leave a field blank to use the template default.
+            </p>
+
+            <div style={{
+              padding: 16,
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              marginBottom: 24,
+              background: navBg || '#f8f8f5',
+              transition: 'background 0.2s ease',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{
+                  fontFamily: brandFont || "'Playfair Display', serif",
+                  fontSize: 22,
+                  fontWeight: 600,
+                  color: brandColor || '#000',
+                }}>
+                  {siteConfig?.name || 'Your Brand'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                  {['Shop', 'About', 'Contact'].map((label, i) => (
+                    <span
+                      key={label}
+                      style={{
+                        fontFamily: navFont || 'inherit',
+                        color: i === 1 ? (navLinkHover || '#c59d5f') : (navLinkText || '#333'),
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                  <i className="fas fa-shopping-bag" style={{ color: navIcon || navLinkText || '#333', fontSize: 16 }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
+              <AdminColorField
+                label="Navbar Background"
+                value={navBg}
+                fallback="#f8f8f5"
+                onChange={setNavBg}
+              />
+              <AdminColorField
+                label="Logo / Brand Color"
+                value={brandColor}
+                fallback="#000000"
+                onChange={setBrandColor}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <AdminFontPicker
+                label="Logo / Brand Font"
+                value={brandFont}
+                onChange={setBrandFont}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
+              <AdminColorField
+                label="Nav Link Color"
+                value={navLinkText}
+                fallback="#333333"
+                onChange={setNavLinkText}
+              />
+              <AdminColorField
+                label="Nav Link Hover"
+                value={navLinkHover}
+                fallback="#c59d5f"
+                onChange={setNavLinkHover}
+              />
+              <AdminColorField
+                label="Icon Color"
+                value={navIcon}
+                fallback="#333333"
+                onChange={setNavIcon}
+              />
+            </div>
+
+            <AdminFontPicker
+              label="Nav Menu Font"
+              value={navFont}
+              onChange={setNavFont}
+            />
+
+            <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, marginBottom: 0 }}>
+              <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
+              The mobile menu inherits these colors and fonts automatically.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Cart & Wishlist Panels ── */}
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Cart &amp; Wishlist Panels</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              These colors and font apply to both the cart and wishlist panels.
+              Leave any field blank to use the template default.
+            </p>
+
+            {/* Live mini-preview */}
+            {(() => {
+              const prevBg = panelBg || '#ffffff';
+              const prevText = panelText || '#333333';
+              const prevMuted = panelMuted || '#888888';
+              const prevAccent = panelAccent || '#c8a97e';
+              const prevAccentText = panelAccentText || '#ffffff';
+              const prevFont = panelFont || 'inherit';
+              return (
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginBottom: 24, background: prevBg, fontFamily: prevFont, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${prevMuted}` }}>
+                    <div style={{ color: prevText, fontSize: 17, fontWeight: 500 }}>Cart</div>
+                    <div style={{ background: '#f5f5f5', color: '#555', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>×</div>
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 12 }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 8, background: '#f1f5f9' }} />
+                    <div>
+                      <div style={{ color: prevText, fontWeight: 500, fontSize: 14, marginBottom: 4 }}>Sample item</div>
+                      <div style={{ color: prevMuted, fontSize: 13, marginBottom: 6 }}>Qty 1</div>
+                      <div style={{ color: prevAccent, fontWeight: 600, fontSize: 14 }}>$49.00</div>
+                    </div>
+                  </div>
+                  <div style={{ padding: '12px 16px', borderTop: `1px solid ${prevMuted}`, background: prevBg }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: prevText, fontWeight: 500, fontSize: 14, marginBottom: 10 }}>
+                      <span>Subtotal</span><span>$49.00</span>
+                    </div>
+                    <button type="button" disabled style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', borderRadius: 4, background: prevAccent, color: prevAccentText, fontWeight: 500, fontSize: 14, fontFamily: 'inherit', cursor: 'default' }}>
+                      Checkout
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
+              <AdminColorField label="Background" value={panelBg} fallback="#ffffff" onChange={setPanelBg} />
+              <AdminColorField label="Text Color" value={panelText} fallback="#333333" onChange={setPanelText} />
+              <AdminColorField label="Muted Text / Borders" value={panelMuted} fallback="#888888" onChange={setPanelMuted} />
+              <AdminColorField label="Accent (Buttons, Price)" value={panelAccent} fallback="#c8a97e" onChange={setPanelAccent} />
+              <AdminColorField label="Accent Text" value={panelAccentText} fallback="#ffffff" onChange={setPanelAccentText} />
+            </div>
+            <AdminFontPicker label="Panel Font" value={panelFont} onChange={setPanelFont} />
           </div>
         </div>
 
