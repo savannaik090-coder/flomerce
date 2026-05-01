@@ -3,6 +3,21 @@ import { getAvailablePlans, createSubscription, verifySubscriptionPayment, start
 import { ENTERPRISE_EMAIL } from '../config.js';
 import { useConfirm } from '../../../shared/ui/ConfirmDialog.jsx';
 
+// Normalize either feature shape into a stable [{heading, items[]}] for
+// uniform rendering. Flat-only plans collapse to one ungrouped section.
+function planFeatureGroupsForRender(plan) {
+  if (Array.isArray(plan?.feature_groups) && plan.feature_groups.length > 0) {
+    return plan.feature_groups
+      .map((g) => ({
+        heading: typeof g?.heading === 'string' ? g.heading : '',
+        items: Array.isArray(g?.items) ? g.items.filter((i) => typeof i === 'string' && i.length > 0) : [],
+      }))
+      .filter((g) => g.heading.length > 0 || g.items.length > 0);
+  }
+  const flat = Array.isArray(plan?.features) ? plan.features.filter((f) => typeof f === 'string' && f.length > 0) : [];
+  return flat.length > 0 ? [{ heading: '', items: flat }] : [];
+}
+
 const DURATION_KEYS = ['monthly', '3months', '6months', 'yearly'];
 const DURATION_MONTHS = { monthly: 1, '3months': 3, '6months': 6, yearly: 12 };
 const DURATION_LABEL = { monthly: 'Monthly', '3months': '3 Months', '6months': '6 Months', yearly: 'Yearly' };
@@ -169,6 +184,7 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
         name: key,
         prices: {},
         features: plan.features || [],
+        featureGroups: planFeatureGroupsForRender(plan),
         is_popular: false,
         plans: {},
         display_order: plan.display_order ?? 999,
@@ -467,6 +483,9 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
         {planList.filter(p => p.plan_tier < 4).map(planGroup => {
           const price = planGroup.prices[duration];
           const originalPrice = planGroup.original_prices?.[duration];
+          const months = DURATION_MONTHS[duration] || 1;
+          const perMonth = months > 1 ? Math.round(price / months) : price;
+          const originalPerMonth = originalPrice && months > 1 ? Math.round(originalPrice / months) : originalPrice;
           const savingsPercent = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
           return (
@@ -477,31 +496,45 @@ export default function DashboardPlanSelector({ siteId: initialSiteId, currentPl
                 <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem', fontWeight: 500 }}>{planGroup.tagline}</p>
               )}
               <div style={{ marginBottom: '1.5rem' }}>
-                {originalPrice ? (
+                {originalPerMonth ? (
                   <p style={{ fontSize: '0.95rem', color: '#94a3b8', margin: '0 0 0.15rem', fontWeight: 500 }}>
-                    <span style={{ textDecoration: 'line-through' }}>₹{originalPrice}</span>
+                    <span style={{ textDecoration: 'line-through' }}>₹{originalPerMonth}</span>
                   </p>
                 ) : null}
                 <p style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>
-                  ₹{price}
-                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}> / {DURATION_TEXT[duration] || duration}</span>
+                  ₹{perMonth}
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>/month</span>
                   {savingsPercent > 0 && (
                     <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', marginInlineStart: '0.5rem', fontWeight: 700 }}>
                       {`${savingsPercent}% OFF`}
                     </span>
                   )}
                 </p>
-                {DURATION_MONTHS[duration] > 1 && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', fontWeight: 500 }}>
-                    ({`₹${Math.round(price / DURATION_MONTHS[duration])}/month`})
-                  </p>
-                )}
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0', fontWeight: 500 }}>
+                  {months > 1
+                    ? `Billed ₹${price.toLocaleString('en-IN')} every ${DURATION_TEXT[duration] || duration}`
+                    : 'Billed monthly'}
+                </p>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '2rem', textAlign: 'start', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {planGroup.features.map((f, i) => (
-                  <li key={i} style={{ marginBottom: '0.5rem' }}>✓ {f}</li>
-                ))}
-              </ul>
+              <div style={{ marginBottom: '2rem' }}>
+                {planGroup.featureGroups.map((g, gi) => {
+                  const showHeading = g.heading && g.heading.length > 0;
+                  return (
+                    <div key={gi}>
+                      {showHeading && (
+                        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', margin: gi === 0 ? '0 0 0.4rem' : '0.9rem 0 0.4rem' }}>
+                          {g.heading}
+                        </p>
+                      )}
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, textAlign: 'start', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                        {g.items.map((f, i) => (
+                          <li key={i} style={{ marginBottom: '0.5rem' }}>✓ {f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
               <button
                 className={`btn ${isButtonDisabled(planGroup) ? 'btn-outline' : isDowngrade(planGroup) ? 'btn-outline' : 'btn-primary'}`}
                 style={{ width: '100%', opacity: isButtonDisabled(planGroup) ? 0.6 : 1 }}
