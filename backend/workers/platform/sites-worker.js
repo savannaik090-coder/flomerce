@@ -485,7 +485,7 @@ export async function createSiteForUser(env, user, body) {
 
   try {
     body = body || {};
-    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, accentColor, theme } = body;
+    const { brandName, categories, templateId, phone, email, address, primaryColor, secondaryColor, accentColor, theme, brandSchemeOverride } = body;
     let logoUrl = body.logoUrl || null;
     const logoBase64 = body.logo || null;
     const faviconBase64 = body.favicon || null;
@@ -689,11 +689,38 @@ export async function createSiteForUser(env, user, body) {
     // automatically. `applyBrandAsDefault: true` opts new sites in to the
     // Brand scheme actively painting; legacy sites without this flag stay
     // on their pristine hardcoded look (read-time backfill preserves false).
-    const themeConfigJson = JSON.stringify(
-      buildDefaultThemeConfig(seededPrimary, seededSecondary, seededAccent, {
-        applyBrandAsDefault: true,
-      })
+    let themeConfigForInsert = buildDefaultThemeConfig(
+      seededPrimary, seededSecondary, seededAccent,
+      { applyBrandAsDefault: true }
     );
+    // The wizard's Brand Colors step now lets the merchant edit all 10
+    // slots of the Brand scheme (background, text, headingText, mutedText,
+    // border, button, buttonText, secondaryButton, link, accent) before
+    // creating the site. When the merchant customized any slot, the
+    // wizard sends the full edited Brand scheme as `brandSchemeOverride`.
+    // We slot it into the freshly-built theme_config and re-validate
+    // through normalizeThemeConfig so any bad hex value surfaces a 400
+    // before INSERT — the Inverse and Accent schemes still derive from
+    // the seed colors so the merchant gets a coherent 3-scheme palette.
+    if (brandSchemeOverride && typeof brandSchemeOverride === 'object') {
+      try {
+        const merged = {
+          ...themeConfigForInsert,
+          schemes: themeConfigForInsert.schemes.map((s) => (
+            s && s.id === 'brand'
+              ? { ...s, ...brandSchemeOverride, id: 'brand', name: 'Brand', isDefault: true }
+              : s
+          )),
+        };
+        themeConfigForInsert = normalizeThemeConfig(
+          merged, seededPrimary, seededSecondary, seededAccent,
+          { forceApplyBrandAsDefault: true }
+        );
+      } catch (themeErr) {
+        return { success: false, error: themeErr.message || 'Invalid brand colors', code: 'INVALID_BRAND_COLORS', status: 400 };
+      }
+    }
+    const themeConfigJson = JSON.stringify(themeConfigForInsert);
 
     await siteDB.prepare(
       `INSERT INTO site_config (site_id, brand_name, category, logo_url, favicon_url, seo_title, seo_description, phone, email, address, primary_color, secondary_color, settings, theme_config, row_size_bytes, created_at, updated_at)
