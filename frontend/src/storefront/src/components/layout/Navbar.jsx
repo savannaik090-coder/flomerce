@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { CartContext } from '../../context/CartContext.jsx';
@@ -43,7 +43,6 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openSubGroups, setOpenSubGroups] = useState(new Set());
   const [scrolled, setScrolled] = useState(false);
-  const headerRef = useRef(null);
   const navigate = useNavigate();
 
   const navTransparent = siteConfig?.settings?.navTransparent === true;
@@ -52,29 +51,16 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
     if (!navTransparent) {
       setScrolled(false);
       document.body.classList.remove('cl-nav-transparent');
-      document.documentElement.style.removeProperty('--cl-header-height');
       return;
     }
     document.body.classList.add('cl-nav-transparent');
     const THRESHOLD = 60;
-    const updateHeaderHeight = () => {
-      if (headerRef.current) {
-        document.documentElement.style.setProperty(
-          '--cl-header-height',
-          headerRef.current.offsetHeight + 'px'
-        );
-      }
-    };
-    updateHeaderHeight();
     const onScroll = () => setScrolled(window.scrollY > THRESHOLD);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', updateHeaderHeight, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', updateHeaderHeight);
       document.body.classList.remove('cl-nav-transparent');
-      document.documentElement.style.removeProperty('--cl-header-height');
     };
   }, [navTransparent]);
 
@@ -144,14 +130,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   }
 
   return (
-    <header
-      ref={headerRef}
-      className={[
-        'header',
-        navTransparent && !scrolled ? 'header--transparent' : '',
-        navTransparent && scrolled ? 'header--scrolled' : '',
-      ].filter(Boolean).join(' ')}
-    >
+    <header className={`header${navTransparent && !scrolled ? ' header--transparent' : ''}${navTransparent && scrolled ? ' header--scrolled' : ''}`}>
       {siteConfig?.settings?.showPromoBanner !== false && (() => {
         const msgs = siteConfig?.settings?.promoBanner;
         const validMsgs = msgs && Array.isArray(msgs) ? msgs.filter(m => m.trim()) : [];
