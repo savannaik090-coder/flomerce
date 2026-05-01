@@ -56,6 +56,15 @@
     --product-image-height: 480px;
     --product-image-height-md: 380px;
     --product-image-height-sm: 320px;
+    /*
+     * Per-section color customization variables (--promo-bg, --promo-text,
+     * --promo-font) are intentionally NOT declared at :root. Each template
+     * provides its own default via var(--name, fallback) so a merchant-saved
+     * value injected on :root by SiteContext correctly overrides BOTH the
+     * classic and modern theme defaults via inheritance. Defaults:
+     *   classic: bg #b3a681, text #ffffff, font var(--font-primary)
+     *   modern : bg #111,    text #ffffff, font 'Inter', sans-serif
+     */
 }
 
 * {

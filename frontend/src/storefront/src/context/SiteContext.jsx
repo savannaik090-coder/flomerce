@@ -239,6 +239,30 @@ export function SiteProvider({ children }) {
     return merged;
   }, [previewSettings, siteConfig]);
 
+  // Per-section color customization — promo banner.
+  // Inject merchant-saved values as CSS custom properties on :root so they
+  // cascade everywhere the variable is used. We use !important so a saved
+  // value beats element-level defaults declared by template overrides
+  // (e.g. .promo-banner.modern-theme sets --promo-bg: #111 directly on the
+  // element, which would otherwise win over an inherited :root value).
+  // When a value is not set, we removeProperty so the CSS defaults from
+  // variables.css (and any template-level overrides) take back over.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const settings = effectiveSiteConfig?.settings || {};
+    const root = document.documentElement;
+    const apply = (cssVar, value) => {
+      if (value && typeof value === 'string' && value.trim() !== '') {
+        root.style.setProperty(cssVar, value, 'important');
+      } else {
+        root.style.removeProperty(cssVar);
+      }
+    };
+    apply('--promo-bg', settings.promoBannerBg);
+    apply('--promo-text', settings.promoBannerText);
+    apply('--promo-font', settings.promoBannerFont);
+  }, [effectiveSiteConfig]);
+
   return (
     <SiteContext.Provider value={{ siteConfig: effectiveSiteConfig, loading, error, subdomain, refetchSite: () => subdomain && fetchSiteConfig(subdomain, true) }}>
       {children}

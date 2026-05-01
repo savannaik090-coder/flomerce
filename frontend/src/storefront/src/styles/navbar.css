@@ -6,8 +6,8 @@
 }
 
 .promo-banner {
-    background-color: #b3a681 !important;
-    color: var(--color-text);
+    background-color: var(--promo-bg, #b3a681) !important;
+    color: var(--promo-text, #ffffff);
     padding: 7px 0 !important;
     text-align: center;
     position: relative;
@@ -19,6 +19,8 @@
 }
 
 .promo-banner .banner-text {
+    font-family: var(--promo-font, var(--font-primary));
+    color: var(--promo-text, #ffffff);
     font-size: 13px;
     margin: 0;
     display: inline-block;

@@ -1,12 +1,32 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 
+const FONT_OPTIONS = [
+  { label: 'Default (template)', value: '' },
+  { label: 'Lato', value: "'Lato', sans-serif" },
+  { label: 'Inter', value: "'Inter', 'Helvetica Neue', sans-serif" },
+  { label: 'Playfair Display', value: "'Playfair Display', serif" },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+];
+
+// Mirrors the per-template defaults declared in navbar.css / modern.css.
+// Used only to populate the color-picker swatch when no custom value is saved
+// — the actual rendered defaults come from CSS, not from these constants.
+const TEMPLATE_DEFAULTS = {
+  modern: { bg: '#111111', text: '#ffffff' },
+  classic: { bg: '#b3a681', text: '#ffffff' },
+};
+
 export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [messages, setMessages] = useState(['', '', '']);
+  const [bgColor, setBgColor] = useState('');
+  const [textColor, setTextColor] = useState('');
+  const [fontFamily, setFontFamily] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -14,16 +34,28 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
 
+  const activeTemplate = useMemo(() => {
+    const id = siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
+    return TEMPLATE_DEFAULTS[id] ? id : 'classic';
+  }, [siteConfig?.settings?.theme, siteConfig?.templateId]);
+  const defaultBg = TEMPLATE_DEFAULTS[activeTemplate].bg;
+  const defaultText = TEMPLATE_DEFAULTS[activeTemplate].text;
+
   useEffect(() => {
     if (siteConfig?.id) loadPromoBanner();
   }, [siteConfig?.id]);
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ messages });
+    const current = JSON.stringify({ messages, bgColor, textColor, fontFamily });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ promoBanner: messages.filter(m => m.trim() !== '') });
-  }, [messages]);
+    if (onPreviewUpdate) onPreviewUpdate({
+      promoBanner: messages.filter(m => m.trim() !== ''),
+      promoBannerBg: bgColor || undefined,
+      promoBannerText: textColor || undefined,
+      promoBannerFont: fontFamily || undefined,
+    });
+  }, [messages, bgColor, textColor, fontFamily]);
 
   async function loadPromoBanner() {
     setLoading(true);
@@ -37,8 +69,14 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         }
         const existing = settings.promoBanner || [];
         const mVal = [existing[0] || '', existing[1] || '', existing[2] || ''];
+        const bg = settings.promoBannerBg || '';
+        const txt = settings.promoBannerText || '';
+        const fnt = settings.promoBannerFont || '';
         setMessages(mVal);
-        serverValuesRef.current = JSON.stringify({ messages: mVal });
+        setBgColor(bg);
+        setTextColor(txt);
+        setFontFamily(fnt);
+        serverValuesRef.current = JSON.stringify({ messages: mVal, bgColor: bg, textColor: txt, fontFamily: fnt });
       }
     } catch (e) {
       console.error('Failed to load promo banner:', e);
@@ -55,18 +93,24 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
     try {
       const token = sessionStorage.getItem('site_admin_token');
       const filtered = messages.filter(m => m.trim() !== '');
+      const settingsPayload = {
+        promoBanner: filtered,
+        promoBannerBg: bgColor || '',
+        promoBannerText: textColor || '',
+        promoBannerFont: fontFamily || '',
+      };
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { promoBanner: filtered } }),
+        body: JSON.stringify({ settings: settingsPayload }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ messages });
+        serverValuesRef.current = JSON.stringify({ messages, bgColor, textColor, fontFamily });
         setHasChanges(false);
         if (onSaved) onSaved();
       } else {
@@ -95,6 +139,12 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
     "e.g. Use code SAVE10 for 10% off",
   ];
 
+  const fieldLabel = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };
+  const inputBase = {
+    width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
+    borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit',
+  };
+
   return (
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
@@ -115,7 +165,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
             </p>
             {[0, 1, 2].map(index => (
               <div key={index} style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+                <label style={fieldLabel}>
                   {index === 0 ? `Message ${index + 1}` : `Message ${index + 1} (optional)`}
                 </label>
                 <input
@@ -124,10 +174,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
                   onChange={e => updateMessage(index, e.target.value)}
                   placeholder={placeholders[index]}
                   maxLength={120}
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
-                    borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit',
-                  }}
+                  style={inputBase}
                 />
                 <div style={{ textAlign: 'end', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
                   {messages[index].length}/120
@@ -136,6 +183,85 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
             ))}
           </div>
         </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Banner Style</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Customize the colors and font of the promo banner. Leave blank to use the template default.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={fieldLabel}>Background Color</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="color"
+                    value={bgColor || defaultBg}
+                    onChange={e => setBgColor(e.target.value)}
+                    style={{ width: 44, height: 38, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                  />
+                  <input
+                    type="text"
+                    value={bgColor}
+                    onChange={e => setBgColor(e.target.value)}
+                    placeholder="default"
+                    style={{ ...inputBase, flex: 1 }}
+                  />
+                  {bgColor && (
+                    <button
+                      type="button"
+                      onClick={() => setBgColor('')}
+                      style={{ padding: '8px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                    >Reset</button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label style={fieldLabel}>Text Color</label>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="color"
+                    value={textColor || defaultText}
+                    onChange={e => setTextColor(e.target.value)}
+                    style={{ width: 44, height: 38, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                  />
+                  <input
+                    type="text"
+                    value={textColor}
+                    onChange={e => setTextColor(e.target.value)}
+                    placeholder="default"
+                    style={{ ...inputBase, flex: 1 }}
+                  />
+                  {textColor && (
+                    <button
+                      type="button"
+                      onClick={() => setTextColor('')}
+                      style={{ padding: '8px 10px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}
+                    >Reset</button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label style={fieldLabel}>Font Family</label>
+              <select
+                value={fontFamily}
+                onChange={e => setFontFamily(e.target.value)}
+                style={inputBase}
+              >
+                {FONT_OPTIONS.map(opt => (
+                  <option key={opt.label} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         {status && (
           <div style={{
             background: status === 'success' ? '#f0fdf4' : '#fef2f2',

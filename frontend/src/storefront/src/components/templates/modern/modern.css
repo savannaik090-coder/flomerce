@@ -1815,13 +1815,21 @@
 }
 
 /* --- Modern Announcement Bar --- */
+/*
+ * Defaults are provided via the var(--name, fallback) syntax (NOT by
+ * redefining the variable on the element). This is critical: if a merchant
+ * saves a custom color, SiteContext sets --promo-bg on :root, and the modern
+ * theme's element inherits it. Redeclaring --promo-bg on this element would
+ * mask the inherited value and the merchant's customization would never take
+ * effect on the modern theme.
+ */
 .promo-banner.modern-theme {
-  background: #111 !important;
-  background-color: #111 !important;
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  background-color: var(--promo-bg, #111) !important;
+  color: var(--promo-text, #ffffff);
 }
 .promo-banner.modern-theme .banner-text {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--promo-font, 'Inter', 'Helvetica Neue', sans-serif);
+  color: var(--promo-text, #ffffff);
   font-weight: 500;
   letter-spacing: 2px;
   font-size: 11px;
