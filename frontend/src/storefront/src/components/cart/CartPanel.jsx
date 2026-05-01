@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext.jsx';
+import { SiteContext } from '../../context/SiteContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { useTheme } from '../../context/ThemeContext.jsx';
@@ -49,23 +50,31 @@ function SelectedOptionsDisplay({ selectedOptions }) {
 
 export default function CartPanel({ isOpen, onClose }) {
   const { items, subtotal, updateQuantity, removeItem, cartItemKey } = useContext(CartContext);
+  const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
   const { isModern } = useTheme();
   const themeClass = isModern ? 'modern-theme' : '';
+
+  const s = siteConfig?.settings || {};
+  const labelCartTitle = s.cartTitle || 'Your Shopping Bag';
+  const labelCartEmpty = s.cartEmptyText || 'Your cart is empty';
+  const labelSubtotal = s.subtotalLabel || 'Subtotal:';
+  const labelContinue = s.continueShoppingLabel || 'Continue Shopping';
+  const labelCheckout = s.checkoutLabel || 'Checkout';
 
   return (
     <div className={themeClass}>
       <div className={`cart-panel-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`cart-panel${isOpen ? ' active' : ''}`}>
         <div className="cart-panel-header">
-          <h3><TranslatedText text="Your Shopping Bag" /></h3>
+          <h3>{labelCartTitle}</h3>
           <button className="close-cart-btn" onClick={onClose}>&times;</button>
         </div>
 
         <div className="cart-items">
           {items.length === 0 ? (
-            <div className="empty-cart-message"><TranslatedText text="Your cart is empty" /></div>
+            <div className="empty-cart-message">{labelCartEmpty}</div>
           ) : (
             items.map((item, idx) => {
               const itemId = item.productId || item.product_id || item.id;
@@ -100,11 +109,11 @@ export default function CartPanel({ isOpen, onClose }) {
 
         <div className="cart-panel-footer">
           <div className="cart-panel-subtotal">
-            <span><TranslatedText text="Subtotal:" /></span>
+            <span>{labelSubtotal}</span>
             <span className="subtotal-amount">{formatAmount(subtotal)}</span>
           </div>
           <div className="cart-panel-buttons">
-            <button className="view-cart-btn" onClick={onClose}><TranslatedText text="Continue Shopping" /></button>
+            <button className="view-cart-btn" onClick={onClose}>{labelContinue}</button>
             <a
               href="#"
               className="checkout-btn"
@@ -114,7 +123,7 @@ export default function CartPanel({ isOpen, onClose }) {
                 navigate('/checkout');
               }}
             >
-              <TranslatedText text="Checkout" />
+              {labelCheckout}
             </a>
           </div>
         </div>

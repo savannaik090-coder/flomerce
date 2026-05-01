@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WishlistContext } from '../../context/WishlistContext.jsx';
+import { SiteContext } from '../../context/SiteContext.jsx';
 import { useCurrency } from '../../hooks/useCurrency.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { useTheme } from '../../context/ThemeContext.jsx';
@@ -26,10 +27,16 @@ function getItemProductId(item) {
 export default function WishlistPanel({ isOpen, onClose }) {
   const { translate: tx } = useShopperTranslation();
   const { items, removeFromWishlist } = useContext(WishlistContext);
+  const { siteConfig } = useContext(SiteContext);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
   const { isModern } = useTheme();
   const themeClass = isModern ? 'modern-theme' : '';
+
+  const s = siteConfig?.settings || {};
+  const baseWishlistTitle = s.wishlistTitle || tx('Your Wishlist ({{count}})');
+  const labelWishlistTitle = baseWishlistTitle.replace('{{count}}', String(items.length));
+  const labelWishlistEmpty = s.wishlistEmptyText || 'Your wishlist is empty';
 
   function handleItemClick(item) {
     onClose();
@@ -41,14 +48,14 @@ export default function WishlistPanel({ isOpen, onClose }) {
       <div className={`wishlist-overlay${isOpen ? ' active' : ''}`} onClick={onClose}></div>
       <div className={`wishlist-panel${isOpen ? ' active' : ''}`}>
         <div className="wishlist-panel-header">
-          <h3>{tx("Your Wishlist ({{count}})").replace('{{count}}', String(items.length))}</h3>
+          <h3>{labelWishlistTitle}</h3>
           <button className="close-wishlist-btn" onClick={onClose}>&times;</button>
         </div>
 
         <div className="wishlist-items">
           {items.length === 0 ? (
             <div className="empty-cart-message" style={{ textAlign: 'center', padding: '30px 0', color: 'var(--panel-muted, #888)' }}>
-              <TranslatedText text="Your wishlist is empty" />
+              {labelWishlistEmpty}
             </div>
           ) : (
             items.map((item) => (

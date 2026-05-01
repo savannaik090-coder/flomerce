@@ -25,6 +25,13 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
   const [panelAccent, setPanelAccent] = useState('');
   const [panelAccentText, setPanelAccentText] = useState('');
   const [panelFont, setPanelFont] = useState('');
+  const [cartTitle, setCartTitle] = useState('');
+  const [cartEmptyText, setCartEmptyText] = useState('');
+  const [wishlistTitle, setWishlistTitle] = useState('');
+  const [wishlistEmptyText, setWishlistEmptyText] = useState('');
+  const [subtotalLabel, setSubtotalLabel] = useState('');
+  const [continueShoppingLabel, setContinueShoppingLabel] = useState('');
+  const [checkoutLabel, setCheckoutLabel] = useState('');
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
 
@@ -34,10 +41,10 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont });
+    const current = JSON.stringify({ panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont, cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel });
     setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont });
-  }, [panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont]);
+  }, [panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont, cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel]);
 
   async function load() {
     setLoading(true);
@@ -55,15 +62,31 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
         const ac = settings.panelAccent || '';
         const at = settings.panelAccentText || '';
         const fn = settings.panelFont || '';
+        const ct = settings.cartTitle || '';
+        const ce = settings.cartEmptyText || '';
+        const wt = settings.wishlistTitle || '';
+        const we = settings.wishlistEmptyText || '';
+        const sl = settings.subtotalLabel || '';
+        const cs = settings.continueShoppingLabel || '';
+        const cl = settings.checkoutLabel || '';
         setPanelBg(bg);
         setPanelText(tx);
         setPanelMuted(mu);
         setPanelAccent(ac);
         setPanelAccentText(at);
         setPanelFont(fn);
+        setCartTitle(ct);
+        setCartEmptyText(ce);
+        setWishlistTitle(wt);
+        setWishlistEmptyText(we);
+        setSubtotalLabel(sl);
+        setContinueShoppingLabel(cs);
+        setCheckoutLabel(cl);
         serverValuesRef.current = JSON.stringify({
           panelBg: bg, panelText: tx, panelMuted: mu, panelAccent: ac,
           panelAccentText: at, panelFont: fn,
+          cartTitle: ct, cartEmptyText: ce, wishlistTitle: wt, wishlistEmptyText: we,
+          subtotalLabel: sl, continueShoppingLabel: cs, checkoutLabel: cl,
         });
       }
     } catch (e) {
@@ -87,7 +110,7 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
         body: JSON.stringify({
-          settings: { panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont },
+          settings: { panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont, cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel },
         }),
       });
       const result = await res.json();
@@ -95,6 +118,7 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({
           panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
+          cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel,
         });
         setHasChanges(false);
         if (refetchSite) refetchSite();
@@ -253,6 +277,48 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
               value={panelFont}
               onChange={setPanelFont}
             />
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Panel Labels</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              Customise the text shown inside the cart and wishlist panels.
+              Leave any field blank to use the default wording.
+            </p>
+            {[
+              { label: 'Cart panel title', placeholder: 'Your Shopping Bag', value: cartTitle, set: setCartTitle },
+              { label: 'Cart empty message', placeholder: 'Your cart is empty', value: cartEmptyText, set: setCartEmptyText },
+              { label: 'Wishlist panel title', placeholder: 'Your Wishlist', value: wishlistTitle, set: setWishlistTitle },
+              { label: 'Wishlist empty message', placeholder: 'Your wishlist is empty', value: wishlistEmptyText, set: setWishlistEmptyText },
+              { label: 'Subtotal label', placeholder: 'Subtotal:', value: subtotalLabel, set: setSubtotalLabel },
+              { label: '"Continue Shopping" button', placeholder: 'Continue Shopping', value: continueShoppingLabel, set: setContinueShoppingLabel },
+              { label: '"Checkout" button', placeholder: 'Checkout', value: checkoutLabel, set: setCheckoutLabel },
+            ].map(({ label, placeholder, value, set }) => (
+              <div key={label} style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{label}</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 6, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff' }}>
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={e => set(e.target.value)}
+                    placeholder={`default · ${placeholder}`}
+                    style={{ flex: 1, border: 'none', padding: '6px 4px', fontSize: 13, outline: 'none', background: 'transparent' }}
+                  />
+                  {value && (
+                    <button
+                      type="button"
+                      onClick={() => set('')}
+                      title="Reset to default"
+                      style={{ padding: '6px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, color: '#475569', cursor: 'pointer', flexShrink: 0 }}
+                    >Reset</button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

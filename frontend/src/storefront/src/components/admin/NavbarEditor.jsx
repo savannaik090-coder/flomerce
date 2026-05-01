@@ -700,7 +700,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
               <AdminColorField
                 label="Navbar Background"
                 value={navBg}
@@ -723,7 +723,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
               <AdminColorField
                 label="Nav Link Color"
                 value={navLinkText}

@@ -3117,3 +3117,32 @@
   font-weight: 700;
   letter-spacing: -0.01em;
 }
+
+/*
+ * Modern theme default CSS variable overrides.
+ *
+ * These only take effect when a merchant has NOT saved a custom value —
+ * because SiteContext injects merchant values onto :root with !important,
+ * which wins over any element-scoped declaration. When no merchant value is
+ * set, these provide Modern-appropriate defaults instead of falling through to
+ * the Classic gold (#c8a97e) fallbacks baked into var() calls.
+ *
+ * Cart/wishlist panel: black accent, clean grey muted, white surface.
+ * Nav: white background, near-black text, black hover.
+ */
+.modern-theme {
+  --panel-accent: #111111;
+  --panel-accent-text: #ffffff;
+  --panel-bg: #ffffff;
+  --panel-text: #111111;
+  --panel-muted: #999999;
+  --panel-font: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.mn-header {
+  --nav-bg: #ffffff;
+  --nav-link-text: #111111;
+  --nav-link-hover: #000000;
+  --nav-icon: #111111;
+  --brand-color: #111111;
+}
