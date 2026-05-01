@@ -7,12 +7,9 @@
 }
 
 /*
- * Transparent-on-hero states.
- * Mirrors the Modern template pattern exactly:
- *   — position:fixed lifts the header out of document flow
- *   — promo banner is hidden in transparent state (fixed height = 65px nav only)
- *   — body.cl-nav-transparent compensates layout for all pages
- *   — .hero-slider pulls up -65px so it fills behind the transparent header
+ * Transparent-on-hero states — exactly mirrors the Modern template approach.
+ * position:fixed lifts the header out of document flow so the hero fills behind it.
+ * Only the background is made transparent; everything else is left untouched.
  */
 .header--transparent,
 .header--scrolled {
@@ -24,43 +21,20 @@
     z-index: var(--z-fixed);
 }
 
-/* ── Transparent state ── */
 .header--transparent {
     background: transparent !important;
     box-shadow: none !important;
     border-bottom-color: transparent !important;
-    /* Scope icon/text colour vars so PngIcons (inline CSS vars) turn white */
-    --nav-icon: var(--nav-transparent-text, #ffffff);
-    --nav-text: var(--nav-transparent-text, #ffffff);
-}
-/* Hide promo banner — it has its own !important background that would show
-   through; hiding gives a clean single-bar transparent header like Modern */
-.header--transparent .promo-banner {
-    display: none !important;
-}
-.header--transparent .nav-link,
-.header--transparent .brand-text,
-.header--transparent .icon-link,
-.header--transparent .hamburger {
-    color: var(--nav-transparent-text, #ffffff) !important;
-}
-.header--transparent .cart-count,
-.header--transparent .wishlist-count {
-    background: var(--nav-transparent-text, #ffffff);
-    color: var(--nav-bg, #111);
 }
 
-/* ── Scrolled state — solid + shadow ── */
 .header--scrolled {
     box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* ── Layout compensation ──
- * Promo banner is hidden in transparent mode so header = 65px nav only.
- * main gets 65px top padding so non-hero pages start below the fixed bar.
- * .hero-slider pulls up by the same amount so it fills the full viewport
- * behind the transparent header — identical to Modern's .modern-hero trick.
- */
+/* Layout compensation — same pattern as Modern's 70px / .modern-hero rules.
+ * 65px = height of .nav-container. main gets top padding so non-hero pages
+ * start below the bar; .hero-slider pulls up by the same amount so the hero
+ * image fills the full viewport behind the transparent header. */
 body.cl-nav-transparent main {
     padding-top: 65px;
 }
