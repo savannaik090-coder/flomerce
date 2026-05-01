@@ -29,7 +29,7 @@
     position: absolute;
     width: 80px;
     height: 2px;
-    background-color: #B08C4C;
+    background-color: var(--color-accent, #B08C4C);
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
@@ -153,7 +153,7 @@
     gap: 8px;
 }
 
-.store-hours i { color: #9c7c38; }
+.store-hours i { color: var(--color-accent-light, #9c7c38); }
 
 .store-contact {
     display: flex;
@@ -170,7 +170,7 @@
     transition: color 0.3s ease;
 }
 
-.store-phone:hover { color: #9c7c38; }
+.store-phone:hover { color: var(--color-accent-light, #9c7c38); }
 
 .store-actions {
     display: flex;

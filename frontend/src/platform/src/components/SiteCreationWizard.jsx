@@ -34,7 +34,7 @@ const SEO_DESCRIPTION_TEMPLATES = {
 // theme-config.js → buildDefaultSchemes() → brand scheme. Drift causes
 // new sites to look different from "Reset Brand to default" results.
 const CLASSIC_BRAND_DEFAULTS = {
-  background: '#ffffff',
+  background: '#f8f8f5', // classic --color-bg cream — every section uses it
   text: '#333333',
   headingText: '#333333',
   mutedText: '#888888',
@@ -728,7 +728,16 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
                             <input
                               type="text"
                               value={value}
-                              onChange={(e) => setBrandSlot(slot.key, e.target.value)}
+                              onChange={(e) => {
+                                // Strip non-hex characters and clamp to 6
+                                // digits so a fat-finger keystroke (e.g.
+                                // "#fffff$f") cannot leak into the saved
+                                // theme and break the contrast checker
+                                // downstream.
+                                const raw = e.target.value || '';
+                                const hexOnly = raw.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+                                setBrandSlot(slot.key, hexOnly ? '#' + hexOnly : '');
+                              }}
                               placeholder={CLASSIC_BRAND_DEFAULTS[slot.key]}
                               maxLength={7}
                               style={{ flex: 1, minWidth: 0, fontFamily: 'monospace', fontSize: '0.85rem', borderColor: showInvalid ? '#dc2626' : undefined, color: showInvalid ? '#dc2626' : undefined }}

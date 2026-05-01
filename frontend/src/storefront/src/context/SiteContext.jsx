@@ -354,7 +354,7 @@ export function SiteProvider({ children }) {
     // still renders with the same Brand/Inverse/Accent palettes.
     const brand = {
       id: 'brand', name: 'Brand', isDefault: true,
-      background: '#ffffff', text: '#333333',
+      background: '#f8f8f5', text: '#333333',
       headingText: '#333333', mutedText: '#888888', border: '#eeeeee',
       button: primary, buttonText: pickReadable(primary),
       secondaryButton: shift(primary, 0.85),

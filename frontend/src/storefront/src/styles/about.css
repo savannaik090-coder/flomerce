@@ -33,7 +33,7 @@
   font-weight: 600;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #d4af37;
+  color: var(--color-accent-gold, #d4af37);
   margin-bottom: 20px;
   padding: 6px 20px;
   border: 1px solid rgba(212, 175, 55, 0.3);
@@ -62,7 +62,7 @@
 .about-hero-divider {
   width: 50px;
   height: 2px;
-  background: linear-gradient(90deg, #d4af37, #f0d78c);
+  background: linear-gradient(90deg, var(--color-accent-gold, #d4af37), color-mix(in srgb, var(--color-accent-gold, #d4af37) 55%, white));
   margin: 20px auto 0;
   border-radius: 2px;
 }
@@ -107,7 +107,7 @@
   position: relative;
   z-index: 2;
   font-size: 72px;
-  color: #d4af37;
+  color: var(--color-accent-gold, #d4af37);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08);
 }
 
@@ -117,7 +117,7 @@
   inset-inline-start: -16px;
   inset-inline-end: 16px;
   bottom: -24px;
-  border: 2px solid #d4af37;
+  border: 2px solid var(--color-accent-gold, #d4af37);
   border-radius: 16px;
   z-index: 1;
   opacity: 0.3;
@@ -134,7 +134,7 @@
   font-weight: 600;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: #d4af37;
+  color: var(--color-accent-gold, #d4af37);
   margin-bottom: 12px;
 }
 
@@ -174,7 +174,7 @@
   font-weight: 600;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #d4af37;
+  color: var(--color-accent-gold, #d4af37);
   margin-bottom: 16px;
   padding: 6px 20px;
   border: 1px solid rgba(212, 175, 55, 0.3);
@@ -193,7 +193,7 @@
 .about-content-section-divider {
   width: 50px;
   height: 2px;
-  background: linear-gradient(90deg, #d4af37, #f0d78c);
+  background: linear-gradient(90deg, var(--color-accent-gold, #d4af37), color-mix(in srgb, var(--color-accent-gold, #d4af37) 55%, white));
   margin: 0 auto 36px;
   border-radius: 2px;
 }

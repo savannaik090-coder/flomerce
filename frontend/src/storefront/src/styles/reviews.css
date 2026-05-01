@@ -68,7 +68,7 @@
     width: 60px;
     height: 60px;
     background: rgba(255,255,255,0.95);
-    border: 2px solid #d4af37;
+    border: 2px solid var(--color-accent-gold, #d4af37);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -77,12 +77,12 @@
     z-index: 10;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
-    color: #d4af37;
+    color: var(--color-accent-gold, #d4af37);
     font-size: 18px;
 }
 
 .reviews-scroll-arrow:hover {
-    background: #d4af37;
+    background: var(--color-accent-gold, #d4af37);
     color: white;
     transform: translateY(-50%) scale(1.1);
     box-shadow: 0 8px 25px rgba(212,175,55,0.3);
@@ -147,7 +147,7 @@
     inset-inline-start: 0;
     top: -5px;
     font-size: 2rem;
-    color: #d4af37;
+    color: var(--color-accent-gold, #d4af37);
     font-family: serif;
 }
 
@@ -181,7 +181,7 @@
 }
 
 .reviews-cta .chat-now-btn:hover {
-    background: linear-gradient(135deg, #b8941f, #d4af37);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent-gold, #d4af37) 75%, black), var(--color-accent-gold, #d4af37));
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(212,175,55,0.4);
 }

@@ -464,10 +464,16 @@ function ColorSlotRow({ label, help, value, onChange }) {
         type="text"
         value={value || ''}
         onChange={(e) => {
-          let v = e.target.value.trim();
-          if (v && !v.startsWith('#')) v = '#' + v;
-          onChange(v);
+          // Sanitize: strip every character that isn't a hex digit, then
+          // re-prepend `#` and clamp to 6 hex chars. This prevents stray
+          // characters (`)`, `$`, extra letters) from entering the value
+          // when the user mistypes — those would otherwise corrupt the
+          // contrast checker (1.00:1) and the saved scheme.
+          const raw = e.target.value || '';
+          const hexOnly = raw.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+          onChange(hexOnly ? '#' + hexOnly : '');
         }}
+        maxLength={7}
         spellCheck={false}
         style={{
           width: 92, padding: '6px 8px',

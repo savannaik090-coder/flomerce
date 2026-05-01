@@ -59,7 +59,7 @@
     /* Scheme tokens — defaults map to the seeded brand palette. SchemeScope
        and SiteContext override these per section so any element styled with
        var(--scheme-*) instantly recolors when the merchant changes a scheme. */
-    --scheme-bg: #ffffff;
+    --scheme-bg: #f8f8f5;
     --scheme-text: #333333;
     --scheme-heading-text: #333333;
     --scheme-muted-text: #888888;

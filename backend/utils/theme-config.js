@@ -135,11 +135,15 @@ export function buildDefaultSchemes(primaryColor, secondaryColor, accentColor) {
   // site looks identical to the platform default. Heading/body text use
   // #333, muted text uses #888, borders use #eee — matching the classic
   // `--color-text`, `--color-text-muted`, `--color-border` defaults.
+  // Background is #f8f8f5 (classic `--color-bg`), NOT pure white — every
+  // section in the classic template uses this cream surface (navbar, hero,
+  // categories, footer, etc.); painting them pure white was the visual
+  // regression merchants were reporting.
   const brand = {
     id: 'brand',
     name: 'Brand',
     isDefault: true,
-    background: '#ffffff',
+    background: '#f8f8f5',
     text: '#333333',
     headingText: PLATFORM_DEFAULT_HEADING_TEXT,
     mutedText: PLATFORM_DEFAULT_MUTED_TEXT,

@@ -199,7 +199,7 @@
 
 .remove-item-btn:hover { color: #c9302c; transform: scale(1.1); }
 
-.cart-item-total { color: #c8a97e; font-weight: 600; margin-top: 8px; font-size: 15px; }
+.cart-item-total { color: var(--color-accent, #c8a97e); font-weight: 600; margin-top: 8px; font-size: 15px; }
 
 .cart-panel-footer { padding: 15px; border-top: 1px solid #eee; background: #f9f9f9; }
 
@@ -232,9 +232,9 @@
     font-size: inherit;
 }
 
-.checkout-btn { background: #c8a97e; color: white; border: none; }
+.checkout-btn { background: var(--color-accent, #c8a97e); color: white; border: none; }
 .view-cart-btn:hover { background: #eaeaea; }
-.checkout-btn:hover { background: #b39063; }
+.checkout-btn:hover { background: color-mix(in srgb, var(--color-accent, #c8a97e) 80%, black); }
 
 .wishlist-panel-header {
     padding: 15px;
