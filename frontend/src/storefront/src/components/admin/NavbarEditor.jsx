@@ -706,9 +706,21 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
             </button>
           </div>
           <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Create named menu groups for your store's navigation bar. Each group shows as a link in the navbar, and clicking it opens a dropdown with the links you add below. Groups without any links will show as a direct link (no dropdown).
-            </p>
+            <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, marginBottom: 16 }}>
+              <p style={{ marginBottom: 8 }}>
+                <strong>Menu Groups</strong> appear as top-level items in your navbar. Each group can have a dropdown of links.
+              </p>
+              <ul style={{ paddingInlineStart: 20, margin: '0 0 8px 0' }}>
+                <li>A group with <strong>multiple links</strong> shows a dropdown when hovered/clicked</li>
+                <li>A group with <strong>one link</strong> navigates directly to that link</li>
+                <li>A group with <strong>no links</strong> will not appear in the navbar</li>
+                <li><strong>Categories not assigned</strong> to any group will still appear as individual links in the navbar (just like before)</li>
+              </ul>
+              <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>
+                <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
+                Static links like Home, About, Contact etc. will always appear in the navbar. A category can only belong to one group — it will be marked if already used elsewhere.
+              </p>
+            </div>
 
             {navbarMenus.length === 0 && (
               <div style={{
@@ -1160,29 +1172,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               <AdminColorField label="Accent Text" value={panelAccentText} fallback="#ffffff" onChange={setPanelAccentText} />
             </div>
             <AdminFontPicker label="Panel Font" value={panelFont} onChange={setPanelFont} />
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">How It Works</h3>
-          </div>
-          <div className="card-content">
-            <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>
-              <p style={{ marginBottom: 10 }}>
-                <strong>Menu Groups</strong> appear as top-level items in your navbar. Each group can have a dropdown of links.
-              </p>
-              <ul style={{ paddingInlineStart: 20, margin: '0 0 10px 0' }}>
-                <li>A group with <strong>multiple links</strong> shows a dropdown when hovered/clicked</li>
-                <li>A group with <strong>one link</strong> navigates directly to that link</li>
-                <li>A group with <strong>no links</strong> will not appear in the navbar</li>
-                <li><strong>Categories not assigned</strong> to any group will still appear as individual links in the navbar (just like before)</li>
-              </ul>
-              <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>
-                <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
-                Static links like Home, About, Contact etc. will always appear in the navbar. A category can only belong to one group — it will be marked if already used elsewhere.
-              </p>
-            </div>
           </div>
         </div>
 
