@@ -34,13 +34,13 @@ name = "Start Website"
 author = "agent"
 mode = "sequential"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node run-server.js"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow]]
 name = "Project"
@@ -69,6 +69,7 @@ outputType = "console"
 
 [agent]
 expertMode = true
+stack = "BEST_EFFORT_FALLBACK"
 
 [userenv]
 
