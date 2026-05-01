@@ -221,9 +221,9 @@
 .mn-header--transparent .mn-hamburger {
   color: var(--nav-transparent-text, #ffffff);
 }
-.mn-header--transparent .mn-badge {
-  background: var(--nav-transparent-text, #fff);
-  color: var(--nav-bg, #111);
+/* Mobile panel has its own solid background — restore normal link colour inside it */
+.mn-header--transparent .mn-mobile-menu.mn-mobile-open .mn-nav-link {
+  color: var(--nav-link-text, #333333);
 }
 
 /* Scrolled state — solid background with a soft drop-shadow */

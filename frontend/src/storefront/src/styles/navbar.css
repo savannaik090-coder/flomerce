@@ -36,6 +36,7 @@
     --nav-icon: var(--nav-transparent-text, #ffffff);
     --nav-text: var(--nav-transparent-text, #ffffff);
 }
+/* Desktop bar elements only — brand, icons, hamburger, top-level nav links */
 .header--transparent .nav-link,
 .header--transparent .brand-text,
 .header--transparent .icon-link,
@@ -43,10 +44,9 @@
 .header--transparent .hamburger i {
     color: var(--nav-transparent-text, #ffffff) !important;
 }
-.header--transparent .cart-count,
-.header--transparent .wishlist-count {
-    background: var(--nav-transparent-text, #ffffff);
-    color: var(--nav-bg, #111);
+/* Mobile panel has its own solid background — restore normal link colour inside it */
+.header--transparent .nav-menu.active .nav-link {
+    color: var(--nav-link-text, #333333) !important;
 }
 
 .header--scrolled {
