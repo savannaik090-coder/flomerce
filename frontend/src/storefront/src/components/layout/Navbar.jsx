@@ -9,6 +9,30 @@ import LanguageSwitcher from '../LanguageSwitcher.jsx';
 import TranslatedText from '../TranslatedText.jsx';
 import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
 
+function PngIcon({ src, size, color, alt }) {
+  return (
+    <span
+      role="img"
+      aria-label={alt || ''}
+      style={{
+        display: 'inline-block',
+        width: size,
+        height: size,
+        flexShrink: 0,
+        backgroundColor: color || 'var(--nav-icon, var(--nav-text, #333333))',
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+      }}
+    />
+  );
+}
+
 export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const { translate: tx } = useShopperTranslation();
   const { siteConfig } = useContext(SiteContext);
@@ -124,7 +148,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
       <nav className="navbar">
         <div className={`nav-container${isCentered ? ' nav-container--logo-center' : ''}`}>
           <div className="hamburger" onClick={() => setMenuOpen(true)}>
-            <img src="/images/icons/bars-staggered (2).png" alt={tx("Menu")} style={{ width: 25, height: 25 }} />
+            <PngIcon src="/images/icons/bars-staggered (2).png" alt={tx("Menu")} size={25} />
           </div>
 
           <Link to="/" className={`brand${isCentered ? ' brand--center' : ''}`}>
@@ -275,15 +299,15 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
             <div className="mobile-account-links mobile-special">
               {showAccountIcon && (
                 <Link to={isAuthenticated ? '/profile' : '/login'} className="mobile-account-link" onClick={closeMobileMenu}>
-                  <img src="/images/icons/user.png" alt={tx("Account")} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Account" />
+                  <PngIcon src="/images/icons/user.png" alt={tx("Account")} size={16} color="currentColor" />&nbsp;<TranslatedText text="Account" />
                 </Link>
               )}
               <a href="#" className="mobile-account-link wishlist-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onWishlistOpen?.(); }}>
-                <img src="/images/icons/heart.png" alt={tx("Wishlist")} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Wishlist" /> ({wishlistCount})
+                <PngIcon src="/images/icons/heart.png" alt={tx("Wishlist")} size={16} color="currentColor" />&nbsp;<TranslatedText text="Wishlist" /> ({wishlistCount})
               </a>
               {showCartIcon && (
                 <a href="#" className="mobile-account-link mobile-cart-toggle" onClick={(e) => { e.preventDefault(); closeMobileMenu(); onCartOpen?.(); }}>
-                  <img src="/images/icons/cart-minus.png" alt={tx("Cart")} style={{ width: 16, height: 16, marginInlineEnd: 8 }} /> <TranslatedText text="Shopping Bag" /> ({cartCount})
+                  <PngIcon src="/images/icons/cart-minus.png" alt={tx("Cart")} size={16} color="currentColor" />&nbsp;<TranslatedText text="Shopping Bag" /> ({cartCount})
                 </a>
               )}
             </div>
@@ -292,20 +316,20 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           <div className="nav-icons">
             <LanguageSwitcher compact />
             <a href="#" className="icon-link search-icon" onClick={(e) => { e.preventDefault(); onSearchOpen?.(); }}>
-              <img src="/images/icons/search.png" alt={tx("Search")} style={{ width: 20, height: 20 }} />
+              <PngIcon src="/images/icons/search.png" alt={tx("Search")} size={20} />
             </a>
             {showAccountIcon && (
               <Link to={isAuthenticated ? '/profile' : '/login'} className="icon-link account-icon">
-                <img src="/images/icons/user.png" alt={tx("Account")} style={{ width: 25, height: 25 }} />
+                <PngIcon src="/images/icons/user.png" alt={tx("Account")} size={25} />
               </Link>
             )}
             <a href="#" className="icon-link wishlist-icon-container wishlist-toggle" onClick={(e) => { e.preventDefault(); onWishlistOpen?.(); }}>
-              <img src="/images/icons/heart.png" alt={tx("Wishlist")} style={{ width: 20, height: 20 }} />
+              <PngIcon src="/images/icons/heart.png" alt={tx("Wishlist")} size={20} />
               <div className="wishlist-count">{wishlistCount}</div>
             </a>
             {showCartIcon && (
               <a href="#" className="icon-link cart-icon-container cart-toggle" onClick={(e) => { e.preventDefault(); onCartOpen?.(); }}>
-                <img src="/images/icons/cart-minus.png" alt={tx("Cart")} style={{ width: 20, height: 20 }} />
+                <PngIcon src="/images/icons/cart-minus.png" alt={tx("Cart")} size={20} />
                 <div className="cart-count">{cartCount}</div>
               </a>
             )}
