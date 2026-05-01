@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -26,6 +27,7 @@ function flattenCategories(categories, prefix = '') {
 
 export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -1033,7 +1035,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                       key={label}
                       style={{
                         fontFamily: navFont || 'inherit',
-                        color: i === 1 ? (navLinkHover || '#c59d5f') : (navLinkText || '#333'),
+                        color: i === 1 ? (navLinkHover || (isModern ? '#000000' : '#c59d5f')) : (navLinkText || '#333'),
                         fontSize: 13,
                         fontWeight: 600,
                         textTransform: 'uppercase',
@@ -1052,7 +1054,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               <AdminColorField
                 label="Navbar Background"
                 value={navBg}
-                fallback="#f8f8f5"
+                fallback={isModern ? '#ffffff' : '#f8f8f5'}
                 onChange={setNavBg}
               />
               <AdminColorField
@@ -1081,7 +1083,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               <AdminColorField
                 label="Nav Link Hover"
                 value={navLinkHover}
-                fallback="#c59d5f"
+                fallback={isModern ? '#000000' : '#c59d5f'}
                 onChange={setNavLinkHover}
               />
               <AdminColorField
@@ -1121,7 +1123,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               const prevBg = panelBg || '#ffffff';
               const prevText = panelText || '#333333';
               const prevMuted = panelMuted || '#888888';
-              const prevAccent = panelAccent || '#c8a97e';
+              const prevAccent = panelAccent || (isModern ? '#111111' : '#c8a97e');
               const prevAccentText = panelAccentText || '#ffffff';
               const prevFont = panelFont || 'inherit';
               return (
@@ -1154,7 +1156,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               <AdminColorField label="Background" value={panelBg} fallback="#ffffff" onChange={setPanelBg} />
               <AdminColorField label="Text Color" value={panelText} fallback="#333333" onChange={setPanelText} />
               <AdminColorField label="Muted Text / Borders" value={panelMuted} fallback="#888888" onChange={setPanelMuted} />
-              <AdminColorField label="Accent (Buttons, Price)" value={panelAccent} fallback="#c8a97e" onChange={setPanelAccent} />
+              <AdminColorField label="Accent (Buttons, Price)" value={panelAccent} fallback={isModern ? '#111111' : '#c8a97e'} onChange={setPanelAccent} />
               <AdminColorField label="Accent Text" value={panelAccentText} fallback="#ffffff" onChange={setPanelAccentText} />
             </div>
             <AdminFontPicker label="Panel Font" value={panelFont} onChange={setPanelFont} />

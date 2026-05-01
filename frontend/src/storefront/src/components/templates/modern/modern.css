@@ -765,7 +765,7 @@
 .mn-product-price {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #111;
+  color: var(--panel-accent, #111);
 }
 
 .mn-product-compare {
@@ -1361,7 +1361,7 @@
 .modern-theme .product-detail-info .product-price {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  color: #111;
+  color: var(--panel-accent, #111);
 }
 .modern-theme .product-meta {
   border-color: #eee;
@@ -1395,21 +1395,21 @@
   border-color: #111;
 }
 .modern-theme .add-to-cart-btn {
-  background: #111;
-  border-color: #111;
+  background: var(--panel-accent, #111);
+  border-color: var(--panel-accent, #111);
+  color: var(--panel-accent-text, #fff);
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   letter-spacing: 1.5px;
   border-radius: 2px;
 }
 .modern-theme .add-to-cart-btn:hover {
-  background: #333;
-  border-color: #333;
+  filter: brightness(0.85);
 }
 .modern-theme .buy-now-btn {
   background: #fff;
-  color: #111;
-  border: 2px solid #111;
+  color: var(--panel-accent, #111);
+  border: 2px solid var(--panel-accent, #111);
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   letter-spacing: 1.5px;
@@ -1799,7 +1799,7 @@
   font-weight: 500;
 }
 .search-overlay.modern-theme .search-product-price {
-  color: #111;
+  color: var(--panel-accent, #111);
   font-weight: 700;
 }
 .search-overlay.modern-theme .search-product-category {
@@ -2840,7 +2840,7 @@
 .mn-trending-price {
   font-size: 0.88rem;
   font-weight: 600;
-  color: #111;
+  color: var(--panel-accent, #111);
 }
 
 .mn-trending-compare {
@@ -3147,19 +3147,14 @@
   /* Shadow — replaces classic brownish card shadow */
   --shadow-card: 0 5px 15px rgba(0, 0, 0, 0.08);
 
-  /* Cart & wishlist panels */
-  --panel-accent:      #111111;
-  --panel-accent-text: #ffffff;
-  --panel-bg:          #ffffff;
-  --panel-text:        #111111;
-  --panel-muted:       #999999;
-  --panel-font:        'Inter', 'Helvetica Neue', Arial, sans-serif;
   /*
-   * Nav vars (--nav-bg, --nav-link-text, --nav-link-hover, --nav-icon,
-   * --brand-color, --brand-font) are intentionally NOT declared here.
-   * Declaring them on body would block the merchant's saved value (set via
-   * SiteContext on :root with !important) from being inherited. The var()
-   * fallbacks already baked into modern.css rules are all Modern-appropriate
-   * (white bg, dark text/icons) and activate whenever no merchant value is set.
+   * Panel vars (--panel-accent, --panel-bg, --panel-text, etc.) and nav vars
+   * (--nav-bg, --nav-link-text, etc.) are intentionally NOT declared here.
+   * Declaring them on body would block the merchant's saved value — SiteContext
+   * sets values on :root with !important, but a body-level stylesheet rule still
+   * wins over inheritance for the body element itself and all its descendants.
+   * The var() fallbacks baked into each CSS rule are Modern-appropriate
+   * (#111 buttons/prices, #fff bg, Inter font) and activate whenever no
+   * merchant value exists on :root.
    */
 }
