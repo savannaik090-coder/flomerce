@@ -21,7 +21,9 @@
     z-index: var(--z-fixed);
 }
 
-.header--transparent {
+.header--transparent,
+.header--transparent .navbar,
+.header--transparent .nav-container {
     background: transparent !important;
     box-shadow: none !important;
     border-bottom-color: transparent !important;
