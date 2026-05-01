@@ -1029,6 +1029,60 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
+            <h3 className="card-title">Transparent on hero</h3>
+          </div>
+          <div className="card-content">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                background: '#f8fafc',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                marginBottom: navTransparent ? 14 : 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <i className="fas fa-image" style={{ fontSize: 16, color: navTransparent ? '#2563eb' : '#cbd5e1', width: 20, textAlign: 'center' }} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Transparent on hero</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Navbar starts transparent over the hero image, fades solid on scroll</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNavTransparent(v => !v)}
+                style={{
+                  width: 44, height: 24, borderRadius: 12, border: 'none',
+                  background: navTransparent ? '#2563eb' : '#cbd5e1',
+                  cursor: 'pointer', position: 'relative',
+                  transition: 'background 0.2s ease', flexShrink: 0,
+                }}
+              >
+                <div style={{
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 3,
+                  left: navTransparent ? 23 : 3,
+                  transition: 'left 0.2s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                }} />
+              </button>
+            </div>
+            {navTransparent && (
+              <AdminColorField
+                label="Transparent text / icon color"
+                value={navTransparentText}
+                fallback="#ffffff"
+                onChange={setNavTransparentText}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
             <h3 className="card-title">Navigation Style</h3>
           </div>
           <div className="card-content">
@@ -1128,55 +1182,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
               The mobile menu inherits these colors and fonts automatically.
             </p>
-
-            <div style={{ marginTop: 20, borderTop: '1px solid #e2e8f0', paddingTop: 20 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 14px',
-                    background: '#f8fafc',
-                    borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                    marginBottom: navTransparent ? 14 : 0,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <i className="fas fa-image" style={{ fontSize: 16, color: navTransparent ? '#2563eb' : '#cbd5e1', width: 20, textAlign: 'center' }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>Transparent on hero</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>Navbar starts transparent over the hero image, fades solid on scroll</div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setNavTransparent(v => !v)}
-                    style={{
-                      width: 44, height: 24, borderRadius: 12, border: 'none',
-                      background: navTransparent ? '#2563eb' : '#cbd5e1',
-                      cursor: 'pointer', position: 'relative',
-                      transition: 'background 0.2s ease', flexShrink: 0,
-                    }}
-                  >
-                    <div style={{
-                      width: 18, height: 18, borderRadius: '50%', background: '#fff',
-                      position: 'absolute', top: 3,
-                      left: navTransparent ? 23 : 3,
-                      transition: 'left 0.2s ease',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                    }} />
-                  </button>
-                </div>
-                {navTransparent && (
-                  <AdminColorField
-                    label="Transparent text / icon color"
-                    value={navTransparentText}
-                    fallback="#ffffff"
-                    onChange={setNavTransparentText}
-                  />
-                )}
-              </div>
           </div>
         </div>
 
