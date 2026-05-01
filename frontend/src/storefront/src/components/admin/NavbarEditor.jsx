@@ -1129,8 +1129,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               The mobile menu inherits these colors and fonts automatically.
             </p>
 
-            {isModern && (
-              <div style={{ marginTop: 20, borderTop: '1px solid #e2e8f0', paddingTop: 20 }}>
+            <div style={{ marginTop: 20, borderTop: '1px solid #e2e8f0', paddingTop: 20 }}>
                 <div
                   style={{
                     display: 'flex',
@@ -1178,7 +1177,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                   />
                 )}
               </div>
-            )}
           </div>
         </div>
 

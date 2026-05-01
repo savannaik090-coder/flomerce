@@ -3,6 +3,52 @@
     z-index: var(--z-fixed);
     position: sticky;
     top: 0;
+    transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+
+/*
+ * Transparent-on-hero states — position:fixed so the header lifts out of
+ * document flow and the hero image can fill the full viewport behind it.
+ * body.cl-nav-transparent compensates layout for non-hero pages.
+ */
+.header--transparent,
+.header--scrolled {
+    position: fixed !important;
+    width: 100%;
+    left: 0;
+    right: 0;
+    top: 0;
+}
+
+.header--transparent {
+    background: transparent !important;
+    border-bottom-color: transparent !important;
+    box-shadow: none !important;
+}
+.header--transparent .nav-link,
+.header--transparent .brand-text,
+.header--transparent .icon-link,
+.header--transparent .hamburger,
+.header--transparent .banner-text {
+    color: var(--nav-transparent-text, #ffffff) !important;
+}
+.header--transparent .cart-count,
+.header--transparent .wishlist-count {
+    background: var(--nav-transparent-text, #fff);
+    color: var(--nav-bg, #111);
+}
+
+.header--scrolled {
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Non-hero pages: push main below the fixed header */
+body.cl-nav-transparent main {
+    padding-top: var(--cl-header-height, 65px);
+}
+/* Hero page: pull hero up behind the fixed header */
+body.cl-nav-transparent .hero-slider {
+    margin-top: calc(-1 * var(--cl-header-height, 65px));
 }
 
 .promo-banner {
