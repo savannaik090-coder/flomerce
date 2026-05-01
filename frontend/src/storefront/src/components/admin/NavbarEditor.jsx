@@ -54,6 +54,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [navFont, setNavFont] = useState('');
   const [brandColor, setBrandColor] = useState('');
   const [brandFont, setBrandFont] = useState('');
+  const [panelBg, setPanelBg] = useState('');
+  const [panelText, setPanelText] = useState('');
+  const [panelMuted, setPanelMuted] = useState('');
+  const [panelAccent, setPanelAccent] = useState('');
+  const [panelAccentText, setPanelAccentText] = useState('');
+  const [panelFont, setPanelFont] = useState('');
   const logoInputRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
@@ -69,15 +75,18 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
     const current = JSON.stringify({
       navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
       navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+      panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
     });
     setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({
       navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
       navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+      panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
     });
   }, [
     navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
     navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+    panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
   ]);
 
   async function loadCategories() {
@@ -112,6 +121,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         const navFontVal = settings.navFont || '';
         const brandColorVal = settings.brandColor || '';
         const brandFontVal = settings.brandFont || '';
+        const panelBgVal = settings.panelBg || '';
+        const panelTextVal = settings.panelText || '';
+        const panelMutedVal = settings.panelMuted || '';
+        const panelAccentVal = settings.panelAccent || '';
+        const panelAccentTextVal = settings.panelAccentText || '';
+        const panelFontVal = settings.panelFont || '';
         setNavbarMenus(menusVal);
         setLogoUrl(logoVal);
         setLogoSize(sizeVal);
@@ -125,11 +140,19 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         setNavFont(navFontVal);
         setBrandColor(brandColorVal);
         setBrandFont(brandFontVal);
+        setPanelBg(panelBgVal);
+        setPanelText(panelTextVal);
+        setPanelMuted(panelMutedVal);
+        setPanelAccent(panelAccentVal);
+        setPanelAccentText(panelAccentTextVal);
+        setPanelFont(panelFontVal);
         serverValuesRef.current = JSON.stringify({
           navbarMenus: menusVal, logoUrl: logoVal, logoSize: sizeVal, logoPosition: posVal,
           showAccountIcon: accVal, showCartIcon: cartVal,
           navBg: navBgVal, navLinkText: navLinkTextVal, navLinkHover: navLinkHoverVal,
           navIcon: navIconVal, navFont: navFontVal, brandColor: brandColorVal, brandFont: brandFontVal,
+          panelBg: panelBgVal, panelText: panelTextVal, panelMuted: panelMutedVal,
+          panelAccent: panelAccentVal, panelAccentText: panelAccentTextVal, panelFont: panelFontVal,
         });
       }
     } catch (e) {
@@ -231,6 +254,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           settings: {
             navbarMenus: cleanMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
             navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+            panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
           },
           logoUrl: logoUrl || null,
         }),
@@ -241,6 +265,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         serverValuesRef.current = JSON.stringify({
           navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
           navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+          panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
         });
         setHasChanges(false);
         // Save succeeded — clean up R2 (delete replaced original logo + any
@@ -754,6 +779,62 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />
               The mobile menu inherits these colors and fonts automatically.
             </p>
+          </div>
+        </div>
+
+        {/* ── Cart & Wishlist Panels ── */}
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Cart &amp; Wishlist Panels</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              These colors and font apply to both the cart and wishlist panels.
+              Leave any field blank to use the template default.
+            </p>
+
+            {/* Live mini-preview */}
+            {(() => {
+              const prevBg = panelBg || '#ffffff';
+              const prevText = panelText || '#333333';
+              const prevMuted = panelMuted || '#888888';
+              const prevAccent = panelAccent || '#c8a97e';
+              const prevAccentText = panelAccentText || '#ffffff';
+              const prevFont = panelFont || 'inherit';
+              return (
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', marginBottom: 24, background: prevBg, fontFamily: prevFont, boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${prevMuted}` }}>
+                    <div style={{ color: prevText, fontSize: 17, fontWeight: 500 }}>Cart</div>
+                    <div style={{ background: '#f5f5f5', color: '#555', width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>×</div>
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 12 }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 8, background: '#f1f5f9' }} />
+                    <div>
+                      <div style={{ color: prevText, fontWeight: 500, fontSize: 14, marginBottom: 4 }}>Sample item</div>
+                      <div style={{ color: prevMuted, fontSize: 13, marginBottom: 6 }}>Qty 1</div>
+                      <div style={{ color: prevAccent, fontWeight: 600, fontSize: 14 }}>$49.00</div>
+                    </div>
+                  </div>
+                  <div style={{ padding: '12px 16px', borderTop: `1px solid ${prevMuted}`, background: prevBg }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: prevText, fontWeight: 500, fontSize: 14, marginBottom: 10 }}>
+                      <span>Subtotal</span><span>$49.00</span>
+                    </div>
+                    <button type="button" disabled style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', borderRadius: 4, background: prevAccent, color: prevAccentText, fontWeight: 500, fontSize: 14, fontFamily: 'inherit', cursor: 'default' }}>
+                      Checkout
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
+              <AdminColorField label="Background" value={panelBg} fallback="#ffffff" onChange={setPanelBg} />
+              <AdminColorField label="Text Color" value={panelText} fallback="#333333" onChange={setPanelText} />
+              <AdminColorField label="Muted Text / Borders" value={panelMuted} fallback="#888888" onChange={setPanelMuted} />
+              <AdminColorField label="Accent (Buttons, Price)" value={panelAccent} fallback="#c8a97e" onChange={setPanelAccent} />
+              <AdminColorField label="Accent Text" value={panelAccentText} fallback="#ffffff" onChange={setPanelAccentText} />
+            </div>
+            <AdminFontPicker label="Panel Font" value={panelFont} onChange={setPanelFont} />
           </div>
         </div>
 

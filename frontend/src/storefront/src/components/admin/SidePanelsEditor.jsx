@@ -280,48 +280,6 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Panel Labels</h3>
-          </div>
-          <div className="card-content">
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Customise the text shown inside the cart and wishlist panels.
-              Leave any field blank to use the default wording.
-            </p>
-            {[
-              { label: 'Cart panel title', placeholder: 'Your Shopping Bag', value: cartTitle, set: setCartTitle },
-              { label: 'Cart empty message', placeholder: 'Your cart is empty', value: cartEmptyText, set: setCartEmptyText },
-              { label: 'Wishlist panel title', placeholder: 'Your Wishlist', value: wishlistTitle, set: setWishlistTitle },
-              { label: 'Wishlist empty message', placeholder: 'Your wishlist is empty', value: wishlistEmptyText, set: setWishlistEmptyText },
-              { label: 'Subtotal label', placeholder: 'Subtotal:', value: subtotalLabel, set: setSubtotalLabel },
-              { label: '"Continue Shopping" button', placeholder: 'Continue Shopping', value: continueShoppingLabel, set: setContinueShoppingLabel },
-              { label: '"Checkout" button', placeholder: 'Checkout', value: checkoutLabel, set: setCheckoutLabel },
-            ].map(({ label, placeholder, value, set }) => (
-              <div key={label} style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{label}</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 6, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff' }}>
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={e => set(e.target.value)}
-                    placeholder={`default · ${placeholder}`}
-                    style={{ flex: 1, border: 'none', padding: '6px 4px', fontSize: 13, outline: 'none', background: 'transparent' }}
-                  />
-                  {value && (
-                    <button
-                      type="button"
-                      onClick={() => set('')}
-                      title="Reset to default"
-                      style={{ padding: '6px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12, color: '#475569', cursor: 'pointer', flexShrink: 0 }}
-                    >Reset</button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {status === 'success' && (
           <div style={{
             padding: 12,
