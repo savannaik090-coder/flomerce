@@ -3154,20 +3154,12 @@
   --panel-text:        #111111;
   --panel-muted:       #999999;
   --panel-font:        'Inter', 'Helvetica Neue', Arial, sans-serif;
-
-  /* Nav defaults (also set on .mn-header below for specificity) */
-  --nav-bg:        #ffffff;
-  --nav-link-text: #111111;
-  --nav-link-hover:#000000;
-  --nav-icon:      #111111;
-  --brand-color:   #111111;
-  --brand-font:    'Inter', 'Helvetica Neue', Arial, sans-serif;
-}
-
-.mn-header {
-  --nav-bg: #ffffff;
-  --nav-link-text: #111111;
-  --nav-link-hover: #000000;
-  --nav-icon: #111111;
-  --brand-color: #111111;
+  /*
+   * Nav vars (--nav-bg, --nav-link-text, --nav-link-hover, --nav-icon,
+   * --brand-color, --brand-font) are intentionally NOT declared here.
+   * Declaring them on body would block the merchant's saved value (set via
+   * SiteContext on :root with !important) from being inherited. The var()
+   * fallbacks already baked into modern.css rules are all Modern-appropriate
+   * (white bg, dark text/icons) and activate whenever no merchant value is set.
+   */
 }
