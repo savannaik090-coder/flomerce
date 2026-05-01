@@ -29,6 +29,26 @@
     border-bottom-color: transparent !important;
 }
 
+/* Apply the merchant-chosen "transparent text colour" to text + icons.
+ * Scoping --nav-icon / --nav-text here makes PngIcons (whose mask colour is an
+ * inline `var(--nav-icon, …)` reference) resolve to the transparent colour. */
+.header--transparent {
+    --nav-icon: var(--nav-transparent-text, #ffffff);
+    --nav-text: var(--nav-transparent-text, #ffffff);
+}
+.header--transparent .nav-link,
+.header--transparent .brand-text,
+.header--transparent .icon-link,
+.header--transparent .hamburger,
+.header--transparent .hamburger i {
+    color: var(--nav-transparent-text, #ffffff) !important;
+}
+.header--transparent .cart-count,
+.header--transparent .wishlist-count {
+    background: var(--nav-transparent-text, #ffffff);
+    color: var(--nav-bg, #111);
+}
+
 .header--scrolled {
     box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
 }
