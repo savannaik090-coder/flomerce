@@ -11,9 +11,12 @@ import { buildScopedCSS, resolveSectionColors } from './sectionSelectors.js';
 //
 // In either of those cases we emit:
 //
-//   1. CSS variables (--scheme-*, plus legacy --color-* aliases) on a
-//      wrapper div, for any CSS that reads var(--scheme-*) or
-//      var(--color-primary).
+//   1. CSS variables on a wrapper div: the full --scheme-* token set,
+//      plus legacy --color-primary*, --color-secondary, --color-accent*
+//      aliases so existing button/link/accent styling repaints with the
+//      merchant's brand. We deliberately do NOT alias the legacy
+//      --color-text-* or --color-border-* tiers — those carry the classic
+//      template's tonal hierarchy and collapsing them flattens the design.
 //
 //   2. A scoped <style> block (built from sectionSelectors.js) that emits
 //      high-specificity rules with !important — this is the layer that
@@ -82,28 +85,20 @@ function effectiveToCssVars(eff) {
   if (!eff) return {};
   const vars = {};
   if (eff.background) vars['--scheme-bg'] = eff.background;
-  if (eff.text) {
-    vars['--scheme-text'] = eff.text;
-    vars['--color-text'] = eff.text;
-  }
-  // New 10-slot expansion: separate heading, muted, and border tokens so
-  // merchants can fine-tune the classic look without affecting body copy.
-  // Aliases to legacy --color-* vars keep the existing template CSS in
-  // sync without us having to rewrite every selector.
-  if (eff.headingText) {
-    vars['--scheme-heading-text'] = eff.headingText;
-  }
-  if (eff.mutedText) {
-    vars['--scheme-muted-text'] = eff.mutedText;
-    vars['--color-text-muted'] = eff.mutedText;
-    vars['--color-text-light'] = eff.mutedText;
-  }
-  if (eff.border) {
-    vars['--scheme-border'] = eff.border;
-    vars['--color-border'] = eff.border;
-    vars['--color-border-light'] = eff.border;
-    vars['--color-border-dark'] = eff.border;
-  }
+  if (eff.text) vars['--scheme-text'] = eff.text;
+  // 10-slot expansion: emit the new scheme tokens so any
+  // scheme-aware component (and the in-app preview chip) can read them.
+  // We DO NOT alias these to the legacy --color-text-*, --color-border-*
+  // CSS variables — those carry distinct hierarchy values
+  // (#666 vs #888 for text; #ddd vs #eee vs #e0e0e0 for borders) that
+  // give the classic template its depth. Collapsing them all to a single
+  // scheme value washes out dividers and flattens text contrast, which
+  // is exactly the regression the merchant flagged. The brand scheme
+  // can still introduce the merchant's own colors via --scheme-* tokens
+  // wherever components opt-in.
+  if (eff.headingText) vars['--scheme-heading-text'] = eff.headingText;
+  if (eff.mutedText)   vars['--scheme-muted-text']   = eff.mutedText;
+  if (eff.border)      vars['--scheme-border']       = eff.border;
   if (eff.button) {
     vars['--scheme-button'] = eff.button;
     vars['--color-primary'] = eff.button;
