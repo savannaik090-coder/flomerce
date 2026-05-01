@@ -602,12 +602,14 @@ export default function SiteCreationWizard({ onClose, onCreated, onNeedsPlan, is
               Pick the two colors that define your store. <strong>Primary</strong> is used for buttons and headings; <strong>accent</strong> highlights prices, badges, and links. You can change these any time from Site → Theme.
             </p>
 
-            {/* Classic-defaults shortcut. One-click "use the platform's
-                default brown / gold". Same preset for every business
-                category — see CLASSIC_DEFAULT_PRESET. */}
+            {/* Category preset shortcut. Clicking applies the preset and
+                marks colors as touched so they survive into createSite.
+                NOTE: every category currently maps to CLASSIC_DEFAULT_PRESET
+                so the values are identical, but the label still references
+                the chosen vertical to feel personalized. */}
             <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'var(--bg-secondary, #f9fafb)', borderRadius: '8px', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Use the classic defaults
+                Suggested for {(BUSINESS_CATEGORIES.find(c => c.id === businessCategory) || {}).name || 'your store'}
               </p>
               <button
                 type="button"
