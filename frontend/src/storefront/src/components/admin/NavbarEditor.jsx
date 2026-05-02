@@ -45,6 +45,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [showAccountIcon, setShowAccountIcon] = useState(true);
   const [showCartIcon, setShowCartIcon] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoLoadError, setLogoLoadError] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   // Navigation Style — color/font customization (mirrors promo banner mechanism).
   // Empty string means "use default": SiteContext skips setProperty so the CSS
@@ -84,7 +85,9 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       navTransparent, navTransparentText,
     });
     setHasChanges(current !== serverValuesRef.current);
+    setLogoLoadError(false);
     if (onPreviewUpdate) onPreviewUpdate({
+      logoUrl,
       navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
       navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
       panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
@@ -463,17 +466,23 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               style={{ display: 'none' }}
             />
             {logoUrl ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ flex: '0 0 auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50, maxWidth: 200 }}>
-                  <img
-                    src={logoUrl}
-                    alt="Store logo"
-                    style={{ maxHeight: 48, maxWidth: 180, objectFit: 'contain' }}
-                    onError={e => { e.target.style.display = 'none'; }}
-                  />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: logoLoadError ? '#fff7ed' : '#f8fafc', borderRadius: 8, border: `1px solid ${logoLoadError ? '#fed7aa' : '#e2e8f0'}` }}>
+                <div style={{ flex: '0 0 auto', background: '#fff', border: `1px solid ${logoLoadError ? '#fed7aa' : '#e2e8f0'}`, borderRadius: 6, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50, maxWidth: 200 }}>
+                  {logoLoadError ? (
+                    <i className="fas fa-image-slash" style={{ fontSize: 24, color: '#f97316' }} />
+                  ) : (
+                    <img
+                      src={logoUrl}
+                      alt="Store logo"
+                      style={{ maxHeight: 48, maxWidth: 180, objectFit: 'contain' }}
+                      onError={() => setLogoLoadError(true)}
+                    />
+                  )}
                 </div>
-                <div style={{ flex: 1, fontSize: 13, color: '#475569' }}>
-                  Logo is active. It will display in the navbar instead of your brand name.
+                <div style={{ flex: 1, fontSize: 13, color: logoLoadError ? '#c2410c' : '#475569' }}>
+                  {logoLoadError
+                    ? 'Logo URL appears broken. Upload a new logo to replace it.'
+                    : 'Logo is active. It will display in the navbar instead of your brand name.'}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
