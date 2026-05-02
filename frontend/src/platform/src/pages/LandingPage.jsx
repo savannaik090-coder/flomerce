@@ -407,7 +407,7 @@ export default function LandingPage() {
               preload="auto"
               style={{ opacity: heroVideoLoaded ? 1 : 0 }}
             >
-              <source src="/api/upload/video?key=VID_20260331_002038.mp4" type="video/mp4" />
+              <source src="/api/upload/video?key=flomerce-video%2Ffluxe-teaser%20(2).mp4" type="video/mp4" />
             </video>
             <div className="hero-video-fade" />
           </div>
