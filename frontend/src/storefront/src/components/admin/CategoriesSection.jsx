@@ -272,9 +272,24 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       }
       canonicalOrder = [...ordered, ...remaining];
     }
+    // Normalize chooseCats: drop entries that are equivalent to "default"
+    // (no visible flag and no browseImage). Otherwise toggling visible on
+    // then off, or uploading then removing a browseImage, would leave a
+    // structurally-different-but-semantically-identical entry behind and
+    // keep the save bar stuck. Sort keys so the JSON is deterministic.
+    const normalizedChooseCats = {};
+    const sortedKeys = Object.keys(chooseCats || {}).sort();
+    for (const id of sortedKeys) {
+      const entry = chooseCats[id];
+      if (!entry) continue;
+      const kept = {};
+      if (entry.visible) kept.visible = true;
+      if (entry.browseImage) kept.browseImage = entry.browseImage;
+      if (Object.keys(kept).length > 0) normalizedChooseCats[id] = kept;
+    }
     return JSON.stringify({
       chooseEnabled,
-      chooseCats,
+      chooseCats: normalizedChooseCats,
       subcatSections,
       sectionOrder: canonicalOrder,
       catTitleColor, catTitleFont,
