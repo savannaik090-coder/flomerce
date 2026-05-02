@@ -316,6 +316,49 @@ export function SiteProvider({ children }) {
       root.style.removeProperty('--hero-btn-border');
     }
 
+    // ── Category section appearance ──────────────────────────────────
+    apply('--cat-title-color', settings.catTitleColor);
+    apply('--cat-title-font', settings.catTitleFont);
+    apply('--cat-subtitle-color', settings.catSubtitleColor);
+    apply('--cat-subtitle-font', settings.catSubtitleFont);
+    apply('--cat-divider-color', settings.catDividerColor);
+    apply('--cat-banner-overlay-color', settings.catBannerOverlayColor);
+    if (settings.catBannerOverlayOpacity !== undefined && settings.catBannerOverlayOpacity !== '') {
+      root.style.setProperty('--cat-banner-overlay-opacity', settings.catBannerOverlayOpacity);
+    } else {
+      root.style.removeProperty('--cat-banner-overlay-opacity');
+    }
+    // View All button style
+    const catViewAllStyle = settings.catViewAllStyle || '';
+    const catViewAllBg    = settings.catViewAllBg    || '';
+    const catViewAllText  = settings.catViewAllText  || '';
+    if (catViewAllStyle === 'filled') {
+      apply('--cat-view-all-bg',     catViewAllBg);
+      apply('--cat-view-all-text',   catViewAllText);
+      root.style.removeProperty('--cat-view-all-border');
+    } else if (catViewAllStyle === 'outlined') {
+      root.style.setProperty('--cat-view-all-bg',   'transparent');
+      apply('--cat-view-all-text',  catViewAllText || catViewAllBg);
+      apply('--cat-view-all-border', `2px solid ${catViewAllBg || 'currentColor'}`);
+    } else {
+      // text-link or unset
+      root.style.removeProperty('--cat-view-all-bg');
+      apply('--cat-view-all-text',  catViewAllText || catViewAllBg);
+      root.style.removeProperty('--cat-view-all-border');
+    }
+
+    // ── Choose by Category appearance ────────────────────────────────
+    apply('--choose-overlay-color', settings.chooseOverlayColor);
+    if (settings.chooseOverlayOpacity !== undefined && settings.chooseOverlayOpacity !== '') {
+      root.style.setProperty('--choose-overlay-opacity', settings.chooseOverlayOpacity);
+    } else {
+      root.style.removeProperty('--choose-overlay-opacity');
+    }
+    apply('--choose-label-color', settings.chooseLabelColor);
+    apply('--choose-label-font',  settings.chooseLabelFont);
+    const chooseCardShape = settings.chooseCardShape || '';
+    root.style.setProperty('--choose-card-radius', chooseCardShape === 'sharp' ? '0px' : '25px');
+
     // Hero text alignment (Classic .slide-content only)
     const heroTextAlign = settings.heroTextAlign || '';
     if (heroTextAlign && heroTextAlign !== 'center') {

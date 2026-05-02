@@ -12,16 +12,17 @@
 }
 
 .home-category-header .section-title {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--cat-title-font, 'Playfair Display', serif);
     font-size: 2.5rem;
-    color: #333;
+    color: var(--cat-title-color, #333);
     margin-bottom: 15px;
     font-weight: 400;
 }
 
 .section-subtitle {
     font-size: 1.1rem;
-    color: #666;
+    color: var(--cat-subtitle-color, #666);
+    font-family: var(--cat-subtitle-font, inherit);
     font-weight: 300;
 }
 
@@ -62,7 +63,8 @@
     inset-inline-start: 0;
     inset-inline-end: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background-color: var(--cat-banner-overlay-color, #000000);
+    opacity: var(--cat-banner-overlay-opacity, 0.4);
     z-index: 1;
 }
 
@@ -166,9 +168,9 @@
 }
 
 .home-category-view-all {
-    background: #5a3f2a;
-    color: white;
-    border: none;
+    background: var(--cat-view-all-bg, #5a3f2a);
+    color: var(--cat-view-all-text, white);
+    border: var(--cat-view-all-border, none);
     padding: 12px 40px;
     font-size: 0.9rem;
     letter-spacing: 2px;
@@ -178,6 +180,7 @@
     display: inline-block;
     min-width: 160px;
     text-align: center;
+    text-decoration: none;
 }
 
 .home-category-view-all:hover {

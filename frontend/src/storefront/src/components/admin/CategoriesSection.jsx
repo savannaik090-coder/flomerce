@@ -106,8 +106,28 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const homeTogglesChanged = Object.keys(pendingHomeToggles).length > 0;
   const catsChanged = pendingNewCats.length > 0 || pendingDeleteCats.length > 0 || Object.keys(pendingEditCats).length > 0;
   const subItemsChanged = pendingSubAdds.length > 0 || pendingSubDeletes.length > 0 || Object.keys(pendingSubEdits).length > 0;
+
+  // ── Appearance state ──────────────────────────────────────────────
+  const [catTitleColor, setCatTitleColor] = useState('');
+  const [catTitleFont, setCatTitleFont] = useState('');
+  const [catSubtitleColor, setCatSubtitleColor] = useState('');
+  const [catSubtitleFont, setCatSubtitleFont] = useState('');
+  const [catDividerColor, setCatDividerColor] = useState('');
+  const [catViewAllStyle, setCatViewAllStyle] = useState('');
+  const [catViewAllBg, setCatViewAllBg] = useState('');
+  const [catViewAllText, setCatViewAllText] = useState('');
+  const [catBannerOverlayColor, setCatBannerOverlayColor] = useState('');
+  const [catBannerOverlayOpacity, setCatBannerOverlayOpacity] = useState('');
+  const [chooseSectionTitle, setChooseSectionTitle] = useState('');
+  const [chooseCardShape, setChooseCardShape] = useState('');
+  const [chooseOverlayColor, setChooseOverlayColor] = useState('');
+  const [chooseOverlayOpacity, setChooseOverlayOpacity] = useState('');
+  const [chooseLabelColor, setChooseLabelColor] = useState('');
+  const [chooseLabelFont, setChooseLabelFont] = useState('');
+  const [appearanceChanged, setAppearanceChanged] = useState(false);
+
   const dirtyRef = useRef(false);
-  dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged;
+  dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged || appearanceChanged;
 
   const [activeView, setActiveView] = useState('categories');
 
@@ -174,6 +194,23 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setChooseCats(conf.categories || {});
       setSubcatSections(settings.subcategorySections || []);
       setSectionOrder(settings.homepageSectionOrder || []);
+      // Appearance
+      setCatTitleColor(settings.catTitleColor || '');
+      setCatTitleFont(settings.catTitleFont || '');
+      setCatSubtitleColor(settings.catSubtitleColor || '');
+      setCatSubtitleFont(settings.catSubtitleFont || '');
+      setCatDividerColor(settings.catDividerColor || '');
+      setCatViewAllStyle(settings.catViewAllStyle || '');
+      setCatViewAllBg(settings.catViewAllBg || '');
+      setCatViewAllText(settings.catViewAllText || '');
+      setCatBannerOverlayColor(settings.catBannerOverlayColor || '');
+      setCatBannerOverlayOpacity(settings.catBannerOverlayOpacity !== undefined ? String(settings.catBannerOverlayOpacity) : '');
+      setChooseSectionTitle(settings.chooseSectionTitle || '');
+      setChooseCardShape(settings.chooseCardShape || '');
+      setChooseOverlayColor(settings.chooseOverlayColor || '');
+      setChooseOverlayOpacity(settings.chooseOverlayOpacity !== undefined ? String(settings.chooseOverlayOpacity) : '');
+      setChooseLabelColor(settings.chooseLabelColor || '');
+      setChooseLabelFont(settings.chooseLabelFont || '');
       setSettingsLoaded(true);
     }
   }, [siteConfig?.settings]);
@@ -541,7 +578,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     setOrderChanged(true);
   }
 
-  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged;
+  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged || appearanceChanged;
 
   // Publish dirty state so VisualCustomizer can prompt before discarding
   // unsaved category edits when the user switches sections. This editor
@@ -659,11 +696,26 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         setPendingHomeToggles({});
       }
 
-      if (chooseChanged || subcatChanged || orderChanged) {
+      if (chooseChanged || subcatChanged || orderChanged || appearanceChanged) {
         const settingsPayload = {};
         if (chooseChanged) settingsPayload.chooseByCategory = { enabled: chooseEnabled, categories: chooseCats };
         if (subcatChanged) settingsPayload.subcategorySections = subcatSections;
         if (orderChanged) settingsPayload.homepageSectionOrder = sectionOrder;
+        if (appearanceChanged) {
+          Object.assign(settingsPayload, {
+            catTitleColor, catTitleFont,
+            catSubtitleColor, catSubtitleFont,
+            catDividerColor,
+            catViewAllStyle, catViewAllBg, catViewAllText,
+            catBannerOverlayColor,
+            catBannerOverlayOpacity: catBannerOverlayOpacity !== '' ? parseFloat(catBannerOverlayOpacity) : undefined,
+            chooseSectionTitle,
+            chooseCardShape,
+            chooseOverlayColor,
+            chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
+            chooseLabelColor, chooseLabelFont,
+          });
+        }
         const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': token ? `SiteAdmin ${token}` : '' },
@@ -690,6 +742,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setChooseChanged(false);
       setSubcatChanged(false);
       setOrderChanged(false);
+      setAppearanceChanged(false);
       setPendingHomeToggles({});
       setPendingNewCats([]);
       setPendingDeleteCats([]);
@@ -737,32 +790,26 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       )}
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: '#f1f5f9', borderRadius: 10, padding: 4 }}>
-        <button
-          onClick={() => setActiveView('categories')}
-          style={{
-            flex: 1, padding: '10px 0', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-            background: activeView === 'categories' ? '#fff' : 'transparent',
-            color: activeView === 'categories' ? '#1e293b' : '#64748b',
-            boxShadow: activeView === 'categories' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-          }}
-        >
-          <i className="fas fa-folder" style={{ marginInlineEnd: 6, fontSize: 12 }} />
-          Your Categories
-        </button>
-        <button
-          onClick={() => setActiveView('homepage')}
-          style={{
-            flex: 1, padding: '10px 0', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-            background: activeView === 'homepage' ? '#fff' : 'transparent',
-            color: activeView === 'homepage' ? '#1e293b' : '#64748b',
-            boxShadow: activeView === 'homepage' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-          }}
-        >
-          <i className="fas fa-home" style={{ marginInlineEnd: 6, fontSize: 12 }} />
-          Homepage Layout
-        </button>
+        {[
+          { key: 'categories', icon: 'fa-folder', label: 'Your Categories' },
+          { key: 'homepage', icon: 'fa-home', label: 'Homepage Layout' },
+          { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveView(tab.key)}
+            style={{
+              flex: 1, padding: '10px 0', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+              background: activeView === tab.key ? '#fff' : 'transparent',
+              color: activeView === tab.key ? '#1e293b' : '#64748b',
+              boxShadow: activeView === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            }}
+          >
+            <i className={`fas ${tab.icon}`} style={{ marginInlineEnd: 6, fontSize: 12 }} />
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {activeView === 'categories' && (
@@ -1198,6 +1245,126 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               </div>
             </SectionCard>
           )}
+        </>
+      )}
+
+      {activeView === 'appearance' && (
+        <>
+          <SectionCard title="Category Section" subtitle="Style the title, subtitle, divider, View All button, and banner overlay" icon="fa-th-large" defaultOpen={true}>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Title Color</label>
+                <input type="color" value={catTitleColor || '#333333'} onChange={e => { setCatTitleColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Title Font</label>
+                <select value={catTitleFont} onChange={e => { setCatTitleFont(e.target.value); setAppearanceChanged(true); }} style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                  <option value="">Default</option>
+                  {["'Playfair Display', serif","'Cormorant Garamond', serif","'Lora', serif","'Merriweather', serif","'EB Garamond', serif","'Inter', sans-serif","'DM Sans', sans-serif","'Poppins', sans-serif","'Nunito', sans-serif","'Raleway', sans-serif","'Montserrat', sans-serif","'Josefin Sans', sans-serif"].map(f => (
+                    <option key={f} value={f}>{f.replace(/['"]/g,'').split(',')[0]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Subtitle Color</label>
+                <input type="color" value={catSubtitleColor || '#666666'} onChange={e => { setCatSubtitleColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Subtitle Font</label>
+                <select value={catSubtitleFont} onChange={e => { setCatSubtitleFont(e.target.value); setAppearanceChanged(true); }} style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                  <option value="">Default</option>
+                  {["'Inter', sans-serif","'DM Sans', sans-serif","'Poppins', sans-serif","'Nunito', sans-serif","'Raleway', sans-serif","'Montserrat', sans-serif","'Lora', serif","'Playfair Display', serif","'Merriweather', serif"].map(f => (
+                    <option key={f} value={f}>{f.replace(/['"]/g,'').split(',')[0]}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Divider Line Color <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(classic theme)</span></label>
+                <input type="color" value={catDividerColor || '#d4af37'} onChange={e => { setCatDividerColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"View All" Button Style</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[['','Default'],['filled','Filled'],['outlined','Outlined'],['text-link','Text Link']].map(([val, label]) => (
+                    <button key={val} type="button" onClick={() => { setCatViewAllStyle(val); setAppearanceChanged(true); }} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${catViewAllStyle === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: catViewAllStyle === val ? '#eff6ff' : '#fff', color: catViewAllStyle === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {catViewAllStyle && catViewAllStyle !== '' && (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Button Color</label>
+                    <input type="color" value={catViewAllBg || '#5a3f2a'} onChange={e => { setCatViewAllBg(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Button Text Color</label>
+                    <input type="color" value={catViewAllText || '#ffffff'} onChange={e => { setCatViewAllText(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                  </div>
+                </>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Color</label>
+                <input type="color" value={catBannerOverlayColor || '#000000'} onChange={e => { setCatBannerOverlayColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
+                <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => { setCatBannerOverlayOpacity(e.target.value); setAppearanceChanged(true); }} style={{ width: '100%', accentColor: '#3b82f6' }} />
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Choose by Category" subtitle="Style the section title, card shape, overlay, and label text" icon="fa-th" defaultOpen={true}>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Section Title Text</label>
+                <input type="text" value={chooseSectionTitle} onChange={e => { setChooseSectionTitle(e.target.value); setAppearanceChanged(true); }} placeholder="Choose by Category" style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Shape</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[['','Default'],['rounded','Rounded'],['sharp','Sharp corners']].map(([val, label]) => (
+                    <button key={val} type="button" onClick={() => { setChooseCardShape(val); setAppearanceChanged(true); }} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${chooseCardShape === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: chooseCardShape === val ? '#eff6ff' : '#fff', color: chooseCardShape === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Color</label>
+                <input type="color" value={chooseOverlayColor || '#000000'} onChange={e => { setChooseOverlayColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Opacity — {Math.round((parseFloat(chooseOverlayOpacity || 0.3)) * 100)}%</label>
+                <input type="range" min="0" max="0.9" step="0.05" value={chooseOverlayOpacity || 0.3} onChange={e => { setChooseOverlayOpacity(e.target.value); setAppearanceChanged(true); }} style={{ width: '100%', accentColor: '#3b82f6' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Label Text Color</label>
+                <input type="color" value={chooseLabelColor || '#333333'} onChange={e => { setChooseLabelColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Label Font</label>
+                <select value={chooseLabelFont} onChange={e => { setChooseLabelFont(e.target.value); setAppearanceChanged(true); }} style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
+                  <option value="">Default</option>
+                  {["'Inter', sans-serif","'DM Sans', sans-serif","'Poppins', sans-serif","'Nunito', sans-serif","'Raleway', sans-serif","'Montserrat', sans-serif","'Lora', serif","'Playfair Display', serif","'Cormorant Garamond', serif","'Merriweather', serif"].map(f => (
+                    <option key={f} value={f}>{f.replace(/['"]/g,'').split(',')[0]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </SectionCard>
         </>
       )}
 

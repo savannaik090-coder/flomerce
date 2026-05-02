@@ -18,6 +18,7 @@ export default function ChooseByCategory({ categories }) {
 
   const settings = siteConfig?.settings || {};
   const chooseConfig = settings.chooseByCategory || {};
+  const sectionTitle = settings.chooseSectionTitle || 'Choose by Category';
 
   if (!chooseConfig.enabled) return null;
 
@@ -36,7 +37,7 @@ export default function ChooseByCategory({ categories }) {
     <section className="choose-by-category">
       <div className="choose-by-category-container">
         <div className="choose-by-category-header">
-          <h2 className="choose-by-category-title"><TranslatedText text="Choose by Category" /></h2>
+          <h2 className="choose-by-category-title"><TranslatedText text={sectionTitle} /></h2>
           <hr className="choose-by-category-divider" />
         </div>
         <div className="choose-by-category-grid">

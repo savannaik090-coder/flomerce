@@ -17,6 +17,7 @@ export default function ChooseByCategoryModern({ categories }) {
   const { siteConfig } = useSiteConfig();
   const settings = siteConfig?.settings || {};
   const chooseConfig = settings.chooseByCategory || {};
+  const sectionTitle = settings.chooseSectionTitle || 'Choose by Category';
 
   if (!chooseConfig.enabled) return null;
 
@@ -35,7 +36,7 @@ export default function ChooseByCategoryModern({ categories }) {
     <section className="mn-choose-section">
       <div className="mn-choose-header">
         <span className="mn-choose-label"><TranslatedText text="Collections" /></span>
-        <h2 className="mn-section-title"><TranslatedText text="Choose by Category" /></h2>
+        <h2 className="mn-section-title"><TranslatedText text={sectionTitle} /></h2>
       </div>
       <div className="mn-choose-grid">
         {renderCats.map((cat, index) => {

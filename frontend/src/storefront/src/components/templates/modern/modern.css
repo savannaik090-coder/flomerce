@@ -868,17 +868,18 @@ body.mn-nav-transparent .modern-hero {
 }
 
 .mn-section-title {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--cat-title-font, 'Inter', 'Helvetica Neue', sans-serif);
   font-size: 1.8rem;
   font-weight: 700;
-  color: #111;
+  color: var(--cat-title-color, #111);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
 .mn-section-subtitle {
   font-size: 0.95rem;
-  color: #888;
+  color: var(--cat-subtitle-color, #888);
+  font-family: var(--cat-subtitle-font, inherit);
   margin: 0;
 }
 
@@ -889,7 +890,10 @@ body.mn-nav-transparent .modern-hero {
   margin-inline-start: auto;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #111;
+  color: var(--cat-view-all-text, #111);
+  background: var(--cat-view-all-bg, transparent);
+  border: var(--cat-view-all-border, none);
+  padding: 6px 14px;
   text-decoration: none;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -3056,12 +3060,12 @@ body.mn-nav-transparent .modern-hero {
 }
 
 .mn-choose-label {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--cat-subtitle-font, 'Inter', sans-serif);
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: #888;
+  color: var(--cat-subtitle-color, #888);
 }
 
 .mn-choose-grid {
@@ -3076,6 +3080,7 @@ body.mn-nav-transparent .modern-hero {
   text-decoration: none;
   color: inherit;
   aspect-ratio: 4 / 5;
+  border-radius: var(--choose-card-radius, 0px);
 }
 
 .mn-choose-card--wide {
@@ -3106,17 +3111,18 @@ body.mn-nav-transparent .modern-hero {
   inset-inline-start: 0;
   inset-inline-end: 0;
   padding: 24px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  background: linear-gradient(transparent, var(--choose-overlay-color, rgba(0, 0, 0, 0.55)));
+  opacity: var(--choose-overlay-opacity, 1);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
 }
 
 .mn-choose-name {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--choose-label-font, 'Inter', sans-serif);
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--choose-label-color, #fff);
   margin: 0;
   letter-spacing: 0.3px;
 }
