@@ -192,7 +192,11 @@
     flex-direction: column-reverse;
   }
   .modern-hero-text {
-    padding: 40px 24px 48px;
+    /* Take only the height the text content actually needs, so the image
+       below gets the rest of the section height (instead of a 50/50 split
+       that left the image looking like half the screen). */
+    flex: 0 0 auto;
+    padding: 32px 24px 36px;
     text-align: center;
     align-items: center;
   }
@@ -203,16 +207,12 @@
     justify-content: center;
   }
   .modern-hero-image {
-    /* Let the image area grow with the hero section (flex:1 from base rule
-       gives it ~50% of the section height on mobile column-reverse layout).
-       min-height keeps it usable on very short viewports. */
-    min-height: 300px;
+    /* Fill the remaining vertical space so the image dominates the hero
+       (matches the classic template's full-fill feel on mobile).
+       Image element inherits width/height:100% + object-fit:cover from base. */
+    flex: 1 1 auto;
     width: 100%;
-  }
-  .modern-hero-image img {
-    /* No max-height cap — image fills its container so it scales with the
-       section's vh/dvh setting (matches classic's full-fill behavior). */
-    min-height: 300px;
+    min-height: 0;
   }
   .modern-hero-desc {
     max-width: 100%;
