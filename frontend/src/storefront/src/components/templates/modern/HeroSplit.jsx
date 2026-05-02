@@ -89,16 +89,16 @@ export default function HeroSplit() {
     >
       <div className="modern-hero-inner">
         <div key={`text-${currentIndex}`} className={`modern-hero-text ${animClass}`}>
-          <span className="modern-hero-tag">
-            {slide.subtitle
-              ? <TranslatedText text={slide.subtitle} />
-              : <TranslatedText text="New Collection" />}
-          </span>
           <h1 className="modern-hero-title">
             {slide.title
               ? <TranslatedText text={slide.title} />
               : (siteConfig?.brandName || <TranslatedText text="Welcome" />)}
           </h1>
+          {(slide.subtitle) && (
+            <span className="modern-hero-tag">
+              <TranslatedText text={slide.subtitle} />
+            </span>
+          )}
           <p className="modern-hero-desc">
             {slide.description
               ? <TranslatedText text={slide.description} />
