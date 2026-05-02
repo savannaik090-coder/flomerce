@@ -43,7 +43,12 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openSubGroups, setOpenSubGroups] = useState(new Set());
   const [scrolled, setScrolled] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const navigate = useNavigate();
+
+  // Reset logo error whenever the URL itself changes — ensures a re-upload
+  // (e.g. preview update from the admin) gets a fresh shot at loading.
+  useEffect(() => { setLogoError(false); }, [siteConfig?.logoUrl]);
 
   const navTransparent = siteConfig?.settings?.navTransparent === true;
 
@@ -173,18 +178,19 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
           </div>
 
           <Link to="/" className={`brand${isCentered ? ' brand--center' : ''}`}>
-            {siteConfig?.logoUrl ? (
+            {siteConfig?.logoUrl && !logoError ? (
               <img
                 src={siteConfig.logoUrl}
                 alt={siteConfig?.brandName || 'Store'}
                 className="brand-logo"
                 style={{ width: logoSize, height: 'auto' }}
-                onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
+                onError={() => setLogoError(true)}
               />
-            ) : null}
-            <span className="brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
-              {siteConfig?.brandName || 'Store'}
-            </span>
+            ) : (
+              <span className="brand-text">
+                {siteConfig?.brandName || 'Store'}
+              </span>
+            )}
           </Link>
 
           <div className={`nav-menu${menuOpen ? ' active' : ''}`} id="navMenu">

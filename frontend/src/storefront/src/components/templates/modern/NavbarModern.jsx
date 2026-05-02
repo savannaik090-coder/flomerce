@@ -20,7 +20,12 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openSubGroups, setOpenSubGroups] = useState(new Set());
   const [scrolled, setScrolled] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const navigate = useNavigate();
+
+  // Reset logo error whenever the URL itself changes — ensures a re-upload
+  // (e.g. preview update from the admin) gets a fresh shot at loading.
+  useEffect(() => { setLogoError(false); }, [siteConfig?.logoUrl]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -308,18 +313,19 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
 
           {!isCentered && (
             <Link to="/" className="mn-brand">
-              {siteConfig?.logoUrl ? (
+              {siteConfig?.logoUrl && !logoError ? (
                 <img
                   src={siteConfig.logoUrl}
                   alt={siteConfig?.brandName || 'Store'}
                   className="mn-brand-logo"
                   style={{ width: logoSize, height: 'auto' }}
-                  onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
+                  onError={() => setLogoError(true)}
                 />
-              ) : null}
-              <span className="mn-brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
-                {siteConfig?.brandName || 'Store'}
-              </span>
+              ) : (
+                <span className="mn-brand-text">
+                  {siteConfig?.brandName || 'Store'}
+                </span>
+              )}
             </Link>
           )}
 
@@ -340,18 +346,19 @@ export default function NavbarModern({ onSearchOpen, onCartOpen, onWishlistOpen 
 
           {isCentered && (
             <Link to="/" className="mn-brand">
-              {siteConfig?.logoUrl ? (
+              {siteConfig?.logoUrl && !logoError ? (
                 <img
                   src={siteConfig.logoUrl}
                   alt={siteConfig?.brandName || 'Store'}
                   className="mn-brand-logo"
                   style={{ width: logoSize, height: 'auto' }}
-                  onError={(e) => { e.target.style.display = 'none'; const txt = e.target.nextElementSibling; if (txt) txt.style.display = 'block'; }}
+                  onError={() => setLogoError(true)}
                 />
-              ) : null}
-              <span className="mn-brand-text" style={{ display: siteConfig?.logoUrl ? 'none' : 'block' }}>
-                {siteConfig?.brandName || 'Store'}
-              </span>
+              ) : (
+                <span className="mn-brand-text">
+                  {siteConfig?.brandName || 'Store'}
+                </span>
+              )}
             </Link>
           )}
 
