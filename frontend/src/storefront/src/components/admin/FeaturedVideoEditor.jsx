@@ -33,6 +33,19 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
   const [activeView, setActiveView] = useState('content');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    if (onPreviewUpdate) onPreviewUpdate({
+      fvTitleColor: fvTitleColor || undefined,
+      fvTitleFont: fvTitleFont || undefined,
+      fvDescColor: fvDescColor || undefined,
+      fvDescFont: fvDescFont || undefined,
+      fvBtnBg: fvBtnBg || undefined,
+      fvBtnText: fvBtnText || undefined,
+      fvBtnRadius: fvBtnRadius || undefined,
+    });
+  }, [fvTitleColor, fvTitleFont, fvDescColor, fvDescFont, fvBtnBg, fvBtnText, fvBtnRadius]);
   const serverValuesRef = useRef(null);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
@@ -365,17 +378,17 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
                 Customize colors, fonts, and the action button style for the Featured Video section.
               </p>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
                 <AdminColorField label="Title Color" value={fvTitleColor} onChange={v => { setFvTitleColor(v); setHasChanges(true); }} />
                 <AdminFontPicker label="Title Font" value={fvTitleFont} onChange={v => { setFvTitleFont(v); setHasChanges(true); }} />
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
                 <AdminColorField label="Description Color" value={fvDescColor} onChange={v => { setFvDescColor(v); setHasChanges(true); }} />
                 <AdminFontPicker label="Description Font" value={fvDescFont} onChange={v => { setFvDescFont(v); setHasChanges(true); }} />
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Button</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
                 <AdminColorField label="Button Background" value={fvBtnBg} onChange={v => { setFvBtnBg(v); setHasChanges(true); }} />
                 <AdminColorField label="Button Text" value={fvBtnText} onChange={v => { setFvBtnText(v); setHasChanges(true); }} />
               </div>

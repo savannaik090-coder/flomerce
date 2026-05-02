@@ -43,6 +43,16 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
   const [stlDividerColor, setStlDividerColor] = useState('');
   const [stlAccentColor, setStlAccentColor] = useState('');
   const [activeView, setActiveView] = useState('content');
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    if (onPreviewUpdate) onPreviewUpdate({
+      stlHeadingColor: stlHeadingColor || undefined,
+      stlHeadingFont: stlHeadingFont || undefined,
+      stlDividerColor: stlDividerColor || undefined,
+      stlAccentColor: stlAccentColor || undefined,
+    });
+  }, [stlHeadingColor, stlHeadingFont, stlDividerColor, stlAccentColor]);
   const [products, setProducts] = useState([]);
   const [skuSearch, setSkuSearch] = useState('');
   const [editDotIndex, setEditDotIndex] = useState(null);
@@ -644,12 +654,12 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
               Customize the heading, divider, and accent color used for dots, prices, and the view button.
             </p>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Heading</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
               <AdminColorField label="Heading Color" value={stlHeadingColor} onChange={v => { setStlHeadingColor(v); setHasChanges(true); }} />
               <AdminFontPicker label="Heading Font" value={stlHeadingFont} onChange={v => { setStlHeadingFont(v); setHasChanges(true); }} />
             </div>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Divider &amp; Accent</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
               <AdminColorField label="Divider Color" value={stlDividerColor} onChange={v => { setStlDividerColor(v); setHasChanges(true); }} />
               <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} onChange={v => { setStlAccentColor(v); setHasChanges(true); }} />
             </div>

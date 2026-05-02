@@ -12,7 +12,7 @@ import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 
-export default function WatchBuySection({ onSaved }) {
+export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
   const [videos, setVideos] = useState([]);
   const [products, setProducts] = useState([]);
@@ -38,6 +38,16 @@ export default function WatchBuySection({ onSaved }) {
   const [activeView, setActiveView] = useState('content');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    if (onPreviewUpdate) onPreviewUpdate({
+      wbHeadingColor: wbHeadingColor || undefined,
+      wbHeadingFont: wbHeadingFont || undefined,
+      wbDividerColor: wbDividerColor || undefined,
+      wbCardBorder: wbCardBorder || undefined,
+    });
+  }, [wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder]);
   const skipNextChangeRef = useRef(false);
   const serverShowRef = useRef(true);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
@@ -413,13 +423,11 @@ export default function WatchBuySection({ onSaved }) {
             <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
               Customize the colors and typography of the Watch &amp; Buy section heading and video cards.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AdminColorField label="Heading Color" value={wbHeadingColor} onChange={v => { setWbHeadingColor(v); setHasChanges(true); }} />
+              <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={v => { setWbHeadingFont(v); setHasChanges(true); }} />
               <AdminColorField label="Divider Color" value={wbDividerColor} onChange={v => { setWbDividerColor(v); setHasChanges(true); }} />
               <AdminColorField label="Card Border Color" value={wbCardBorder} onChange={v => { setWbCardBorder(v); setHasChanges(true); }} />
-            </div>
-            <div style={{ marginTop: 20 }}>
-              <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={v => { setWbHeadingFont(v); setHasChanges(true); }} />
             </div>
           </div>
         </div>
