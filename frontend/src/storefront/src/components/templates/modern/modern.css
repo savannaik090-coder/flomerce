@@ -2,6 +2,7 @@
 
 /* --- Hero Split --- */
 .modern-hero {
+  position: relative; /* ensures height contributes correctly to document flow */
   background: #fff;
   display: flex;
   align-items: stretch;
@@ -106,9 +107,9 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.6);
-  background: rgba(255,255,255,0.15);
-  color: #fff;
+  border: 1.5px solid var(--hero-arrow-color, rgba(255,255,255,0.6));
+  background: var(--hero-arrow-bg, rgba(255,255,255,0.15));
+  color: var(--hero-arrow-color, #fff);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -119,8 +120,9 @@
   z-index: 2;
 }
 .modern-hero-arrow:hover {
-  background: rgba(255,255,255,0.35);
-  border-color: #fff;
+  background: var(--hero-arrow-bg, rgba(255,255,255,0.35));
+  filter: brightness(1.2);
+  border-color: var(--hero-arrow-color, #fff);
 }
 .modern-hero-arrow-left {
   inset-inline-start: 12px;

@@ -67,6 +67,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [heroTextAlign, setHeroTextAlign] = useState('');
   const [heroTransition, setHeroTransition] = useState('');
   const [heroSpeed, setHeroSpeed] = useState('');
+  const [heroArrowBg, setHeroArrowBg] = useState('');
+  const [heroArrowColor, setHeroArrowColor] = useState('');
   const [activeView, setActiveView] = useState('content');
 
   const activeTheme = useMemo(() => {
@@ -88,7 +90,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (serverValuesRef.current === null) return;
-    const current = JSON.stringify({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed });
+    const current = JSON.stringify({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor });
     setHasChanges(current !== serverValuesRef.current);
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
     if (onPreviewUpdate) onPreviewUpdate({
@@ -107,8 +109,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       heroTextAlign,
       heroTransition,
       heroSpeed,
+      heroArrowBg,
+      heroArrowColor,
     });
-  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed]);
+  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor]);
 
   async function loadHeroSettings() {
     setLoading(true);
@@ -176,10 +180,14 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         const heroTextAlignVal = settings.heroTextAlign || '';
         const heroTransitionVal = settings.heroTransition || '';
         const heroSpeedVal = settings.heroSpeed || '';
+        const heroArrowBgVal = settings.heroArrowBg || '';
+        const heroArrowColorVal = settings.heroArrowColor || '';
         setHeroHeight(heroHeightVal);
         setHeroTextAlign(heroTextAlignVal);
         setHeroTransition(heroTransitionVal);
         setHeroSpeed(heroSpeedVal);
+        setHeroArrowBg(heroArrowBgVal);
+        setHeroArrowColor(heroArrowColorVal);
 
         serverValuesRef.current = JSON.stringify({
           slides: merged, showScrollButtons: scrollVal,
@@ -187,6 +195,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           heroBtnBg: btnBgVal, heroBtnText: btnTextVal, heroBtnStyle: btnStyleVal, heroBtnRadius: btnRadiusVal,
           heroOverlayColor: overlayColorVal, heroOverlayOpacity: overlayOpacityVal,
           heroHeight: heroHeightVal, heroTextAlign: heroTextAlignVal, heroTransition: heroTransitionVal, heroSpeed: heroSpeedVal,
+          heroArrowBg: heroArrowBgVal, heroArrowColor: heroArrowColorVal,
         });
       } else {
         setStatus('error:' + "Failed to load hero slider settings. Please refresh the page before making changes.");
@@ -319,6 +328,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             heroTextAlign: heroTextAlign || '',
             heroTransition: heroTransition || '',
             heroSpeed: heroSpeed || '',
+            heroArrowBg: heroArrowBg || '',
+            heroArrowColor: heroArrowColor || '',
           }
         }),
       });
@@ -332,6 +343,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius,
           heroOverlayColor, heroOverlayOpacity,
           heroHeight, heroTextAlign, heroTransition, heroSpeed,
+          heroArrowBg, heroArrowColor,
         });
         setHasChanges(false);
         // Save succeeded — now safe to remove old/orphan R2 files.
@@ -885,6 +897,26 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Arrow Button Colors */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Arrow Buttons</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <AdminColorField
+                  label="Button Background"
+                  value={heroArrowBg}
+                  fallback="#ffffff"
+                  onChange={setHeroArrowBg}
+                />
+                <AdminColorField
+                  label="Icon Color"
+                  value={heroArrowColor}
+                  fallback="#ffffff"
+                  onChange={setHeroArrowColor}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>Applies to navigation arrows in the hero slider on both templates.</p>
             </div>
 
             {/* Auto-play Speed */}

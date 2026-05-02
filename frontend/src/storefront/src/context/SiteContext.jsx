@@ -383,6 +383,10 @@ export function SiteProvider({ children }) {
     apply('--stl-divider-color', settings.stlDividerColor);
     apply('--stl-accent-color', settings.stlAccentColor);
 
+    // Arrow button customization (shared by classic + modern).
+    apply('--hero-arrow-bg',    settings.heroArrowBg);
+    apply('--hero-arrow-color', settings.heroArrowColor);
+
     // Hero text alignment (Classic .slide-content only)
     const heroTextAlign = settings.heroTextAlign || '';
     if (heroTextAlign && heroTextAlign !== 'center') {
