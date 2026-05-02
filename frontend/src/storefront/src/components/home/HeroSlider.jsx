@@ -18,6 +18,10 @@ export default function HeroSlider() {
   const slides = rawSlides.filter(s => s.visible !== false);
 
   const showScrollButtons = siteConfig?.settings?.heroShowScrollButtons !== false;
+  const heroTransition = siteConfig?.settings?.heroTransition || '';
+  const heroSpeed = siteConfig?.settings?.heroSpeed || '';
+  const speedMap = { slow: 6000, fast: 2500 };
+  const autoPlayInterval = speedMap[heroSpeed] || 4000;
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -29,9 +33,9 @@ export default function HeroSlider() {
 
   useEffect(() => {
     if (isPaused || slides.length <= 1) return;
-    timerRef.current = setInterval(nextSlide, 4000);
+    timerRef.current = setInterval(nextSlide, autoPlayInterval);
     return () => clearInterval(timerRef.current);
-  }, [isPaused, nextSlide, slides.length]);
+  }, [isPaused, nextSlide, slides.length, autoPlayInterval]);
 
   useEffect(() => {
     if (currentIndex >= slides.length) setCurrentIndex(0);
@@ -42,6 +46,7 @@ export default function HeroSlider() {
   return (
     <section
       className="hero-slider"
+      data-transition={heroTransition || 'fade'}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

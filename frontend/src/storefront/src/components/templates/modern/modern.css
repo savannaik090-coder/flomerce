@@ -8,6 +8,12 @@
   align-items: center;
   overflow: hidden;
 }
+.modern-hero[data-size="compact"] { min-height: 380px; }
+.modern-hero[data-size="compact"] .modern-hero-image,
+.modern-hero[data-size="compact"] .modern-hero-image img { min-height: 380px; }
+.modern-hero[data-size="tall"] { min-height: 700px; }
+.modern-hero[data-size="tall"] .modern-hero-image,
+.modern-hero[data-size="tall"] .modern-hero-image img { min-height: 700px; }
 
 .modern-hero-inner {
   display: flex;
@@ -153,6 +159,14 @@
   object-fit: cover;
   display: block;
 }
+
+/* ── Modern hero slide-change animations ────────────── */
+@keyframes mhFade  { from { opacity: 0; }                               to { opacity: 1; } }
+@keyframes mhSlide { from { opacity: 0; transform: translateX(28px); }  to { opacity: 1; transform: translateX(0); } }
+@keyframes mhZoom  { from { opacity: 0; transform: scale(0.97); }       to { opacity: 1; transform: scale(1); } }
+.mh-anim-fade  { animation: mhFade  0.55s ease both; }
+.mh-anim-slide { animation: mhSlide 0.45s ease both; }
+.mh-anim-zoom  { animation: mhZoom  0.55s ease both; }
 
 .modern-hero-placeholder {
   width: 100%;

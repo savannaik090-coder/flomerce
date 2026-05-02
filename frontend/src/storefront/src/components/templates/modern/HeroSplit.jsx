@@ -25,6 +25,11 @@ export default function HeroSplit() {
   const heroBtnText = settings.heroBtnText || '';
   const heroBtnStyle = settings.heroBtnStyle || '';
   const heroBtnRadius = settings.heroBtnRadius || '';
+  const heroTransition = settings.heroTransition || '';
+  const heroSpeed = settings.heroSpeed || '';
+  const speedMap = { slow: 6000, fast: 2500 };
+  const autoPlayInterval = speedMap[heroSpeed] || 5000;
+  const animClass = heroTransition === 'slide' ? 'mh-anim-slide' : heroTransition === 'zoom' ? 'mh-anim-zoom' : 'mh-anim-fade';
 
   const radiusMap = { sharp: '0', rounded: '8px', pill: '999px' };
   const btnRadius = radiusMap[heroBtnRadius] || '4px';
@@ -63,9 +68,9 @@ export default function HeroSplit() {
 
   useEffect(() => {
     if (isPaused || slides.length <= 1) return;
-    timerRef.current = setInterval(nextSlide, 5000);
+    timerRef.current = setInterval(nextSlide, autoPlayInterval);
     return () => clearInterval(timerRef.current);
-  }, [isPaused, nextSlide, slides.length]);
+  }, [isPaused, nextSlide, slides.length, autoPlayInterval]);
 
   useEffect(() => {
     if (currentIndex >= slides.length) setCurrentIndex(0);
@@ -78,11 +83,12 @@ export default function HeroSplit() {
   return (
     <section
       className="modern-hero"
+      data-size={settings.heroHeight || ''}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className="modern-hero-inner">
-        <div className="modern-hero-text">
+        <div key={`text-${currentIndex}`} className={`modern-hero-text ${animClass}`}>
           <span className="modern-hero-tag">
             {slide.subtitle
               ? <TranslatedText text={slide.subtitle} />

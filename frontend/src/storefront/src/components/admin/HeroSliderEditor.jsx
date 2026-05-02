@@ -63,6 +63,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [heroBtnRadius, setHeroBtnRadius] = useState('');
   const [heroOverlayColor, setHeroOverlayColor] = useState('');
   const [heroOverlayOpacity, setHeroOverlayOpacity] = useState(0);
+  const [heroHeight, setHeroHeight] = useState('');
+  const [heroTextAlign, setHeroTextAlign] = useState('');
+  const [heroTransition, setHeroTransition] = useState('');
+  const [heroSpeed, setHeroSpeed] = useState('');
 
   const activeTheme = useMemo(() => {
     const t = siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
@@ -83,7 +87,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (serverValuesRef.current === null) return;
-    const current = JSON.stringify({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity });
+    const current = JSON.stringify({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed });
     setHasChanges(current !== serverValuesRef.current);
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
     if (onPreviewUpdate) onPreviewUpdate({
@@ -98,8 +102,12 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       heroBtnRadius,
       heroOverlayColor,
       heroOverlayOpacity: heroOverlayOpacity > 0 ? String((heroOverlayOpacity / 100).toFixed(2)) : '',
+      heroHeight,
+      heroTextAlign,
+      heroTransition,
+      heroSpeed,
     });
-  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity]);
+  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed]);
 
   async function loadHeroSettings() {
     setLoading(true);
@@ -163,11 +171,21 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         setHeroOverlayColor(overlayColorVal);
         setHeroOverlayOpacity(overlayOpacityVal);
 
+        const heroHeightVal = settings.heroHeight || '';
+        const heroTextAlignVal = settings.heroTextAlign || '';
+        const heroTransitionVal = settings.heroTransition || '';
+        const heroSpeedVal = settings.heroSpeed || '';
+        setHeroHeight(heroHeightVal);
+        setHeroTextAlign(heroTextAlignVal);
+        setHeroTransition(heroTransitionVal);
+        setHeroSpeed(heroSpeedVal);
+
         serverValuesRef.current = JSON.stringify({
           slides: merged, showScrollButtons: scrollVal,
           heroTitleColor: titleColorVal, heroTitleFont: titleFontVal, heroDescColor: descColorVal,
           heroBtnBg: btnBgVal, heroBtnText: btnTextVal, heroBtnStyle: btnStyleVal, heroBtnRadius: btnRadiusVal,
           heroOverlayColor: overlayColorVal, heroOverlayOpacity: overlayOpacityVal,
+          heroHeight: heroHeightVal, heroTextAlign: heroTextAlignVal, heroTransition: heroTransitionVal, heroSpeed: heroSpeedVal,
         });
       } else {
         setStatus('error:' + "Failed to load hero slider settings. Please refresh the page before making changes.");
@@ -296,6 +314,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             heroBtnRadius: heroBtnRadius || '',
             heroOverlayColor: heroOverlayColor || '',
             heroOverlayOpacity: heroOverlayOpacity > 0 ? String((heroOverlayOpacity / 100).toFixed(2)) : '',
+            heroHeight: heroHeight || '',
+            heroTextAlign: heroTextAlign || '',
+            heroTransition: heroTransition || '',
+            heroSpeed: heroSpeed || '',
           }
         }),
       });
@@ -308,6 +330,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           heroTitleColor, heroTitleFont, heroDescColor,
           heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius,
           heroOverlayColor, heroOverlayOpacity,
+          heroHeight, heroTextAlign, heroTransition, heroSpeed,
         });
         setHasChanges(false);
         // Save succeeded — now safe to remove old/orphan R2 files.
@@ -771,6 +794,105 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   }} />
                 </div>
                 <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Preview shows how the tint looks over a dark background image.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ── Layout & Transitions Card ─────────────────────── */}
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Layout &amp; Transitions</h3>
+          </div>
+          <div className="card-content">
+
+            {/* Hero Height */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Hero Height</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {[
+                  { value: '', label: 'Default', sub: '95vh', preview: 72 },
+                  { value: 'compact', label: 'Compact', sub: '70vh', preview: 52 },
+                  { value: 'tall', label: 'Tall', sub: '100vh', preview: 88 },
+                ].map(opt => {
+                  const active = heroHeight === opt.value;
+                  return (
+                    <button key={opt.value} type="button" onClick={() => setHeroHeight(opt.value)}
+                      style={{ padding: '12px 8px', border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`, borderRadius: 8, background: active ? '#0f172a' : '#fff', color: active ? '#fff' : '#334155', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s ease' }}>
+                      <div style={{ width: '100%', height: opt.preview, background: active ? 'rgba(255,255,255,0.15)' : '#e2e8f0', borderRadius: 4, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '60%', height: 4, background: active ? '#fff' : '#94a3b8', borderRadius: 2, opacity: 0.7 }} />
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>{opt.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Text Alignment — Classic only */}
+            {activeTheme === 'classic' && (
+              <div style={{ marginBottom: 24 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Text Alignment</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {[
+                    { value: '', label: 'Center', icon: 'fa-align-center' },
+                    { value: 'left', label: 'Left', icon: 'fa-align-left' },
+                    { value: 'right', label: 'Right', icon: 'fa-align-right' },
+                  ].map(opt => {
+                    const active = heroTextAlign === opt.value;
+                    return (
+                      <button key={opt.value} type="button" onClick={() => setHeroTextAlign(opt.value)}
+                        style={{ padding: '14px 8px', border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`, borderRadius: 8, background: active ? '#0f172a' : '#fff', color: active ? '#fff' : '#334155', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'all 0.15s ease' }}>
+                        <i className={`fas ${opt.icon}`} style={{ fontSize: 18 }} />
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Transition Style */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Slide Transition</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {[
+                  { value: '', label: 'Fade', desc: 'Smooth opacity' },
+                  { value: 'slide', label: 'Slide', desc: 'Horizontal shift' },
+                  { value: 'zoom', label: 'Zoom', desc: 'Subtle scale-in' },
+                ].map(opt => {
+                  const active = heroTransition === opt.value;
+                  return (
+                    <button key={opt.value} type="button" onClick={() => setHeroTransition(opt.value)}
+                      style={{ padding: '12px 8px', border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`, borderRadius: 8, background: active ? '#0f172a' : '#fff', color: active ? '#fff' : '#334155', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s ease' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, opacity: 0.7 }}>{opt.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Auto-play Speed */}
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Auto-play Speed</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                {[
+                  { value: 'slow', label: 'Slow', desc: '6 seconds' },
+                  { value: '', label: 'Normal', desc: '4 seconds' },
+                  { value: 'fast', label: 'Fast', desc: '2.5 seconds' },
+                ].map(opt => {
+                  const active = heroSpeed === opt.value;
+                  return (
+                    <button key={opt.value} type="button" onClick={() => setHeroSpeed(opt.value)}
+                      style={{ padding: '12px 8px', border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`, borderRadius: 8, background: active ? '#0f172a' : '#fff', color: active ? '#fff' : '#334155', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s ease' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, opacity: 0.7 }}>{opt.desc}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

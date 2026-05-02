@@ -315,6 +315,24 @@ export function SiteProvider({ children }) {
       apply('--hero-btn-text', heroBtnText);
       root.style.removeProperty('--hero-btn-border');
     }
+
+    // Hero height (Classic: vh; controlled via --hero-height on .hero-slider)
+    const heroHeightMap = { compact: '70vh', tall: '100vh' };
+    apply('--hero-height', heroHeightMap[settings.heroHeight] || '');
+
+    // Hero text alignment (Classic .slide-content only)
+    const heroTextAlign = settings.heroTextAlign || '';
+    if (heroTextAlign && heroTextAlign !== 'center') {
+      apply('--hero-text-align', heroTextAlign);
+      apply('--hero-content-left', heroTextAlign === 'left' ? '60px' : 'auto');
+      apply('--hero-content-right', heroTextAlign === 'right' ? '60px' : 'auto');
+      apply('--hero-content-transform', 'none');
+    } else {
+      root.style.removeProperty('--hero-text-align');
+      root.style.removeProperty('--hero-content-left');
+      root.style.removeProperty('--hero-content-right');
+      root.style.removeProperty('--hero-content-transform');
+    }
   }, [effectiveSiteConfig]);
 
   return (
