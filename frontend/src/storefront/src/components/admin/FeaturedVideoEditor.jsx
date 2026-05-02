@@ -33,6 +33,11 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
   const [activeView, setActiveView] = useState('content');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  // Tracks the last *saved* video URL + key so that removing an unsaved upload
+  // can restore to the previously-saved state instead of going to empty — which
+  // would make serverValuesRef differ and leave the Save bar enabled even
+  // though the user effectively made no lasting change.
+  const savedVideoRef = useRef({ url: '', key: '' });
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
@@ -91,6 +96,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
         setFvBtnBg(settings.fvBtnBg || '');
         setFvBtnText(settings.fvBtnText || '');
         setFvBtnRadius(settings.fvBtnRadius || '');
+        savedVideoRef.current = { url: vVal, key: settings.featuredVideoKey || '' };
         serverValuesRef.current = JSON.stringify({ title: tVal, description: dVal, videoUrl: vVal, chatLink: clVal, chatButtonText: cbVal });
       }
     } catch (e) {
@@ -194,6 +200,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
       if (response.ok && result.success) {
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText });
+        savedVideoRef.current = { url: videoUrl, key: videoKey };
         setHasChanges(false);
         commit(videoUrl ? [videoUrl] : []);
         if (onSaved) onSaved();
@@ -248,7 +255,21 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
                   />
                   <button
                     type="button"
-                    onClick={() => { if (videoUrl) markForDeletion(videoUrl); setVideoUrl(''); setVideoKey(''); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    onClick={() => {
+                      if (!videoUrl) return;
+                      const isUnsavedUpload = videoUrl !== savedVideoRef.current.url;
+                      markForDeletion(videoUrl);
+                      if (isUnsavedUpload && savedVideoRef.current.url) {
+                        // Restoring a previously-saved video — don't blank the
+                        // input; the commit will protect the saved URL from deletion.
+                        setVideoUrl(savedVideoRef.current.url);
+                        setVideoKey(savedVideoRef.current.key);
+                      } else {
+                        setVideoUrl('');
+                        setVideoKey('');
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }
+                    }}
                     style={{
                       position: 'absolute', top: 8, right: 8,
                       background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none',
