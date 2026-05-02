@@ -153,8 +153,66 @@
 }
 
 .first-visit-cta-button:hover {
-    background-color: #9c8a6b;
+    filter: brightness(0.88);
     transform: translateY(-2px);
+}
+
+/* ── Coupon code block ──────────────────────────────── */
+.fvb-coupon-box {
+    margin: 0 auto 18px;
+    max-width: 320px;
+    width: 100%;
+}
+
+.fvb-coupon-label {
+    font-size: 13px;
+    color: inherit;
+    opacity: 0.7;
+    margin-bottom: 6px;
+    margin-top: 0;
+}
+
+.fvb-coupon-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    background: #f1f5f9;
+    border: 2px dashed #cbd5e1;
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: monospace;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #1e293b;
+}
+
+.fvb-coupon-code:hover {
+    border-color: #94a3b8;
+    background: #e8edf3;
+}
+
+.fvb-coupon-text {
+    flex: 1;
+    text-align: center;
+}
+
+.fvb-coupon-copy-icon {
+    font-size: 15px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+.fvb-coupon-copied {
+    font-size: 12px;
+    color: #16a34a;
+    margin-top: 5px;
+    margin-bottom: 0;
+    font-weight: 600;
 }
 
 .first-visit-fallback-bg {
