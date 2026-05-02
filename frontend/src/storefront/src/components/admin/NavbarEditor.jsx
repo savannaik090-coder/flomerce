@@ -46,11 +46,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [showCartIcon, setShowCartIcon] = useState(true);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoLoadError, setLogoLoadError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
-  // Reset the load error whenever the URL itself changes — ensures a fresh
-  // upload (or remove) gets a clean shot at rendering instead of being stuck
-  // in the broken-image branch from a previous URL.
-  useEffect(() => { setLogoLoadError(false); }, [logoUrl]);
+  // When the URL changes (new upload, remove, initial load) reset both flags
+  // so the img gets a fresh load attempt. We only show "Logo is active" +
+  // Replace/Remove after the img confirms a successful load via onLoad.
+  useEffect(() => { setLogoLoadError(false); setLogoLoaded(false); }, [logoUrl]);
   const [hasChanges, setHasChanges] = useState(false);
   // Navigation Style — color/font customization (mirrors promo banner mechanism).
   // Empty string means "use default": SiteContext skips setProperty so the CSS
@@ -469,14 +470,25 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               onChange={handleLogoUpload}
               style={{ display: 'none' }}
             />
-            {logoUrl && !logoLoadError ? (
+            {/* Hidden probe img — fires onLoad/onError to confirm whether the
+                URL is actually reachable before we show the active state. */}
+            {logoUrl && !logoLoaded && !logoLoadError && (
+              <img
+                src={logoUrl}
+                alt=""
+                style={{ display: 'none' }}
+                onLoad={() => setLogoLoaded(true)}
+                onError={() => setLogoLoadError(true)}
+              />
+            )}
+
+            {logoUrl && logoLoaded && !logoLoadError ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <div style={{ flex: '0 0 auto', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 50, maxWidth: 200 }}>
                   <img
                     src={logoUrl}
                     alt="Store logo"
                     style={{ maxHeight: 48, maxWidth: 180, objectFit: 'contain' }}
-                    onError={() => setLogoLoadError(true)}
                   />
                 </div>
                 <div style={{ flex: 1, fontSize: 13, color: '#475569' }}>
