@@ -7,6 +7,7 @@ import { setEditorDirty } from '../../admin/editorDirtyStore.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -1457,17 +1458,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           <SectionCard title="Category Section" subtitle="Style the title, subtitle, divider, View All button, and banner overlay" icon="fa-th-large" defaultOpen={false}>
             <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Title Color</label>
-                <input type="color" value={catTitleColor || '#333333'} onChange={e => setCatTitleColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
+              <AdminColorField label="Title Color" value={catTitleColor} fallback="#333333" onChange={setCatTitleColor} />
 
               <AdminFontPicker label="Title Font" value={catTitleFont} onChange={v => setCatTitleFont(v)} />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Subtitle Color</label>
-                <input type="color" value={catSubtitleColor || '#666666'} onChange={e => setCatSubtitleColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
+              <AdminColorField label="Subtitle Color" value={catSubtitleColor} fallback="#666666" onChange={setCatSubtitleColor} />
 
               <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => setCatSubtitleFont(v)} />
 
@@ -1482,21 +1477,12 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
               {catViewAllStyle && catViewAllStyle !== '' && (
                 <>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Button Color</label>
-                    <input type="color" value={catViewAllBg || '#5a3f2a'} onChange={e => setCatViewAllBg(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Button Text Color</label>
-                    <input type="color" value={catViewAllText || '#ffffff'} onChange={e => setCatViewAllText(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-                  </div>
+                  <AdminColorField label="Button Color" value={catViewAllBg} fallback="#5a3f2a" onChange={setCatViewAllBg} />
+                  <AdminColorField label="Button Text Color" value={catViewAllText} fallback="#ffffff" onChange={setCatViewAllText} />
                 </>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Color</label>
-                <input type="color" value={catBannerOverlayColor || '#000000'} onChange={e => setCatBannerOverlayColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
+              <AdminColorField label="Banner Overlay Color" value={catBannerOverlayColor} fallback="#000000" onChange={setCatBannerOverlayColor} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
@@ -1517,27 +1503,18 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Color</label>
-                <input type="color" value={chooseOverlayColor || '#000000'} onChange={e => setChooseOverlayColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
+              <AdminColorField label="Card Overlay Color" value={chooseOverlayColor} fallback="#000000" onChange={setChooseOverlayColor} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Opacity — {Math.round((parseFloat(chooseOverlayOpacity || 0.3)) * 100)}%</label>
                 <input type="range" min="0" max="0.9" step="0.05" value={chooseOverlayOpacity || 0.3} onChange={e => setChooseOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Label Text Color</label>
-                <input type="color" value={chooseLabelColor || '#333333'} onChange={e => setChooseLabelColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
+              <AdminColorField label="Label Text Color" value={chooseLabelColor} fallback="#333333" onChange={setChooseLabelColor} />
 
               <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => setChooseLabelFont(v)} />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"Explore" Button Color <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(modern theme)</span></label>
-                <input type="color" value={chooseExploreColor || '#ffffff'} onChange={e => setChooseExploreColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
+              <AdminColorField label='"Explore" Button Color (modern theme)' value={chooseExploreColor} fallback="#ffffff" onChange={setChooseExploreColor} />
 
               <AdminFontPicker label='"Explore" Button Font (modern theme)' value={chooseExploreFont} onChange={v => setChooseExploreFont(v)} />
             </div>
