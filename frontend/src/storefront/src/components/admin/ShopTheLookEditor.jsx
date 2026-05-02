@@ -655,13 +655,13 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
             </p>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Heading</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              <AdminColorField label="Heading Color" value={stlHeadingColor} onChange={v => { setStlHeadingColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Heading Color" value={stlHeadingColor} fallback="#333333" onChange={v => { setStlHeadingColor(v); setHasChanges(true); }} />
               <AdminFontPicker label="Heading Font" value={stlHeadingFont} onChange={v => { setStlHeadingFont(v); setHasChanges(true); }} />
             </div>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Divider &amp; Accent</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              <AdminColorField label="Divider Color" value={stlDividerColor} onChange={v => { setStlDividerColor(v); setHasChanges(true); }} />
-              <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} onChange={v => { setStlAccentColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Divider Color" value={stlDividerColor} fallback="#5a3f2a" onChange={v => { setStlDividerColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} fallback="#5a3f2a" onChange={v => { setStlAccentColor(v); setHasChanges(true); }} />
             </div>
             <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
           </div>

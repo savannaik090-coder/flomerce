@@ -424,10 +424,10 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
               Customize the colors and typography of the Watch &amp; Buy section heading and video cards.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <AdminColorField label="Heading Color" value={wbHeadingColor} onChange={v => { setWbHeadingColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Heading Color" value={wbHeadingColor} fallback="#333333" onChange={v => { setWbHeadingColor(v); setHasChanges(true); }} />
               <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={v => { setWbHeadingFont(v); setHasChanges(true); }} />
-              <AdminColorField label="Divider Color" value={wbDividerColor} onChange={v => { setWbDividerColor(v); setHasChanges(true); }} />
-              <AdminColorField label="Card Border Color" value={wbCardBorder} onChange={v => { setWbCardBorder(v); setHasChanges(true); }} />
+              <AdminColorField label="Divider Color" value={wbDividerColor} fallback="#d4af37" onChange={v => { setWbDividerColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Card Border Color" value={wbCardBorder} fallback="#d4af37" onChange={v => { setWbCardBorder(v); setHasChanges(true); }} />
             </div>
           </div>
         </div>

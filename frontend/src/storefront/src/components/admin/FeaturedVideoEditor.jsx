@@ -379,18 +379,18 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
               </p>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-                <AdminColorField label="Title Color" value={fvTitleColor} onChange={v => { setFvTitleColor(v); setHasChanges(true); }} />
+                <AdminColorField label="Title Color" value={fvTitleColor} fallback="#d4af37" onChange={v => { setFvTitleColor(v); setHasChanges(true); }} />
                 <AdminFontPicker label="Title Font" value={fvTitleFont} onChange={v => { setFvTitleFont(v); setHasChanges(true); }} />
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-                <AdminColorField label="Description Color" value={fvDescColor} onChange={v => { setFvDescColor(v); setHasChanges(true); }} />
+                <AdminColorField label="Description Color" value={fvDescColor} fallback="#ffffff" onChange={v => { setFvDescColor(v); setHasChanges(true); }} />
                 <AdminFontPicker label="Description Font" value={fvDescFont} onChange={v => { setFvDescFont(v); setHasChanges(true); }} />
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Button</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-                <AdminColorField label="Button Background" value={fvBtnBg} onChange={v => { setFvBtnBg(v); setHasChanges(true); }} />
-                <AdminColorField label="Button Text" value={fvBtnText} onChange={v => { setFvBtnText(v); setHasChanges(true); }} />
+                <AdminColorField label="Button Background" value={fvBtnBg} fallback="#ffffff" onChange={v => { setFvBtnBg(v); setHasChanges(true); }} />
+                <AdminColorField label="Button Text" value={fvBtnText} fallback="#333333" onChange={v => { setFvBtnText(v); setHasChanges(true); }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Button Shape</label>
