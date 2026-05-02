@@ -203,12 +203,16 @@
     justify-content: center;
   }
   .modern-hero-image {
+    /* Let the image area grow with the hero section (flex:1 from base rule
+       gives it ~50% of the section height on mobile column-reverse layout).
+       min-height keeps it usable on very short viewports. */
     min-height: 300px;
     width: 100%;
   }
   .modern-hero-image img {
+    /* No max-height cap — image fills its container so it scales with the
+       section's vh/dvh setting (matches classic's full-fill behavior). */
     min-height: 300px;
-    max-height: 400px;
   }
   .modern-hero-desc {
     max-width: 100%;
