@@ -252,11 +252,31 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         ? pendingCatImages[cat.id]
         : (cat.image_url || null);
     }
+    // Canonicalize section order to its actual visual sequence so that
+    // [] (server default) and a populated array that reproduces the
+    // default order both serialize identically — otherwise reordering
+    // a section and moving it back would leave the save bar visible.
+    const homeCats = categories.filter(c => getShowOnHome(c) && !c.parent_id);
+    const baseItems = [];
+    homeCats.forEach(cat => baseItems.push({ type: 'category', id: cat.id }));
+    subcatSections.forEach(sec => baseItems.push({ type: 'subcategory', id: sec.id }));
+    let canonicalOrder;
+    if (sectionOrder.length === 0) {
+      canonicalOrder = baseItems;
+    } else {
+      const ordered = [];
+      const remaining = [...baseItems];
+      for (const entry of sectionOrder) {
+        const idx = remaining.findIndex(item => item.type === entry.type && item.id === entry.id);
+        if (idx !== -1) ordered.push(remaining.splice(idx, 1)[0]);
+      }
+      canonicalOrder = [...ordered, ...remaining];
+    }
     return JSON.stringify({
       chooseEnabled,
       chooseCats,
       subcatSections,
-      sectionOrder,
+      sectionOrder: canonicalOrder,
       catTitleColor, catTitleFont,
       catSubtitleColor, catSubtitleFont,
       catDividerColor,
