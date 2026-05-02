@@ -22,11 +22,7 @@ export default function HeroSlider() {
   const heroSpeed = siteConfig?.settings?.heroSpeed || '';
   const heroHeight = siteConfig?.settings?.heroHeight || '';
   const speedMap = { slow: 6000, fast: 2500 };
-  const heightMap = { compact: '70vh', tall: '100vh' };
   const autoPlayInterval = speedMap[heroSpeed] || 4000;
-  const sectionStyle = heroHeight === 'compact' ? { height: '70vh', minHeight: '320px' }
-    : heroHeight === 'tall' ? { height: '100vh', minHeight: '550px' }
-    : {};
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -52,7 +48,7 @@ export default function HeroSlider() {
     <section
       className="hero-slider"
       data-transition={heroTransition || 'fade'}
-      style={sectionStyle}
+      data-hero-height={heroHeight || 'default'}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >

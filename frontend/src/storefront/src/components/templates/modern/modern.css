@@ -2,11 +2,26 @@
 
 /* --- Hero Split --- */
 .modern-hero {
-  position: relative; /* ensures height contributes correctly to document flow */
+  position: relative;
   background: #fff;
-  display: flex;
-  align-items: stretch;
   overflow: hidden;
+  /* Default height — overridden by data-hero-height attribute below.
+     Two declarations: `vh` is the fallback, `dvh` (dynamic viewport height)
+     wins on browsers that support it and accounts for mobile URL bars
+     so the hero actually fills the visible viewport. */
+  height: 95vh;
+  height: 95dvh;
+  min-height: 400px;
+}
+.modern-hero[data-hero-height="compact"] {
+  height: 70vh;
+  height: 70dvh;
+  min-height: 320px;
+}
+.modern-hero[data-hero-height="tall"] {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 550px;
 }
 
 .modern-hero-inner {

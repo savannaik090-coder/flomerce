@@ -1,11 +1,24 @@
 .hero-slider {
     position: relative;
-    height: 95vh;
-    min-height: 550px;
     overflow: hidden;
     background-color: #f8f8f5;
     margin: 0;
     max-width: 100%;
+    /* Default height — `dvh` accounts for mobile browser URL bars so the hero
+       actually fills the visible viewport. `vh` is the fallback. */
+    height: 95vh;
+    height: 95dvh;
+    min-height: 550px;
+}
+.hero-slider[data-hero-height="compact"] {
+    height: 70vh;
+    height: 70dvh;
+    min-height: 320px;
+}
+.hero-slider[data-hero-height="tall"] {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 550px;
 }
 
 .slider-container {
