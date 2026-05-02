@@ -67,6 +67,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [heroTextAlign, setHeroTextAlign] = useState('');
   const [heroTransition, setHeroTransition] = useState('');
   const [heroSpeed, setHeroSpeed] = useState('');
+  const [activeView, setActiveView] = useState('content');
 
   const activeTheme = useMemo(() => {
     const t = siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
@@ -359,6 +360,15 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+          {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+            <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+              <i className={`fas ${tab.icon}`} />{tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeView === 'content' && <>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Hero Slider</h3>
@@ -611,7 +621,9 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             </div>
           </div>
         </div>
+        </>}
 
+        {activeView === 'appearance' && <>
         {/* ── Hero Style Card ──────────────────────────────────── */}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -898,6 +910,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
           </div>
         </div>
+        </>}
 
         {status && (
           <div style={{

@@ -61,6 +61,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [activeView, setActiveView] = useState('content');
   const fileRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
@@ -235,6 +236,15 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+          {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+            <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+              <i className={`fas ${tab.icon}`} />{tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeView === 'content' && <>
         <SectionToggle
           enabled={sectionVisible}
           onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
@@ -346,6 +356,9 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
           </div>
         </div>
 
+        </>}
+
+        {activeView === 'appearance' && <>
         {/* ── Style Card ───────────────────────────────────────── */}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header"><h3 className="card-title">Style</h3></div>
@@ -450,6 +463,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             </div>
           </div>
         </div>
+        </>}
 
         {status && (
           <div style={{
