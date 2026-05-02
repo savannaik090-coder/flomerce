@@ -24,7 +24,9 @@ export default function HeroSlider() {
   const speedMap = { slow: 6000, fast: 2500 };
   const heightMap = { compact: '70vh', tall: '100vh' };
   const autoPlayInterval = speedMap[heroSpeed] || 4000;
-  const sectionStyle = heightMap[heroHeight] ? { height: heightMap[heroHeight] } : {};
+  const sectionStyle = heroHeight === 'compact' ? { height: '70vh', minHeight: '320px' }
+    : heroHeight === 'tall' ? { height: '100vh', minHeight: '550px' }
+    : {};
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);

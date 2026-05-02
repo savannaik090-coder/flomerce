@@ -83,7 +83,11 @@ export default function HeroSplit() {
   return (
     <section
       className="modern-hero"
-      data-size={settings.heroHeight || ''}
+      style={
+        settings.heroHeight === 'compact' ? { height: '70vh', minHeight: '320px' }
+        : settings.heroHeight === 'tall' ? { height: '100vh', minHeight: '550px' }
+        : { height: '95vh', minHeight: '400px' }
+      }
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
