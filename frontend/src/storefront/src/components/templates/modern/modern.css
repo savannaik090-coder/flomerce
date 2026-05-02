@@ -963,7 +963,8 @@ body.mn-nav-transparent .modern-hero {
 }
 
 .mn-category-banner-text {
-  color: #fff;
+  color: var(--mn-cat-banner-text-color, #fff);
+  font-family: var(--mn-cat-banner-text-font, inherit);
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0.5px;

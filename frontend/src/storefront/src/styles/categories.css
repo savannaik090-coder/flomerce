@@ -86,9 +86,9 @@
 }
 
 .home-category-banner-title {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--cat-banner-title-font, 'Playfair Display', serif);
     font-size: 2.5rem;
-    color: #fff;
+    color: var(--cat-banner-title-color, #fff);
     font-weight: 400;
     margin: 0;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -100,15 +100,19 @@
 .home-category-banner-divider {
     width: 60px;
     height: 2px;
-    background-color: var(--cat-divider-color, white);
+    /* New banner-specific divider var with a fallback chain so any merchant
+       who has set the existing shared --cat-divider-color keeps their
+       previous look until they explicitly choose a banner divider color. */
+    background-color: var(--cat-banner-divider-color, var(--cat-divider-color, white));
     flex-shrink: 0;
 }
 
 .home-category-banner-btn {
     display: inline-block;
-    background: transparent;
-    color: white;
-    border: 2px solid white;
+    background: var(--cat-banner-btn-bg, transparent);
+    color: var(--cat-banner-btn-text, white);
+    border: 2px solid var(--cat-banner-btn-border-color, white);
+    font-family: var(--cat-banner-btn-font, inherit);
     padding: 12px 30px;
     font-size: 14px;
     font-weight: 500;

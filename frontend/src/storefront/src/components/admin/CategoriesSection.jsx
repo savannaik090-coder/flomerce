@@ -123,14 +123,36 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [catViewAllText, setCatViewAllText] = useState('');
   const [catBannerOverlayColor, setCatBannerOverlayColor] = useState('');
   const [catBannerOverlayOpacity, setCatBannerOverlayOpacity] = useState('');
+  // Classic-template-only banner text & button controls
+  const [catBannerTitleColor, setCatBannerTitleColor] = useState('');
+  const [catBannerTitleFont, setCatBannerTitleFont] = useState('');
+  const [catBannerDividerColor, setCatBannerDividerColor] = useState('');
+  const [catBannerBtnBg, setCatBannerBtnBg] = useState('');
+  const [catBannerBtnText, setCatBannerBtnText] = useState('');
+  const [catBannerBtnFont, setCatBannerBtnFont] = useState('');
+  // Modern-template-only banner overlay text controls
+  const [catBannerTextColorModern, setCatBannerTextColorModern] = useState('');
+  const [catBannerTextFontModern, setCatBannerTextFontModern] = useState('');
   const [chooseSectionTitle, setChooseSectionTitle] = useState('');
   const [chooseCardShape, setChooseCardShape] = useState('');
   const [chooseOverlayColor, setChooseOverlayColor] = useState('');
   const [chooseOverlayOpacity, setChooseOverlayOpacity] = useState('');
   const [chooseLabelColor, setChooseLabelColor] = useState('');
   const [chooseLabelFont, setChooseLabelFont] = useState('');
+  // Classic-template-only label background pill
+  const [chooseLabelBg, setChooseLabelBg] = useState('');
   const [chooseExploreColor, setChooseExploreColor] = useState('');
   const [chooseExploreFont, setChooseExploreFont] = useState('');
+
+  // Match the active template the same way HeroSliderEditor / PromoBannerEditor do.
+  // Used to gate which control groups render in the appearance view and which
+  // keys are included in the live-preview / serializer / save payloads, so the
+  // dirty check and live preview stay consistent across template switches.
+  const activeTheme = useMemo(() => {
+    return siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
+  }, [siteConfig?.settings?.theme, siteConfig?.templateId]);
+  const isClassic = activeTheme === 'classic';
+  const isModern = activeTheme === 'modern';
 
   // ── Snapshot-based dirty tracking ─────────────────────────────────
   // We compare a JSON serialization of "all settings + per-category image
@@ -227,12 +249,21 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setCatViewAllText(settings.catViewAllText || '');
       setCatBannerOverlayColor(settings.catBannerOverlayColor || '');
       setCatBannerOverlayOpacity(settings.catBannerOverlayOpacity !== undefined ? String(settings.catBannerOverlayOpacity) : '');
+      setCatBannerTitleColor(settings.catBannerTitleColor || '');
+      setCatBannerTitleFont(settings.catBannerTitleFont || '');
+      setCatBannerDividerColor(settings.catBannerDividerColor || '');
+      setCatBannerBtnBg(settings.catBannerBtnBg || '');
+      setCatBannerBtnText(settings.catBannerBtnText || '');
+      setCatBannerBtnFont(settings.catBannerBtnFont || '');
+      setCatBannerTextColorModern(settings.catBannerTextColorModern || '');
+      setCatBannerTextFontModern(settings.catBannerTextFontModern || '');
       setChooseSectionTitle(settings.chooseSectionTitle || '');
       setChooseCardShape(settings.chooseCardShape || '');
       setChooseOverlayColor(settings.chooseOverlayColor || '');
       setChooseOverlayOpacity(settings.chooseOverlayOpacity !== undefined ? String(settings.chooseOverlayOpacity) : '');
       setChooseLabelColor(settings.chooseLabelColor || '');
       setChooseLabelFont(settings.chooseLabelFont || '');
+      setChooseLabelBg(settings.chooseLabelBg || '');
       setChooseExploreColor(settings.chooseExploreColor || '');
       setChooseExploreFont(settings.chooseExploreFont || '');
       // Reloading server values means we should re-capture the snapshot so
@@ -298,9 +329,15 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       catDividerColor,
       catViewAllStyle, catViewAllBg, catViewAllText,
       catBannerOverlayColor, catBannerOverlayOpacity,
+      // Template-specific banner controls — kept in the snapshot regardless
+      // of active template so switching templates doesn't lose the other
+      // template's stored values or trip the dirty check.
+      catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
+      catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
+      catBannerTextColorModern, catBannerTextFontModern,
       chooseSectionTitle, chooseCardShape,
       chooseOverlayColor, chooseOverlayOpacity,
-      chooseLabelColor, chooseLabelFont,
+      chooseLabelColor, chooseLabelFont, chooseLabelBg,
       chooseExploreColor, chooseExploreFont,
       catImages,
     });
@@ -310,8 +347,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     catTitleColor, catTitleFont, catSubtitleColor, catSubtitleFont, catDividerColor,
     catViewAllStyle, catViewAllBg, catViewAllText,
     catBannerOverlayColor, catBannerOverlayOpacity,
+    catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
+    catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
+    catBannerTextColorModern, catBannerTextFontModern,
     chooseSectionTitle, chooseCardShape,
-    chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont,
+    chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont, chooseLabelBg,
     chooseExploreColor, chooseExploreFont,
   ]);
 
@@ -345,11 +385,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       catViewAllStyle, catViewAllBg, catViewAllText,
       catBannerOverlayColor,
       catBannerOverlayOpacity: catBannerOverlayOpacity !== '' ? parseFloat(catBannerOverlayOpacity) : undefined,
+      catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
+      catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
+      catBannerTextColorModern, catBannerTextFontModern,
       chooseSectionTitle,
       chooseCardShape,
       chooseOverlayColor,
       chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
-      chooseLabelColor, chooseLabelFont,
+      chooseLabelColor, chooseLabelFont, chooseLabelBg,
       chooseExploreColor, chooseExploreFont,
     });
   }, [
@@ -357,8 +400,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     catTitleColor, catTitleFont, catSubtitleColor, catSubtitleFont, catDividerColor,
     catViewAllStyle, catViewAllBg, catViewAllText,
     catBannerOverlayColor, catBannerOverlayOpacity,
+    catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
+    catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
+    catBannerTextColorModern, catBannerTextFontModern,
     chooseSectionTitle, chooseCardShape,
-    chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont,
+    chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont, chooseLabelBg,
     chooseExploreColor, chooseExploreFont,
   ]);
 
@@ -881,11 +927,17 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           catViewAllStyle, catViewAllBg, catViewAllText,
           catBannerOverlayColor,
           catBannerOverlayOpacity: catBannerOverlayOpacity !== '' ? parseFloat(catBannerOverlayOpacity) : undefined,
+          // Persist all template-specific banner controls regardless of the
+          // active template so each template's stored values are preserved
+          // when the merchant switches between templates.
+          catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
+          catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
+          catBannerTextColorModern, catBannerTextFontModern,
           chooseSectionTitle,
           chooseCardShape,
           chooseOverlayColor,
           chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
-          chooseLabelColor, chooseLabelFont,
+          chooseLabelColor, chooseLabelFont, chooseLabelBg,
           chooseExploreColor, chooseExploreFont,
         };
         const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
@@ -1488,6 +1540,38 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
                 <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
               </div>
+
+              {/* Classic-template banner controls — only shown when active template is Classic. */}
+              {isClassic && (
+                <>
+                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Banner Title & Button (Classic)</div>
+
+                  <AdminColorField label="Banner Title Color" value={catBannerTitleColor} fallback="#ffffff" onChange={setCatBannerTitleColor} />
+
+                  <AdminFontPicker label="Banner Title Font" value={catBannerTitleFont} onChange={v => setCatBannerTitleFont(v)} />
+
+                  <AdminColorField label="Banner Divider Color" value={catBannerDividerColor} fallback="#ffffff" onChange={setCatBannerDividerColor} />
+
+                  <AdminColorField label='"VIEW ALL" Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
+
+                  <AdminColorField label='"VIEW ALL" Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
+
+                  <AdminFontPicker label='"VIEW ALL" Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
+                </>
+              )}
+
+              {/* Modern-template banner controls — only shown when active template is Modern. */}
+              {isModern && (
+                <>
+                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Banner Hover Text (Modern)</div>
+
+                  <AdminColorField label='"Shop {name}" Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
+
+                  <AdminFontPicker label='"Shop {name}" Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
+                </>
+              )}
             </div>
           </SectionCard>
 
@@ -1512,11 +1596,24 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
               <AdminColorField label="Label Text Color" value={chooseLabelColor} fallback="#333333" onChange={setChooseLabelColor} />
 
+              {/* Classic-only label background pill — Modern overlays the
+                  label directly on the gradient with no pill behind it. */}
+              {isClassic && (
+                <AdminColorField label="Label Background Color" value={chooseLabelBg} fallback="rgba(255,255,255,0.98)" onChange={setChooseLabelBg} />
+              )}
+
               <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => setChooseLabelFont(v)} />
 
-              <AdminColorField label='"Explore" Button Color (modern theme)' value={chooseExploreColor} fallback="#ffffff" onChange={setChooseExploreColor} />
+              {/* "Explore" controls only apply to Modern, where the element
+                  exists. Hidden in Classic but underlying state is preserved
+                  so previously-set values still apply when switching back. */}
+              {isModern && (
+                <>
+                  <AdminColorField label='"Explore" Button Color' value={chooseExploreColor} fallback="#ffffff" onChange={setChooseExploreColor} />
 
-              <AdminFontPicker label='"Explore" Button Font (modern theme)' value={chooseExploreFont} onChange={v => setChooseExploreFont(v)} />
+                  <AdminFontPicker label='"Explore" Button Font' value={chooseExploreFont} onChange={v => setChooseExploreFont(v)} />
+                </>
+              )}
             </div>
           </SectionCard>
         </>

@@ -328,6 +328,28 @@ export function SiteProvider({ children }) {
     } else {
       root.style.removeProperty('--cat-banner-overlay-opacity');
     }
+    // Classic-template overlay banner text & button (CategoriesSection.jsx
+    // gates these to the Classic template; the variables are still applied
+    // here unconditionally so a value set on Classic continues to apply if
+    // the merchant later switches templates and back).
+    apply('--cat-banner-title-color',   settings.catBannerTitleColor);
+    apply('--cat-banner-title-font',    settings.catBannerTitleFont);
+    apply('--cat-banner-divider-color', settings.catBannerDividerColor);
+    apply('--cat-banner-btn-bg',        settings.catBannerBtnBg);
+    apply('--cat-banner-btn-text',      settings.catBannerBtnText);
+    apply('--cat-banner-btn-font',      settings.catBannerBtnFont);
+    // When the merchant gives the "VIEW ALL" button a background, also
+    // align its border with the new background so we don't leave the
+    // default white border floating around a coloured fill. When no
+    // background is set, fall back to the existing white border.
+    if (settings.catBannerBtnBg) {
+      root.style.setProperty('--cat-banner-btn-border-color', settings.catBannerBtnBg);
+    } else {
+      root.style.removeProperty('--cat-banner-btn-border-color');
+    }
+    // Modern-template overlay banner text ("Shop {name}" hover label).
+    apply('--mn-cat-banner-text-color', settings.catBannerTextColorModern);
+    apply('--mn-cat-banner-text-font',  settings.catBannerTextFontModern);
     // View All button style
     const catViewAllStyle = settings.catViewAllStyle || '';
     const catViewAllBg    = settings.catViewAllBg    || '';
@@ -356,6 +378,10 @@ export function SiteProvider({ children }) {
     }
     apply('--choose-label-color', settings.chooseLabelColor);
     apply('--choose-label-font',  settings.chooseLabelFont);
+    // Classic-template label pill background (Modern's label sits directly
+    // on the gradient with no pill, so this var is unused there). Falls back
+    // to the existing rgba(255,255,255,0.98) when unset.
+    apply('--choose-label-bg',    settings.chooseLabelBg);
     apply('--choose-explore-color', settings.chooseExploreColor);
     apply('--choose-explore-font',  settings.chooseExploreFont);
     const chooseCardShape = settings.chooseCardShape || '';
