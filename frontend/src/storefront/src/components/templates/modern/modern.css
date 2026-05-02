@@ -37,18 +37,18 @@
 }
 
 .modern-hero-title {
-  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--hero-title-font, 'Inter', 'Helvetica Neue', Arial, sans-serif);
   font-size: clamp(2rem, 4vw, 3.5rem);
   font-weight: 800;
   line-height: 1.1;
-  color: #111;
+  color: var(--hero-title-color, #111);
   margin: 0 0 20px 0;
   letter-spacing: -0.02em;
 }
 
 .modern-hero-desc {
   font-size: 1.05rem;
-  color: #666;
+  color: var(--hero-desc-color, #666);
   line-height: 1.6;
   margin: 0 0 32px 0;
   max-width: 440px;
@@ -134,6 +134,16 @@
   min-height: 500px;
   position: relative;
   overflow: hidden;
+}
+
+.modern-hero-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-color: var(--hero-overlay-color, #000000);
+  opacity: var(--hero-overlay-opacity, 0);
+  pointer-events: none;
 }
 
 .modern-hero-image img {

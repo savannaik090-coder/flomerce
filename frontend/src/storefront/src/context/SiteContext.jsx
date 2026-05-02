@@ -280,6 +280,41 @@ export function SiteProvider({ children }) {
     apply('--panel-accent', settings.panelAccent);
     apply('--panel-accent-text', settings.panelAccentText);
     apply('--panel-font', settings.panelFont);
+
+    // Hero section customization — typography, button, overlay.
+    // Classic hero reads these CSS vars directly from hero.css.
+    // Modern hero (HeroSplit) computes inline styles from siteConfig.settings
+    // so it isn't blocked by the CSS variable layer, but title/desc/overlay
+    // vars are shared across both themes.
+    apply('--hero-title-color', settings.heroTitleColor);
+    apply('--hero-title-font', settings.heroTitleFont);
+    apply('--hero-desc-color', settings.heroDescColor);
+
+    // Overlay (shared: classic uses .slide::after, modern uses .modern-hero-image::after).
+    apply('--hero-overlay-color', settings.heroOverlayColor);
+    apply('--hero-overlay-opacity', settings.heroOverlayOpacity);
+
+    // Button — only applied to classic hero (.shop-now-btn).
+    // Modern hero button styling is handled inline in HeroSplit.jsx.
+    const heroBtnStyle = settings.heroBtnStyle || '';
+    const heroBtnBg = settings.heroBtnBg || '';
+    const heroBtnText = settings.heroBtnText || '';
+    const heroBtnRadius = settings.heroBtnRadius || '';
+    const radiusMap = { sharp: '0', rounded: '8px', pill: '999px' };
+    apply('--hero-btn-radius', radiusMap[heroBtnRadius] || '');
+    if (heroBtnStyle === 'outlined') {
+      apply('--hero-btn-bg', 'transparent');
+      apply('--hero-btn-text', heroBtnText || heroBtnBg);
+      apply('--hero-btn-border', `2px solid ${heroBtnBg || 'currentColor'}`);
+    } else if (heroBtnStyle === 'ghost') {
+      apply('--hero-btn-bg', 'rgba(255,255,255,0.15)');
+      apply('--hero-btn-text', heroBtnText);
+      apply('--hero-btn-border', '1px solid rgba(255,255,255,0.5)');
+    } else {
+      apply('--hero-btn-bg', heroBtnBg);
+      apply('--hero-btn-text', heroBtnText);
+      root.style.removeProperty('--hero-btn-border');
+    }
   }, [effectiveSiteConfig]);
 
   return (

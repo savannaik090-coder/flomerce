@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, createRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, createRef, useMemo } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SaveBar from './SaveBar.jsx';
@@ -6,6 +6,13 @@ import LinkSelector from './LinkSelector.jsx';
 import { getHeroSliderDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
+
+const HERO_DEFAULTS = {
+  classic: { titleColor: '#ffffff', descColor: '#ffffff', btnBg: '#b49b7d', btnText: '#ffffff', overlayColor: '#000000' },
+  modern:  { titleColor: '#111111', descColor: '#666666', btnBg: '#111111', btnText: '#ffffff', overlayColor: '#000000' },
+};
 const currentYear = new Date().getFullYear();
 
 const MAX_SLIDES = 10;
@@ -47,6 +54,22 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
+  const [heroTitleColor, setHeroTitleColor] = useState('');
+  const [heroTitleFont, setHeroTitleFont] = useState('');
+  const [heroDescColor, setHeroDescColor] = useState('');
+  const [heroBtnBg, setHeroBtnBg] = useState('');
+  const [heroBtnText, setHeroBtnText] = useState('');
+  const [heroBtnStyle, setHeroBtnStyle] = useState('');
+  const [heroBtnRadius, setHeroBtnRadius] = useState('');
+  const [heroOverlayColor, setHeroOverlayColor] = useState('');
+  const [heroOverlayOpacity, setHeroOverlayOpacity] = useState(0);
+
+  const activeTheme = useMemo(() => {
+    const t = siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
+    return HERO_DEFAULTS[t] ? t : 'classic';
+  }, [siteConfig?.settings?.theme, siteConfig?.templateId]);
+  const themeDefaults = HERO_DEFAULTS[activeTheme];
+
   function getFileRef(index) {
     if (!fileRefsMap.current[index]) {
       fileRefsMap.current[index] = createRef();
@@ -60,11 +83,23 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (serverValuesRef.current === null) return;
-    const current = JSON.stringify({ slides, showScrollButtons });
+    const current = JSON.stringify({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity });
     setHasChanges(current !== serverValuesRef.current);
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
-    if (onPreviewUpdate) onPreviewUpdate({ heroSlides: filtered.length > 0 ? filtered : [], heroShowScrollButtons: showScrollButtons });
-  }, [slides, showScrollButtons]);
+    if (onPreviewUpdate) onPreviewUpdate({
+      heroSlides: filtered.length > 0 ? filtered : [],
+      heroShowScrollButtons: showScrollButtons,
+      heroTitleColor,
+      heroTitleFont,
+      heroDescColor,
+      heroBtnBg,
+      heroBtnText,
+      heroBtnStyle,
+      heroBtnRadius,
+      heroOverlayColor,
+      heroOverlayOpacity: heroOverlayOpacity > 0 ? String((heroOverlayOpacity / 100).toFixed(2)) : '',
+    });
+  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity]);
 
   async function loadHeroSettings() {
     setLoading(true);
@@ -106,7 +141,34 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         setSlides(merged);
         const scrollVal = settings.heroShowScrollButtons !== false;
         setShowScrollButtons(scrollVal);
-        serverValuesRef.current = JSON.stringify({ slides: merged, showScrollButtons: scrollVal });
+
+        const titleColorVal = settings.heroTitleColor || '';
+        const titleFontVal = settings.heroTitleFont || '';
+        const descColorVal = settings.heroDescColor || '';
+        const btnBgVal = settings.heroBtnBg || '';
+        const btnTextVal = settings.heroBtnText || '';
+        const btnStyleVal = settings.heroBtnStyle || '';
+        const btnRadiusVal = settings.heroBtnRadius || '';
+        const overlayColorVal = settings.heroOverlayColor || '';
+        const savedOpacity = settings.heroOverlayOpacity || '';
+        const overlayOpacityVal = savedOpacity ? Math.round(parseFloat(savedOpacity) * 100) : 0;
+
+        setHeroTitleColor(titleColorVal);
+        setHeroTitleFont(titleFontVal);
+        setHeroDescColor(descColorVal);
+        setHeroBtnBg(btnBgVal);
+        setHeroBtnText(btnTextVal);
+        setHeroBtnStyle(btnStyleVal);
+        setHeroBtnRadius(btnRadiusVal);
+        setHeroOverlayColor(overlayColorVal);
+        setHeroOverlayOpacity(overlayOpacityVal);
+
+        serverValuesRef.current = JSON.stringify({
+          slides: merged, showScrollButtons: scrollVal,
+          heroTitleColor: titleColorVal, heroTitleFont: titleFontVal, heroDescColor: descColorVal,
+          heroBtnBg: btnBgVal, heroBtnText: btnTextVal, heroBtnStyle: btnStyleVal, heroBtnRadius: btnRadiusVal,
+          heroOverlayColor: overlayColorVal, heroOverlayOpacity: overlayOpacityVal,
+        });
       } else {
         setStatus('error:' + "Failed to load hero slider settings. Please refresh the page before making changes.");
       }
@@ -225,6 +287,15 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           settings: {
             heroSlides: slidesWithVisibility.length > 0 ? slidesWithVisibility : [],
             heroShowScrollButtons: showScrollButtons,
+            heroTitleColor: heroTitleColor || '',
+            heroTitleFont: heroTitleFont || '',
+            heroDescColor: heroDescColor || '',
+            heroBtnBg: heroBtnBg || '',
+            heroBtnText: heroBtnText || '',
+            heroBtnStyle: heroBtnStyle || '',
+            heroBtnRadius: heroBtnRadius || '',
+            heroOverlayColor: heroOverlayColor || '',
+            heroOverlayOpacity: heroOverlayOpacity > 0 ? String((heroOverlayOpacity / 100).toFixed(2)) : '',
           }
         }),
       });
@@ -232,7 +303,12 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       if (response.ok && result.success) {
         setStatus('success');
         setUsingDefaults(false);
-        serverValuesRef.current = JSON.stringify({ slides, showScrollButtons });
+        serverValuesRef.current = JSON.stringify({
+          slides, showScrollButtons,
+          heroTitleColor, heroTitleFont, heroDescColor,
+          heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius,
+          heroOverlayColor, heroOverlayOpacity,
+        });
         setHasChanges(false);
         // Save succeeded — now safe to remove old/orphan R2 files.
         // keepUrls = the slide images that are actually saved.
@@ -510,6 +586,194 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                 }} />
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* ── Hero Style Card ──────────────────────────────────── */}
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Hero Style</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+              Customize colors, fonts, and overlay for the hero section. Leave any field blank to use the theme default.
+            </p>
+
+            {/* Typography */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Typography</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <AdminColorField
+                  label="Title & Subtitle Color"
+                  value={heroTitleColor}
+                  fallback={themeDefaults.titleColor}
+                  onChange={setHeroTitleColor}
+                />
+                <AdminColorField
+                  label="Description Color"
+                  value={heroDescColor}
+                  fallback={themeDefaults.descColor}
+                  onChange={setHeroDescColor}
+                />
+              </div>
+              <AdminFontPicker label="Title Font" value={heroTitleFont} onChange={setHeroTitleFont} />
+            </div>
+
+            {/* CTA Button */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>CTA Button</p>
+
+              {/* Button preview */}
+              <div style={{ marginBottom: 16, padding: '14px 16px', background: '#0f172a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {(() => {
+                  const resolvedBg = heroBtnBg || themeDefaults.btnBg;
+                  const resolvedText = heroBtnText || themeDefaults.btnText;
+                  const rMap = { sharp: '0', rounded: '8px', pill: '999px' };
+                  const radius = rMap[heroBtnRadius] || (activeTheme === 'modern' ? '4px' : '0');
+                  let style;
+                  if (heroBtnStyle === 'outlined') {
+                    style = { background: 'transparent', color: resolvedBg, border: `2px solid ${resolvedBg}`, borderRadius: radius };
+                  } else if (heroBtnStyle === 'ghost') {
+                    style = { background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.5)', borderRadius: radius };
+                  } else {
+                    style = { background: resolvedBg, color: resolvedText, border: 'none', borderRadius: radius };
+                  }
+                  return (
+                    <span style={{ ...style, padding: '10px 28px', fontSize: 13, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', cursor: 'default' }}>
+                      SHOP NOW
+                    </span>
+                  );
+                })()}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <AdminColorField
+                  label="Button Background"
+                  value={heroBtnBg}
+                  fallback={themeDefaults.btnBg}
+                  onChange={setHeroBtnBg}
+                />
+                <AdminColorField
+                  label="Button Text Color"
+                  value={heroBtnText}
+                  fallback={themeDefaults.btnText}
+                  onChange={setHeroBtnText}
+                />
+              </div>
+
+              {/* Button Style picker */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Button Style</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {[
+                    { value: '', label: 'Filled', desc: 'Solid background' },
+                    { value: 'outlined', label: 'Outlined', desc: 'Transparent + border' },
+                    { value: 'ghost', label: 'Ghost', desc: 'Semi-transparent' },
+                  ].map(opt => {
+                    const active = heroBtnStyle === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setHeroBtnStyle(opt.value)}
+                        style={{
+                          padding: '12px 8px', border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`,
+                          borderRadius: 8, background: active ? '#0f172a' : '#fff',
+                          color: active ? '#fff' : '#334155', cursor: 'pointer', textAlign: 'center',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 3 }}>{opt.label}</div>
+                        <div style={{ fontSize: 11, opacity: 0.7 }}>{opt.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Button Radius picker */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Button Corners</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {[
+                    { value: '', label: 'Default', preview: activeTheme === 'modern' ? '4px' : '0' },
+                    { value: 'rounded', label: 'Rounded', preview: '8px' },
+                    { value: 'pill', label: 'Pill', preview: '999px' },
+                  ].map(opt => {
+                    const active = heroBtnRadius === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setHeroBtnRadius(opt.value)}
+                        style={{
+                          padding: '10px 8px', border: `2px solid ${active ? '#0f172a' : '#e2e8f0'}`,
+                          borderRadius: 8, background: active ? '#0f172a' : '#fff',
+                          color: active ? '#fff' : '#334155', cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <div style={{
+                          width: 40, height: 18, background: active ? '#fff' : '#334155',
+                          borderRadius: opt.preview, opacity: active ? 1 : 0.5,
+                        }} />
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Overlay */}
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Image Overlay</p>
+              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>
+                Add a color tint over the slide image to improve text readability.
+              </p>
+              <div style={{ marginBottom: 16 }}>
+                <AdminColorField
+                  label="Overlay Color"
+                  value={heroOverlayColor}
+                  fallback={themeDefaults.overlayColor}
+                  onChange={setHeroOverlayColor}
+                />
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <label style={{ fontWeight: 600, fontSize: 13 }}>Overlay Opacity</label>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#334155', background: '#f1f5f9', borderRadius: 6, padding: '2px 10px' }}>
+                    {heroOverlayOpacity}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={80}
+                  step={5}
+                  value={heroOverlayOpacity}
+                  onChange={e => setHeroOverlayOpacity(Number(e.target.value))}
+                  style={{ width: '100%', cursor: 'pointer', accentColor: '#0f172a' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                  <span>No overlay</span>
+                  <span>80% (strong)</span>
+                </div>
+                {/* Overlay preview strip */}
+                <div style={{ marginTop: 12, height: 36, borderRadius: 6, overflow: 'hidden', border: '1px solid #e2e8f0', position: 'relative' }}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #6b7280, #374151)' }} />
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: heroOverlayColor || themeDefaults.overlayColor,
+                    opacity: heroOverlayOpacity / 100,
+                    pointerEvents: 'none',
+                  }} />
+                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Preview shows how the tint looks over a dark background image.</p>
+              </div>
+            </div>
+
           </div>
         </div>
 

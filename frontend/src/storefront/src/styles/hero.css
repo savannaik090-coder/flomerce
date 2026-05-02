@@ -55,25 +55,27 @@
 }
 
 .slide-title {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--hero-title-font, 'Playfair Display', serif);
     font-size: 4.5rem;
     font-weight: 400;
     letter-spacing: 0.15em;
     margin: 0;
     line-height: 1;
     text-transform: uppercase;
+    color: var(--hero-title-color, white);
     text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
     margin-bottom: -10px;
 }
 
 .slide-subtitle {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--hero-title-font, 'Playfair Display', serif);
     font-size: 4.5rem;
     font-weight: 400;
     font-style: italic;
     letter-spacing: 0.05em;
     margin: 0 0 15px 0;
     line-height: 1;
+    color: var(--hero-title-color, white);
     text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
 }
 
@@ -84,14 +86,14 @@
     letter-spacing: 0.2em;
     margin: 0 0 35px 0;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.9);
+    color: var(--hero-desc-color, rgba(255,255,255,0.9));
     text-shadow: 1px 1px 4px rgba(0,0,0,0.4);
 }
 
 .shop-now-btn {
-    background-color: rgba(180, 155, 125, 0.85);
-    color: white;
-    border: none;
+    background-color: var(--hero-btn-bg, rgba(180, 155, 125, 0.85));
+    color: var(--hero-btn-text, white);
+    border: var(--hero-btn-border, none);
     padding: 15px 35px;
     font-family: 'Lato', sans-serif;
     font-size: 0.75rem;
@@ -100,15 +102,26 @@
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.3s ease;
-    border-radius: 0;
+    border-radius: var(--hero-btn-radius, 0);
     backdrop-filter: blur(10px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.25);
 }
 
 .shop-now-btn:hover {
-    background-color: rgba(139, 119, 101, 1);
+    background-color: var(--hero-btn-bg, rgba(139, 119, 101, 1));
+    filter: brightness(0.88);
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.slide::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-color: var(--hero-overlay-color, #000000);
+    opacity: var(--hero-overlay-opacity, 0);
+    pointer-events: none;
 }
 
 .slider-nav {

@@ -20,6 +20,39 @@ export default function HeroSplit() {
   const primaryColor = siteConfig?.primaryColor || '#000000';
   const showScrollButtons = siteConfig?.settings?.heroShowScrollButtons !== false;
 
+  const settings = siteConfig?.settings || {};
+  const heroBtnBg = settings.heroBtnBg || '';
+  const heroBtnText = settings.heroBtnText || '';
+  const heroBtnStyle = settings.heroBtnStyle || '';
+  const heroBtnRadius = settings.heroBtnRadius || '';
+
+  const radiusMap = { sharp: '0', rounded: '8px', pill: '999px' };
+  const btnRadius = radiusMap[heroBtnRadius] || '4px';
+
+  let btnInlineStyle;
+  if (heroBtnStyle === 'outlined') {
+    const outlineColor = heroBtnBg || primaryColor;
+    btnInlineStyle = {
+      backgroundColor: 'transparent',
+      color: heroBtnText || outlineColor,
+      border: `2px solid ${outlineColor}`,
+      borderRadius: btnRadius,
+    };
+  } else if (heroBtnStyle === 'ghost') {
+    btnInlineStyle = {
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      color: heroBtnText || '#fff',
+      border: '1px solid rgba(255,255,255,0.5)',
+      borderRadius: btnRadius,
+    };
+  } else {
+    btnInlineStyle = {
+      backgroundColor: heroBtnBg || primaryColor,
+      ...(heroBtnText ? { color: heroBtnText } : {}),
+      borderRadius: btnRadius,
+    };
+  }
+
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
@@ -67,7 +100,7 @@ export default function HeroSplit() {
           </p>
           <button
             className="modern-hero-btn"
-            style={{ backgroundColor: primaryColor }}
+            style={btnInlineStyle}
             onClick={() => { if (slide.buttonLink) window.location.href = slide.buttonLink; }}
           >
             {slide.buttonText
