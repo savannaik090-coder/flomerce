@@ -96,7 +96,7 @@
 .home-category-banner-divider {
     width: 60px;
     height: 2px;
-    background-color: white;
+    background-color: var(--cat-divider-color, white);
     flex-shrink: 0;
 }
 
