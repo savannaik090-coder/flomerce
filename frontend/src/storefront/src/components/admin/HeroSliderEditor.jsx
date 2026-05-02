@@ -602,7 +602,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             {/* Typography */}
             <div style={{ marginBottom: 24 }}>
               <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Typography</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
                 <AdminColorField
                   label="Title & Subtitle Color"
                   value={heroTitleColor}
@@ -646,7 +646,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                 })()}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
                 <AdminColorField
                   label="Button Background"
                   value={heroBtnBg}
