@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo, useCallback } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoryService.js';
 import { API_BASE } from '../../config.js';
@@ -99,11 +99,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [pendingNewCats, setPendingNewCats] = useState([]);
   const [pendingDeleteCats, setPendingDeleteCats] = useState([]);
   const [pendingEditCats, setPendingEditCats] = useState({});
+  // Staged category card image changes: { [catId]: newUrl | null }.
+  // Presence of a key means the user changed that cat's image since load
+  // (newUrl = uploaded a new image; null = removed the existing image).
+  // Absence means "use server image_url as-is". This staged map drives both
+  // the local preview and the snapshot-based dirty check below.
+  const [pendingCatImages, setPendingCatImages] = useState({});
 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [chooseChanged, setChooseChanged] = useState(false);
-  const [subcatChanged, setSubcatChanged] = useState(false);
-  const [orderChanged, setOrderChanged] = useState(false);
   const homeTogglesChanged = Object.keys(pendingHomeToggles).length > 0;
   const catsChanged = pendingNewCats.length > 0 || pendingDeleteCats.length > 0 || Object.keys(pendingEditCats).length > 0;
   const subItemsChanged = pendingSubAdds.length > 0 || pendingSubDeletes.length > 0 || Object.keys(pendingSubEdits).length > 0;
@@ -127,10 +130,19 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [chooseLabelFont, setChooseLabelFont] = useState('');
   const [chooseExploreColor, setChooseExploreColor] = useState('');
   const [chooseExploreFont, setChooseExploreFont] = useState('');
-  const [appearanceChanged, setAppearanceChanged] = useState(false);
+
+  // ── Snapshot-based dirty tracking ─────────────────────────────────
+  // We compare a JSON serialization of "all settings + per-category image
+  // overrides" against a snapshot captured right after the server values
+  // load (and re-captured after each successful save). Any user edit that
+  // ends up matching the saved value clears the dirty state automatically,
+  // so reverting an edit hides the save bar with no extra bookkeeping.
+  const serverSnapshotRef = useRef(null);
+  const hasLoadedRef = useRef(false);
+  const [hasSnapshotChanges, setHasSnapshotChanges] = useState(false);
 
   const dirtyRef = useRef(false);
-  dirtyRef.current = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged || appearanceChanged;
+  dirtyRef.current = hasSnapshotChanges || homeTogglesChanged || catsChanged || subItemsChanged;
 
   const [activeView, setActiveView] = useState('categories');
 
@@ -167,19 +179,25 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           }))
         }))
       ];
+      // Effective image = staged override (if any) else server image_url.
+      // This lets the live preview reflect uploaded/removed images before the
+      // user clicks Save.
+      const effectiveImage = Object.prototype.hasOwnProperty.call(pendingCatImages, cat.id)
+        ? pendingCatImages[cat.id]
+        : (cat.image_url || null);
       return {
         id: cat.id,
         name: cat.name,
         subtitle: cat.subtitle,
         slug: cat.slug,
         show_on_home: getShowOnHome(cat) ? 1 : 0,
-        image_url: cat.image_url || null,
+        image_url: effectiveImage,
         display_order: cat.display_order || 0,
         children: mergedChildren,
         _isPending: !!cat._isPending,
       };
     });
-  }, [allDisplayCats, pendingSubDeletes, pendingSubEdits, pendingSubAdds, pendingHomeToggles]);
+  }, [allDisplayCats, pendingSubDeletes, pendingSubEdits, pendingSubAdds, pendingHomeToggles, pendingCatImages]);
 
   useEffect(() => {
     if (siteConfig?.id) loadCategories();
@@ -216,9 +234,67 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setChooseLabelFont(settings.chooseLabelFont || '');
       setChooseExploreColor(settings.chooseExploreColor || '');
       setChooseExploreFont(settings.chooseExploreFont || '');
+      // Reloading server values means we should re-capture the snapshot so
+      // the dirty check resets to "no changes". The capture effect below
+      // handles this by gating on hasLoadedRef.
+      hasLoadedRef.current = false;
       setSettingsLoaded(true);
     }
   }, [siteConfig?.settings]);
+
+  // Build a JSON snapshot of every settings-backed field plus the effective
+  // per-category image map. Used both as the initial server snapshot and as
+  // the "current values" string compared against it on each render.
+  const serializeCurrent = useCallback(() => {
+    const catImages = {};
+    for (const cat of categories) {
+      catImages[cat.id] = Object.prototype.hasOwnProperty.call(pendingCatImages, cat.id)
+        ? pendingCatImages[cat.id]
+        : (cat.image_url || null);
+    }
+    return JSON.stringify({
+      chooseEnabled,
+      chooseCats,
+      subcatSections,
+      sectionOrder,
+      catTitleColor, catTitleFont,
+      catSubtitleColor, catSubtitleFont,
+      catDividerColor,
+      catViewAllStyle, catViewAllBg, catViewAllText,
+      catBannerOverlayColor, catBannerOverlayOpacity,
+      chooseSectionTitle, chooseCardShape,
+      chooseOverlayColor, chooseOverlayOpacity,
+      chooseLabelColor, chooseLabelFont,
+      chooseExploreColor, chooseExploreFont,
+      catImages,
+    });
+  }, [
+    categories, pendingCatImages,
+    chooseEnabled, chooseCats, subcatSections, sectionOrder,
+    catTitleColor, catTitleFont, catSubtitleColor, catSubtitleFont, catDividerColor,
+    catViewAllStyle, catViewAllBg, catViewAllText,
+    catBannerOverlayColor, catBannerOverlayOpacity,
+    chooseSectionTitle, chooseCardShape,
+    chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont,
+    chooseExploreColor, chooseExploreFont,
+  ]);
+
+  // Capture the initial (or post-save) server snapshot once both settings
+  // and categories have loaded. After save, handleSaveAllSettings clears
+  // hasLoadedRef so this effect re-fires and re-snapshots the fresh state.
+  useEffect(() => {
+    if (loading || !settingsLoaded) return;
+    if (hasLoadedRef.current) return;
+    serverSnapshotRef.current = serializeCurrent();
+    hasLoadedRef.current = true;
+    setHasSnapshotChanges(false);
+  }, [loading, settingsLoaded, serializeCurrent]);
+
+  // Compare current state to the captured snapshot on every relevant change.
+  useEffect(() => {
+    if (!hasLoadedRef.current || serverSnapshotRef.current === null) return;
+    setHasSnapshotChanges(serializeCurrent() !== serverSnapshotRef.current);
+  }, [serializeCurrent]);
 
   useEffect(() => {
     if (!settingsLoaded || !onPreviewUpdate) return;
@@ -296,6 +372,17 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         } else {
           setPendingDeleteCats(prev => [...prev, categoryId]);
         }
+        // Drop any staged image override for the doomed category. If the
+        // staged value is a just-uploaded URL it's already in markUploaded
+        // and will be cleaned up by commit() (since the cat won't be in the
+        // post-save image set). This also keeps the snapshot diff honest:
+        // a doomed cat shouldn't drag a stale image override along.
+        setPendingCatImages(prev => {
+          if (!Object.prototype.hasOwnProperty.call(prev, categoryId)) return prev;
+          const next = { ...prev };
+          delete next[categoryId];
+          return next;
+        });
       }
     });
   }
@@ -351,10 +438,19 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     });
   }
 
+  // Stage a category card image upload. The file goes to R2 immediately so we
+  // can preview it, but the image_url is NOT written to the category until
+  // the user clicks Save. The new URL is tracked via markUploaded so it gets
+  // cleaned up if the user discards changes; the previously-displayed image
+  // is queued for deletion (and will be skipped at commit() if it ends up
+  // being kept by a subsequent revert).
   async function handleImageUpload(categoryId, file) {
     if (!file) return;
     const cat = categories.find(c => c.id === categoryId);
-    const oldImage = cat?.image_url;
+    const originalImage = cat?.image_url || null;
+    const currentlyDisplayed = Object.prototype.hasOwnProperty.call(pendingCatImages, categoryId)
+      ? pendingCatImages[categoryId]
+      : originalImage;
     setUploadingImage(categoryId);
     try {
       const formData = new FormData();
@@ -363,32 +459,40 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       const response = await fetch(`${API_BASE}/api/upload/image?siteId=${siteConfig.id}`, { method: 'POST', headers: { 'Authorization': token ? `SiteAdmin ${token}` : '' }, body: formData });
       const result = await response.json();
       if (result.success && result.data?.images?.length > 0 && result.data.images[0].url) {
-        await updateCategory(categoryId, { imageUrl: result.data.images[0].url }, siteConfig?.id);
-        if (oldImage) {
-          import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-            deleteMediaFromR2(siteConfig.id, oldImage);
-          });
-        }
-        await loadCategories();
-        if (onSaved) onSaved();
+        const newUrl = result.data.images[0].url;
+        markUploaded(newUrl);
+        if (currentlyDisplayed) markForDeletion(currentlyDisplayed);
+        setPendingCatImages(prev => {
+          const next = { ...prev };
+          // If the new URL happens to match the original, drop the override
+          // so the snapshot diff sees no change. (Realistically URLs are
+          // unique per upload, but this keeps the bookkeeping consistent.)
+          if (newUrl === originalImage) delete next[categoryId];
+          else next[categoryId] = newUrl;
+          return next;
+        });
       } else { toast.error("Image upload failed"); }
     } catch (e) { toast.error(`Failed to upload image: ${e.message}`); }
     finally { setUploadingImage(null); }
   }
 
-  async function handleRemoveImage(categoryId) {
+  // Stage a category card image removal. If the original was already empty
+  // (the user uploaded then changed their mind), drop the override entirely
+  // so the snapshot diff hides the save bar. Otherwise stage a null override
+  // so the saved image_url will be cleared on Save.
+  function handleRemoveImage(categoryId) {
     const cat = categories.find(c => c.id === categoryId);
-    const oldImage = cat?.image_url;
-    try {
-      await updateCategory(categoryId, { imageUrl: null }, siteConfig?.id);
-      if (oldImage && siteConfig?.id) {
-        import('../../services/api.js').then(({ deleteMediaFromR2 }) => {
-          deleteMediaFromR2(siteConfig.id, oldImage);
-        });
-      }
-      await loadCategories();
-      if (onSaved) onSaved();
-    } catch (e) { toast.error(`Failed to remove image: ${e.message}`); }
+    const originalImage = cat?.image_url || null;
+    const currentlyDisplayed = Object.prototype.hasOwnProperty.call(pendingCatImages, categoryId)
+      ? pendingCatImages[categoryId]
+      : originalImage;
+    if (currentlyDisplayed) markForDeletion(currentlyDisplayed);
+    setPendingCatImages(prev => {
+      const next = { ...prev };
+      if (originalImage === null) delete next[categoryId];
+      else next[categoryId] = null;
+      return next;
+    });
   }
 
   function handleAddSubcategory(categoryId) {
@@ -496,7 +600,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
   function handleChooseToggle() {
     setChooseEnabled(!chooseEnabled);
-    setChooseChanged(true);
   }
 
   function handleChooseCatToggle(catId) {
@@ -504,7 +607,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       const current = prev[catId] || {};
       return { ...prev, [catId]: { ...current, visible: !current.visible } };
     });
-    setChooseChanged(true);
   }
 
   async function handleChooseImageUpload(catId, file) {
@@ -523,7 +625,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           const current = prev[catId] || {};
           return { ...prev, [catId]: { ...current, browseImage: newUrl } };
         });
-        setChooseChanged(true);
         markUploaded(newUrl);
         if (oldImage) markForDeletion(oldImage);
       } else { toast.error("Image upload failed"); }
@@ -538,7 +639,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       const current = prev[catId] || {};
       return { ...prev, [catId]: { ...current, browseImage: null } };
     });
-    setChooseChanged(true);
   }
 
   function findSubcatInfo(subcatId) {
@@ -569,14 +669,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     setNewSectionName('');
     setNewSectionSubtitle('');
     setNewSectionSubcatId('');
-    setSubcatChanged(true);
   }
 
   function handleRemoveSubcatSection(sectionId) {
     setSubcatSections(subcatSections.filter(s => s.id !== sectionId));
     setSectionOrder(sectionOrder.filter(s => !(s.type === 'subcategory' && s.id === sectionId)));
-    setSubcatChanged(true);
-    setOrderChanged(true);
   }
 
   function buildUnifiedSections() {
@@ -601,10 +698,9 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     const newArr = [...unified];
     [newArr[index], newArr[newIndex]] = [newArr[newIndex], newArr[index]];
     setSectionOrder(newArr.map(item => ({ type: item.type, id: item.id })));
-    setOrderChanged(true);
   }
 
-  const hasUnsavedChanges = chooseChanged || subcatChanged || orderChanged || homeTogglesChanged || catsChanged || subItemsChanged || appearanceChanged;
+  const hasUnsavedChanges = hasSnapshotChanges || homeTogglesChanged || catsChanged || subItemsChanged;
 
   // Publish dirty state so VisualCustomizer can prompt before discarding
   // unsaved category edits when the user switches sections. This editor
@@ -722,27 +818,40 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
         setPendingHomeToggles({});
       }
 
-      if (chooseChanged || subcatChanged || orderChanged || appearanceChanged) {
-        const settingsPayload = {};
-        if (chooseChanged) settingsPayload.chooseByCategory = { enabled: chooseEnabled, categories: chooseCats };
-        if (subcatChanged) settingsPayload.subcategorySections = subcatSections;
-        if (orderChanged) settingsPayload.homepageSectionOrder = sectionOrder;
-        if (appearanceChanged) {
-          Object.assign(settingsPayload, {
-            catTitleColor, catTitleFont,
-            catSubtitleColor, catSubtitleFont,
-            catDividerColor,
-            catViewAllStyle, catViewAllBg, catViewAllText,
-            catBannerOverlayColor,
-            catBannerOverlayOpacity: catBannerOverlayOpacity !== '' ? parseFloat(catBannerOverlayOpacity) : undefined,
-            chooseSectionTitle,
-            chooseCardShape,
-            chooseOverlayColor,
-            chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
-            chooseLabelColor, chooseLabelFont,
-            chooseExploreColor, chooseExploreFont,
-          });
+      // Persist staged category card image changes (uploads and removals).
+      // Each staged entry maps catId -> newUrl|null. We snapshot the
+      // delete list at the start of save and skip any cat that's been
+      // deleted (handleDeleteCategory already prunes pendingCatImages, but
+      // this is a defensive guard against any future code path that
+      // queues a delete without cleaning up the image override).
+      if (Object.keys(pendingCatImages).length > 0) {
+        for (const [catId, newUrl] of Object.entries(pendingCatImages)) {
+          if (pendingDeleteCats.includes(catId)) continue;
+          await updateCategory(catId, { imageUrl: newUrl }, siteConfig?.id);
         }
+      }
+
+      // Push the full settings payload whenever the snapshot diff says any
+      // settings-backed field changed. The backend merges, so sending all
+      // current values is safe and avoids tracking per-section flags.
+      if (hasSnapshotChanges) {
+        const settingsPayload = {
+          chooseByCategory: { enabled: chooseEnabled, categories: chooseCats },
+          subcategorySections: subcatSections,
+          homepageSectionOrder: sectionOrder,
+          catTitleColor, catTitleFont,
+          catSubtitleColor, catSubtitleFont,
+          catDividerColor,
+          catViewAllStyle, catViewAllBg, catViewAllText,
+          catBannerOverlayColor,
+          catBannerOverlayOpacity: catBannerOverlayOpacity !== '' ? parseFloat(catBannerOverlayOpacity) : undefined,
+          chooseSectionTitle,
+          chooseCardShape,
+          chooseOverlayColor,
+          chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
+          chooseLabelColor, chooseLabelFont,
+          chooseExploreColor, chooseExploreFont,
+        };
         const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': token ? `SiteAdmin ${token}` : '' },
@@ -759,17 +868,30 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       // All category/settings writes succeeded. Collect every image URL that
       // is still referenced in the saved state and commit the pending R2
       // queue. This deletes replaced/removed browseImages (and any category
-      // images freed by deletes above) while preserving the kept ones.
+      // images freed by deletes above) while preserving the kept ones. We
+      // build the kept-set from the *effective* image map (pending overrides
+      // win over server values) because categories haven't been reloaded yet.
       const keepUrls = [
         ...Object.values(chooseCats).map(c => c?.browseImage).filter(Boolean),
-        ...categories.flatMap(c => [c.image_url, ...(c.children || []).flatMap(ch => [ch.image_url, ...(ch.children || []).map(gc => gc.image_url)])]).filter(Boolean),
+        ...categories.flatMap(c => {
+          const effective = Object.prototype.hasOwnProperty.call(pendingCatImages, c.id)
+            ? pendingCatImages[c.id]
+            : c.image_url;
+          return [
+            effective,
+            ...(c.children || []).flatMap(ch => [ch.image_url, ...(ch.children || []).map(gc => gc.image_url)]),
+          ];
+        }).filter(Boolean),
       ];
+
       commit(keepUrls);
 
-      setChooseChanged(false);
-      setSubcatChanged(false);
-      setOrderChanged(false);
-      setAppearanceChanged(false);
+      // Hide the save bar immediately and disarm the diff check so the brief
+      // window where pending state is cleared but server data hasn't been
+      // refetched yet doesn't make the bar reappear. The snapshot capture
+      // effect re-fires once `loading` settles and re-snapshots from the
+      // freshly reloaded server state.
+      setPendingCatImages({});
       setPendingHomeToggles({});
       setPendingNewCats([]);
       setPendingDeleteCats([]);
@@ -777,6 +899,9 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setPendingSubAdds([]);
       setPendingSubDeletes([]);
       setPendingSubEdits({});
+      hasLoadedRef.current = false;
+      setHasSnapshotChanges(false);
+
       await loadCategories();
       if (refetchSite) await refetchSite();
       if (onSaved) onSaved();
@@ -918,21 +1043,28 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                             <i className="fas fa-image" style={{ fontSize: 14, marginBottom: 2 }} />
                             <span>Save first</span>
                           </div>
-                        ) : cat.image_url ? (
-                          <div style={{ position: 'relative' }}>
-                            <img src={resolveImageUrl(cat.image_url)} alt={cat.name} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
-                            <button onClick={() => handleRemoveImage(cat.id)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
-                            <label style={{ display: 'block', textAlign: 'center', marginTop: 3, fontSize: 10, color: uploadingImage === cat.id ? '#94a3b8' : '#3b82f6', cursor: uploadingImage === cat.id ? 'default' : 'pointer' }}>
-                              {uploadingImage === cat.id ? '...' : "Change"}
+                        ) : (() => {
+                          // Effective image reflects any staged upload/removal
+                          // so the preview matches what the user will save.
+                          const effectiveImage = Object.prototype.hasOwnProperty.call(pendingCatImages, cat.id)
+                            ? pendingCatImages[cat.id]
+                            : cat.image_url;
+                          return effectiveImage ? (
+                            <div style={{ position: 'relative' }}>
+                              <img src={resolveImageUrl(effectiveImage)} alt={cat.name} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                              <button onClick={() => handleRemoveImage(cat.id)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#ef4444', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
+                              <label style={{ display: 'block', textAlign: 'center', marginTop: 3, fontSize: 10, color: uploadingImage === cat.id ? '#94a3b8' : '#3b82f6', cursor: uploadingImage === cat.id ? 'default' : 'pointer' }}>
+                                {uploadingImage === cat.id ? '...' : "Change"}
+                                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }} disabled={uploadingImage === cat.id} />
+                              </label>
+                            </div>
+                          ) : (
+                            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: 60, border: '2px dashed #e2e8f0', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', fontSize: 11 }}>
+                              {uploadingImage === cat.id ? <span style={{ fontSize: 10 }}>...</span> : <><i className="fas fa-image" style={{ fontSize: 14, marginBottom: 2 }} /><span>Image</span></>}
                               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }} disabled={uploadingImage === cat.id} />
                             </label>
-                          </div>
-                        ) : (
-                          <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: 60, border: '2px dashed #e2e8f0', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', fontSize: 11 }}>
-                            {uploadingImage === cat.id ? <span style={{ fontSize: 10 }}>...</span> : <><i className="fas fa-image" style={{ fontSize: 14, marginBottom: 2 }} /><span>Image</span></>}
-                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files[0]) handleImageUpload(cat.id, e.target.files[0]); }} disabled={uploadingImage === cat.id} />
-                          </label>
-                        )}
+                          );
+                        })()}
                       </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1145,7 +1277,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 <input
                   type="text"
                   value={chooseSectionTitle}
-                  onChange={e => { setChooseSectionTitle(e.target.value); setAppearanceChanged(true); }}
+                  onChange={e => setChooseSectionTitle(e.target.value)}
                   placeholder="Choose by Category"
                   style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
                 />
@@ -1292,23 +1424,23 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Title Color</label>
-                <input type="color" value={catTitleColor || '#333333'} onChange={e => { setCatTitleColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                <input type="color" value={catTitleColor || '#333333'} onChange={e => setCatTitleColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <AdminFontPicker label="Title Font" value={catTitleFont} onChange={v => { setCatTitleFont(v); setAppearanceChanged(true); }} />
+              <AdminFontPicker label="Title Font" value={catTitleFont} onChange={v => setCatTitleFont(v)} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Subtitle Color</label>
-                <input type="color" value={catSubtitleColor || '#666666'} onChange={e => { setCatSubtitleColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                <input type="color" value={catSubtitleColor || '#666666'} onChange={e => setCatSubtitleColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => { setCatSubtitleFont(v); setAppearanceChanged(true); }} />
+              <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => setCatSubtitleFont(v)} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"View All" Button Style</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[['','Default'],['filled','Filled'],['outlined','Outlined'],['text-link','Text Link']].map(([val, label]) => (
-                    <button key={val} type="button" onClick={() => { setCatViewAllStyle(val); setAppearanceChanged(true); }} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${catViewAllStyle === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: catViewAllStyle === val ? '#eff6ff' : '#fff', color: catViewAllStyle === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
+                    <button key={val} type="button" onClick={() => setCatViewAllStyle(val)} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${catViewAllStyle === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: catViewAllStyle === val ? '#eff6ff' : '#fff', color: catViewAllStyle === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
                   ))}
                 </div>
               </div>
@@ -1317,23 +1449,23 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 <>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Button Color</label>
-                    <input type="color" value={catViewAllBg || '#5a3f2a'} onChange={e => { setCatViewAllBg(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                    <input type="color" value={catViewAllBg || '#5a3f2a'} onChange={e => setCatViewAllBg(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Button Text Color</label>
-                    <input type="color" value={catViewAllText || '#ffffff'} onChange={e => { setCatViewAllText(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                    <input type="color" value={catViewAllText || '#ffffff'} onChange={e => setCatViewAllText(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
                   </div>
                 </>
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Color</label>
-                <input type="color" value={catBannerOverlayColor || '#000000'} onChange={e => { setCatBannerOverlayColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                <input type="color" value={catBannerOverlayColor || '#000000'} onChange={e => setCatBannerOverlayColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
-                <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => { setCatBannerOverlayOpacity(e.target.value); setAppearanceChanged(true); }} style={{ width: '100%', accentColor: '#3b82f6' }} />
+                <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
               </div>
             </div>
           </SectionCard>
@@ -1345,34 +1477,34 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Shape</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[['','Default'],['rounded','Rounded'],['sharp','Sharp corners']].map(([val, label]) => (
-                    <button key={val} type="button" onClick={() => { setChooseCardShape(val); setAppearanceChanged(true); }} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${chooseCardShape === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: chooseCardShape === val ? '#eff6ff' : '#fff', color: chooseCardShape === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
+                    <button key={val} type="button" onClick={() => setChooseCardShape(val)} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${chooseCardShape === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: chooseCardShape === val ? '#eff6ff' : '#fff', color: chooseCardShape === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
                   ))}
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Color</label>
-                <input type="color" value={chooseOverlayColor || '#000000'} onChange={e => { setChooseOverlayColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                <input type="color" value={chooseOverlayColor || '#000000'} onChange={e => setChooseOverlayColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Opacity — {Math.round((parseFloat(chooseOverlayOpacity || 0.3)) * 100)}%</label>
-                <input type="range" min="0" max="0.9" step="0.05" value={chooseOverlayOpacity || 0.3} onChange={e => { setChooseOverlayOpacity(e.target.value); setAppearanceChanged(true); }} style={{ width: '100%', accentColor: '#3b82f6' }} />
+                <input type="range" min="0" max="0.9" step="0.05" value={chooseOverlayOpacity || 0.3} onChange={e => setChooseOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Label Text Color</label>
-                <input type="color" value={chooseLabelColor || '#333333'} onChange={e => { setChooseLabelColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                <input type="color" value={chooseLabelColor || '#333333'} onChange={e => setChooseLabelColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => { setChooseLabelFont(v); setAppearanceChanged(true); }} />
+              <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => setChooseLabelFont(v)} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"Explore" Button Color <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(modern theme)</span></label>
-                <input type="color" value={chooseExploreColor || '#ffffff'} onChange={e => { setChooseExploreColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+                <input type="color" value={chooseExploreColor || '#ffffff'} onChange={e => setChooseExploreColor(e.target.value)} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <AdminFontPicker label='"Explore" Button Font (modern theme)' value={chooseExploreFont} onChange={v => { setChooseExploreFont(v); setAppearanceChanged(true); }} />
+              <AdminFontPicker label='"Explore" Button Font (modern theme)' value={chooseExploreFont} onChange={v => setChooseExploreFont(v)} />
             </div>
           </SectionCard>
         </>
