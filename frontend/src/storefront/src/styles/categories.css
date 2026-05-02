@@ -19,6 +19,10 @@
     font-weight: 400;
 }
 
+.home-category-header .section-title::after {
+    background-color: var(--cat-divider-color, var(--color-accent));
+}
+
 .section-subtitle {
     font-size: 1.1rem;
     color: var(--cat-subtitle-color, #666);
