@@ -316,10 +316,6 @@ export function SiteProvider({ children }) {
       root.style.removeProperty('--hero-btn-border');
     }
 
-    // Hero height (Classic: vh; controlled via --hero-height on .hero-slider)
-    const heroHeightMap = { compact: '70vh', tall: '100vh' };
-    apply('--hero-height', heroHeightMap[settings.heroHeight] || '');
-
     // Hero text alignment (Classic .slide-content only)
     const heroTextAlign = settings.heroTextAlign || '';
     if (heroTextAlign && heroTextAlign !== 'center') {

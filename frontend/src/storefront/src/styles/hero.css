@@ -1,6 +1,6 @@
 .hero-slider {
     position: relative;
-    height: var(--hero-height, 95vh);
+    height: 95vh;
     min-height: 550px;
     overflow: hidden;
     background-color: #f8f8f5;

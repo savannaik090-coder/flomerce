@@ -8,10 +8,12 @@
   align-items: center;
   overflow: hidden;
 }
-.modern-hero[data-size="compact"] { min-height: 380px; }
+.modern-hero[data-size="compact"],
+.modern-hero[data-size="compact"] .modern-hero-inner { min-height: 380px; }
 .modern-hero[data-size="compact"] .modern-hero-image,
 .modern-hero[data-size="compact"] .modern-hero-image img { min-height: 380px; }
-.modern-hero[data-size="tall"] { min-height: 700px; }
+.modern-hero[data-size="tall"],
+.modern-hero[data-size="tall"] .modern-hero-inner { min-height: 700px; }
 .modern-hero[data-size="tall"] .modern-hero-image,
 .modern-hero[data-size="tall"] .modern-hero-image img { min-height: 700px; }
 
