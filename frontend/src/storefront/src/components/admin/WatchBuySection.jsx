@@ -4,6 +4,8 @@ import { getProducts } from '../../services/productService.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
@@ -29,6 +31,11 @@ export default function WatchBuySection({ onSaved }) {
   const [skuSearching, setSkuSearching] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [usingDefaults, setUsingDefaults] = useState(false);
+  const [wbHeadingColor, setWbHeadingColor] = useState('');
+  const [wbHeadingFont, setWbHeadingFont] = useState('');
+  const [wbDividerColor, setWbDividerColor] = useState('');
+  const [wbCardBorder, setWbCardBorder] = useState('');
+  const [activeView, setActiveView] = useState('content');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const skipNextChangeRef = useRef(false);
@@ -74,6 +81,10 @@ export default function WatchBuySection({ onSaved }) {
         const val = settings.showWatchAndBuy !== false;
         setShowSection(val);
         serverShowRef.current = val;
+        setWbHeadingColor(settings.wbHeadingColor || '');
+        setWbHeadingFont(settings.wbHeadingFont || '');
+        setWbDividerColor(settings.wbDividerColor || '');
+        setWbCardBorder(settings.wbCardBorder || '');
       }
     } catch (e) {
       console.error('Failed to load videos:', e);
@@ -194,7 +205,7 @@ export default function WatchBuySection({ onSaved }) {
         'Content-Type': 'application/json',
         'Authorization': token ? `SiteAdmin ${token}` : '',
       },
-      body: JSON.stringify({ settings: { watchAndBuyVideos: updatedVideos, showWatchAndBuy: showSection } }),
+      body: JSON.stringify({ settings: { watchAndBuyVideos: updatedVideos, showWatchAndBuy: showSection, wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder } }),
     });
     const result = await response.json();
     if (!response.ok || !result.success) {
@@ -213,7 +224,7 @@ export default function WatchBuySection({ onSaved }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { watchAndBuyVideos: videos, showWatchAndBuy: showSection } }),
+        body: JSON.stringify({ settings: { watchAndBuyVideos: videos, showWatchAndBuy: showSection, wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -325,6 +336,15 @@ export default function WatchBuySection({ onSaved }) {
         label="Show Watch & Buy"
         description="Toggle the shoppable video section on your homepage"
       />
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+        {[{ key: 'content', icon: 'fa-bars', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+          <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+            <i className={`fas ${tab.icon}`} />{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeView === 'content' && <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700 }}>Watch & Buy Videos</h2>
         <button className="btn btn-primary" onClick={openAdd}>
@@ -382,6 +402,28 @@ export default function WatchBuySection({ onSaved }) {
       </div>
 
       <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
+      </>}
+
+      {activeView === 'appearance' && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Appearance</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+              Customize the colors and typography of the Watch &amp; Buy section heading and video cards.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <AdminColorField label="Heading Color" value={wbHeadingColor} onChange={v => { setWbHeadingColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Divider Color" value={wbDividerColor} onChange={v => { setWbDividerColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Card Border Color" value={wbCardBorder} onChange={v => { setWbCardBorder(v); setHasChanges(true); }} />
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={v => { setWbHeadingFont(v); setHasChanges(true); }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

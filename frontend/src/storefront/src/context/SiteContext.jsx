@@ -359,6 +359,28 @@ export function SiteProvider({ children }) {
     const chooseCardShape = settings.chooseCardShape || '';
     root.style.setProperty('--choose-card-radius', chooseCardShape === 'sharp' ? '0px' : '25px');
 
+    // ── Watch & Buy appearance ───────────────────────────────────────
+    apply('--wb-heading-color', settings.wbHeadingColor);
+    apply('--wb-heading-font', settings.wbHeadingFont);
+    apply('--wb-divider-color', settings.wbDividerColor);
+    apply('--wb-card-border', settings.wbCardBorder);
+
+    // ── Featured Video appearance ────────────────────────────────────
+    apply('--fv-title-color', settings.fvTitleColor);
+    apply('--fv-title-font', settings.fvTitleFont);
+    apply('--fv-desc-color', settings.fvDescColor);
+    apply('--fv-desc-font', settings.fvDescFont);
+    apply('--fv-btn-bg', settings.fvBtnBg);
+    apply('--fv-btn-text', settings.fvBtnText);
+    const fvBtnRadiusMap = { sharp: '0px', rounded: '8px', pill: '999px' };
+    apply('--fv-btn-radius', fvBtnRadiusMap[settings.fvBtnRadius] || '');
+
+    // ── Shop the Look appearance ─────────────────────────────────────
+    apply('--stl-heading-color', settings.stlHeadingColor);
+    apply('--stl-heading-font', settings.stlHeadingFont);
+    apply('--stl-divider-color', settings.stlDividerColor);
+    apply('--stl-accent-color', settings.stlAccentColor);
+
     // Hero text alignment (Classic .slide-content only)
     const heroTextAlign = settings.heroTextAlign || '';
     if (heroTextAlign && heroTextAlign !== 'center') {

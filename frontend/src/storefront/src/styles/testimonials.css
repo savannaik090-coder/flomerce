@@ -44,9 +44,9 @@
 }
 
 .wb-title {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--wb-heading-font, 'Playfair Display', serif);
     font-size: 2.5rem;
-    color: #333;
+    color: var(--wb-heading-color, #333);
     margin-bottom: 0;
     font-weight: 400;
 }
@@ -54,7 +54,7 @@
 .wb-divider {
     width: 60px;
     height: 2px;
-    background-color: #d4af37;
+    background-color: var(--wb-divider-color, #d4af37);
     margin: 12px auto 0;
     border: none;
 }
@@ -111,7 +111,7 @@
 .wb-video-item.in-focus {
     transform: scale(1.05) translateY(-8px);
     box-shadow: 0 15px 35px rgba(212, 175, 55, 0.3);
-    border: 2px solid #d4af37;
+    border: 2px solid var(--wb-card-border, #d4af37);
 }
 
 .wb-video-wrapper {

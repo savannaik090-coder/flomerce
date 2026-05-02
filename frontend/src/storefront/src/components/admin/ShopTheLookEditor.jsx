@@ -5,6 +5,8 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { getShopTheLookDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
@@ -36,6 +38,11 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [stlHeadingColor, setStlHeadingColor] = useState('');
+  const [stlHeadingFont, setStlHeadingFont] = useState('');
+  const [stlDividerColor, setStlDividerColor] = useState('');
+  const [stlAccentColor, setStlAccentColor] = useState('');
+  const [activeView, setActiveView] = useState('content');
   const [products, setProducts] = useState([]);
   const [skuSearch, setSkuSearch] = useState('');
   const [editDotIndex, setEditDotIndex] = useState(null);
@@ -105,6 +112,10 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
           setDots(defaults.dots || []);
           setUsingDefaults(true);
         }
+        setStlHeadingColor(settings.stlHeadingColor || '');
+        setStlHeadingFont(settings.stlHeadingFont || '');
+        setStlDividerColor(settings.stlDividerColor || '');
+        setStlAccentColor(settings.stlAccentColor || '');
         serverValuesRef.current = JSON.stringify({
           title: config.title || '',
           mainImage: config.image || '',
@@ -235,6 +246,10 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         body: JSON.stringify({
           settings: {
             shopTheLook: { title, image: mainImage, imageKey: mainImageKey, dots },
+            stlHeadingColor,
+            stlHeadingFont,
+            stlDividerColor,
+            stlAccentColor,
           },
         }),
       });
@@ -295,6 +310,15 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+        {[{ key: 'content', icon: 'fa-bars', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+          <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+            <i className={`fas ${tab.icon}`} />{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeView === 'content' && <>
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: 20, marginBottom: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1e293b', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
           <i className="fas fa-heading" style={{ color: '#2563eb', fontSize: 14 }} />
@@ -608,6 +632,31 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
       )}
 
       <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      </>}
+
+      {activeView === 'appearance' && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <div className="card-header">
+            <h3 className="card-title">Appearance</h3>
+          </div>
+          <div className="card-content">
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+              Customize the heading, divider, and accent color used for dots, prices, and the view button.
+            </p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Heading</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <AdminColorField label="Heading Color" value={stlHeadingColor} onChange={v => { setStlHeadingColor(v); setHasChanges(true); }} />
+              <AdminFontPicker label="Heading Font" value={stlHeadingFont} onChange={v => { setStlHeadingFont(v); setHasChanges(true); }} />
+            </div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Divider &amp; Accent</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+              <AdminColorField label="Divider Color" value={stlDividerColor} onChange={v => { setStlDividerColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} onChange={v => { setStlAccentColor(v); setHasChanges(true); }} />
+            </div>
+            <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 
 import { getFeaturedVideoPlaceholders, getFeaturedVideoDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
@@ -21,6 +23,14 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
+  const [fvTitleColor, setFvTitleColor] = useState('');
+  const [fvTitleFont, setFvTitleFont] = useState('');
+  const [fvDescColor, setFvDescColor] = useState('');
+  const [fvDescFont, setFvDescFont] = useState('');
+  const [fvBtnBg, setFvBtnBg] = useState('');
+  const [fvBtnText, setFvBtnText] = useState('');
+  const [fvBtnRadius, setFvBtnRadius] = useState('');
+  const [activeView, setActiveView] = useState('content');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
@@ -61,6 +71,13 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
         setVideoKey(settings.featuredVideoKey || '');
         setChatLink(clVal);
         setChatButtonText(cbVal);
+        setFvTitleColor(settings.fvTitleColor || '');
+        setFvTitleFont(settings.fvTitleFont || '');
+        setFvDescColor(settings.fvDescColor || '');
+        setFvDescFont(settings.fvDescFont || '');
+        setFvBtnBg(settings.fvBtnBg || '');
+        setFvBtnText(settings.fvBtnText || '');
+        setFvBtnRadius(settings.fvBtnRadius || '');
         serverValuesRef.current = JSON.stringify({ title: tVal, description: dVal, videoUrl: vVal, chatLink: clVal, chatButtonText: cbVal });
       }
     } catch (e) {
@@ -150,6 +167,13 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
             featuredVideoKey: videoKey,
             featuredVideoChatLink: chatLink,
             featuredVideoChatButtonText: chatButtonText || "CHAT NOW",
+            fvTitleColor,
+            fvTitleFont,
+            fvDescColor,
+            fvDescFont,
+            fvBtnBg,
+            fvBtnText,
+            fvBtnRadius,
           }
         }),
       });
@@ -182,6 +206,14 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
           label="Show Featured Video"
           description="Toggle the featured video section on your homepage"
         />
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+          {[{ key: 'content', icon: 'fa-bars', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+            <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+              <i className={`fas ${tab.icon}`} />{tab.label}
+            </button>
+          ))}
+        </div>
+        {activeView === 'content' && <>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Featured Video Section</h3>
@@ -321,6 +353,46 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
         )}
 
         <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        </>}
+
+        {activeView === 'appearance' && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <h3 className="card-title">Appearance</h3>
+            </div>
+            <div className="card-content">
+              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+                Customize colors, fonts, and the action button style for the Featured Video section.
+              </p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <AdminColorField label="Title Color" value={fvTitleColor} onChange={v => { setFvTitleColor(v); setHasChanges(true); }} />
+                <AdminFontPicker label="Title Font" value={fvTitleFont} onChange={v => { setFvTitleFont(v); setHasChanges(true); }} />
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <AdminColorField label="Description Color" value={fvDescColor} onChange={v => { setFvDescColor(v); setHasChanges(true); }} />
+                <AdminFontPicker label="Description Font" value={fvDescFont} onChange={v => { setFvDescFont(v); setHasChanges(true); }} />
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Button</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <AdminColorField label="Button Background" value={fvBtnBg} onChange={v => { setFvBtnBg(v); setHasChanges(true); }} />
+                <AdminColorField label="Button Text" value={fvBtnText} onChange={v => { setFvBtnText(v); setHasChanges(true); }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Button Shape</label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {[{ v: '', label: 'Default' }, { v: 'sharp', label: 'Sharp' }, { v: 'rounded', label: 'Rounded' }, { v: 'pill', label: 'Pill' }].map(opt => (
+                    <button key={opt.v} type="button" onClick={() => { setFvBtnRadius(opt.v); setHasChanges(true); }} style={{ padding: '8px 16px', border: `2px solid ${fvBtnRadius === opt.v ? '#2563eb' : '#e2e8f0'}`, borderRadius: 6, background: fvBtnRadius === opt.v ? '#eff6ff' : '#fff', color: fvBtnRadius === opt.v ? '#2563eb' : '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
