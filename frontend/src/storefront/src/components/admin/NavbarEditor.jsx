@@ -39,6 +39,9 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
   const serverValuesRef = useRef(null);
+  // Tracks the last *saved* logo URL so removing an unsaved upload restores
+  // to the saved state instead of going empty, keeping Save bar correct.
+  const savedLogoRef = useRef('');
   const [logoUrl, setLogoUrl] = useState('');
   const [logoSize, setLogoSize] = useState(60);
   const [logoPosition, setLogoPosition] = useState('left');
@@ -146,6 +149,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         const navTransparentVal = settings.navTransparent === true;
         const navTransparentTextVal = settings.navTransparentText || '';
         setNavbarMenus(menusVal);
+        savedLogoRef.current = logoVal;
         setLogoUrl(logoVal);
         setLogoSize(sizeVal);
         setLogoPosition(posVal);
@@ -243,10 +247,14 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   }
 
   function handleRemoveLogo() {
+    if (!logoUrl) return;
     // Defer deletion to save; if user cancels, live site keeps its logo.
-    if (logoUrl) pendingMedia.markForDeletion(logoUrl);
-    setLogoUrl('');
-    if (onPreviewUpdate) onPreviewUpdate({ logoUrl: '' });
+    pendingMedia.markForDeletion(logoUrl);
+    // If removing an unsaved upload (not yet saved to server), restore the
+    // original saved logo so the Save bar goes back to "no changes".
+    const restoreUrl = logoUrl !== savedLogoRef.current ? savedLogoRef.current : '';
+    setLogoUrl(restoreUrl);
+    if (onPreviewUpdate) onPreviewUpdate({ logoUrl: restoreUrl });
   }
 
   async function handleSave(e) {
@@ -284,6 +292,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
+        savedLogoRef.current = logoUrl;
         serverValuesRef.current = JSON.stringify({
           navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
           navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
