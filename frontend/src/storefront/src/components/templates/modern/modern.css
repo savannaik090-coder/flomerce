@@ -932,13 +932,13 @@ body.mn-nav-transparent .modern-hero {
   inset-inline-start: 0;
   inset-inline-end: 0;
   padding: 24px 32px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  background: linear-gradient(transparent, var(--cat-banner-overlay-color, rgba(0, 0, 0, 0.6)));
   opacity: 0;
   transition: opacity 0.3s;
 }
 
 .mn-category-banner:hover .mn-category-banner-overlay {
-  opacity: 1;
+  opacity: var(--cat-banner-overlay-opacity, 1);
 }
 
 .mn-category-banner-text {
@@ -3131,10 +3131,10 @@ body.mn-nav-transparent .modern-hero {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--choose-explore-font, 'Inter', sans-serif);
   font-size: 0.78rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--choose-explore-color, #fff);
   text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0;

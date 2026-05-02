@@ -356,6 +356,8 @@ export function SiteProvider({ children }) {
     }
     apply('--choose-label-color', settings.chooseLabelColor);
     apply('--choose-label-font',  settings.chooseLabelFont);
+    apply('--choose-explore-color', settings.chooseExploreColor);
+    apply('--choose-explore-font',  settings.chooseExploreFont);
     const chooseCardShape = settings.chooseCardShape || '';
     root.style.setProperty('--choose-card-radius', chooseCardShape === 'sharp' ? '0px' : '25px');
 

@@ -125,6 +125,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [chooseOverlayOpacity, setChooseOverlayOpacity] = useState('');
   const [chooseLabelColor, setChooseLabelColor] = useState('');
   const [chooseLabelFont, setChooseLabelFont] = useState('');
+  const [chooseExploreColor, setChooseExploreColor] = useState('');
+  const [chooseExploreFont, setChooseExploreFont] = useState('');
   const [appearanceChanged, setAppearanceChanged] = useState(false);
 
   const dirtyRef = useRef(false);
@@ -212,6 +214,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setChooseOverlayOpacity(settings.chooseOverlayOpacity !== undefined ? String(settings.chooseOverlayOpacity) : '');
       setChooseLabelColor(settings.chooseLabelColor || '');
       setChooseLabelFont(settings.chooseLabelFont || '');
+      setChooseExploreColor(settings.chooseExploreColor || '');
+      setChooseExploreFont(settings.chooseExploreFont || '');
       setSettingsLoaded(true);
     }
   }, [siteConfig?.settings]);
@@ -234,6 +238,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       chooseOverlayColor,
       chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
       chooseLabelColor, chooseLabelFont,
+      chooseExploreColor, chooseExploreFont,
     });
   }, [
     settingsLoaded, chooseEnabled, chooseCats, subcatSections, sectionOrder,
@@ -242,6 +247,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     catBannerOverlayColor, catBannerOverlayOpacity,
     chooseSectionTitle, chooseCardShape,
     chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont,
+    chooseExploreColor, chooseExploreFont,
   ]);
 
   useEffect(() => {
@@ -734,6 +740,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             chooseOverlayColor,
             chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
             chooseLabelColor, chooseLabelFont,
+            chooseExploreColor, chooseExploreFont,
           });
         }
         const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
@@ -1298,11 +1305,6 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => { setCatSubtitleFont(v); setAppearanceChanged(true); }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Divider Line Color <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(classic theme)</span></label>
-                <input type="color" value={catDividerColor || '#d4af37'} onChange={e => { setCatDividerColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"View All" Button Style</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[['','Default'],['filled','Filled'],['outlined','Outlined'],['text-link','Text Link']].map(([val, label]) => (
@@ -1364,6 +1366,13 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               </div>
 
               <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => { setChooseLabelFont(v); setAppearanceChanged(true); }} />
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"Explore" Button Color <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(modern theme)</span></label>
+                <input type="color" value={chooseExploreColor || '#ffffff'} onChange={e => { setChooseExploreColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
+              </div>
+
+              <AdminFontPicker label='"Explore" Button Font (modern theme)' value={chooseExploreFont} onChange={v => { setChooseExploreFont(v); setAppearanceChanged(true); }} />
             </div>
           </SectionCard>
         </>
