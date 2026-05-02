@@ -383,6 +383,73 @@ export function SiteProvider({ children }) {
     apply('--stl-divider-color', settings.stlDividerColor);
     apply('--stl-accent-color', settings.stlAccentColor);
 
+    // ── Store Locations appearance (Classic) ─────────────────────────
+    apply('--sl-classic-section-bg',     settings.slClassicSectionBg);
+    apply('--sl-classic-title-color',    settings.slClassicTitleColor);
+    apply('--sl-classic-title-font',     settings.slClassicTitleFont);
+    apply('--sl-classic-subtitle-color', settings.slClassicSubtitleColor);
+    apply('--sl-classic-subtitle-font',  settings.slClassicSubtitleFont);
+    apply('--sl-classic-card-bg',        settings.slClassicCardBg);
+    apply('--sl-classic-storename-color',settings.slClassicStoreNameColor);
+    apply('--sl-classic-storename-font', settings.slClassicStoreNameFont);
+    apply('--sl-classic-info-color',     settings.slClassicInfoTextColor);
+    apply('--sl-classic-accent-color',   settings.slClassicAccentColor);
+    apply('--sl-classic-bookbtn-bg',     settings.slClassicBookBtnBg);
+    apply('--sl-classic-bookbtn-text',   settings.slClassicBookBtnText);
+    apply('--sl-classic-arrow-bg',       settings.slClassicArrowBg);
+    apply('--sl-classic-arrow-icon',     settings.slClassicArrowIcon);
+
+    // ── Store Locations appearance (Modern) ──────────────────────────
+    apply('--sl-modern-section-bg',     settings.slModernSectionBg);
+    apply('--sl-modern-title-color',    settings.slModernTitleColor);
+    apply('--sl-modern-title-font',     settings.slModernTitleFont);
+    apply('--sl-modern-subtitle-color', settings.slModernSubtitleColor);
+    apply('--sl-modern-subtitle-font',  settings.slModernSubtitleFont);
+    apply('--sl-modern-card-bg',        settings.slModernCardBg);
+    apply('--sl-modern-storename-color',settings.slModernStoreNameColor);
+    apply('--sl-modern-storename-font', settings.slModernStoreNameFont);
+    apply('--sl-modern-info-color',     settings.slModernInfoTextColor);
+    apply('--sl-modern-accent-color',   settings.slModernAccentColor);
+    apply('--sl-modern-bookbtn-bg',     settings.slModernBookBtnBg);
+    apply('--sl-modern-bookbtn-text',   settings.slModernBookBtnText);
+    apply('--sl-modern-arrow-bg',       settings.slModernArrowBg);
+    apply('--sl-modern-arrow-icon',     settings.slModernArrowIcon);
+
+    // ── Customer Reviews appearance (Classic) ────────────────────────
+    apply('--cr-classic-section-bg',     settings.crClassicSectionBg);
+    apply('--cr-classic-title-color',    settings.crClassicTitleColor);
+    apply('--cr-classic-title-font',     settings.crClassicTitleFont);
+    apply('--cr-classic-subtitle-color', settings.crClassicSubtitleColor);
+    apply('--cr-classic-subtitle-font',  settings.crClassicSubtitleFont);
+    apply('--cr-classic-card-bg',        settings.crClassicCardBg);
+    apply('--cr-classic-card-border',    settings.crClassicCardBorder);
+    apply('--cr-classic-text-color',     settings.crClassicTextColor);
+    apply('--cr-classic-text-font',      settings.crClassicTextFont);
+    apply('--cr-classic-name-color',     settings.crClassicNameColor);
+    apply('--cr-classic-stars-color',    settings.crClassicStarsColor);
+    apply('--cr-classic-quote-color',    settings.crClassicQuoteColor);
+    apply('--cr-classic-cta-bg',         settings.crClassicCtaBtnBg);
+    apply('--cr-classic-cta-text',       settings.crClassicCtaBtnText);
+    apply('--cr-classic-arrow-bg',       settings.crClassicArrowBg);
+    apply('--cr-classic-arrow-icon',     settings.crClassicArrowIcon);
+
+    // ── Customer Reviews appearance (Modern) ─────────────────────────
+    apply('--cr-modern-section-bg',     settings.crModernSectionBg);
+    apply('--cr-modern-title-color',    settings.crModernTitleColor);
+    apply('--cr-modern-title-font',     settings.crModernTitleFont);
+    apply('--cr-modern-subtitle-color', settings.crModernSubtitleColor);
+    apply('--cr-modern-subtitle-font',  settings.crModernSubtitleFont);
+    apply('--cr-modern-card-bg',        settings.crModernCardBg);
+    apply('--cr-modern-card-border',    settings.crModernCardBorder);
+    apply('--cr-modern-text-color',     settings.crModernTextColor);
+    apply('--cr-modern-text-font',      settings.crModernTextFont);
+    apply('--cr-modern-name-color',     settings.crModernNameColor);
+    apply('--cr-modern-stars-color',    settings.crModernStarsColor);
+    apply('--cr-modern-cta-bg',         settings.crModernCtaBtnBg);
+    apply('--cr-modern-cta-text',       settings.crModernCtaBtnText);
+    apply('--cr-modern-arrow-bg',       settings.crModernArrowBg);
+    apply('--cr-modern-arrow-icon',     settings.crModernArrowIcon);
+
     // Arrow button customization (shared by classic + modern).
     apply('--hero-arrow-bg',    settings.heroArrowBg);
     apply('--hero-arrow-color', settings.heroArrowColor);

@@ -2561,9 +2561,207 @@ body.mn-nav-transparent .modern-hero {
   width: 24px;
 }
 
+/* --- Modern Store Locations (StoreLocationsModern) --- */
+.mn-store-locations {
+  background-color: var(--sl-modern-section-bg, #fff);
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  padding: 80px 0;
+}
+.mn-store-locations-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.mn-store-locations-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.mn-store-locations-title {
+  font-family: var(--sl-modern-title-font, 'Inter', sans-serif);
+  font-weight: 800;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  color: var(--sl-modern-title-color, #111);
+  margin: 0 0 8px;
+}
+.mn-store-locations-subtitle {
+  font-family: var(--sl-modern-subtitle-font, 'Inter', sans-serif);
+  font-weight: 400;
+  color: var(--sl-modern-subtitle-color, #666);
+  font-size: 1rem;
+  margin: 0;
+}
+.mn-store-locations-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.mn-store-locations-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #ddd;
+  border-radius: 0;
+  color: var(--sl-modern-arrow-icon, #111);
+  background: var(--sl-modern-arrow-bg, #fff);
+  box-shadow: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.mn-store-locations-arrow:hover {
+  filter: invert(1);
+}
+.mn-store-locations-arrow-left { inset-inline-start: -24px; }
+.mn-store-locations-arrow-right { inset-inline-end: -24px; }
+.mn-store-locations-scroll {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding: 4px 0;
+  flex: 1;
+}
+.mn-store-locations-scroll::-webkit-scrollbar {
+  display: none;
+}
+.mn-store-card {
+  min-width: 320px;
+  max-width: 380px;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  overflow: hidden;
+  transition: border-color 0.2s;
+  background: var(--sl-modern-card-bg, #fff);
+  display: flex;
+  flex-direction: column;
+}
+.mn-store-card:hover {
+  border-color: #111;
+}
+.mn-store-card-image {
+  height: 220px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+.mn-store-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.mn-store-card-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mn-store-card-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mn-store-card-name {
+  font-family: var(--sl-modern-storename-font, 'Inter', sans-serif);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--sl-modern-storename-color, #111);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.mn-store-card-info {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.875rem;
+  color: var(--sl-modern-info-color, #666);
+  line-height: 1.55;
+  margin: 0;
+}
+.mn-store-card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  color: var(--sl-modern-info-color, #666);
+}
+.mn-store-card-row i {
+  color: var(--sl-modern-accent-color, #111);
+  font-size: 12px;
+}
+.mn-store-card-phone {
+  color: var(--sl-modern-info-color, #666);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.mn-store-card-phone:hover {
+  color: var(--sl-modern-accent-color, #111);
+}
+.mn-store-card-maplink {
+  color: var(--sl-modern-accent-color, #111);
+  text-decoration: none;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+.mn-store-card-maplink:hover { text-decoration: underline; }
+.mn-store-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.mn-store-book-btn {
+  flex: 1;
+  background: var(--sl-modern-bookbtn-bg, #111);
+  color: var(--sl-modern-bookbtn-text, #fff);
+  border: none;
+  border-radius: 0;
+  padding: 12px 18px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: opacity 0.2s;
+}
+.mn-store-book-btn:hover { opacity: 0.85; }
+.mn-store-call-btn {
+  width: 44px;
+  height: 44px;
+  background: #fff;
+  border: 1px solid #111;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mn-store-call-btn:hover {
+  background: #111;
+  color: #fff;
+}
+
 /* --- Modern Customer Reviews (CustomerReviewsModern) --- */
 .mn-customer-reviews {
-  background-color: #fff;
+  background-color: var(--cr-modern-section-bg, #fff);
   font-family: 'Inter', 'Helvetica Neue', sans-serif;
   border-top: 1px solid #eee;
   border-bottom: 1px solid #eee;
@@ -2579,17 +2777,17 @@ body.mn-nav-transparent .modern-hero {
   margin-bottom: 48px;
 }
 .mn-customer-reviews-title {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--cr-modern-title-font, 'Inter', sans-serif);
   font-weight: 800;
   font-size: 2rem;
   letter-spacing: -0.02em;
-  color: #111;
+  color: var(--cr-modern-title-color, #111);
   margin: 0 0 8px;
 }
 .mn-customer-reviews-subtitle {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--cr-modern-subtitle-font, 'Inter', sans-serif);
   font-weight: 400;
-  color: #666;
+  color: var(--cr-modern-subtitle-color, #666);
   font-size: 1rem;
   margin: 0;
 }
@@ -2607,8 +2805,8 @@ body.mn-nav-transparent .modern-hero {
   height: 48px;
   border: 1px solid #ddd;
   border-radius: 0;
-  color: #111;
-  background: #fff;
+  color: var(--cr-modern-arrow-icon, #111);
+  background: var(--cr-modern-arrow-bg, #fff);
   box-shadow: none;
   cursor: pointer;
   display: flex;
@@ -2617,9 +2815,7 @@ body.mn-nav-transparent .modern-hero {
   transition: all 0.2s;
 }
 .mn-customer-reviews-arrow:hover {
-  background: #111;
-  color: #fff;
-  border-color: #111;
+  filter: invert(1);
 }
 .mn-customer-reviews-arrow-left {
   inset-inline-start: -24px;
@@ -2645,11 +2841,11 @@ body.mn-nav-transparent .modern-hero {
   max-width: 340px;
   flex: 0 0 auto;
   scroll-snap-align: start;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--cr-modern-card-border, #e5e5e5);
   border-radius: 0;
   overflow: hidden;
   transition: border-color 0.2s;
-  background: #fff;
+  background: var(--cr-modern-card-bg, #fff);
 }
 .mn-customer-review-card:hover {
   border-color: #111;
@@ -2669,10 +2865,10 @@ body.mn-nav-transparent .modern-hero {
   padding: 20px;
 }
 .mn-customer-review-text p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--cr-modern-text-font, 'Inter', sans-serif);
   font-style: normal;
   font-size: 0.9rem;
-  color: #444;
+  color: var(--cr-modern-text-color, #444);
   line-height: 1.7;
   margin: 0 0 12px;
 }
@@ -2682,12 +2878,12 @@ body.mn-nav-transparent .modern-hero {
   gap: 8px;
 }
 .mn-customer-review-stars span {
-  color: #111;
+  color: var(--cr-modern-stars-color, #111);
   font-size: 14px;
 }
 .mn-customer-review-author {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--cr-modern-name-color, #666);
   font-weight: 500;
 }
 .mn-customer-reviews-cta {
@@ -2695,7 +2891,7 @@ body.mn-nav-transparent .modern-hero {
   margin-top: 40px;
 }
 .mn-customer-reviews-cta-btn {
-  background: #111;
+  background: var(--cr-modern-cta-bg, #111);
   border-radius: 0;
   box-shadow: none;
   font-family: 'Inter', sans-serif;
@@ -2704,7 +2900,7 @@ body.mn-nav-transparent .modern-hero {
   font-size: 0.85rem;
   padding: 14px 36px;
   transition: opacity 0.2s;
-  color: #fff;
+  color: var(--cr-modern-cta-text, #fff);
   border: none;
   cursor: pointer;
 }

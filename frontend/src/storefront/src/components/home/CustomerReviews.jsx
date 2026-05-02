@@ -80,7 +80,7 @@ export default function CustomerReviews() {
                       <span>{'⭐'.repeat(review.rating || 5)}</span>
                     </div>
                     {review.name && (
-                      <span style={{ fontSize: '0.85rem', color: '#888' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--cr-classic-name-color, #888)' }}>
                         — {usingDefaultReviews ? <TranslatedText text={review.name} /> : review.name}
                       </span>
                     )}

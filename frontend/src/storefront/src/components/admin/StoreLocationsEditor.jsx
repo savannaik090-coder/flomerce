@@ -2,11 +2,73 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import SectionToggle from './SectionToggle.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
 const EMPTY_STORE = { name: '', address: '', hours: '', phone: '', mapLink: '', image: '' };
+
+// Per-template field definitions for the Appearance tab.
+// `key` = settings key suffix; full key is `sl{Template}{Key}` so e.g. SectionBg → slClassicSectionBg.
+const APPEARANCE_FIELDS = [
+  { key: 'SectionBg',      label: 'Section Background',  type: 'color' },
+  { key: 'TitleColor',     label: 'Title Color',         type: 'color' },
+  { key: 'TitleFont',      label: 'Title Font',          type: 'font'  },
+  { key: 'SubtitleColor',  label: 'Subtitle Color',      type: 'color' },
+  { key: 'SubtitleFont',   label: 'Subtitle Font',       type: 'font'  },
+  { key: 'CardBg',         label: 'Card Background',     type: 'color' },
+  { key: 'StoreNameColor', label: 'Store Name Color',    type: 'color' },
+  { key: 'StoreNameFont',  label: 'Store Name Font',     type: 'font'  },
+  { key: 'InfoTextColor',  label: 'Info Text Color (address / hours / phone)', type: 'color' },
+  { key: 'AccentColor',    label: 'Accent Color (underline / icons)',          type: 'color' },
+  { key: 'BookBtnBg',      label: '"Book Appointment" Button Color',           type: 'color' },
+  { key: 'BookBtnText',    label: '"Book Appointment" Button Text Color',      type: 'color' },
+  { key: 'ArrowBg',        label: 'Scroll Arrow Background',                   type: 'color' },
+  { key: 'ArrowIcon',      label: 'Scroll Arrow Icon Color',                   type: 'color' },
+];
+
+// Template-specific defaults shown in the swatch when nothing is saved.
+// These must match the CSS fallbacks in locations.css / modern.css.
+const TEMPLATE_DEFAULTS = {
+  classic: {
+    SectionBg: '#f8f8f5',
+    TitleColor: '#333333',
+    SubtitleColor: '#666666',
+    CardBg: '#ffffff',
+    StoreNameColor: '#333333',
+    InfoTextColor: '#666666',
+    AccentColor: '#B08C4C',
+    BookBtnBg: '#333333',
+    BookBtnText: '#ffffff',
+    ArrowBg: '#ffffff',
+    ArrowIcon: '#333333',
+  },
+  modern: {
+    SectionBg: '#ffffff',
+    TitleColor: '#111111',
+    SubtitleColor: '#666666',
+    CardBg: '#ffffff',
+    StoreNameColor: '#111111',
+    InfoTextColor: '#666666',
+    AccentColor: '#111111',
+    BookBtnBg: '#111111',
+    BookBtnText: '#ffffff',
+    ArrowBg: '#ffffff',
+    ArrowIcon: '#111111',
+  },
+};
+
+function buildEmptyAppearance() {
+  const out = {};
+  for (const tmpl of ['Classic', 'Modern']) {
+    for (const f of APPEARANCE_FIELDS) {
+      out[`sl${tmpl}${f.key}`] = '';
+    }
+  }
+  return out;
+}
 
 function compressImage(file, maxWidth = 1200, quality = 0.85) {
   return new Promise((resolve) => {
@@ -31,6 +93,9 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
 export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
+  const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
+  const [activeView, setActiveView] = useState('content');
+  const [activeTemplate, setActiveTemplate] = useState('Classic');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
@@ -47,10 +112,15 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ stores });
+    const current = JSON.stringify({ stores, appearance });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ storeLocations: stores.filter(s => s.name || s.address) });
-  }, [stores]);
+    if (onPreviewUpdate) {
+      onPreviewUpdate({
+        storeLocations: stores.filter(s => s.name || s.address),
+        ...appearance,
+      });
+    }
+  }, [stores, appearance]);
 
   async function loadSettings() {
     setLoading(true);
@@ -76,8 +146,13 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
             image: '',
           }];
         }
+        const appearanceVal = buildEmptyAppearance();
+        for (const k of Object.keys(appearanceVal)) {
+          if (typeof settings[k] === 'string') appearanceVal[k] = settings[k];
+        }
         setStores(storesVal);
-        serverValuesRef.current = JSON.stringify({ stores: storesVal });
+        setAppearance(appearanceVal);
+        serverValuesRef.current = JSON.stringify({ stores: storesVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load store locations:', e);
@@ -89,6 +164,10 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
 
   function updateStore(index, field, value) {
     setStores(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+  }
+
+  function updateAppearance(key, value) {
+    setAppearance(prev => ({ ...prev, [key]: value }));
   }
 
   function addStore() {
@@ -144,7 +223,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
   }
 
   async function handleSave(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
     setStatus('');
     try {
@@ -159,13 +238,14 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
         body: JSON.stringify({
           settings: {
             storeLocations: persistedStores,
-          }
+            ...appearance,
+          },
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ stores });
+        serverValuesRef.current = JSON.stringify({ stores, appearance });
         setHasChanges(false);
         const cleanup = await pendingMedia.commit(persistedStores.map(s => s.image).filter(Boolean));
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
@@ -188,118 +268,194 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
   return (
     <div style={{ maxWidth: 700 }}>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
-      {onToggleVisibility && (
-        <SectionToggle enabled={sectionVisible} onChange={() => onToggleVisibility?.()} label="Store Locations Section" />
-      )}
       <form onSubmit={handleSave}>
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div className="card-header">
-            <h3 className="card-title">Come Visit Us at Our Store</h3>
-          </div>
-          <div className="card-content">
-            {stores.map((store, index) => (
-              <div key={index} style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: '#fafbfc' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
-                    <i className="fas fa-store" style={{ marginInlineEnd: 6, color: '#2563eb' }} />
-                    {stores.length > 1 ? `Store #${index + 1}` : "Store"}
-                  </span>
-                  {stores.length > 1 && (
-                    <button type="button" onClick={() => removeStore(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-                      <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />Remove
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Store Image</label>
-                  {store.image ? (
-                    <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-                      <img src={store.image} alt={store.name || "Store"} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', borderRadius: 8 }} />
-                      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => { if (!uploading[index] && fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
-                          disabled={uploading[index]}
-                          style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: uploading[index] ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', opacity: uploading[index] ? 0.7 : 1 }}
-                        >
-                          {uploading[index] ? (
-                            <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Changing...</>
-                          ) : (
-                            <><i className="fas fa-camera" style={{ marginInlineEnd: 4 }} />Change</>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { const oldImg = stores[index]?.image; if (oldImg) pendingMedia.markForDeletion(oldImg); updateStore(index, 'image', ''); }}
-                          style={{ background: 'rgba(220,38,38,0.8)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
-                        >
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => { if (!uploading[index] && fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
-                      style={{ border: '2px dashed #cbd5e1', borderRadius: 8, padding: '28px 16px', textAlign: 'center', cursor: uploading[index] ? 'not-allowed' : 'pointer', background: '#fff', transition: 'border-color 0.2s' }}
-                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#2563eb'}
-                      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
-                    >
-                      {uploading[index] ? (
-                        <span style={{ fontSize: 13, color: '#64748b' }}>
-                          <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }} />Uploading...
-                        </span>
-                      ) : (
-                        <>
-                          <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, color: '#94a3b8', display: 'block', marginBottom: 6 }} />
-                          <span style={{ fontSize: 13, color: '#64748b' }}>Click to upload store image</span>
-                          <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginTop: 4 }}>JPG, PNG, or WebP (max 10MB)</span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    ref={(el) => { fileInputRefs.current[index] = el; }}
-                    onChange={(e) => { handleImageUpload(index, e.target.files[0]); e.target.value = ''; }}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Store Name</label>
-                  <input type="text" value={store.name} onChange={(e) => updateStore(index, 'name', e.target.value)} placeholder="e.g., Main Showroom" style={inputStyle} />
-                </div>
-
-                <div style={{ marginBottom: 12 }}>
-                  <label style={labelStyle}>Address</label>
-                  <textarea value={store.address} onChange={(e) => updateStore(index, 'address', e.target.value)} rows={2} placeholder="Full store address" style={{ ...inputStyle, resize: 'vertical' }} />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Business Hours</label>
-                    <input type="text" value={store.hours} onChange={(e) => updateStore(index, 'hours', e.target.value)} placeholder="e.g., Mon-Sat 11am - 8pm" style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Phone</label>
-                    <PhoneInput value={store.phone} onChange={val => updateStore(index, 'phone', val)} countryCode="IN" />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Google Maps Link</label>
-                  <input type="text" value={store.mapLink} onChange={(e) => updateStore(index, 'mapLink', e.target.value)} placeholder="https://maps.google.com/..." style={inputStyle} />
-                </div>
-              </div>
-            ))}
-
-            <button type="button" onClick={addStore} style={{ width: '100%', padding: '10px 16px', border: '2px dashed #cbd5e1', borderRadius: 8, background: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>
-              <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Another Store
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+          {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+            <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+              <i className={`fas ${tab.icon}`} />{tab.label}
             </button>
-          </div>
+          ))}
         </div>
+
+        {activeView === 'content' && <>
+          {onToggleVisibility && (
+            <SectionToggle enabled={sectionVisible} onChange={() => onToggleVisibility?.()} label="Store Locations Section" />
+          )}
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <h3 className="card-title">Come Visit Us at Our Store</h3>
+            </div>
+            <div className="card-content">
+              {stores.map((store, index) => (
+                <div key={index} style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 16, background: '#fafbfc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+                      <i className="fas fa-store" style={{ marginInlineEnd: 6, color: '#2563eb' }} />
+                      {stores.length > 1 ? `Store #${index + 1}` : "Store"}
+                    </span>
+                    {stores.length > 1 && (
+                      <button type="button" onClick={() => removeStore(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+                        <i className="fas fa-trash" style={{ marginInlineEnd: 4 }} />Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={labelStyle}>Store Image</label>
+                    {store.image ? (
+                      <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                        <img src={store.image} alt={store.name || "Store"} style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block', borderRadius: 8 }} />
+                        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => { if (!uploading[index] && fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
+                            disabled={uploading[index]}
+                            style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: uploading[index] ? 'not-allowed' : 'pointer', fontSize: 12, fontFamily: 'inherit', opacity: uploading[index] ? 0.7 : 1 }}
+                          >
+                            {uploading[index] ? (
+                              <><i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 4 }} />Changing...</>
+                            ) : (
+                              <><i className="fas fa-camera" style={{ marginInlineEnd: 4 }} />Change</>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { const oldImg = stores[index]?.image; if (oldImg) pendingMedia.markForDeletion(oldImg); updateStore(index, 'image', ''); }}
+                            style={{ background: 'rgba(220,38,38,0.8)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                          >
+                            <i className="fas fa-trash" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => { if (!uploading[index] && fileInputRefs.current[index]) fileInputRefs.current[index].click(); }}
+                        style={{ border: '2px dashed #cbd5e1', borderRadius: 8, padding: '28px 16px', textAlign: 'center', cursor: uploading[index] ? 'not-allowed' : 'pointer', background: '#fff', transition: 'border-color 0.2s' }}
+                        onMouseEnter={(e) => e.currentTarget.style.borderColor = '#2563eb'}
+                        onMouseLeave={(e) => e.currentTarget.style.borderColor = '#cbd5e1'}
+                      >
+                        {uploading[index] ? (
+                          <span style={{ fontSize: 13, color: '#64748b' }}>
+                            <i className="fas fa-spinner fa-spin" style={{ marginInlineEnd: 6 }} />Uploading...
+                          </span>
+                        ) : (
+                          <>
+                            <i className="fas fa-cloud-upload-alt" style={{ fontSize: 24, color: '#94a3b8', display: 'block', marginBottom: 6 }} />
+                            <span style={{ fontSize: 13, color: '#64748b' }}>Click to upload store image</span>
+                            <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginTop: 4 }}>JPG, PNG, or WebP (max 10MB)</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      ref={(el) => { fileInputRefs.current[index] = el; }}
+                      onChange={(e) => { handleImageUpload(index, e.target.files[0]); e.target.value = ''; }}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={labelStyle}>Store Name</label>
+                    <input type="text" value={store.name} onChange={(e) => updateStore(index, 'name', e.target.value)} placeholder="e.g., Main Showroom" style={inputStyle} />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={labelStyle}>Address</label>
+                    <textarea value={store.address} onChange={(e) => updateStore(index, 'address', e.target.value)} rows={2} placeholder="Full store address" style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <div>
+                      <label style={labelStyle}>Business Hours</label>
+                      <input type="text" value={store.hours} onChange={(e) => updateStore(index, 'hours', e.target.value)} placeholder="e.g., Mon-Sat 11am - 8pm" style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Phone</label>
+                      <PhoneInput value={store.phone} onChange={val => updateStore(index, 'phone', val)} countryCode="IN" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Google Maps Link</label>
+                    <input type="text" value={store.mapLink} onChange={(e) => updateStore(index, 'mapLink', e.target.value)} placeholder="https://maps.google.com/..." style={inputStyle} />
+                  </div>
+                </div>
+              ))}
+
+              <button type="button" onClick={addStore} style={{ width: '100%', padding: '10px 16px', border: '2px dashed #cbd5e1', borderRadius: 8, background: 'none', color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>
+                <i className="fas fa-plus" style={{ marginInlineEnd: 6 }} />Add Another Store
+              </button>
+            </div>
+          </div>
+        </>}
+
+        {activeView === 'appearance' && (
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <h3 className="card-title">Section Style</h3>
+            </div>
+            <div className="card-content">
+              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+                Customize colors and fonts for the Classic and Modern templates separately. Leave any field blank to use the template's default.
+              </p>
+
+              <div style={{ display: 'flex', gap: 6, padding: 4, background: '#f1f5f9', borderRadius: 8, marginBottom: 20 }}>
+                {['Classic', 'Modern'].map(tmpl => {
+                  const active = activeTemplate === tmpl;
+                  return (
+                    <button
+                      key={tmpl}
+                      type="button"
+                      onClick={() => setActiveTemplate(tmpl)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: active ? 600 : 500,
+                        background: active ? '#fff' : 'transparent',
+                        color: active ? '#0f172a' : '#64748b',
+                        cursor: 'pointer',
+                        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                        fontFamily: 'inherit',
+                      }}
+                    >{tmpl} Template</button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {APPEARANCE_FIELDS.map(field => {
+                  const settingKey = `sl${activeTemplate}${field.key}`;
+                  const value = appearance[settingKey] || '';
+                  const fallback = TEMPLATE_DEFAULTS[activeTemplate.toLowerCase()][field.key];
+                  if (field.type === 'color') {
+                    return (
+                      <AdminColorField
+                        key={settingKey}
+                        label={field.label}
+                        value={value}
+                        fallback={fallback}
+                        onChange={v => updateAppearance(settingKey, v)}
+                      />
+                    );
+                  }
+                  return (
+                    <AdminFontPicker
+                      key={settingKey}
+                      label={field.label}
+                      value={value}
+                      onChange={v => updateAppearance(settingKey, v)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {status && (
           <div style={{ padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 13, background: status === 'success' ? '#f0fdf4' : '#fef2f2', color: status === 'success' ? '#16a34a' : '#dc2626', border: `1px solid ${status === 'success' ? '#bbf7d0' : '#fecaca'}` }}>

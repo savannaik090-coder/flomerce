@@ -8,6 +8,7 @@ import FeaturedVideoSection from '../components/home/FeaturedVideoSection.jsx';
 import ProductShowcase from '../components/home/ProductShowcase.jsx';
 import ShopTheLook from '../components/home/ShopTheLook.jsx';
 import StoreLocations from '../components/home/StoreLocations.jsx';
+import StoreLocationsModern from '../components/templates/modern/StoreLocationsModern.jsx';
 import CustomerReviews from '../components/home/CustomerReviews.jsx';
 import CustomerReviewsModern from '../components/templates/modern/CustomerReviewsModern.jsx';
 import FirstVisitBanner from '../components/home/FirstVisitBanner.jsx';
@@ -124,6 +125,7 @@ export default function HomePage() {
         <ChooseByCategoryModern categories={allCategories} />
         <TrendingNow />
         <BrandStory />
+        <StoreLocationsModern />
         <ProductShowcase />
         <ActiveCustomerReviews />
         <FirstVisitBanner />

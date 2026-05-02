@@ -1,6 +1,6 @@
 .store-locations-section {
     padding: 60px 0;
-    background: linear-gradient(135deg, #f8f8f5 0%, #fafafa 100%);
+    background: var(--sl-classic-section-bg, linear-gradient(135deg, #f8f8f5 0%, #fafafa 100%));
 }
 
 .store-locations-container {
@@ -15,9 +15,9 @@
 }
 
 .store-locations-header h2 {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--sl-classic-title-font, 'Playfair Display', serif);
     font-size: 2.5rem;
-    color: #333;
+    color: var(--sl-classic-title-color, #333);
     margin-bottom: 10px;
     font-weight: 400;
     position: relative;
@@ -29,15 +29,16 @@
     position: absolute;
     width: 80px;
     height: 2px;
-    background-color: #B08C4C;
+    background-color: var(--sl-classic-accent-color, #B08C4C);
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
 }
 
 .store-locations-header p {
+    font-family: var(--sl-classic-subtitle-font, inherit);
     font-size: 1.1rem;
-    color: #666;
+    color: var(--sl-classic-subtitle-color, #666);
     font-weight: 300;
 }
 
@@ -68,14 +69,14 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--sl-classic-arrow-bg, rgba(255, 255, 255, 0.95));
     border: 1px solid #e2e8f0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #333;
+    color: var(--sl-classic-arrow-icon, #333);
     font-size: 16px;
     transition: all 0.2s ease;
 }
@@ -95,7 +96,7 @@
 }
 
 .store-card {
-    background: #ffffff;
+    background: var(--sl-classic-card-bg, #ffffff);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -130,30 +131,30 @@
 .store-details { padding: 25px; }
 
 .store-name {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--sl-classic-storename-font, 'Playfair Display', serif);
     font-size: 1.5rem;
-    color: #333;
+    color: var(--sl-classic-storename-color, #333);
     margin-bottom: 15px;
     font-weight: 500;
 }
 
 .store-address {
     font-size: 0.95rem;
-    color: #666;
+    color: var(--sl-classic-info-color, #666);
     line-height: 1.6;
     margin-bottom: 12px;
 }
 
 .store-hours {
     font-size: 0.9rem;
-    color: #666;
+    color: var(--sl-classic-info-color, #666);
     margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.store-hours i { color: #9c7c38; }
+.store-hours i { color: var(--sl-classic-accent-color, #9c7c38); }
 
 .store-contact {
     display: flex;
@@ -164,13 +165,13 @@
 
 .store-phone {
     font-size: 0.95rem;
-    color: #333;
+    color: var(--sl-classic-info-color, #333);
     font-weight: 500;
     text-decoration: none;
     transition: color 0.3s ease;
 }
 
-.store-phone:hover { color: #9c7c38; }
+.store-phone:hover { color: var(--sl-classic-accent-color, #9c7c38); }
 
 .store-actions {
     display: flex;
@@ -179,8 +180,8 @@
 
 .book-appointment-btn {
     flex: 1;
-    background-color: #333;
-    color: white;
+    background-color: var(--sl-classic-bookbtn-bg, #333);
+    color: var(--sl-classic-bookbtn-text, white);
     border: none;
     padding: 12px 20px;
     font-size: 0.9rem;

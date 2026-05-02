@@ -4,14 +4,85 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+
+// Per-template field set for the Appearance tab. `classicOnly` fields are
+// hidden when the Modern sub-tab is active.
+const APPEARANCE_FIELDS = [
+  { key: 'SectionBg',     label: 'Section Background', type: 'color' },
+  { key: 'TitleColor',    label: 'Title Color',        type: 'color' },
+  { key: 'TitleFont',     label: 'Title Font',         type: 'font'  },
+  { key: 'SubtitleColor', label: 'Subtitle Color',     type: 'color' },
+  { key: 'SubtitleFont',  label: 'Subtitle Font',      type: 'font'  },
+  { key: 'CardBg',        label: 'Card Background',    type: 'color' },
+  { key: 'CardBorder',    label: 'Card Border Color',  type: 'color' },
+  { key: 'TextColor',     label: 'Review Text Color',  type: 'color' },
+  { key: 'TextFont',      label: 'Review Text Font',   type: 'font'  },
+  { key: 'NameColor',     label: 'Reviewer Name Color',type: 'color' },
+  { key: 'StarsColor',    label: 'Stars Color',        type: 'color' },
+  { key: 'QuoteColor',    label: 'Quote Mark / Accent Color', type: 'color', classicOnly: true },
+  { key: 'CtaBtnBg',      label: '"Share Your Review" Button Color',      type: 'color' },
+  { key: 'CtaBtnText',    label: '"Share Your Review" Button Text Color', type: 'color' },
+  { key: 'ArrowBg',       label: 'Scroll Arrow Background',               type: 'color' },
+  { key: 'ArrowIcon',     label: 'Scroll Arrow Icon Color',               type: 'color' },
+];
+
+// Defaults shown in the swatch when no value is saved.
+// MUST match the CSS fallbacks in reviews.css / modern.css.
+const TEMPLATE_DEFAULTS = {
+  classic: {
+    SectionBg: '#f8f8f5',
+    TitleColor: '#333333',
+    SubtitleColor: '#666666',
+    CardBg: '#ffffff',
+    CardBorder: '#f0f0f0',
+    TextColor: '#555555',
+    NameColor: '#888888',
+    StarsColor: '#f59e0b',
+    QuoteColor: '#d4af37',
+    CtaBtnBg: '#5a3f2a',
+    CtaBtnText: '#ffffff',
+    ArrowBg: '#ffffff',
+    ArrowIcon: '#d4af37',
+  },
+  modern: {
+    SectionBg: '#ffffff',
+    TitleColor: '#111111',
+    SubtitleColor: '#666666',
+    CardBg: '#ffffff',
+    CardBorder: '#e5e5e5',
+    TextColor: '#444444',
+    NameColor: '#666666',
+    StarsColor: '#111111',
+    CtaBtnBg: '#111111',
+    CtaBtnText: '#ffffff',
+    ArrowBg: '#ffffff',
+    ArrowIcon: '#111111',
+  },
+};
+
+function buildEmptyAppearance() {
+  const out = {};
+  for (const tmpl of ['Classic', 'Modern']) {
+    for (const f of APPEARANCE_FIELDS) {
+      if (tmpl === 'Modern' && f.classicOnly) continue;
+      out[`cr${tmpl}${f.key}`] = '';
+    }
+  }
+  return out;
+}
 
 export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
   const { siteConfig } = useContext(SiteContext);
   const [sectionTitle, setSectionTitle] = useState('');
   const [sectionSubtitle, setSectionSubtitle] = useState('');
   const [reviews, setReviews] = useState([]);
+  const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
+  const [activeView, setActiveView] = useState('content');
+  const [activeTemplate, setActiveTemplate] = useState('Classic');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
@@ -33,10 +104,17 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews });
+    const current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, appearance });
     setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ reviewsSectionTitle: sectionTitle, reviewsSectionSubtitle: sectionSubtitle, reviews });
-  }, [sectionTitle, sectionSubtitle, reviews]);
+    if (onPreviewUpdate) {
+      onPreviewUpdate({
+        reviewsSectionTitle: sectionTitle,
+        reviewsSectionSubtitle: sectionSubtitle,
+        reviews,
+        ...appearance,
+      });
+    }
+  }, [sectionTitle, sectionSubtitle, reviews, appearance]);
 
   async function loadSettings() {
     setLoading(true);
@@ -51,10 +129,15 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         const stVal = settings.reviewsSectionTitle || "What Our Customers Say";
         const ssVal = settings.reviewsSectionSubtitle || "Real reviews from our happy customers";
         const rvVal = settings.reviews || [];
+        const appearanceVal = buildEmptyAppearance();
+        for (const k of Object.keys(appearanceVal)) {
+          if (typeof settings[k] === 'string') appearanceVal[k] = settings[k];
+        }
         setSectionTitle(stVal);
         setSectionSubtitle(ssVal);
         setReviews(rvVal);
-        serverValuesRef.current = JSON.stringify({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal });
+        setAppearance(appearanceVal);
+        serverValuesRef.current = JSON.stringify({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load reviews settings:', e);
@@ -82,7 +165,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
   }
 
   async function handleSaveSection(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
     setStatus('');
     try {
@@ -90,9 +173,10 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         reviewsSectionTitle: sectionTitle,
         reviewsSectionSubtitle: sectionSubtitle,
         reviews,
+        ...appearance,
       });
       setStatus('success');
-      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews });
+      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, appearance });
       setHasChanges(false);
       // Only after the settings PUT succeeds do we actually delete any
       // replaced/removed images from R2. Anything still referenced in the
@@ -105,6 +189,10 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
     } finally {
       setSaving(false);
     }
+  }
+
+  function updateAppearance(key, value) {
+    setAppearance(prev => ({ ...prev, [key]: value }));
   }
 
   async function handleImageUpload(file) {
@@ -210,10 +298,22 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
 
   if (loading) return <div className="loading-spinner-admin"><div className="spinner" /></div>;
 
+  const visibleAppearanceFields = APPEARANCE_FIELDS.filter(f => activeTemplate === 'Classic' || !f.classicOnly);
+
   return (
     <>
     <div>
       <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
+
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+        {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
+          <button key={tab.key} type="button" onClick={() => setActiveView(tab.key)} style={{ padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: activeView === tab.key ? '#2563eb' : '#64748b', borderBottom: `2px solid ${activeView === tab.key ? '#2563eb' : 'transparent'}`, marginBottom: -2, display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', transition: 'color 0.15s ease' }}>
+            <i className={`fas ${tab.icon}`} />{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeView === 'content' && <>
       <SectionToggle
         enabled={sectionVisible}
         onChange={() => onToggleVisibility?.()}
@@ -267,8 +367,6 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
             {status === 'success' ? "Section settings saved successfully!" : status.replace('error:', '')}
           </div>
         )}
-
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
       </form>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -322,6 +420,77 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
           ))}
         </div>
       )}
+      </>}
+
+      {activeView === 'appearance' && (
+        <div style={{ maxWidth: 700 }}>
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="card-header">
+              <h3 className="card-title">Section Style</h3>
+            </div>
+            <div className="card-content">
+              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+                Customize colors and fonts for the Classic and Modern templates separately. Leave any field blank to use the template's default.
+              </p>
+
+              <div style={{ display: 'flex', gap: 6, padding: 4, background: '#f1f5f9', borderRadius: 8, marginBottom: 20 }}>
+                {['Classic', 'Modern'].map(tmpl => {
+                  const active = activeTemplate === tmpl;
+                  return (
+                    <button
+                      key={tmpl}
+                      type="button"
+                      onClick={() => setActiveTemplate(tmpl)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: active ? 600 : 500,
+                        background: active ? '#fff' : 'transparent',
+                        color: active ? '#0f172a' : '#64748b',
+                        cursor: 'pointer',
+                        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                        fontFamily: 'inherit',
+                      }}
+                    >{tmpl} Template</button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {visibleAppearanceFields.map(field => {
+                  const settingKey = `cr${activeTemplate}${field.key}`;
+                  const value = appearance[settingKey] || '';
+                  const fallback = TEMPLATE_DEFAULTS[activeTemplate.toLowerCase()][field.key];
+                  if (field.type === 'color') {
+                    return (
+                      <AdminColorField
+                        key={settingKey}
+                        label={field.label}
+                        value={value}
+                        fallback={fallback}
+                        onChange={v => updateAppearance(settingKey, v)}
+                      />
+                    );
+                  }
+                  return (
+                    <AdminFontPicker
+                      key={settingKey}
+                      label={field.label}
+                      value={value}
+                      onChange={v => updateAppearance(settingKey, v)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
