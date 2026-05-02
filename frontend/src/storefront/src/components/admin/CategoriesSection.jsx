@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { setEditorDirty } from '../../admin/editorDirtyStore.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -221,8 +222,27 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       chooseByCategory: { enabled: chooseEnabled, categories: chooseCats },
       subcategorySections: subcatSections,
       homepageSectionOrder: sectionOrder,
+      // Appearance — live preview before save
+      catTitleColor, catTitleFont,
+      catSubtitleColor, catSubtitleFont,
+      catDividerColor,
+      catViewAllStyle, catViewAllBg, catViewAllText,
+      catBannerOverlayColor,
+      catBannerOverlayOpacity: catBannerOverlayOpacity !== '' ? parseFloat(catBannerOverlayOpacity) : undefined,
+      chooseSectionTitle,
+      chooseCardShape,
+      chooseOverlayColor,
+      chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
+      chooseLabelColor, chooseLabelFont,
     });
-  }, [settingsLoaded, chooseEnabled, chooseCats, subcatSections, sectionOrder]);
+  }, [
+    settingsLoaded, chooseEnabled, chooseCats, subcatSections, sectionOrder,
+    catTitleColor, catTitleFont, catSubtitleColor, catSubtitleFont, catDividerColor,
+    catViewAllStyle, catViewAllBg, catViewAllText,
+    catBannerOverlayColor, catBannerOverlayOpacity,
+    chooseSectionTitle, chooseCardShape,
+    chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont,
+  ]);
 
   useEffect(() => {
     if (!onPreviewUpdate || loading) return;
@@ -1113,6 +1133,16 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               <Toggle checked={chooseEnabled} onChange={handleChooseToggle} />
             </div>
             <div style={{ opacity: chooseEnabled ? 1 : 0.4, pointerEvents: chooseEnabled ? 'auto' : 'none', transition: 'opacity 0.3s' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Section Title</label>
+                <input
+                  type="text"
+                  value={chooseSectionTitle}
+                  onChange={e => { setChooseSectionTitle(e.target.value); setAppearanceChanged(true); }}
+                  placeholder="Choose by Category"
+                  style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                />
+              </div>
               {categories.length === 0 ? (
                 <p style={{ color: '#94a3b8', fontSize: 13 }}>Create categories first, then come back here to set up browse circles.</p>
               ) : (
@@ -1250,7 +1280,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
       {activeView === 'appearance' && (
         <>
-          <SectionCard title="Category Section" subtitle="Style the title, subtitle, divider, View All button, and banner overlay" icon="fa-th-large" defaultOpen={true}>
+          <SectionCard title="Category Section" subtitle="Style the title, subtitle, divider, View All button, and banner overlay" icon="fa-th-large" defaultOpen={false}>
             <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1258,30 +1288,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 <input type="color" value={catTitleColor || '#333333'} onChange={e => { setCatTitleColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Title Font</label>
-                <select value={catTitleFont} onChange={e => { setCatTitleFont(e.target.value); setAppearanceChanged(true); }} style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
-                  <option value="">Default</option>
-                  {["'Playfair Display', serif","'Cormorant Garamond', serif","'Lora', serif","'Merriweather', serif","'EB Garamond', serif","'Inter', sans-serif","'DM Sans', sans-serif","'Poppins', sans-serif","'Nunito', sans-serif","'Raleway', sans-serif","'Montserrat', sans-serif","'Josefin Sans', sans-serif"].map(f => (
-                    <option key={f} value={f}>{f.replace(/['"]/g,'').split(',')[0]}</option>
-                  ))}
-                </select>
-              </div>
+              <AdminFontPicker label="Title Font" value={catTitleFont} onChange={v => { setCatTitleFont(v); setAppearanceChanged(true); }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Subtitle Color</label>
                 <input type="color" value={catSubtitleColor || '#666666'} onChange={e => { setCatSubtitleColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Subtitle Font</label>
-                <select value={catSubtitleFont} onChange={e => { setCatSubtitleFont(e.target.value); setAppearanceChanged(true); }} style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
-                  <option value="">Default</option>
-                  {["'Inter', sans-serif","'DM Sans', sans-serif","'Poppins', sans-serif","'Nunito', sans-serif","'Raleway', sans-serif","'Montserrat', sans-serif","'Lora', serif","'Playfair Display', serif","'Merriweather', serif"].map(f => (
-                    <option key={f} value={f}>{f.replace(/['"]/g,'').split(',')[0]}</option>
-                  ))}
-                </select>
-              </div>
+              <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => { setCatSubtitleFont(v); setAppearanceChanged(true); }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Divider Line Color <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(classic theme)</span></label>
@@ -1322,13 +1336,8 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             </div>
           </SectionCard>
 
-          <SectionCard title="Choose by Category" subtitle="Style the section title, card shape, overlay, and label text" icon="fa-th" defaultOpen={true}>
+          <SectionCard title="Choose by Category" subtitle="Style the card shape, overlay, and label text" icon="fa-th" defaultOpen={false}>
             <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Section Title Text</label>
-                <input type="text" value={chooseSectionTitle} onChange={e => { setChooseSectionTitle(e.target.value); setAppearanceChanged(true); }} placeholder="Choose by Category" style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
-              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Shape</label>
@@ -1354,15 +1363,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 <input type="color" value={chooseLabelColor || '#333333'} onChange={e => { setChooseLabelColor(e.target.value); setAppearanceChanged(true); }} style={{ width: 48, height: 36, padding: 2, border: '1px solid #e2e8f0', borderRadius: 6, cursor: 'pointer', background: 'none' }} />
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Label Font</label>
-                <select value={chooseLabelFont} onChange={e => { setChooseLabelFont(e.target.value); setAppearanceChanged(true); }} style={{ padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, background: '#fff', fontFamily: 'inherit' }}>
-                  <option value="">Default</option>
-                  {["'Inter', sans-serif","'DM Sans', sans-serif","'Poppins', sans-serif","'Nunito', sans-serif","'Raleway', sans-serif","'Montserrat', sans-serif","'Lora', serif","'Playfair Display', serif","'Cormorant Garamond', serif","'Merriweather', serif"].map(f => (
-                    <option key={f} value={f}>{f.replace(/['"]/g,'').split(',')[0]}</option>
-                  ))}
-                </select>
-              </div>
+              <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => { setChooseLabelFont(v); setAppearanceChanged(true); }} />
             </div>
           </SectionCard>
         </>
