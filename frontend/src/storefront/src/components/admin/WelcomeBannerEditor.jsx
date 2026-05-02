@@ -354,7 +354,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             {/* Colors */}
             <div style={SECTION_STYLE}>
               <p style={LABEL_STYLE}>Colors</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <AdminColorField label="Modal Background" value={wbBgColor} fallback="#ffffff" onChange={setWbBgColor} />
                 <AdminColorField label="Heading Color" value={wbHeadingColor} fallback="#333333" onChange={setWbHeadingColor} />
                 <AdminColorField label="Body Text Color" value={wbTextColor} fallback="#666666" onChange={setWbTextColor} />
@@ -370,7 +370,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             {/* CTA button colors */}
             <div style={SECTION_STYLE}>
               <p style={LABEL_STYLE}>CTA Button</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
                 <AdminColorField label="Button Background" value={wbBtnBg} fallback="#b3a681" onChange={setWbBtnBg} />
                 <AdminColorField label="Button Text" value={wbBtnText} fallback="#ffffff" onChange={setWbBtnText} />
               </div>
