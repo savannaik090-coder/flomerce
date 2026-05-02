@@ -171,13 +171,8 @@
 }
 
 @media (max-width: 768px) {
-  .modern-hero {
-    height: auto !important;
-    min-height: 0 !important;
-  }
   .modern-hero-inner {
     flex-direction: column-reverse;
-    height: auto;
   }
   .modern-hero-text {
     padding: 40px 24px 48px;
