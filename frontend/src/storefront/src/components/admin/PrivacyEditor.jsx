@@ -4,6 +4,7 @@ import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { getPrivacyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -16,9 +17,10 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   const [saving, setSaving] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const sectionsForTracking = sections.map(s => ({ title: s.title, content: s.content }));
+  const dirty = useDirtyTracker({ intro, sections: sectionsForTracking });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -26,9 +28,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ intro, sections });
-    setHasChanges(current !== serverValuesRef.current);
-    if (onPreviewUpdate) onPreviewUpdate({ privacyContent: { intro, sections: sections.map(s => ({ title: s.title, content: s.content })) } });
+    if (onPreviewUpdate) onPreviewUpdate({ privacyContent: { intro, sections: sectionsForTracking } });
   }, [intro, sections]);
 
   async function loadSettings() {
@@ -53,7 +53,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         }
         setIntro(iVal);
         setSections(sVal);
-        serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal.map(s => ({ title: s.title, content: s.content })) });
+        dirty.baseline({ intro: iVal, sections: sVal.map(s => ({ title: s.title, content: s.content })) });
       }
     } catch (e) {
       console.error('Failed to load privacy settings:', e);
@@ -62,7 +62,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
       const sVal = d.sections;
       setIntro(iVal);
       setSections(sVal);
-      serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal.map(s => ({ title: s.title, content: s.content })) });
+      dirty.baseline({ intro: iVal, sections: sVal.map(s => ({ title: s.title, content: s.content })) });
     } finally {
       setLoading(false);
       setTimeout(() => { hasLoadedRef.current = true; }, 0);
@@ -95,8 +95,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
         throw new Error(result.error || "Failed to save");
       }
       setStatus('success');
-      serverValuesRef.current = JSON.stringify({ intro, sections: sections.map(s => ({ title: s.title, content: s.content })) });
-      setHasChanges(false);
+      dirty.markSaved();
       if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
@@ -130,7 +129,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
   return (
     <>
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave} style={{ maxWidth: 700 }}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -203,7 +202,7 @@ export default function PrivacyEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
 

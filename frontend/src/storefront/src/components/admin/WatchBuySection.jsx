@@ -10,6 +10,7 @@ import { formatPrice, getAdminCurrency } from '../../utils/priceFormatter.js';
 import { getWatchAndBuyDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 
 export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
@@ -29,7 +30,6 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
   const [showSection, setShowSection] = useState(true);
   const [skuLookup, setSkuLookup] = useState(null);
   const [skuSearching, setSkuSearching] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [usingDefaults, setUsingDefaults] = useState(false);
   const [wbHeadingColor, setWbHeadingColor] = useState('');
   const [wbHeadingFont, setWbHeadingFont] = useState('');
@@ -49,8 +49,12 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
     });
   }, [wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder]);
   const skipNextChangeRef = useRef(false);
-  const serverShowRef = useRef(true);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({
+    videos, showSection,
+    wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder,
+  });
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -90,11 +94,21 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
         }
         const val = settings.showWatchAndBuy !== false;
         setShowSection(val);
-        serverShowRef.current = val;
         setWbHeadingColor(settings.wbHeadingColor || '');
         setWbHeadingFont(settings.wbHeadingFont || '');
         setWbDividerColor(settings.wbDividerColor || '');
         setWbCardBorder(settings.wbCardBorder || '');
+        const baselineVideos = savedVideos.length > 0
+          ? savedVideos
+          : getWatchAndBuyDefaults(siteConfig?.category || 'generic');
+        dirty.baseline({
+          videos: baselineVideos,
+          showSection: val,
+          wbHeadingColor: settings.wbHeadingColor || '',
+          wbHeadingFont: settings.wbHeadingFont || '',
+          wbDividerColor: settings.wbDividerColor || '',
+          wbCardBorder: settings.wbCardBorder || '',
+        });
       }
     } catch (e) {
       console.error('Failed to load videos:', e);
@@ -107,7 +121,6 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
 
   function handleToggleChange(val) {
     setShowSection(val);
-    setHasChanges(val !== serverShowRef.current);
   }
 
   function findProductBySku(sku) {
@@ -207,23 +220,6 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
     xhr.send(formData);
   }
 
-  async function saveVideosToSettings(updatedVideos) {
-    const token = sessionStorage.getItem('site_admin_token');
-    const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? `SiteAdmin ${token}` : '',
-      },
-      body: JSON.stringify({ settings: { watchAndBuyVideos: updatedVideos, showWatchAndBuy: showSection, wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder } }),
-    });
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Failed to save');
-    }
-    return result;
-  }
-
   async function handleSaveAll() {
     setSaving(true);
     try {
@@ -238,8 +234,7 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
       });
       const result = await response.json();
       if (response.ok && result.success) {
-        serverShowRef.current = showSection;
-        setHasChanges(false);
+        dirty.markSaved();
         const keepUrls = videos.map(v => v.videoUrl).filter(Boolean);
         commit(keepUrls);
         if (onSaved) onSaved();
@@ -251,56 +246,37 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
     }
   }
 
-  async function handleSave(e) {
+  // Modal "Save" stages the change locally; the PUT happens only when the
+  // merchant clicks the global Save bar (handleSaveAll). Pending media files
+  // (uploads/removals) stay tracked via usePendingMedia and are committed
+  // after handleSaveAll succeeds.
+  function handleSave(e) {
     e.preventDefault();
     if (!form.productSku.trim()) { setError("Product SKU is required."); return; }
     if (!form.videoUrl) { setError("Please upload a video."); return; }
 
-    setSaving(true);
-    setError('');
-    try {
-      const productInfo = findProductBySku(form.productSku.trim());
-      const videoData = {
-        id: editingVideo ? editingVideo.id : Date.now().toString(),
-        productSku: form.productSku.trim(),
-        productId: productInfo?.id || '',
-        videoUrl: form.videoUrl,
-        videoKey: form.videoKey || '',
-        title: productInfo?.name || form.productSku.trim(),
-        createdAt: editingVideo ? editingVideo.createdAt : new Date().toISOString(),
-      };
+    const productInfo = findProductBySku(form.productSku.trim());
+    const videoData = {
+      id: editingVideo ? editingVideo.id : Date.now().toString(),
+      productSku: form.productSku.trim(),
+      productId: productInfo?.id || '',
+      videoUrl: form.videoUrl,
+      videoKey: form.videoKey || '',
+      title: productInfo?.name || form.productSku.trim(),
+      createdAt: editingVideo ? editingVideo.createdAt : new Date().toISOString(),
+    };
 
-      let updatedVideos;
-      if (editingVideo) {
-        if (usingDefaults) {
-          updatedVideos = [videoData];
-        } else {
-          updatedVideos = videos.map(v => v.id === editingVideo.id ? videoData : v);
-        }
-      } else {
-        if (usingDefaults) {
-          updatedVideos = [videoData];
-        } else {
-          updatedVideos = [...videos, videoData];
-        }
-      }
-
-      await saveVideosToSettings(updatedVideos);
-      setVideos(updatedVideos);
-      setUsingDefaults(false);
-      serverShowRef.current = showSection;
-      setHasChanges(false);
-      setShowModal(false);
-      // Only after the settings PUT succeeds do we actually clean up any
-      // replaced/removed video files from R2.
-      const keepUrls = updatedVideos.map(v => v.videoUrl).filter(Boolean);
-      commit(keepUrls);
-      if (onSaved) onSaved();
-    } catch (err) {
-      setError(`Failed to save: ${err.message}`);
-    } finally {
-      setSaving(false);
+    let updatedVideos;
+    if (editingVideo) {
+      updatedVideos = usingDefaults ? [videoData] : videos.map(v => v.id === editingVideo.id ? videoData : v);
+    } else {
+      updatedVideos = usingDefaults ? [videoData] : [...videos, videoData];
     }
+
+    setVideos(updatedVideos);
+    setUsingDefaults(false);
+    setError('');
+    setShowModal(false);
   }
 
   function handleDelete(videoId) {
@@ -308,21 +284,11 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
       title: "Delete Video",
       message: "Delete this video?",
       danger: true,
-      onConfirm: async () => {
+      onConfirm: () => {
         const deletedVideo = videos.find(v => v.id === videoId);
-        try {
-          const updatedVideos = videos.filter(v => v.id !== videoId);
-          if (deletedVideo?.videoUrl) markForDeletion(deletedVideo.videoUrl);
-          await saveVideosToSettings(updatedVideos);
-          setVideos(updatedVideos);
-          serverShowRef.current = showSection;
-          setHasChanges(false);
-          const keepUrls = updatedVideos.map(v => v.videoUrl).filter(Boolean);
-          commit(keepUrls);
-          if (onSaved) onSaved();
-        } catch (err) {
-          toast.error(`Failed to delete: ${err.message}`);
-        }
+        const updatedVideos = videos.filter(v => v.id !== videoId);
+        if (deletedVideo?.videoUrl) markForDeletion(deletedVideo.videoUrl);
+        setVideos(updatedVideos);
       }
     });
   }
@@ -339,7 +305,7 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
   return (
     <>
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSaveAll} />
       <SectionToggle
         enabled={showSection}
         onChange={handleToggleChange}
@@ -411,7 +377,7 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
         ))}
       </div>
 
-      <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSaveAll} />
+      <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSaveAll} />
       </>}
 
       {activeView === 'appearance' && (
@@ -424,10 +390,10 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
               Customize the colors and typography of the Watch &amp; Buy section heading and video cards.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <AdminColorField label="Heading Color" value={wbHeadingColor} fallback="#333333" onChange={v => { setWbHeadingColor(v); setHasChanges(true); }} />
-              <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={v => { setWbHeadingFont(v); setHasChanges(true); }} />
-              <AdminColorField label="Divider Color" value={wbDividerColor} fallback="#d4af37" onChange={v => { setWbDividerColor(v); setHasChanges(true); }} />
-              <AdminColorField label="Card Border Color" value={wbCardBorder} fallback="#d4af37" onChange={v => { setWbCardBorder(v); setHasChanges(true); }} />
+              <AdminColorField label="Heading Color" value={wbHeadingColor} fallback="#333333" onChange={setWbHeadingColor} />
+              <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={setWbHeadingFont} />
+              <AdminColorField label="Divider Color" value={wbDividerColor} fallback="#d4af37" onChange={setWbDividerColor} />
+              <AdminColorField label="Card Border Color" value={wbCardBorder} fallback="#d4af37" onChange={setWbCardBorder} />
             </div>
           </div>
         </div>

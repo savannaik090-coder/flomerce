@@ -4,6 +4,7 @@ import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { getTermsDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -17,9 +18,9 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ intro, sections });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -27,8 +28,6 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ intro, sections });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ termsContent: { intro, sections } });
   }, [intro, sections]);
 
@@ -54,7 +53,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
         }
         setIntro(iVal);
         setSections(sVal);
-        serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
+        dirty.baseline({ intro: iVal, sections: sVal });
       }
     } catch (e) {
       console.error('Failed to load terms settings:', e);
@@ -63,7 +62,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
       const sVal = d.sections;
       setIntro(iVal);
       setSections(sVal);
-      serverValuesRef.current = JSON.stringify({ intro: iVal, sections: sVal });
+      dirty.baseline({ intro: iVal, sections: sVal });
     } finally {
       setLoading(false);
       setTimeout(() => { hasLoadedRef.current = true; }, 0);
@@ -96,8 +95,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
         throw new Error(result.error || "Failed to save");
       }
       setStatus('success');
-      serverValuesRef.current = JSON.stringify({ intro, sections });
-      setHasChanges(false);
+      dirty.markSaved();
       if (onSaved) onSaved();
     } catch (e) {
       setStatus('error:' + e.message);
@@ -141,7 +139,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
   return (
     <>
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave} style={{ maxWidth: 700 }}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -232,7 +230,7 @@ export default function TermsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
 

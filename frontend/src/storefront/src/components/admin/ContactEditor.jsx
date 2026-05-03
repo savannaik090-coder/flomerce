@@ -1,33 +1,27 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function ContactEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [showContact, setShowContact] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
-  const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
-  const serverValueRef = useRef(null);
+
+  const dirty = useDirtyTracker({ showContact });
 
   useEffect(() => {
     if (siteConfig?.settings) {
       const val = siteConfig.settings.showContact !== false;
       setShowContact(val);
-      serverValueRef.current = val;
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      dirty.baseline({ showContact: val });
     }
   }, [siteConfig?.settings]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(showContact !== serverValueRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ showContact });
   }, [showContact]);
 
@@ -48,8 +42,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        setHasChanges(false);
-        serverValueRef.current = showContact;
+        dirty.markSaved();
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
@@ -64,7 +57,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSave} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showContact}
@@ -84,7 +77,7 @@ export default function ContactEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSave} />
       </form>
     </div>
   );

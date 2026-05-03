@@ -6,6 +6,7 @@ import LinkSelector from './LinkSelector.jsx';
 import { getHeroSliderDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 
@@ -47,11 +48,9 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
-  const [hasChanges, setHasChanges] = useState(false);
   const [usingDefaults, setUsingDefaults] = useState(false);
   const fileRefsMap = useRef({});
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
   const [heroTitleColor, setHeroTitleColor] = useState('');
@@ -77,6 +76,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.settings?.theme]);
   const themeDefaults = HERO_DEFAULTS[activeTheme];
 
+  const dirty = useDirtyTracker({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor });
+
   function getFileRef(index) {
     if (!fileRefsMap.current[index]) {
       fileRefsMap.current[index] = createRef();
@@ -89,9 +90,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.id]);
 
   useEffect(() => {
-    if (serverValuesRef.current === null) return;
-    const current = JSON.stringify({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor });
-    setHasChanges(current !== serverValuesRef.current);
+    if (!hasLoadedRef.current) return;
     const filtered = slides.filter(s => s.title.trim() || s.subtitle.trim() || s.description.trim() || s.image);
     if (onPreviewUpdate) onPreviewUpdate({
       heroSlides: filtered.length > 0 ? filtered : [],
@@ -189,7 +188,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         setHeroArrowBg(heroArrowBgVal);
         setHeroArrowColor(heroArrowColorVal);
 
-        serverValuesRef.current = JSON.stringify({
+        dirty.baseline({
           slides: merged, showScrollButtons: scrollVal,
           heroTitleColor: titleColorVal, heroTitleFont: titleFontVal, heroDescColor: descColorVal,
           heroBtnBg: btnBgVal, heroBtnText: btnTextVal, heroBtnStyle: btnStyleVal, heroBtnRadius: btnRadiusVal,
@@ -197,6 +196,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           heroHeight: heroHeightVal, heroTextAlign: heroTextAlignVal, heroTransition: heroTransitionVal, heroSpeed: heroSpeedVal,
           heroArrowBg: heroArrowBgVal, heroArrowColor: heroArrowColorVal,
         });
+        hasLoadedRef.current = true;
       } else {
         setStatus('error:' + "Failed to load hero slider settings. Please refresh the page before making changes.");
       }
@@ -337,15 +337,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       if (response.ok && result.success) {
         setStatus('success');
         setUsingDefaults(false);
-        serverValuesRef.current = JSON.stringify({
-          slides, showScrollButtons,
-          heroTitleColor, heroTitleFont, heroDescColor,
-          heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius,
-          heroOverlayColor, heroOverlayOpacity,
-          heroHeight, heroTextAlign, heroTransition, heroSpeed,
-          heroArrowBg, heroArrowColor,
-        });
-        setHasChanges(false);
+        dirty.markSaved();
         // Save succeeded — now safe to remove old/orphan R2 files.
         // keepUrls = the slide images that are actually saved.
         const keepUrls = slidesWithVisibility.map(s => s.image).filter(Boolean);
@@ -370,7 +362,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
           {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -956,7 +948,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

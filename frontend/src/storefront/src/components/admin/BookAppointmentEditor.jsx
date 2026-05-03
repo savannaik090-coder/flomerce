@@ -1,33 +1,27 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
   const [showBookAppointment, setShowBookAppointment] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
-  const hasLoadedRef = useRef(false);
-  const skipNextChangeRef = useRef(false);
-  const serverValueRef = useRef(null);
+
+  const dirty = useDirtyTracker({ showBookAppointment });
 
   useEffect(() => {
     if (siteConfig?.settings) {
       const val = siteConfig.settings.showBookAppointment !== false;
       setShowBookAppointment(val);
-      serverValueRef.current = val;
-      skipNextChangeRef.current = true;
-      hasLoadedRef.current = true;
+      dirty.baseline({ showBookAppointment: val });
     }
   }, [siteConfig?.settings]);
 
   useEffect(() => {
-    if (!hasLoadedRef.current) return;
-    if (skipNextChangeRef.current) { skipNextChangeRef.current = false; return; }
-    setHasChanges(showBookAppointment !== serverValueRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ showBookAppointment });
   }, [showBookAppointment]);
 
@@ -48,8 +42,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        setHasChanges(false);
-        serverValueRef.current = showBookAppointment;
+        dirty.markSaved();
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
@@ -64,7 +57,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSave} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showBookAppointment}
@@ -84,7 +77,7 @@ export default function BookAppointmentEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSave} />
       </form>
     </div>
   );

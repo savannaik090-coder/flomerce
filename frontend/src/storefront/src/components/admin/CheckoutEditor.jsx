@@ -3,6 +3,7 @@ import { SiteContext } from '../../context/SiteContext.jsx';
 import { formatPrice, getCurrencySymbol, getAdminCurrency } from '../../utils/priceFormatter.js';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' };
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13, color: '#334155' };
@@ -18,9 +19,9 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedCoupon, setExpandedCoupon] = useState(null);
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ coupons });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -28,8 +29,6 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ coupons });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ coupons });
   }, [coupons]);
 
@@ -45,7 +44,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
         }
         const cVal = Array.isArray(settings.coupons) ? settings.coupons : [];
         setCoupons(cVal);
-        serverValuesRef.current = JSON.stringify({ coupons: cVal });
+        dirty.baseline({ coupons: cVal });
       }
     } catch (e) {
       console.error('Failed to load checkout settings:', e);
@@ -72,9 +71,8 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ coupons: cleaned });
-        setHasChanges(false);
         setCoupons(cleaned);
+        dirty.markSaved({ coupons: cleaned });
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || "Unknown error"));
@@ -107,7 +105,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
 
         <div className="card" style={{ marginBottom: 20 }}>
@@ -237,7 +235,7 @@ export default function CheckoutEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

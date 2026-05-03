@@ -4,6 +4,7 @@ import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 function resolveImg(src) {
   if (!src) return '';
@@ -12,8 +13,11 @@ function resolveImg(src) {
   return src;
 }
 
-export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [headline, setHeadline] = useState("Our Story");
   const [text, setText] = useState('');
   const [image, setImage] = useState('');
@@ -23,11 +27,11 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({ headline, text, image, ctaText, ctaLink });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -35,8 +39,6 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ headline, text, image, ctaText, ctaLink });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({
       brandStoryHeadline: headline,
       brandStoryText: text,
@@ -66,7 +68,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
         setImage(iVal);
         setCtaText(ctVal);
         setCtaLink(clVal);
-        serverValuesRef.current = JSON.stringify({ headline: hVal, text: tVal, image: iVal, ctaText: ctVal, ctaLink: clVal });
+        dirty.baseline({ headline: hVal, text: tVal, image: iVal, ctaText: ctVal, ctaLink: clVal });
       }
     } catch (e) {
       console.error('Failed to load brand story settings:', e);
@@ -132,14 +134,15 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
             brandStoryImage: image,
             brandStoryCtaText: ctaText,
             brandStoryCtaLink: ctaLink,
+            ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
           }
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ headline, text, image, ctaText, ctaLink });
-        setHasChanges(false);
+        dirty.markSaved();
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         const cleanup = await pendingMedia.commit([image]);
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
@@ -157,14 +160,20 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
-        <SectionToggle
-          enabled={sectionVisible}
-          onChange={() => onToggleVisibility?.()}
-          label="Show Brand Story"
-          description="Display a brand narrative section with image and text on your homepage"
-        />
+        {visibilityKey && (
+          <SectionToggle
+            enabled={pendingVisible}
+            onChange={() => {
+              const next = !pendingVisible;
+              setPendingVisible(next);
+              if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+            }}
+            label="Show Brand Story"
+            description="Display a brand narrative section with image and text on your homepage"
+          />
+        )}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Brand Story Section</h3>
@@ -305,7 +314,7 @@ export default function BrandStoryEditor({ onSaved, onPreviewUpdate, sectionVisi
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

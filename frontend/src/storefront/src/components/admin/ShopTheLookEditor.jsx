@@ -10,6 +10,7 @@ import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { getShopTheLookDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 function compressImage(file, maxWidth = 1400, quality = 0.85) {
   return new Promise((resolve) => {
@@ -40,7 +41,6 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [stlHeadingColor, setStlHeadingColor] = useState('');
   const [stlHeadingFont, setStlHeadingFont] = useState('');
   const [stlDividerColor, setStlDividerColor] = useState('');
@@ -64,10 +64,14 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
   const [usingDefaults, setUsingDefaults] = useState(false);
 
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageContainerRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({
+    title, mainImage, mainImageKey, dots,
+    stlHeadingColor, stlHeadingFont, stlDividerColor, stlAccentColor,
+  });
   const [draggingIndex, setDraggingIndex] = useState(null);
   const dragStartPosRef = useRef(null);
 
@@ -80,8 +84,6 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ title, mainImage, mainImageKey, dots });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) {
       onPreviewUpdate({
         shopTheLook: { title, image: mainImage, imageKey: mainImageKey, dots },
@@ -129,11 +131,15 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         setStlHeadingFont(settings.stlHeadingFont || '');
         setStlDividerColor(settings.stlDividerColor || '');
         setStlAccentColor(settings.stlAccentColor || '');
-        serverValuesRef.current = JSON.stringify({
+        dirty.baseline({
           title: config.title || '',
           mainImage: config.image || '',
           mainImageKey: config.imageKey || '',
           dots: config.dots || [],
+          stlHeadingColor: settings.stlHeadingColor || '',
+          stlHeadingFont: settings.stlHeadingFont || '',
+          stlDividerColor: settings.stlDividerColor || '',
+          stlAccentColor: settings.stlAccentColor || '',
         });
       }
     } catch (e) {
@@ -269,8 +275,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
       });
       const result = await response.json();
       if (response.ok && result.success) {
-        serverValuesRef.current = JSON.stringify({ title, mainImage, mainImageKey, dots });
-        setHasChanges(false);
+        dirty.markSaved();
         setUsingDefaults(false);
         if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         const cleanup = await pendingMedia.commit([mainImage]);
@@ -300,7 +305,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
 
   return (
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={handleSave} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={handleSave} />
       <SectionToggle
         enabled={pendingVisible}
         onChange={() => {
@@ -650,7 +655,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         </div>
       )}
 
-      <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={handleSave} />
+      <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={handleSave} />
       </>}
 
       {activeView === 'appearance' && (
@@ -664,15 +669,15 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
             </p>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Heading</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              <AdminColorField label="Heading Color" value={stlHeadingColor} fallback="#333333" onChange={v => { setStlHeadingColor(v); setHasChanges(true); }} />
-              <AdminFontPicker label="Heading Font" value={stlHeadingFont} onChange={v => { setStlHeadingFont(v); setHasChanges(true); }} />
+              <AdminColorField label="Heading Color" value={stlHeadingColor} fallback="#333333" onChange={setStlHeadingColor} />
+              <AdminFontPicker label="Heading Font" value={stlHeadingFont} onChange={setStlHeadingFont} />
             </div>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Divider &amp; Accent</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-              <AdminColorField label="Divider Color" value={stlDividerColor} fallback="#5a3f2a" onChange={v => { setStlDividerColor(v); setHasChanges(true); }} />
-              <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} fallback="#5a3f2a" onChange={v => { setStlAccentColor(v); setHasChanges(true); }} />
+              <AdminColorField label="Divider Color" value={stlDividerColor} fallback="#5a3f2a" onChange={setStlDividerColor} />
+              <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} fallback="#5a3f2a" onChange={setStlAccentColor} />
             </div>
-            <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={handleSave} />
+            <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={handleSave} />
           </div>
         </div>
       )}

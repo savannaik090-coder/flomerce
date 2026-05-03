@@ -8,6 +8,7 @@ import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 // Per-template field set for the Appearance tab. `classicOnly` fields are
 // hidden when the Modern sub-tab is active.
@@ -99,11 +100,11 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
   const [form, setForm] = useState({ text: '', name: '', rating: 5, image: '', imageKey: '' });
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({ sectionTitle, sectionSubtitle, reviews, appearance });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -111,8 +112,6 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, appearance });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) {
       onPreviewUpdate({
         reviewsSectionTitle: sectionTitle,
@@ -144,7 +143,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         setSectionSubtitle(ssVal);
         setReviews(rvVal);
         setAppearance(appearanceVal);
-        serverValuesRef.current = JSON.stringify({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal, appearance: appearanceVal });
+        dirty.baseline({ sectionTitle: stVal, sectionSubtitle: ssVal, reviews: rvVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load reviews settings:', e);
@@ -184,8 +183,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
       });
       setStatus('success');
-      serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, appearance });
-      setHasChanges(false);
+      dirty.markSaved();
       if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
       // Only after the settings PUT succeeds do we actually delete any
       // replaced/removed images from R2. Anything still referenced in the
@@ -312,7 +310,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
   return (
     <>
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
         {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -477,7 +475,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         </div>
       )}
 
-      <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
+      <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

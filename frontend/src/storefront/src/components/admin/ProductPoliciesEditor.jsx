@@ -5,6 +5,7 @@ import SaveBar from './SaveBar.jsx';
 
 import { getPolicies, getPolicyPlaceholders } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
@@ -24,9 +25,9 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ fields, showSection });
 
   const placeholders = getPolicyPlaceholders(siteConfig?.category);
 
@@ -36,8 +37,6 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ fields, showSection });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ ...fields, showProductPolicies: showSection });
   }, [fields, showSection]);
 
@@ -66,7 +65,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
         const ssVal = settings.showProductPolicies !== false;
         setFields(fVal);
         setShowSection(ssVal);
-        serverValuesRef.current = JSON.stringify({ fields: fVal, showSection: ssVal });
+        dirty.baseline({ fields: fVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load product policies settings:', e);
@@ -102,8 +101,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ fields, showSection });
-        setHasChanges(false);
+        dirty.markSaved();
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -145,7 +143,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showSection}
@@ -314,7 +312,7 @@ export default function ProductPoliciesEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

@@ -8,6 +8,7 @@ import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { getFeaturedVideoPlaceholders, getFeaturedVideoDefaults } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
@@ -25,7 +26,6 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
   const [uploadProgress, setUploadProgress] = useState(0);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
   const [fvTitleColor, setFvTitleColor] = useState('');
   const [fvTitleFont, setFvTitleFont] = useState('');
   const [fvDescColor, setFvDescColor] = useState('');
@@ -49,8 +49,12 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
       fvBtnRadius: fvBtnRadius || undefined,
     });
   }, [fvTitleColor, fvTitleFont, fvDescColor, fvDescFont, fvBtnBg, fvBtnText, fvBtnRadius]);
-  const serverValuesRef = useRef(null);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({
+    title, description, videoUrl, videoKey, chatLink, chatButtonText,
+    fvTitleColor, fvTitleFont, fvDescColor, fvDescFont, fvBtnBg, fvBtnText, fvBtnRadius,
+  });
 
   const placeholders = getFeaturedVideoPlaceholders(siteConfig?.category);
 
@@ -60,8 +64,6 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ featuredVideoTitle: title, featuredVideoDescription: description, featuredVideoUrl: videoUrl, featuredVideoChatLink: chatLink, featuredVideoChatButtonText: chatButtonText || "CHAT NOW" });
   }, [title, description, videoUrl, chatLink, chatButtonText]);
 
@@ -94,7 +96,17 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
         setFvBtnBg(settings.fvBtnBg || '');
         setFvBtnText(settings.fvBtnText || '');
         setFvBtnRadius(settings.fvBtnRadius || '');
-        serverValuesRef.current = JSON.stringify({ title: tVal, description: dVal, videoUrl: vVal, chatLink: clVal, chatButtonText: cbVal });
+        dirty.baseline({
+          title: tVal, description: dVal, videoUrl: vVal, videoKey: settings.featuredVideoKey || '',
+          chatLink: clVal, chatButtonText: cbVal,
+          fvTitleColor: settings.fvTitleColor || '',
+          fvTitleFont: settings.fvTitleFont || '',
+          fvDescColor: settings.fvDescColor || '',
+          fvDescFont: settings.fvDescFont || '',
+          fvBtnBg: settings.fvBtnBg || '',
+          fvBtnText: settings.fvBtnText || '',
+          fvBtnRadius: settings.fvBtnRadius || '',
+        });
       }
     } catch (e) {
       console.error('Failed to load featured video settings:', e);
@@ -197,8 +209,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText });
-        setHasChanges(false);
+        dirty.markSaved();
         if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         commit(videoUrl ? [videoUrl] : []);
         if (onSaved) onSaved();
@@ -216,7 +227,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={pendingVisible}
@@ -374,7 +385,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
         </>}
 
         {activeView === 'appearance' && (
@@ -388,30 +399,30 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
               </p>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Title</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-                <AdminColorField label="Title Color" value={fvTitleColor} fallback="#d4af37" onChange={v => { setFvTitleColor(v); setHasChanges(true); }} />
-                <AdminFontPicker label="Title Font" value={fvTitleFont} onChange={v => { setFvTitleFont(v); setHasChanges(true); }} />
+                <AdminColorField label="Title Color" value={fvTitleColor} fallback="#d4af37" onChange={setFvTitleColor} />
+                <AdminFontPicker label="Title Font" value={fvTitleFont} onChange={setFvTitleFont} />
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-                <AdminColorField label="Description Color" value={fvDescColor} fallback="#ffffff" onChange={v => { setFvDescColor(v); setHasChanges(true); }} />
-                <AdminFontPicker label="Description Font" value={fvDescFont} onChange={v => { setFvDescFont(v); setHasChanges(true); }} />
+                <AdminColorField label="Description Color" value={fvDescColor} fallback="#ffffff" onChange={setFvDescColor} />
+                <AdminFontPicker label="Description Font" value={fvDescFont} onChange={setFvDescFont} />
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Button</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 20 }}>
-                <AdminColorField label="Button Background" value={fvBtnBg} fallback="#ffffff" onChange={v => { setFvBtnBg(v); setHasChanges(true); }} />
-                <AdminColorField label="Button Text" value={fvBtnText} fallback="#333333" onChange={v => { setFvBtnText(v); setHasChanges(true); }} />
+                <AdminColorField label="Button Background" value={fvBtnBg} fallback="#ffffff" onChange={setFvBtnBg} />
+                <AdminColorField label="Button Text" value={fvBtnText} fallback="#333333" onChange={setFvBtnText} />
               </div>
               <div>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Button Shape</label>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {[{ v: '', label: 'Default' }, { v: 'sharp', label: 'Sharp' }, { v: 'rounded', label: 'Rounded' }, { v: 'pill', label: 'Pill' }].map(opt => (
-                    <button key={opt.v} type="button" onClick={() => { setFvBtnRadius(opt.v); setHasChanges(true); }} style={{ padding: '8px 16px', border: `2px solid ${fvBtnRadius === opt.v ? '#2563eb' : '#e2e8f0'}`, borderRadius: 6, background: fvBtnRadius === opt.v ? '#eff6ff' : '#fff', color: fvBtnRadius === opt.v ? '#2563eb' : '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <button key={opt.v} type="button" onClick={() => setFvBtnRadius(opt.v)} style={{ padding: '8px 16px', border: `2px solid ${fvBtnRadius === opt.v ? '#2563eb' : '#e2e8f0'}`, borderRadius: 6, background: fvBtnRadius === opt.v ? '#eff6ff' : '#fff', color: fvBtnRadius === opt.v ? '#2563eb' : '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                       {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
-              <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+              <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
             </div>
           </div>
         )}

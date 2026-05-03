@@ -5,18 +5,22 @@ import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
-export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ selectedProductIds });
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -26,8 +30,6 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ selectedProductIds });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ trendingProductIds: selectedProductIds });
   }, [selectedProductIds]);
 
@@ -52,7 +54,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
         }
         const idsVal = settings.trendingProductIds || [];
         setSelectedProductIds(idsVal);
-        serverValuesRef.current = JSON.stringify({ selectedProductIds: idsVal });
+        dirty.baseline({ selectedProductIds: idsVal });
         setTimeout(() => { hasLoadedRef.current = true; }, 0);
       } else {
         setStatus('error:' + "Failed to load trending products. Please refresh the page.");
@@ -102,14 +104,17 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
         body: JSON.stringify({
-          settings: { trendingProductIds: selectedProductIds }
+          settings: {
+            trendingProductIds: selectedProductIds,
+            ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
+          }
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ selectedProductIds });
-        setHasChanges(false);
+        dirty.markSaved();
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || "Unknown error"));
@@ -135,14 +140,20 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
-        <SectionToggle
-          enabled={sectionVisible}
-          onChange={() => onToggleVisibility?.()}
-          label="Show Trending Now"
-          description="Display a horizontal scrollable row of selected products"
-        />
+        {visibilityKey && (
+          <SectionToggle
+            enabled={pendingVisible}
+            onChange={() => {
+              const next = !pendingVisible;
+              setPendingVisible(next);
+              if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+            }}
+            label="Show Trending Now"
+            description="Display a horizontal scrollable row of selected products"
+          />
+        )}
 
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -300,7 +311,7 @@ export default function TrendingNowEditor({ onSaved, onPreviewUpdate, sectionVis
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

@@ -4,6 +4,7 @@ import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 // Cart + Wishlist side-panel style editor.
 //
@@ -18,7 +19,6 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const [panelBg, setPanelBg] = useState('');
   const [panelText, setPanelText] = useState('');
   const [panelMuted, setPanelMuted] = useState('');
@@ -33,7 +33,8 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
   const [continueShoppingLabel, setContinueShoppingLabel] = useState('');
   const [checkoutLabel, setCheckoutLabel] = useState('');
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont, cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel });
 
   useEffect(() => {
     if (siteConfig?.id) load();
@@ -41,8 +42,6 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont, cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont });
   }, [panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont, cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel]);
 
@@ -82,7 +81,7 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
         setSubtotalLabel(sl);
         setContinueShoppingLabel(cs);
         setCheckoutLabel(cl);
-        serverValuesRef.current = JSON.stringify({
+        dirty.baseline({
           panelBg: bg, panelText: tx, panelMuted: mu, panelAccent: ac,
           panelAccentText: at, panelFont: fn,
           cartTitle: ct, cartEmptyText: ce, wishlistTitle: wt, wishlistEmptyText: we,
@@ -116,11 +115,7 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
       const result = await res.json();
       if (res.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({
-          panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-          cartTitle, cartEmptyText, wishlistTitle, wishlistEmptyText, subtotalLabel, continueShoppingLabel, checkoutLabel,
-        });
-        setHasChanges(false);
+        dirty.markSaved();
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
       } else {
@@ -146,7 +141,7 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 750 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
@@ -305,7 +300,7 @@ export default function SidePanelsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

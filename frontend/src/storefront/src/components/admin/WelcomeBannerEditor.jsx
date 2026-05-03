@@ -8,6 +8,7 @@ import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 function compressImage(file, maxWidth = 1200, quality = 0.85) {
   return new Promise((resolve) => {
@@ -29,8 +30,11 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
 const LABEL_STYLE = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 };
 const SECTION_STYLE = { marginBottom: 24 };
 
-export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
 
   // Content
   const [heading, setHeading] = useState('');
@@ -60,16 +64,14 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [activeView, setActiveView] = useState('content');
   const fileRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
   const brandName = siteConfig?.brand_name || siteConfig?.brandName || "Our Store";
 
-  const allValues = () => JSON.stringify({
+  const dirty = useDirtyTracker({
     heading, message, buttonText, buttonLink, bannerImage,
     wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor,
     wbBtnBg, wbBtnText, wbBtnRadius,
@@ -82,7 +84,6 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    setHasChanges(allValues() !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({
       welcomeBannerImage: bannerImage, welcomeBannerHeading: heading,
       welcomeBannerMessage: message, welcomeBannerButtonText: buttonText,
@@ -123,7 +124,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         setWbShowAgain(s.wbShowAgain || 'never');
         setWbCouponCode(s.wbCouponCode || '');
         setWbCouponLabel(s.wbCouponLabel || '');
-        serverValuesRef.current = JSON.stringify({
+        dirty.baseline({
           heading: hVal, message: mVal, buttonText: btVal, buttonLink: blVal, bannerImage: biVal,
           wbBgColor: s.wbBgColor || '', wbHeadingColor: s.wbHeadingColor || '',
           wbHeadingFont: s.wbHeadingFont || '', wbTextColor: s.wbTextColor || '',
@@ -188,14 +189,15 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor,
             wbBtnBg, wbBtnText, wbBtnRadius,
             wbDelay, wbShowAgain, wbCouponCode, wbCouponLabel,
+            ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
           }
         }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = allValues();
-        setHasChanges(false);
+        dirty.markSaved();
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         const cleanup = await pendingMedia.commit([bannerImage]);
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
@@ -234,7 +236,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
           {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -245,12 +247,18 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         </div>
 
         {activeView === 'content' && <>
+        {visibilityKey && (
         <SectionToggle
-          enabled={sectionVisible}
-          onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
+          enabled={pendingVisible}
+          onChange={() => {
+            const next = !pendingVisible;
+            setPendingVisible(next);
+            if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+          }}
           label="Show Welcome Banner"
           description="Toggle the first-visit popup banner for new customers"
         />
+        )}
 
         {/* ── Content Card ─────────────────────────────────────── */}
         <div className="card" style={{ marginBottom: 20 }}>
@@ -476,7 +484,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             {status === 'success' ? "Welcome banner saved successfully!" : `Failed to save: ${status.replace('error:', '')}`}
           </div>
         )}
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

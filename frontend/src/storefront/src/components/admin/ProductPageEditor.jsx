@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 const PDP_SETTING_KEYS = [
   'pdpShowMrp',
@@ -56,9 +57,9 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ fields });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -66,8 +67,6 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify(fields);
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ ...fields });
   }, [fields]);
 
@@ -83,7 +82,7 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
         }
         const fVal = readFromSettings(settings);
         setFields(fVal);
-        serverValuesRef.current = JSON.stringify(fVal);
+        dirty.baseline({ fields: fVal });
       }
     } catch (e) {
       console.error('Failed to load product page settings:', e);
@@ -118,8 +117,7 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify(fields);
-        setHasChanges(false);
+        dirty.markSaved();
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || 'Unknown error'));
@@ -179,7 +177,7 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={() => handleSave()} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={() => handleSave()} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div>
@@ -327,7 +325,7 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={() => handleSave()} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={() => handleSave()} />
       </form>
     </div>
   );

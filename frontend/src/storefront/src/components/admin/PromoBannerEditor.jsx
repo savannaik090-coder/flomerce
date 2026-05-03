@@ -5,6 +5,7 @@ import SaveBar from './SaveBar.jsx';
 import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 // Mirrors the per-template defaults declared in navbar.css / modern.css.
 // Used only to populate the color-picker swatch when no custom value is saved
@@ -14,8 +15,11 @@ const TEMPLATE_DEFAULTS = {
   classic: { bg: '#b3a681', text: '#ffffff' },
 };
 
-export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [messages, setMessages] = useState(['', '', '']);
   const [bgColor, setBgColor] = useState('');
   const [textColor, setTextColor] = useState('');
@@ -23,10 +27,10 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
   const [activeView, setActiveView] = useState('content');
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
+
+  const dirty = useDirtyTracker({ messages, bgColor, textColor, fontFamily });
 
   const activeTemplate = useMemo(() => {
     const id = siteConfig?.settings?.theme === 'modern' ? 'modern' : 'classic';
@@ -41,8 +45,6 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ messages, bgColor, textColor, fontFamily });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({
       promoBanner: messages.filter(m => m.trim() !== ''),
       promoBannerBg: bgColor || undefined,
@@ -70,7 +72,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         setBgColor(bg);
         setTextColor(txt);
         setFontFamily(fnt);
-        serverValuesRef.current = JSON.stringify({ messages: mVal, bgColor: bg, textColor: txt, fontFamily: fnt });
+        dirty.baseline({ messages: mVal, bgColor: bg, textColor: txt, fontFamily: fnt });
       }
     } catch (e) {
       console.error('Failed to load promo banner:', e);
@@ -92,6 +94,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         promoBannerBg: bgColor || '',
         promoBannerText: textColor || '',
         promoBannerFont: fontFamily || '',
+        ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
       };
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
@@ -104,8 +107,8 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ messages, bgColor, textColor, fontFamily });
-        setHasChanges(false);
+        dirty.markSaved();
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         if (onSaved) onSaved();
       } else {
         setStatus('error:' + (result.error || "Unknown error"));
@@ -141,7 +144,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
           {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -152,12 +155,18 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
         </div>
 
         {activeView === 'content' && <>
-        <SectionToggle
-          enabled={sectionVisible}
-          onChange={() => { if (onToggleVisibility) onToggleVisibility(); }}
-          label="Show Promo Banner"
-          description="Display the rotating promotional banner at the top of every page"
-        />
+        {visibilityKey && (
+          <SectionToggle
+            enabled={pendingVisible}
+            onChange={() => {
+              const next = !pendingVisible;
+              setPendingVisible(next);
+              if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+            }}
+            label="Show Promo Banner"
+            description="Display the rotating promotional banner at the top of every page"
+          />
+        )}
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
             <h3 className="card-title">Banner Messages</h3>
@@ -262,7 +271,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
             {status === 'success' ? "Promo banner saved successfully!" : `Failed to save: ${status.replace('error:', '')}`}
           </div>
         )}
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );

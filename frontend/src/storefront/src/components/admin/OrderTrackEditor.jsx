@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import SectionToggle from './SectionToggle.jsx';
+import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -9,11 +11,19 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
   const [orderTrackUrl, setOrderTrackUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [loaded, setLoaded] = useState(false);
+
+  const dirty = useDirtyTracker({ showOrderTrack, orderTrackUrl });
 
   useEffect(() => {
     if (siteConfig?.settings) {
-      setShowOrderTrack(siteConfig.settings.showOrderTrack !== false);
-      setOrderTrackUrl(siteConfig.settings.orderTrackUrl || '');
+      const s = siteConfig.settings;
+      const showVal = s.showOrderTrack !== false;
+      const urlVal = s.orderTrackUrl || '';
+      setShowOrderTrack(showVal);
+      setOrderTrackUrl(urlVal);
+      dirty.baseline({ showOrderTrack: showVal, orderTrackUrl: urlVal });
+      setLoaded(true);
     }
   }, [siteConfig?.settings]);
 
@@ -23,8 +33,7 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
     }
   }, [showOrderTrack, orderTrackUrl]);
 
-  async function handleSave(e) {
-    e.preventDefault();
+  async function handleSave() {
     if (orderTrackUrl && !orderTrackUrl.startsWith('http://') && !orderTrackUrl.startsWith('https://')) {
       setStatus('error:' + "URL must start with http:// or https://");
       return;
@@ -33,16 +42,19 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
     setStatus('');
     try {
       const token = sessionStorage.getItem('site_admin_token');
+      const trimmedUrl = orderTrackUrl.trim();
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { showOrderTrack, orderTrackUrl: orderTrackUrl.trim() } }),
+        body: JSON.stringify({ settings: { showOrderTrack, orderTrackUrl: trimmedUrl } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
+        setOrderTrackUrl(trimmedUrl);
+        dirty.markSaved({ showOrderTrack, orderTrackUrl: trimmedUrl });
         setStatus('success');
         if (refetchSite) refetchSite();
         if (onSaved) onSaved();
@@ -57,7 +69,9 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
   }
 
   return (
-    <form onSubmit={handleSave}>
+    <div>
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSave} />
+
       <SectionToggle
         enabled={showOrderTrack}
         onChange={setShowOrderTrack}
@@ -101,23 +115,8 @@ export default function OrderTrackEditor({ onSaved, onPreviewUpdate }) {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={saving}
-        style={{
-          background: '#2563eb',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 8,
-          padding: '10px 24px',
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: saving ? 'not-allowed' : 'pointer',
-          opacity: saving ? 0.7 : 1,
-        }}
-      >
-        {saving ? "Saving..." : "Save"}
-      </button>
-    </form>
+      <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={handleSave} />
+      {!loaded && null}
+    </div>
   );
 }

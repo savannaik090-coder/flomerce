@@ -6,6 +6,7 @@ import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 
@@ -38,7 +39,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [editingMenuId, setEditingMenuId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   // Tracks the last *saved* logo URL so removing an unsaved upload restores
   // to the saved state instead of going empty, keeping Save bar correct.
   const savedLogoRef = useRef('');
@@ -55,7 +55,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   // so the img gets a fresh load attempt. We only show "Logo is active" +
   // Replace/Remove after the img confirms a successful load via onLoad.
   useEffect(() => { setLogoLoadError(false); setLogoLoaded(false); }, [logoUrl]);
-  const [hasChanges, setHasChanges] = useState(false);
   // Navigation Style — color/font customization (mirrors promo banner mechanism).
   // Empty string means "use default": SiteContext skips setProperty so the CSS
   // var fallback (the existing template default) takes over.
@@ -78,6 +77,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const logoInputRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
+  const dirty = useDirtyTracker({
+    navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
+    navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
+    panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
+    navTransparent, navTransparentText,
+  });
+
   useEffect(() => {
     if (siteConfig?.id) {
       loadNavbarConfig();
@@ -87,13 +93,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({
-      navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
-      navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
-      panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-      navTransparent, navTransparentText,
-    });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({
       logoUrl,
       navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
@@ -170,7 +169,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         setPanelFont(panelFontVal);
         setNavTransparent(navTransparentVal);
         setNavTransparentText(navTransparentTextVal);
-        serverValuesRef.current = JSON.stringify({
+        dirty.baseline({
           navbarMenus: menusVal, logoUrl: logoVal, logoSize: sizeVal, logoPosition: posVal,
           showAccountIcon: accVal, showCartIcon: cartVal,
           navBg: navBgVal, navLinkText: navLinkTextVal, navLinkHover: navLinkHoverVal,
@@ -293,13 +292,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       if (response.ok && result.success) {
         setStatus('success');
         savedLogoRef.current = logoUrl;
-        serverValuesRef.current = JSON.stringify({
-          navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
-          navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
-          panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-          navTransparent, navTransparentText,
-        });
-        setHasChanges(false);
+        dirty.markSaved();
         // Save succeeded — clean up R2 (delete replaced original logo + any
         // intermediate uploads not in the final state).
         const cleanup = await pendingMedia.commit([logoUrl]);
@@ -453,7 +446,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   return (
     <>
     <div style={{ maxWidth: 750 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
           {[{ key: 'content', icon: 'fa-bars', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -1298,7 +1291,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
 

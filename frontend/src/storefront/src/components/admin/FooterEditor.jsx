@@ -6,6 +6,7 @@ import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import FeatureGate, { isFeatureAvailable } from './FeatureGate.jsx';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 // Per-template appearance fields. Settings keys are `footer{Template}{Key}`
 // (e.g. `footerClassicFooterBg`, `footerModernHeadingColor`). Each
@@ -111,9 +112,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
 
   const currentPlan = siteConfig?.subscriptionPlan;
   const canRemoveBranding = isFeatureAvailable(currentPlan, 'removeBranding');
@@ -142,6 +141,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   const [categories, setCategories] = useState([]);
 
+  const dirty = useDirtyTracker({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance });
+
   useEffect(() => {
     if (siteConfig?.id) {
       loadFooterConfig();
@@ -151,8 +152,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance });
-    setHasChanges(current !== serverValuesRef.current);
     const social = { instagram, facebook, twitter, youtube };
     if (onPreviewUpdate) onPreviewUpdate({
       social,
@@ -224,7 +223,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         }
         setAppearance(appearanceVal);
 
-        serverValuesRef.current = JSON.stringify({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, appearance: appearanceVal });
+        dirty.baseline({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
@@ -267,8 +266,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance });
-        setHasChanges(false);
+        dirty.markSaved();
         if (onSaved) onSaved();
         if (refetchSite) refetchSite();
       } else {
@@ -289,7 +287,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={function () { handleSave(); }} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={function () { handleSave(); }} />
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-header"><h3 className="card-title">Social Media Links</h3></div>
         <div className="card-content">
@@ -483,7 +481,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         </div>
       )}
 
-      <SaveBar saving={saving} hasChanges={hasChanges} onSave={function () { handleSave(); }} />
+      <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={function () { handleSave(); }} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { getAboutPageWithBrand } from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' };
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };
@@ -25,11 +26,11 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const [showSection, setShowSection] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({ heroSubtitle, storyText, storyImage, sections, showSection });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -37,8 +38,6 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ heroSubtitle, storyText, storyImage, sections, showSection });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections }, showAboutUs: showSection });
   }, [heroSubtitle, storyText, storyImage, sections, showSection]);
 
@@ -82,7 +81,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
           sectionsVal = defaults.sections;
         }
         setSections(sectionsVal);
-        serverValuesRef.current = JSON.stringify({ heroSubtitle: hsVal, storyText: stVal, storyImage: siVal, sections: sectionsVal, showSection: ssVal });
+        dirty.baseline({ heroSubtitle: hsVal, storyText: stVal, storyImage: siVal, sections: sectionsVal, showSection: ssVal });
       }
     } catch (e) {
       console.error('Failed to load about page settings:', e);
@@ -189,8 +188,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ heroSubtitle, storyText, storyImage, sections, showSection });
-        setHasChanges(false);
+        dirty.markSaved();
         const cleanup = await pendingMedia.commit([storyImage]);
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
@@ -209,7 +207,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   return (
     <>
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
           enabled={showSection}
@@ -402,7 +400,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
 

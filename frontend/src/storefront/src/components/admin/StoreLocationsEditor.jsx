@@ -7,6 +7,7 @@ import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import PhoneInput from '../ui/PhoneInput.jsx';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
 const EMPTY_STORE = { name: '', address: '', hours: '', phone: '', mapLink: '', image: '' };
 
@@ -107,11 +108,11 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
   const [status, setStatus] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
   const fileInputRefs = useRef({});
   const hasLoadedRef = useRef(false);
-  const serverValuesRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
+
+  const dirty = useDirtyTracker({ stores, appearance });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -119,8 +120,6 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ stores, appearance });
-    setHasChanges(current !== serverValuesRef.current);
     if (onPreviewUpdate) {
       onPreviewUpdate({
         storeLocations: stores.filter(s => s.name || s.address),
@@ -159,7 +158,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
         }
         setStores(storesVal);
         setAppearance(appearanceVal);
-        serverValuesRef.current = JSON.stringify({ stores: storesVal, appearance: appearanceVal });
+        dirty.baseline({ stores: storesVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load store locations:', e);
@@ -253,8 +252,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
       const result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ stores, appearance });
-        setHasChanges(false);
+        dirty.markSaved();
         if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         const cleanup = await pendingMedia.commit(persistedStores.map(s => s.image).filter(Boolean));
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
@@ -276,7 +274,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
           {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -454,7 +452,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={dirty.hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );
