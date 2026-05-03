@@ -1,6 +1,6 @@
 .footer-minimalist {
     background-color: var(--footer-classic-bg, var(--color-bg));
-    color: var(--footer-classic-text, var(--color-text-light));
+    color: var(--color-text-light);
     margin-top: var(--spacing-xxxl);
     margin-bottom: 80px;
     font-family: Georgia, 'Times New Roman', serif !important;
@@ -175,7 +175,7 @@
 
 .footer-bottom {
     background-color: var(--footer-classic-bottom-bg, var(--color-bg));
-    color: var(--footer-classic-text, var(--color-text-light));
+    color: var(--color-text-light);
     padding: 25px 0;
     margin-top: 0;
     border-top: 1px solid var(--color-border-light);

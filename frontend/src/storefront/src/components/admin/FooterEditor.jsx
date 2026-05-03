@@ -15,12 +15,11 @@ import { PAYMENT_METHODS, DEFAULT_PAYMENT_METHODS } from '../common/PaymentIcons
 // different and don't share variables.
 const CLASSIC_APPEARANCE_FIELDS = [
   { key: 'FooterBg',          label: 'Footer Background',          type: 'color' },
-  { key: 'TextColor',         label: 'Footer Text Color',          type: 'color' },
-  { key: 'SectionTitleColor', label: 'Section Title Color',        type: 'color' },
-  { key: 'SectionTitleFont',  label: 'Section Title Font',         type: 'font'  },
+  { key: 'SectionTitleColor', label: 'Column Title Color',         type: 'color' },
+  { key: 'SectionTitleFont',  label: 'Column Title Font',          type: 'font'  },
   { key: 'LinkColor',         label: 'Link Color',                 type: 'color' },
   { key: 'LinkFont',          label: 'Link Font',                  type: 'font'  },
-  { key: 'FollowTitleColor',  label: '"Follow us" Title Color',    type: 'color' },
+  { key: 'FollowTitleColor',  label: '"Follow us on social media" Title Color', type: 'color' },
   { key: 'SocialIconBg',      label: 'Social Icon Background',     type: 'color' },
   { key: 'SocialIconColor',   label: 'Social Icon Color',          type: 'color' },
   { key: 'SocialIconBorder',  label: 'Social Icon Border Color',   type: 'color' },
@@ -59,7 +58,6 @@ const MODERN_APPEARANCE_FIELDS = [
 const TEMPLATE_DEFAULTS = {
   Classic: {
     FooterBg:          '#f8f8f5',
-    TextColor:         '#666666',
     SectionTitleColor: '#666666',
     LinkColor:         '#666666',
     FollowTitleColor:  '#666666',

@@ -478,7 +478,6 @@ export function SiteProvider({ children }) {
 
     // ── Footer appearance (Classic) ──────────────────────────────────
     apply('--footer-classic-bg',                  settings.footerClassicFooterBg);
-    apply('--footer-classic-text',                settings.footerClassicTextColor);
     apply('--footer-classic-section-title-color', settings.footerClassicSectionTitleColor);
     apply('--footer-classic-section-title-font',  settings.footerClassicSectionTitleFont);
     apply('--footer-classic-link-color',          settings.footerClassicLinkColor);
