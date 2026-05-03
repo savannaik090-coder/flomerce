@@ -140,6 +140,33 @@ export const BLOG_MODERN_STYLE_DEFAULTS = Object.freeze({
 export function getBlogClassicStyleDefaults() { return { ...BLOG_CLASSIC_STYLE_DEFAULTS }; }
 export function getBlogModernStyleDefaults() { return { ...BLOG_MODERN_STYLE_DEFAULTS }; }
 
+// Contact Us style defaults — reproduce today's Classic and Modern looks
+// exactly. Classic values come from the inline <style> in ClassicContactPage;
+// Modern values come from the .mn-contact-* rules in modern.css. Keys are
+// consumed by ContactPage to build CSS variables / interpolate into styles.
+export const CONTACT_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  headingFont: "'Playfair Display', Georgia, serif",
+  headingColor: '#5E2900',
+  bodyFont: "'Poppins', sans-serif",
+  bodyColor: '#444444',
+  accentColor: '#d4af37',
+  infoCardBg: '#f9f5f0',
+});
+
+export const CONTACT_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  headingFont: "'Inter', 'Helvetica Neue', sans-serif",
+  headingColor: '#111111',
+  bodyFont: "'Inter', sans-serif",
+  bodyColor: '#666666',
+  accentColor: '#111111',
+  formBorderColor: '#dddddd',
+});
+
+export function getContactClassicStyleDefaults() { return { ...CONTACT_CLASSIC_STYLE_DEFAULTS }; }
+export function getContactModernStyleDefaults() { return { ...CONTACT_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;

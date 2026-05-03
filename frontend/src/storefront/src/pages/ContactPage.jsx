@@ -51,8 +51,74 @@ function useContactForm(siteConfig) {
   return { form, setForm, status, submitting, handleChange, handleSubmit };
 }
 
-function ClassicContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
+// Build the per-merchant override block for the Classic Contact page. Each
+// override only emits CSS rules when the merchant has explicitly set that
+// field, so a site with no overrides renders byte-identically to the original
+// hardcoded styling (gradients, varied body colors, etc. are all preserved).
+function buildClassicOverrideCss(o) {
+  if (!o || typeof o !== 'object') return '';
+  const parts = [];
+  if (o.pageBg) parts.push(`.contact-page .contact-section { background-color: ${o.pageBg}; }`);
+  if (o.infoCardBg) parts.push(`.contact-page .contact-info { background: ${o.infoCardBg}; }`);
+  if (o.headingFont) {
+    parts.push(`.contact-page .contact-hero h1,
+      .contact-page .contact-info h2,
+      .contact-page .form-container h2,
+      .contact-page .social-links-section h3,
+      .contact-page .working-hours h2 { font-family: ${o.headingFont}; }`);
+  }
+  if (o.headingColor) {
+    parts.push(`.contact-page .contact-hero h1,
+      .contact-page .contact-info h2,
+      .contact-page .form-container h2,
+      .contact-page .social-links-section h3 { color: ${o.headingColor}; }`);
+  }
+  if (o.bodyFont) {
+    parts.push(`.contact-page .contact-hero p,
+      .contact-page .contact-info > p,
+      .contact-page .contact-details li,
+      .contact-page .form-group label,
+      .contact-page .form-group input,
+      .contact-page .form-group textarea,
+      .contact-page .form-group select,
+      .contact-page .contact-submit-btn,
+      .contact-page .contact-status-msg,
+      .contact-page .hours-item h3,
+      .contact-page .hours-item p { font-family: ${o.bodyFont}; }`);
+  }
+  if (o.bodyColor) {
+    parts.push(`.contact-page .contact-hero p,
+      .contact-page .contact-info > p,
+      .contact-page .contact-details span,
+      .contact-page .contact-details a,
+      .contact-page .form-group label,
+      .contact-page .form-group input,
+      .contact-page .form-group textarea,
+      .contact-page .form-group select { color: ${o.bodyColor}; }`);
+  }
+  if (o.accentColor) {
+    parts.push(`.contact-page .contact-hero h1::after,
+      .contact-page .contact-info::before,
+      .contact-page .form-container::before,
+      .contact-page .contact-submit-btn { background: ${o.accentColor}; }`);
+    parts.push(`.contact-page .contact-details i,
+      .contact-page .contact-details a:hover,
+      .contact-page .working-hours h2,
+      .contact-page .hours-item h3 { color: ${o.accentColor}; }`);
+    parts.push(`.contact-page .social-icons-row a { background-color: ${o.accentColor}; }`);
+    parts.push(`.contact-page .form-group input:focus,
+      .contact-page .form-group textarea:focus,
+      .contact-page .form-group select:focus { border-color: ${o.accentColor}; }`);
+    parts.push(`.contact-page .social-links-section { border-top-color: ${o.accentColor}; }`);
+    parts.push(`.contact-page .hours-item { border-color: ${o.accentColor}; }`);
+    parts.push(`.contact-page .social-icons-row a:hover { background-color: ${o.accentColor}; }`);
+  }
+  return parts.join('\n');
+}
+
+function ClassicContactPage({ overrides, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
   const { translate: tx } = useShopperTranslation();
+  const overrideCss = buildClassicOverrideCss(overrides);
   return (
     <div className="contact-page">
       <style>{`
@@ -205,6 +271,7 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
           .contact-info, .form-container { padding: 40px 30px; }
           .contact-info h2, .form-container h2 { font-size: 28px; }
         }
+        ${overrideCss}
       `}</style>
 
       <section className="contact-hero">
@@ -271,10 +338,36 @@ function ClassicContactPage({ siteConfig, brandName, phone, email, address, soci
   );
 }
 
-function ModernContactPage({ siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
+// Build inline CSS vars from the merchant's saved overrides for the Modern
+// Contact page. Only fields that were explicitly set by the merchant emit a
+// var — when a field is unset, the var is omitted so the fallback baked into
+// modern.css (which equals the original hardcoded value, including distinct
+// per-element body colors like #444 vs #666) takes over and the page renders
+// byte-identically.
+function buildModernStyleVars(overrides) {
+  const map = {
+    pageBg: '--contact-page-bg',
+    headingFont: '--contact-heading-font',
+    headingColor: '--contact-heading-color',
+    bodyFont: '--contact-body-font',
+    bodyColor: '--contact-body-color',
+    accentColor: '--contact-accent-color',
+    formBorderColor: '--contact-form-border-color',
+  };
+  const out = {};
+  if (!overrides || typeof overrides !== 'object') return out;
+  for (const [key, cssVar] of Object.entries(map)) {
+    const v = overrides[key];
+    if (v && typeof v === 'string' && v !== '') out[cssVar] = v;
+  }
+  return out;
+}
+
+function ModernContactPage({ overrides, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit }) {
   const { translate: tx } = useShopperTranslation();
+  const styleVars = buildModernStyleVars(overrides);
   return (
-    <div>
+    <div style={styleVars}>
       <section className="mn-contact-hero">
         <h1><TranslatedText text="Contact Us" /></h1>
         <p><TranslatedText text="Reach out to us for any inquiries. We'd love to hear from you." /></p>
@@ -346,9 +439,16 @@ export default function ContactPage() {
   const address = siteConfig?.address || '';
   const socialLinks = siteConfig?.socialLinks || {};
 
+  let settings = siteConfig?.settings || {};
+  if (typeof settings === 'string') {
+    try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
+  }
+  const contactPage = settings.contactPage || {};
+  const overrides = isModern ? contactPage.modernStyle : contactPage.classicStyle;
+
   const { form, setForm, status, submitting, handleChange, handleSubmit } = useContactForm(siteConfig);
 
-  const pageProps = { siteConfig, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit };
+  const pageProps = { overrides, brandName, phone, email, address, socialLinks, form, setForm, status, submitting, handleChange, handleSubmit };
 
   return isModern
     ? <ModernContactPage {...pageProps} />

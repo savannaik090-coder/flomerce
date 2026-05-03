@@ -40,6 +40,15 @@ export const aboutPage = {
   modernStyle: {},
 };
 
+// Empty per-template style objects for the Contact Us page. Same rationale
+// as `aboutPage`: keeps the schema shape present so newly-created sites
+// store the keys, while ContactPage.jsx falls back to the per-template
+// CONTACT_*_STYLE_DEFAULTS at read time when no override is set.
+export const contactPage = {
+  classicStyle: {},
+  modernStyle: {},
+};
+
 export const heroSliderDefaults = [
   { title: 'IN THE', subtitle: 'folds', description: 'SUMMER CELEBRATIONS', buttonText: 'SHOP NOW', buttonLink: '/category/new-arrivals', visible: true },
   { title: 'ELEGANT', subtitle: 'Collection', description: 'TIMELESS BEAUTY', buttonText: 'SHOP NOW', buttonLink: '/category/featured', visible: true },

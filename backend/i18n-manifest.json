@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-03T09:21:51.872Z",
-  "hash": "d08c1d8bdf6fec24",
-  "count": 1032,
+  "generatedAt": "2026-05-03T09:51:25.706Z",
+  "hash": "c2a19bee7b9bb19d",
+  "count": 1034,
   "strings": [
     " until you verify your email.",
     "\"Amazing customer service and wonderful products. Will definitely order again!\"",
@@ -165,6 +165,7 @@
     "City",
     "City *",
     "City name must be at least 2 characters",
+    "Classic styling",
     "Clean gently with appropriate materials as recommended for the product type",
     "Cleaning",
     "Clear",
@@ -437,6 +438,7 @@
     "Minimum order amount for this coupon is {{amount}}",
     "Mizoram",
     "Mobile preview",
+    "Modern styling",
     "Monday - Saturday",
     "Monday to Saturday 11:00 am - 08:00 pm",
     "Most Recent",

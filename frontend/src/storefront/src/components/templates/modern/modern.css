@@ -1661,30 +1661,34 @@ body.mn-nav-transparent .modern-hero {
 }
 
 /* --- Modern Contact Page --- */
+/* Modern Contact section — CSS variables let merchants override colors and
+   fonts per-site via inline styles on the wrapper from ContactPage.jsx.
+   Each var has a fallback equal to the original hardcoded value, so existing
+   sites without overrides render pixel-identically. */
 .mn-contact-hero {
   background: #fafafa;
   padding: 100px 0 60px;
   text-align: center;
 }
 .mn-contact-hero h1 {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  font-family: var(--contact-heading-font, 'Inter', 'Helvetica Neue', sans-serif);
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 800;
-  color: #111;
+  color: var(--contact-heading-color, #111);
   letter-spacing: -0.02em;
   margin-bottom: 16px;
 }
 .mn-contact-hero p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 1.05rem;
-  color: #666;
+  color: var(--contact-body-color, #666);
   max-width: 500px;
   margin: 0 auto;
   line-height: 1.6;
 }
 .mn-contact-section {
   padding: 80px 0;
-  background: #fff;
+  background: var(--contact-page-bg, #fff);
 }
 .mn-contact-container {
   display: grid;
@@ -1700,16 +1704,16 @@ body.mn-nav-transparent .modern-hero {
   border: 1px solid #eee;
 }
 .mn-contact-info h2 {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-heading-font, 'Inter', sans-serif);
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111;
+  color: var(--contact-heading-color, #111);
   margin-bottom: 16px;
 }
 .mn-contact-info > p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 0.95rem;
-  color: #666;
+  color: var(--contact-body-color, #666);
   line-height: 1.6;
   margin-bottom: 32px;
 }
@@ -1723,7 +1727,7 @@ body.mn-nav-transparent .modern-hero {
   align-items: center;
   gap: 16px;
   padding: 12px 0;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   border-bottom: 1px solid #eee;
 }
 .mn-contact-details li:last-child {
@@ -1731,19 +1735,19 @@ body.mn-nav-transparent .modern-hero {
 }
 .mn-contact-details i {
   font-size: 16px;
-  color: #111;
+  color: var(--contact-accent-color, #111);
   width: 20px;
   text-align: center;
 }
 .mn-contact-details span,
 .mn-contact-details a {
   font-size: 0.9rem;
-  color: #444;
+  color: var(--contact-body-color, #444);
   text-decoration: none;
   transition: color 0.2s;
 }
 .mn-contact-details a:hover {
-  color: #111;
+  color: var(--contact-accent-color, #111);
 }
 .mn-contact-social {
   margin-top: 32px;
@@ -1751,12 +1755,12 @@ body.mn-nav-transparent .modern-hero {
   border-top: 1px solid #eee;
 }
 .mn-contact-social h3 {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-heading-font, 'Inter', sans-serif);
   font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #111;
+  color: var(--contact-heading-color, #111);
   margin-bottom: 16px;
 }
 .mn-contact-social-icons {
@@ -1775,9 +1779,9 @@ body.mn-nav-transparent .modern-hero {
   transition: all 0.2s;
 }
 .mn-contact-social-icons a:hover {
-  background: #111;
+  background: var(--contact-accent-color, #111);
   color: #fff;
-  border-color: #111;
+  border-color: var(--contact-accent-color, #111);
 }
 .mn-contact-form {
   padding: 48px 40px;
@@ -1785,10 +1789,10 @@ body.mn-nav-transparent .modern-hero {
   border: 1px solid #eee;
 }
 .mn-contact-form h2 {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-heading-font, 'Inter', sans-serif);
   font-size: 1.5rem;
   font-weight: 700;
-  color: #111;
+  color: var(--contact-heading-color, #111);
   margin-bottom: 32px;
 }
 .mn-form-group {
@@ -1796,12 +1800,12 @@ body.mn-nav-transparent .modern-hero {
 }
 .mn-form-group label {
   display: block;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #111;
+  color: var(--contact-heading-color, #111);
   margin-bottom: 8px;
 }
 .mn-form-group input,
@@ -1809,10 +1813,10 @@ body.mn-nav-transparent .modern-hero {
 .mn-form-group select {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #ddd;
-  font-family: 'Inter', sans-serif;
+  border: 1px solid var(--contact-form-border-color, #ddd);
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 14px;
-  color: #333;
+  color: var(--contact-body-color, #333);
   background: #fff;
   transition: border-color 0.2s;
   box-sizing: border-box;
@@ -1820,7 +1824,7 @@ body.mn-nav-transparent .modern-hero {
 .mn-form-group input:focus,
 .mn-form-group textarea:focus {
   outline: none;
-  border-color: #111;
+  border-color: var(--contact-form-border-color, #111);
 }
 .mn-form-group textarea {
   resize: vertical;
@@ -1834,20 +1838,21 @@ body.mn-nav-transparent .modern-hero {
 .mn-contact-submit {
   width: 100%;
   padding: 14px 28px;
-  background: #111;
+  background: var(--contact-accent-color, #111);
   color: #fff;
   border: none;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, filter 0.2s;
   margin-top: 8px;
 }
 .mn-contact-submit:hover {
-  background: #333;
+  background: var(--contact-accent-color, #111);
+  filter: brightness(1.25);
 }
 .mn-contact-submit:disabled {
   opacity: 0.5;
@@ -1856,7 +1861,7 @@ body.mn-nav-transparent .modern-hero {
 .mn-contact-status {
   padding: 12px 16px;
   margin-bottom: 20px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 500;
 }
@@ -1877,7 +1882,7 @@ body.mn-nav-transparent .modern-hero {
   text-align: center;
 }
 .mn-working-hours h2 {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-heading-font, 'Inter', sans-serif);
   font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
@@ -1896,14 +1901,14 @@ body.mn-nav-transparent .modern-hero {
   padding: 24px;
 }
 .mn-hours-item h3 {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
   color: #fff;
 }
 .mn-hours-item p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--contact-body-font, 'Inter', sans-serif);
   font-size: 14px;
   color: #999;
   margin: 0;
