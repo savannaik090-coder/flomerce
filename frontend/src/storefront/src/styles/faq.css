@@ -2,6 +2,7 @@
   max-width: 800px;
   margin: 0 auto;
   padding: 60px 20px 80px;
+  background: var(--faq-page-bg, transparent);
 }
 
 .faq-header {
@@ -10,16 +11,18 @@
 }
 
 .faq-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-primary, #0f172a);
+  font-family: var(--faq-heading-font, inherit);
+  font-size: var(--faq-heading-size, 2rem);
+  font-weight: var(--faq-heading-weight, 700);
+  color: var(--faq-heading-color, var(--text-primary, #0f172a));
   margin: 0 0 12px;
   letter-spacing: -0.02em;
 }
 
 .faq-header p {
+  font-family: var(--faq-body-font, inherit);
   font-size: 1rem;
-  color: var(--text-secondary, #64748b);
+  color: var(--faq-subtitle-color, var(--text-secondary, #64748b));
   margin: 0;
   line-height: 1.6;
 }
@@ -31,11 +34,11 @@
 }
 
 .faq-item {
-  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  border-bottom: 1px solid var(--faq-divider-color, var(--border-color, #e5e7eb));
 }
 
 .faq-item:first-child {
-  border-top: 1px solid var(--border-color, #e5e7eb);
+  border-top: 1px solid var(--faq-divider-color, var(--border-color, #e5e7eb));
 }
 
 .faq-question {
@@ -53,9 +56,10 @@
 }
 
 .faq-question-text {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--text-primary, #0f172a);
+  font-family: var(--faq-question-font, inherit);
+  font-size: var(--faq-question-size, 1.0625rem);
+  font-weight: var(--faq-question-weight, 600);
+  color: var(--faq-question-color, var(--text-primary, #0f172a));
   line-height: 1.5;
   flex: 1;
 }
@@ -76,7 +80,7 @@
 
 .faq-item.open .faq-question-icon {
   transform: rotate(180deg);
-  background: var(--primary-color, #0f172a);
+  background: var(--faq-accent-color, var(--primary-color, #0f172a));
   color: #fff;
 }
 
@@ -92,10 +96,22 @@
 }
 
 .faq-answer-text {
-  font-size: 0.9375rem;
-  color: var(--text-secondary, #475569);
+  font-family: var(--faq-answer-font, inherit);
+  font-size: var(--faq-answer-size, 0.9375rem);
+  color: var(--faq-answer-color, var(--text-secondary, #475569));
   line-height: 1.7;
   white-space: pre-wrap;
+}
+
+/* Modern template — items behave like cards. Defaults are transparent so
+   nothing changes visually until the merchant picks card colors. */
+.faq-page.modern-theme .faq-item {
+  background: var(--faq-card-bg, transparent);
+  border-bottom: 1px solid var(--faq-card-border-color, var(--border-color, #e5e7eb));
+}
+
+.faq-page.modern-theme .faq-item:first-child {
+  border-top: 1px solid var(--faq-card-border-color, var(--border-color, #e5e7eb));
 }
 
 .faq-empty {

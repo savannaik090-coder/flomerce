@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { apiRequest } from '../../services/api.js';
+import {
+  FAQ_CLASSIC_STYLE_DEFAULTS,
+  FAQ_MODERN_STYLE_DEFAULTS,
+} from '../../defaults/index.js';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
+import SaveBar from './SaveBar.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 
 export default function FAQSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [faqItems, setFaqItems] = useState([]);
@@ -16,6 +26,36 @@ export default function FAQSection() {
   const [newAnswer, setNewAnswer] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
 
+  // Style overrides per template — kept side-by-side so editing one template
+  // never disturbs the other's saved values.
+  const [classicStyle, setClassicStyle] = useState({});
+  const [modernStyle, setModernStyle] = useState({});
+  const [styleSaving, setStyleSaving] = useState(false);
+  const [styleStatus, setStyleStatus] = useState('');
+  const hasLoadedStyleRef = useRef(false);
+  const styleDirty = useDirtyTracker({ classicStyle, modernStyle });
+
+  const activeStyle = isModern ? modernStyle : classicStyle;
+  const setActiveStyle = isModern ? setModernStyle : setClassicStyle;
+  const styleDefaults = isModern ? FAQ_MODERN_STYLE_DEFAULTS : FAQ_CLASSIC_STYLE_DEFAULTS;
+
+  function updateStyleField(key, value) {
+    setActiveStyle(prev => {
+      const next = { ...prev };
+      if (value === '' || value === null || value === undefined) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }
+
+  function resetStyleGroup(keys) {
+    setActiveStyle(prev => {
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (siteConfig) {
       let settings = siteConfig.settings || {};
@@ -25,6 +65,16 @@ export default function FAQSection() {
       setFaqItems(settings.faq || []);
       setShowFaq(settings.showFaq !== false);
       setFaqInNavbar(settings.faqInNavbar === true);
+
+      const faqPage = settings.faqPage || {};
+      const csVal = (faqPage.classicStyle && typeof faqPage.classicStyle === 'object') ? faqPage.classicStyle : {};
+      const msVal = (faqPage.modernStyle && typeof faqPage.modernStyle === 'object') ? faqPage.modernStyle : {};
+      setClassicStyle(csVal);
+      setModernStyle(msVal);
+      requestAnimationFrame(() => {
+        styleDirty.baseline({ classicStyle: csVal, modernStyle: msVal });
+        hasLoadedStyleRef.current = true;
+      });
     }
   }, [siteConfig]);
 
@@ -53,6 +103,32 @@ export default function FAQSection() {
       setMessage(`Failed to save: ${err.message || "Unknown error"}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveStyle() {
+    setStyleSaving(true);
+    setStyleStatus('');
+    try {
+      await apiRequest(`/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          settings: {
+            faqPage: {
+              classicStyle,
+              modernStyle,
+            },
+          },
+        }),
+      });
+      await refetchSite();
+      setStyleStatus('success');
+      styleDirty.markSaved();
+      setTimeout(() => setStyleStatus(''), 3000);
+    } catch (err) {
+      setStyleStatus('error:' + (err.message || "Unknown error"));
+    } finally {
+      setStyleSaving(false);
     }
   }
 
@@ -306,6 +382,200 @@ export default function FAQSection() {
               </div>
             </>
           )}
+        </div>
+      ))}
+
+      <FaqAppearancePanel
+        isModern={isModern}
+        style={activeStyle}
+        defaults={styleDefaults}
+        updateField={updateStyleField}
+        resetGroup={resetStyleGroup}
+      />
+
+      {styleStatus && (
+        <div style={{
+          background: styleStatus === 'success' ? '#f0fdf4' : '#fef2f2',
+          border: `1px solid ${styleStatus === 'success' ? '#bbf7d0' : '#fecaca'}`,
+          borderRadius: 8, padding: '12px 16px',
+          color: styleStatus === 'success' ? '#166534' : '#dc2626',
+          marginTop: 12, fontSize: 14,
+        }}>
+          {styleStatus === 'success' ? "FAQ appearance saved successfully!" : styleStatus.replace('error:', '')}
+        </div>
+      )}
+
+      <SaveBar saving={styleSaving} hasChanges={styleDirty.hasChanges} onSave={saveStyle} />
+    </div>
+  );
+}
+
+// Color/font controls for the active template (Classic or Modern). Each
+// group has a "Reset to default" link that clears only that group's keys
+// — the inactive template's saved values stay untouched (they live in the
+// other state object in the parent).
+function FaqAppearancePanel({ isModern, style, defaults, updateField, resetGroup }) {
+  const templateLabel = isModern ? 'Modern' : 'Classic';
+
+  const groups = [
+    {
+      title: 'Page',
+      keys: ['pageBg'],
+      fields: [
+        { kind: 'color', key: 'pageBg', label: 'Page Background' },
+      ],
+    },
+    {
+      title: 'Heading',
+      keys: ['headingFont', 'headingSize', 'headingWeight', 'headingColor', 'subtitleColor'],
+      fields: [
+        { kind: 'font', key: 'headingFont', label: 'Heading Font' },
+        { kind: 'text', key: 'headingSize', label: 'Heading Size' },
+        { kind: 'select', key: 'headingWeight', label: 'Heading Weight', options: ['400', '500', '600', '700', '800'] },
+        { kind: 'color', key: 'headingColor', label: 'Heading Color' },
+        { kind: 'color', key: 'subtitleColor', label: 'Subtitle Color' },
+      ],
+    },
+    {
+      title: 'Question',
+      keys: ['questionFont', 'questionSize', 'questionWeight', 'questionColor'],
+      fields: [
+        { kind: 'font', key: 'questionFont', label: 'Question Font' },
+        { kind: 'text', key: 'questionSize', label: 'Question Size' },
+        { kind: 'select', key: 'questionWeight', label: 'Question Weight', options: ['400', '500', '600', '700', '800'] },
+        { kind: 'color', key: 'questionColor', label: 'Question Color' },
+      ],
+    },
+    {
+      title: 'Answer',
+      keys: ['answerFont', 'answerSize', 'answerColor'],
+      fields: [
+        { kind: 'font', key: 'answerFont', label: 'Answer Font' },
+        { kind: 'text', key: 'answerSize', label: 'Answer Size' },
+        { kind: 'color', key: 'answerColor', label: 'Answer Color' },
+      ],
+    },
+    isModern
+      ? {
+          title: 'Cards',
+          keys: ['cardBg', 'cardBorderColor'],
+          fields: [
+            { kind: 'color', key: 'cardBg', label: 'Card Background' },
+            { kind: 'color', key: 'cardBorderColor', label: 'Card Border Color' },
+          ],
+        }
+      : {
+          title: 'Divider',
+          keys: ['dividerColor'],
+          fields: [
+            { kind: 'color', key: 'dividerColor', label: 'Accordion Divider Color' },
+          ],
+        },
+    {
+      title: 'Accent',
+      keys: ['accentColor'],
+      fields: [
+        { kind: 'color', key: 'accentColor', label: isModern ? 'Hover / Active Accent' : 'Open Indicator Accent' },
+      ],
+    },
+  ];
+
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+      padding: '20px 24px', marginTop: 24, marginBottom: 12,
+    }}>
+      <div style={{ marginBottom: 16 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          Appearance — {templateLabel} template
+        </h3>
+        <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+          Customize colors and fonts for your FAQ page. These settings apply only to the{' '}
+          <strong>{templateLabel}</strong> template — the other template's saved styling is preserved.
+          Switch templates in your theme to edit the other set.
+        </p>
+      </div>
+
+      {groups.map(group => (
+        <div key={group.title} style={{ marginBottom: 22 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              {group.title}
+            </h4>
+            {group.keys.some(k => style[k]) && (
+              <button
+                type="button"
+                onClick={() => resetGroup(group.keys)}
+                style={{
+                  background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: 12, color: '#475569', textDecoration: 'underline',
+                }}
+              >
+                Reset to default
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {group.fields.map(f => {
+              if (f.kind === 'color') {
+                return (
+                  <AdminColorField
+                    key={f.key}
+                    label={f.label}
+                    value={style[f.key] || ''}
+                    fallback={defaults[f.key]}
+                    onChange={(v) => updateField(f.key, v)}
+                  />
+                );
+              }
+              if (f.kind === 'font') {
+                return (
+                  <AdminFontPicker
+                    key={f.key}
+                    label={f.label}
+                    value={style[f.key] || ''}
+                    onChange={(v) => updateField(f.key, v)}
+                  />
+                );
+              }
+              if (f.kind === 'select') {
+                return (
+                  <div key={f.key}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{f.label}</label>
+                    <select
+                      value={style[f.key] || ''}
+                      onChange={e => updateField(f.key, e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
+                        borderRadius: 8, fontSize: 14, fontFamily: 'inherit', background: '#fff',
+                      }}
+                    >
+                      <option value="">{`Default · ${defaults[f.key]}`}</option>
+                      {f.options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              }
+              // text
+              return (
+                <div key={f.key}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{f.label}</label>
+                  <input
+                    type="text"
+                    value={style[f.key] || ''}
+                    onChange={e => updateField(f.key, e.target.value)}
+                    placeholder={`Default · ${defaults[f.key]}`}
+                    style={{
+                      width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0',
+                      borderRadius: 8, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       ))}
     </div>

@@ -271,6 +271,51 @@ export const APPOINTMENT_MODERN_STYLE_DEFAULTS = Object.freeze({
 export function getAppointmentClassicStyleDefaults() { return { ...APPOINTMENT_CLASSIC_STYLE_DEFAULTS }; }
 export function getAppointmentModernStyleDefaults() { return { ...APPOINTMENT_MODERN_STYLE_DEFAULTS }; }
 
+// FAQ page style defaults — captured from the existing faq.css rules so
+// merchants who haven't customized anything render exactly as today. Each
+// field maps to a CSS variable consumed by faq.css through `buildFaqStyleVars`
+// applied on the .faq-page wrapper. Classic and Modern keep separate values
+// so editing one template never affects the other.
+export const FAQ_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: 'transparent',
+  headingFont: 'inherit',
+  headingSize: '2rem',
+  headingWeight: '700',
+  headingColor: '#0f172a',
+  subtitleColor: '#64748b',
+  questionFont: 'inherit',
+  questionSize: '1.0625rem',
+  questionWeight: '600',
+  questionColor: '#0f172a',
+  answerFont: 'inherit',
+  answerSize: '0.9375rem',
+  answerColor: '#475569',
+  dividerColor: '#e5e7eb',
+  accentColor: '#0f172a',
+});
+
+export const FAQ_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: 'transparent',
+  headingFont: 'inherit',
+  headingSize: '2rem',
+  headingWeight: '700',
+  headingColor: '#0f172a',
+  subtitleColor: '#64748b',
+  questionFont: 'inherit',
+  questionSize: '1.0625rem',
+  questionWeight: '600',
+  questionColor: '#0f172a',
+  answerFont: 'inherit',
+  answerSize: '0.9375rem',
+  answerColor: '#475569',
+  cardBg: 'transparent',
+  cardBorderColor: '#e5e7eb',
+  accentColor: '#0f172a',
+});
+
+export function getFaqClassicStyleDefaults() { return { ...FAQ_CLASSIC_STYLE_DEFAULTS }; }
+export function getFaqModernStyleDefaults() { return { ...FAQ_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;
