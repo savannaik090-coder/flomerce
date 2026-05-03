@@ -293,6 +293,7 @@ export function SiteProvider({ children }) {
     apply('--hero-title-color', settings.heroTitleColor);
     apply('--hero-title-font', settings.heroTitleFont);
     apply('--hero-desc-color', settings.heroDescColor);
+    apply('--hero-desc-font',  settings.heroDescFont);
 
     // Overlay (shared: classic uses .slide::after, modern uses .modern-hero-image::after).
     apply('--hero-overlay-color', settings.heroOverlayColor);
@@ -306,6 +307,7 @@ export function SiteProvider({ children }) {
     const heroBtnRadius = settings.heroBtnRadius || '';
     const radiusMap = { sharp: '0', rounded: '8px', pill: '999px' };
     apply('--hero-btn-radius', radiusMap[heroBtnRadius] || '');
+    apply('--hero-btn-font',   settings.heroBtnFont);
     if (heroBtnStyle === 'outlined') {
       apply('--hero-btn-bg', 'transparent');
       apply('--hero-btn-text', heroBtnText || heroBtnBg);

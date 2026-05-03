@@ -68,6 +68,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [heroSpeed, setHeroSpeed] = useState('');
   const [heroArrowBg, setHeroArrowBg] = useState('');
   const [heroArrowColor, setHeroArrowColor] = useState('');
+  const [heroDescFont, setHeroDescFont] = useState('');
+  const [heroBtnFont, setHeroBtnFont] = useState('');
   const [activeView, setActiveView] = useState('content');
 
   const activeTheme = useMemo(() => {
@@ -76,7 +78,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   }, [siteConfig?.settings?.theme]);
   const themeDefaults = HERO_DEFAULTS[activeTheme];
 
-  const dirty = useDirtyTracker({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor });
+  const dirty = useDirtyTracker({ slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroDescFont, heroBtnBg, heroBtnText, heroBtnFont, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor });
 
   function getFileRef(index) {
     if (!fileRefsMap.current[index]) {
@@ -98,8 +100,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       heroTitleColor,
       heroTitleFont,
       heroDescColor,
+      heroDescFont,
       heroBtnBg,
       heroBtnText,
+      heroBtnFont,
       heroBtnStyle,
       heroBtnRadius,
       heroOverlayColor,
@@ -111,7 +115,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
       heroArrowBg,
       heroArrowColor,
     });
-  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroBtnBg, heroBtnText, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor]);
+  }, [slides, showScrollButtons, heroTitleColor, heroTitleFont, heroDescColor, heroDescFont, heroBtnBg, heroBtnText, heroBtnFont, heroBtnStyle, heroBtnRadius, heroOverlayColor, heroOverlayOpacity, heroHeight, heroTextAlign, heroTransition, heroSpeed, heroArrowBg, heroArrowColor]);
 
   async function loadHeroSettings() {
     setLoading(true);
@@ -181,17 +185,21 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         const heroSpeedVal = settings.heroSpeed || '';
         const heroArrowBgVal = settings.heroArrowBg || '';
         const heroArrowColorVal = settings.heroArrowColor || '';
+        const heroDescFontVal = settings.heroDescFont || '';
+        const heroBtnFontVal = settings.heroBtnFont || '';
         setHeroHeight(heroHeightVal);
         setHeroTextAlign(heroTextAlignVal);
         setHeroTransition(heroTransitionVal);
         setHeroSpeed(heroSpeedVal);
         setHeroArrowBg(heroArrowBgVal);
         setHeroArrowColor(heroArrowColorVal);
+        setHeroDescFont(heroDescFontVal);
+        setHeroBtnFont(heroBtnFontVal);
 
         dirty.baseline({
           slides: merged, showScrollButtons: scrollVal,
-          heroTitleColor: titleColorVal, heroTitleFont: titleFontVal, heroDescColor: descColorVal,
-          heroBtnBg: btnBgVal, heroBtnText: btnTextVal, heroBtnStyle: btnStyleVal, heroBtnRadius: btnRadiusVal,
+          heroTitleColor: titleColorVal, heroTitleFont: titleFontVal, heroDescColor: descColorVal, heroDescFont: heroDescFontVal,
+          heroBtnBg: btnBgVal, heroBtnText: btnTextVal, heroBtnFont: heroBtnFontVal, heroBtnStyle: btnStyleVal, heroBtnRadius: btnRadiusVal,
           heroOverlayColor: overlayColorVal, heroOverlayOpacity: overlayOpacityVal,
           heroHeight: heroHeightVal, heroTextAlign: heroTextAlignVal, heroTransition: heroTransitionVal, heroSpeed: heroSpeedVal,
           heroArrowBg: heroArrowBgVal, heroArrowColor: heroArrowColorVal,
@@ -330,6 +338,8 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             heroSpeed: heroSpeed || '',
             heroArrowBg: heroArrowBg || '',
             heroArrowColor: heroArrowColor || '',
+            heroDescFont: heroDescFont || '',
+            heroBtnFont: heroBtnFont || '',
           }
         }),
       });
@@ -640,7 +650,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
             {/* Typography */}
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Typography</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Typography</p>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
                 <AdminColorField
                   label="Title & Subtitle Color"
@@ -655,12 +668,18 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   onChange={setHeroDescColor}
                 />
               </div>
-              <AdminFontPicker label="Title Font" value={heroTitleFont} onChange={setHeroTitleFont} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <AdminFontPicker label="Title Font" value={heroTitleFont} onChange={setHeroTitleFont} />
+                <AdminFontPicker label="Description Font" value={heroDescFont} onChange={setHeroDescFont} />
+              </div>
             </div>
 
             {/* CTA Button */}
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>CTA Button</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>CTA Button</p>
+              </div>
 
               {/* Button preview */}
               <div style={{ marginBottom: 16, padding: '14px 16px', background: '#0f172a', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -698,6 +717,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   fallback={themeDefaults.btnText}
                   onChange={setHeroBtnText}
                 />
+                <AdminFontPicker label="Button Font" value={heroBtnFont} onChange={setHeroBtnFont} />
               </div>
 
               {/* Button Style picker */}
@@ -767,7 +787,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
             {/* Overlay */}
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Image Overlay</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Image Overlay</p>
+              </div>
               <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>
                 Add a color tint over the slide image to improve text readability.
               </p>
@@ -825,7 +848,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
             {/* Hero Height */}
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Hero Height</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Hero Height</p>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                 {[
                   { value: '', label: 'Default', sub: '95vh', preview: 72 },
@@ -850,7 +876,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
             {/* Text Alignment — Classic only */}
             {activeTheme === 'classic' && (
               <div style={{ marginBottom: 24 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Text Alignment</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Text Alignment</p>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {[
                     { value: '', label: 'Center', icon: 'fa-align-center' },
@@ -872,7 +901,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
             {/* Transition Style */}
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Slide Transition</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Slide Transition</p>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                 {[
                   { value: '', label: 'Fade', desc: 'Smooth opacity' },
@@ -893,7 +925,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
             {/* Arrow Button Colors */}
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Arrow Buttons</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Arrow Buttons</p>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <AdminColorField
                   label="Button Background"
@@ -913,7 +948,10 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
 
             {/* Auto-play Speed */}
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 }}>Auto-play Speed</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Auto-play Speed</p>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                 {[
                   { value: 'slow', label: 'Slow', desc: '6 seconds' },

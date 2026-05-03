@@ -65,6 +65,7 @@
 .modern-hero-desc {
   font-size: 1.05rem;
   color: var(--hero-desc-color, #666);
+  font-family: var(--hero-desc-font, inherit);
   line-height: 1.6;
   margin: 0 0 32px 0;
   max-width: 440px;
@@ -81,6 +82,7 @@
   border-radius: 4px;
   font-size: 0.9rem;
   font-weight: 600;
+  font-family: var(--hero-btn-font, inherit);
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: opacity 0.2s ease, transform 0.2s ease;

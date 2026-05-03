@@ -1177,6 +1177,12 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
               <AdminColorField
+                label="Icon Color"
+                value={navIcon}
+                fallback="#333333"
+                onChange={setNavIcon}
+              />
+              <AdminColorField
                 label="Nav Link Color"
                 value={navLinkText}
                 fallback="#333333"
@@ -1187,12 +1193,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 value={navLinkHover}
                 fallback={isModern ? '#000000' : '#c59d5f'}
                 onChange={setNavLinkHover}
-              />
-              <AdminColorField
-                label="Icon Color"
-                value={navIcon}
-                fallback="#333333"
-                onChange={setNavIcon}
               />
             </div>
 
