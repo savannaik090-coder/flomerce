@@ -8,6 +8,7 @@ import { useSEO } from '../hooks/useSEO.js';
 import { useCurrency } from '../hooks/useCurrency.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import * as productService from '../services/productService.js';
+import { resolveProductPageStyle, buildProductPageStyleVars } from '../utils/productPageStyle.js';
 import ProductGallery from '../components/product/ProductGallery.jsx';
 import RelatedProducts from '../components/product/RelatedProducts.jsx';
 import ProductReviews from '../components/product/ProductReviews.jsx';
@@ -335,8 +336,16 @@ export default function ProductDetailPage() {
   const hasSpecDims = !!specDims;
   const hasAnySpec = hasSpecWeight || hasSpecDims || customSpecs.length > 0;
 
+  // Per-template merchant style overrides (color/font customization for the
+  // PDP). Only emits CSS variables for fields the merchant explicitly set;
+  // unset fields fall through to product-detail.css / modern.css fallbacks
+  // so an uncustomized PDP renders pixel-equivalent to before.
+  const pdpStyleVars = buildProductPageStyleVars(
+    resolveProductPageStyle(settings.productPage, isModern)
+  );
+
   return (
-    <div className={`${isModern ? 'modern-theme ' : ''}pdp-layout-sticky`}>
+    <div className={`${isModern ? 'modern-theme ' : ''}pdp-layout-sticky`} style={pdpStyleVars}>
       <div className="product-detail-container">
         <ProductGallery
           images={product.images}
@@ -365,7 +374,9 @@ export default function ProductDetailPage() {
 
             {product.short_description ? (
               <p style={{
-                margin: '4px 0 12px', fontSize: 15, color: '#475569',
+                margin: '4px 0 12px', fontSize: 15,
+                color: 'var(--pdp-short-desc-color, #475569)',
+                fontFamily: 'var(--pdp-body-font, inherit)',
                 lineHeight: 1.5,
               }}>
                 <TranslatedText text={product.short_description} />
@@ -377,12 +388,15 @@ export default function ProductDetailPage() {
               {hasComparePrice && (
                 <>
                   <span style={{
-                    fontSize: 16, color: '#94a3b8', textDecoration: 'line-through',
+                    fontSize: 16,
+                    color: 'var(--pdp-mrp-color, #94a3b8)',
+                    textDecoration: 'line-through',
                   }}>
                     {formatAmount(comparePrice)}
                   </span>
                   <span style={{
-                    background: '#dcfce7', color: '#166534',
+                    background: 'var(--pdp-discount-bg, #dcfce7)',
+                    color: 'var(--pdp-discount-text, #166534)',
                     padding: '3px 8px', borderRadius: 6,
                     fontSize: 12, fontWeight: 700,
                   }}>
@@ -584,7 +598,8 @@ export default function ProductDetailPage() {
                 {productTags.map((t, i) => (
                   <span key={i} style={{
                     fontSize: 11, padding: '4px 10px',
-                    background: '#f1f5f9', color: '#475569',
+                    background: 'var(--pdp-tag-chip-bg, #f1f5f9)',
+                    color: 'var(--pdp-tag-chip-text, #475569)',
                     borderRadius: 999, fontWeight: 500,
                   }}>
                     #{t}

@@ -167,6 +167,85 @@ export const CONTACT_MODERN_STYLE_DEFAULTS = Object.freeze({
 export function getContactClassicStyleDefaults() { return { ...CONTACT_CLASSIC_STYLE_DEFAULTS }; }
 export function getContactModernStyleDefaults() { return { ...CONTACT_MODERN_STYLE_DEFAULTS }; }
 
+// Product Detail Page (PDP) style defaults — these reproduce today's Classic
+// (pdp-layout-sticky) and Modern (modern-theme + pdp-layout-sticky) looks
+// exactly. Each key maps to a CSS variable consumed by product-detail.css
+// and modern.css through `buildProductPageStyleVars`. Keys are intentionally
+// shared between templates so the admin UI and CSS layer can use the same
+// shape — only the default values differ.
+export const PRODUCT_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#faf6ef',
+  titleColor: '#603000',
+  titleFont: "'Lora', Georgia, serif",
+  shortDescColor: '#475569',
+  bodyFont: "'Lora', Georgia, serif",
+  priceColor: '#2a2520',
+  priceFont: "'Lora', Georgia, serif",
+  mrpColor: '#6b5b48',
+  discountBadgeBg: '#dcfce7',
+  discountBadgeText: '#166534',
+  chipBorderColor: 'rgba(96, 48, 0, 0.20)',
+  chipSelectedBg: '#603000',
+  chipSelectedText: '#ffffff',
+  buyNowBg: '#c8b99a',
+  buyNowText: '#2a2520',
+  addToCartBg: 'transparent',
+  addToCartText: '#603000',
+  addToCartBorder: '#603000',
+  wishlistIconColor: '#8a4a52',
+  trustBadgesBg: 'rgba(255, 255, 255, 0.6)',
+  trustBadgesIconColor: '#603000',
+  trustBadgesTextColor: '#4a3d2f',
+  specsBg: '#ffffff',
+  specsHeadingColor: '#603000',
+  specsLabelColor: '#6b5b48',
+  specsValueColor: '#2a2520',
+  tagChipBg: '#f1f5f9',
+  tagChipText: '#475569',
+  relatedHeadingColor: '#333333',
+  inStockColor: '#4a6926',
+  outOfStockColor: '#b04a3c',
+  buttonFont: "'Lora', Georgia, serif",
+});
+
+export const PRODUCT_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#faf6ef',
+  titleColor: '#111111',
+  titleFont: "'Inter', 'Helvetica Neue', sans-serif",
+  shortDescColor: '#475569',
+  bodyFont: "'Lora', Georgia, serif",
+  priceColor: '#111111',
+  priceFont: "'Inter', sans-serif",
+  mrpColor: '#6b5b48',
+  discountBadgeBg: '#dcfce7',
+  discountBadgeText: '#166534',
+  chipBorderColor: 'rgba(96, 48, 0, 0.20)',
+  chipSelectedBg: '#111111',
+  chipSelectedText: '#ffffff',
+  buyNowBg: '#ffffff',
+  buyNowText: '#111111',
+  addToCartBg: '#111111',
+  addToCartText: '#ffffff',
+  addToCartBorder: '#111111',
+  wishlistIconColor: '#8a4a52',
+  trustBadgesBg: 'rgba(255, 255, 255, 0.6)',
+  trustBadgesIconColor: '#603000',
+  trustBadgesTextColor: '#4a3d2f',
+  specsBg: '#ffffff',
+  specsHeadingColor: '#603000',
+  specsLabelColor: '#6b5b48',
+  specsValueColor: '#2a2520',
+  tagChipBg: '#f1f5f9',
+  tagChipText: '#475569',
+  relatedHeadingColor: '#333333',
+  inStockColor: '#4a6926',
+  outOfStockColor: '#b04a3c',
+  buttonFont: "'Inter', sans-serif",
+});
+
+export function getProductClassicStyleDefaults() { return { ...PRODUCT_CLASSIC_STYLE_DEFAULTS }; }
+export function getProductModernStyleDefaults() { return { ...PRODUCT_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;

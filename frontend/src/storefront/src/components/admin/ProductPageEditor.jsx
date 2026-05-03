@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import SaveBar from './SaveBar.jsx';
 import { API_BASE } from '../../config.js';
 import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
+import {
+  PRODUCT_CLASSIC_STYLE_DEFAULTS,
+  PRODUCT_MODERN_STYLE_DEFAULTS,
+} from '../../defaults/index.js';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 
 const PDP_SETTING_KEYS = [
   'pdpShowMrp',
@@ -53,13 +60,19 @@ function readFromSettings(settings) {
 
 export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const [fields, setFields] = useState(DEFAULTS);
+  // Per-template style overrides — tracked side-by-side so editing one
+  // template never disturbs the other's saved values. Mirrors the pattern
+  // in ContactEditor / AboutUsEditor / Blog editor.
+  const [classicStyle, setClassicStyle] = useState({});
+  const [modernStyle, setModernStyle] = useState({});
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const hasLoadedRef = useRef(false);
 
-  const dirty = useDirtyTracker({ fields });
+  const dirty = useDirtyTracker({ fields, classicStyle, modernStyle });
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -67,8 +80,13 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (onPreviewUpdate) onPreviewUpdate({ ...fields });
-  }, [fields]);
+    if (onPreviewUpdate) {
+      onPreviewUpdate({
+        ...fields,
+        productPage: { classicStyle, modernStyle },
+      });
+    }
+  }, [fields, classicStyle, modernStyle]);
 
   async function loadSettings() {
     setLoading(true);
@@ -81,8 +99,13 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch { settings = {}; }
         }
         const fVal = readFromSettings(settings);
+        const productPage = settings.productPage || {};
+        const cs = (productPage.classicStyle && typeof productPage.classicStyle === 'object') ? productPage.classicStyle : {};
+        const ms = (productPage.modernStyle && typeof productPage.modernStyle === 'object') ? productPage.modernStyle : {};
         setFields(fVal);
-        dirty.baseline({ fields: fVal });
+        setClassicStyle(cs);
+        setModernStyle(ms);
+        dirty.baseline({ fields: fVal, classicStyle: cs, modernStyle: ms });
       }
     } catch (e) {
       console.error('Failed to load product page settings:', e);
@@ -100,6 +123,25 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
     setFields(DEFAULTS);
   }
 
+  function updateStyleField(template, key, value) {
+    const setter = template === 'modern' ? setModernStyle : setClassicStyle;
+    setter(prev => {
+      const next = { ...prev };
+      if (value === '' || value === null || value === undefined) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }
+
+  function resetStyleGroup(template, keys) {
+    const setter = template === 'modern' ? setModernStyle : setClassicStyle;
+    setter(prev => {
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
+  }
+
   async function handleSave(e) {
     if (e && e.preventDefault) e.preventDefault();
     setSaving(true);
@@ -112,7 +154,12 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { ...fields } }),
+        body: JSON.stringify({
+          settings: {
+            ...fields,
+            productPage: { classicStyle, modernStyle },
+          },
+        }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
@@ -325,8 +372,135 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
           </div>
         </div>
 
+        <StyleGroup
+          title="Classic styling"
+          template="classic"
+          style={classicStyle}
+          defaults={PRODUCT_CLASSIC_STYLE_DEFAULTS}
+          updateField={updateStyleField}
+          resetGroup={resetStyleGroup}
+          defaultOpen={!isModern}
+          fields={STYLE_FIELDS}
+        />
+
+        <StyleGroup
+          title="Modern styling"
+          template="modern"
+          style={modernStyle}
+          defaults={PRODUCT_MODERN_STYLE_DEFAULTS}
+          updateField={updateStyleField}
+          resetGroup={resetStyleGroup}
+          defaultOpen={isModern}
+          fields={STYLE_FIELDS}
+        />
+
         <SaveBar saving={saving} hasChanges={dirty.hasChanges} onSave={() => handleSave()} />
       </form>
+    </div>
+  );
+}
+
+// Field list shared by both templates — same key shape, defaults differ.
+// The order here drives the order in the editor UI.
+const STYLE_FIELDS = [
+  { kind: 'color', key: 'pageBg', label: 'Page Background' },
+  { kind: 'font',  key: 'titleFont', label: 'Heading Font (title, specs heading, related products heading)' },
+  { kind: 'color', key: 'titleColor', label: 'Product Title Color' },
+  { kind: 'font',  key: 'bodyFont', label: 'Body Font' },
+  { kind: 'color', key: 'shortDescColor', label: 'Short Description Color' },
+  { kind: 'font',  key: 'priceFont', label: 'Price Font' },
+  { kind: 'color', key: 'priceColor', label: 'Price Color' },
+  { kind: 'color', key: 'mrpColor', label: 'MRP / Strike-through Color' },
+  { kind: 'color', key: 'discountBadgeBg', label: 'Discount Badge Background' },
+  { kind: 'color', key: 'discountBadgeText', label: 'Discount Badge Text' },
+  { kind: 'color', key: 'inStockColor', label: 'In Stock Text Color' },
+  { kind: 'color', key: 'outOfStockColor', label: 'Out of Stock Text Color' },
+  { kind: 'color', key: 'chipBorderColor', label: 'Option Chip Border' },
+  { kind: 'color', key: 'chipSelectedBg', label: 'Option Chip Selected Background' },
+  { kind: 'color', key: 'chipSelectedText', label: 'Option Chip Selected Text' },
+  { kind: 'font',  key: 'buttonFont', label: 'Button Font (Buy Now / Add to Cart / Wishlist)' },
+  { kind: 'color', key: 'buyNowBg', label: 'Buy Now Button Background' },
+  { kind: 'color', key: 'buyNowText', label: 'Buy Now Button Text' },
+  { kind: 'color', key: 'addToCartBg', label: 'Add to Cart Background' },
+  { kind: 'color', key: 'addToCartText', label: 'Add to Cart Text' },
+  { kind: 'color', key: 'addToCartBorder', label: 'Add to Cart Border' },
+  { kind: 'color', key: 'wishlistIconColor', label: 'Wishlist Icon / Active Color' },
+  { kind: 'color', key: 'trustBadgesBg', label: 'Trust Badges Background' },
+  { kind: 'color', key: 'trustBadgesIconColor', label: 'Trust Badges Icon Color' },
+  { kind: 'color', key: 'trustBadgesTextColor', label: 'Trust Badges Text Color' },
+  { kind: 'color', key: 'specsBg', label: 'Specifications Panel Background' },
+  { kind: 'color', key: 'specsHeadingColor', label: 'Specifications Heading Color' },
+  { kind: 'color', key: 'specsLabelColor', label: 'Specifications Label Color' },
+  { kind: 'color', key: 'specsValueColor', label: 'Specifications Value Color' },
+  { kind: 'color', key: 'tagChipBg', label: 'Tag Chip Background' },
+  { kind: 'color', key: 'tagChipText', label: 'Tag Chip Text' },
+  { kind: 'color', key: 'relatedHeadingColor', label: 'Related Products Heading Color' },
+];
+
+// Collapsible per-template style group. The group matching the merchant's
+// active template (defaultOpen=true) is expanded on first render so the
+// most-relevant controls are visible without an extra click.
+function StyleGroup({ title, template, style, defaults, updateField, resetGroup, defaultOpen, fields }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const allKeys = fields.map(f => f.key);
+  const hasAnyOverride = allKeys.some(k => style[k]);
+
+  return (
+    <div className="card" style={{ marginBottom: 20 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="card-header"
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
+          padding: '14px 16px', textAlign: 'left',
+        }}
+      >
+        <h3 className="card-title" style={{ margin: 0 }}>{title}</h3>
+        <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ color: '#64748b', fontSize: 12 }} />
+      </button>
+      {open && (
+        <div className="card-content">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+              These settings apply only to the <strong>{template === 'modern' ? 'Modern' : 'Classic'}</strong> template.
+            </p>
+            {hasAnyOverride && (
+              <button
+                type="button"
+                onClick={() => resetGroup(template, allKeys)}
+                style={{
+                  background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: 12, color: '#475569', textDecoration: 'underline',
+                }}
+              >
+                Reset all to default
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {fields.map(f => (
+              f.kind === 'color' ? (
+                <AdminColorField
+                  key={f.key}
+                  label={f.label}
+                  value={style[f.key] || ''}
+                  fallback={defaults[f.key]}
+                  onChange={(v) => updateField(template, f.key, v)}
+                />
+              ) : (
+                <AdminFontPicker
+                  key={f.key}
+                  label={f.label}
+                  value={style[f.key] || ''}
+                  onChange={(v) => updateField(template, f.key, v)}
+                />
+              )
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

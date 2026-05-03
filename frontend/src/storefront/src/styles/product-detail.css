@@ -1234,9 +1234,9 @@
 
 /* ---------- Page chrome ---------- */
 .pdp-layout-sticky {
-    background: #faf6ef;
+    background: var(--pdp-page-bg, #faf6ef);
     color: #2a2520;
-    font-family: 'Lora', Georgia, 'Times New Roman', serif;
+    font-family: var(--pdp-body-font, 'Lora', Georgia, 'Times New Roman', serif);
 }
 .pdp-layout-sticky .product-detail-container {
     grid-template-columns: 1.35fr 1fr;
@@ -1284,8 +1284,8 @@
 
 /* ---------- Title block ---------- */
 .pdp-layout-sticky .product-detail-info .product-title {
-    font-family: 'Lora', Georgia, serif;
-    color: #603000;
+    font-family: var(--pdp-title-font, 'Lora', Georgia, serif);
+    color: var(--pdp-title-color, #603000);
     font-size: 32px;
     font-weight: 600;
     letter-spacing: -0.01em;
@@ -1317,16 +1317,16 @@
     align-items: baseline;
 }
 .pdp-layout-sticky .product-detail-info .product-price {
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--pdp-price-font, 'Lora', Georgia, serif);
     font-size: 30px;
     font-weight: 600;
-    color: #2a2520;
+    color: var(--pdp-price-color, #2a2520);
     letter-spacing: -0.01em;
 }
 /* The discount badge is rendered via inline styles, so we soften the
    strike-through MRP and let the badge live as-is. */
 .pdp-layout-sticky .product-detail-info .price > span:nth-child(2) {
-    color: #6b5b48 !important;
+    color: var(--pdp-mrp-color, #6b5b48) !important;
 }
 
 /* ---------- Meta items (SKU / Availability / Category) ---------- */
@@ -1347,8 +1347,8 @@
     color: #2a2520;
     font-size: 13px;
 }
-.pdp-layout-sticky .meta-value.in-stock { color: #4a6926; }
-.pdp-layout-sticky .meta-value.out-of-stock { color: #b04a3c; }
+.pdp-layout-sticky .meta-value.in-stock { color: var(--pdp-in-stock-color, #4a6926); }
+.pdp-layout-sticky .meta-value.out-of-stock { color: var(--pdp-out-stock-color, #b04a3c); }
 
 /* ---------- Option swatches & chips ---------- */
 .pdp-layout-sticky .product-option-label {
@@ -1369,7 +1369,7 @@
 }
 .pdp-layout-sticky .product-option-chip {
     background: #ffffff;
-    border: 1px solid rgba(96, 48, 0, 0.20);
+    border: 1px solid var(--pdp-chip-border, rgba(96, 48, 0, 0.20));
     color: #2a2520;
     border-radius: 4px;
     padding: 9px 16px;
@@ -1379,9 +1379,9 @@
     border-color: rgba(96, 48, 0, 0.55);
 }
 .pdp-layout-sticky .product-option-chip.selected {
-    background: #603000;
-    color: #ffffff;
-    border-color: #603000;
+    background: var(--pdp-chip-selected-bg, #603000);
+    color: var(--pdp-chip-selected-text, #ffffff);
+    border-color: var(--pdp-chip-selected-bg, #603000);
 }
 
 /* ---------- CTA stack (Buy Now → Add to Cart → Wishlist) ---------- */
@@ -1399,7 +1399,7 @@
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn {
     width: 100%;
     height: 54px;
-    font-family: 'Lora', Georgia, serif;
+    font-family: var(--pdp-button-font, 'Lora', Georgia, serif);
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -1409,9 +1409,9 @@
 }
 /* Buy Now — primary, warm beige fill */
 .pdp-layout-sticky .product-actions .buy-now-btn {
-    background: #c8b99a;
-    color: #2a2520;
-    border: 1px solid #c8b99a;
+    background: var(--pdp-buy-now-bg, #c8b99a);
+    color: var(--pdp-buy-now-text, #2a2520);
+    border: 1px solid var(--pdp-buy-now-bg, #c8b99a);
     box-shadow: 0 1px 2px rgba(96, 48, 0, 0.08);
 }
 .pdp-layout-sticky .product-actions .buy-now-btn:hover:not(:disabled) {
@@ -1421,9 +1421,9 @@
 }
 /* Add to Cart — secondary, outlined brown */
 .pdp-layout-sticky .product-actions .add-to-cart-btn {
-    background: transparent;
-    color: #603000;
-    border: 1px solid #603000;
+    background: var(--pdp-add-cart-bg, transparent);
+    color: var(--pdp-add-cart-text, #603000);
+    border: 1px solid var(--pdp-add-cart-border, #603000);
 }
 .pdp-layout-sticky .product-actions .add-to-cart-btn:hover:not(:disabled) {
     background: rgba(96, 48, 0, 0.05);
@@ -1439,15 +1439,15 @@
     font-size: 13px;
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn:hover {
-    color: #8a4a52;
-    border-color: #8a4a52;
+    color: var(--pdp-wishlist-color, #8a4a52);
+    border-color: var(--pdp-wishlist-color, #8a4a52);
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn.active {
-    color: #8a4a52;
-    border-color: #8a4a52;
+    color: var(--pdp-wishlist-color, #8a4a52);
+    border-color: var(--pdp-wishlist-color, #8a4a52);
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn.active i.fas.fa-heart {
-    color: #8a4a52;
+    color: var(--pdp-wishlist-color, #8a4a52);
 }
 
 .pdp-layout-sticky .product-actions button:disabled {
@@ -1462,32 +1462,39 @@
    inline-style attribute substring selectors that break the moment React
    reorders or normalizes the style string. */
 .pdp-layout-sticky .pdp-trust-badges-row {
-    background: rgba(255, 255, 255, 0.6) !important;
+    background: var(--pdp-trust-bg, rgba(255, 255, 255, 0.6)) !important;
     border-color: rgba(96, 48, 0, 0.10) !important;
     border-radius: 10px !important;
     margin-top: 18px !important;
 }
 .pdp-layout-sticky .pdp-trust-badges-row i.fas {
-    color: #603000 !important;
+    color: var(--pdp-trust-icon, #603000) !important;
 }
 .pdp-layout-sticky .pdp-trust-badges-row span {
-    color: #4a3d2f !important;
+    color: var(--pdp-trust-text, #4a3d2f) !important;
 }
 
 /* ---------- Specifications panel ---------- */
 .pdp-layout-sticky .pdp-specs-panel {
-    background: #ffffff !important;
+    background: var(--pdp-specs-bg, #ffffff) !important;
     border-color: rgba(96, 48, 0, 0.08) !important;
 }
 .pdp-layout-sticky .pdp-specs-panel h4,
 .pdp-layout-sticky .pdp-specs-panel h4 i.fas {
-    color: #603000 !important;
+    color: var(--pdp-specs-heading-color, #603000) !important;
+    font-family: var(--pdp-title-font, 'Lora', Georgia, serif);
 }
 .pdp-layout-sticky .pdp-specs-panel > div {
-    color: #2a2520 !important;
+    color: var(--pdp-specs-value-color, #2a2520) !important;
 }
 .pdp-layout-sticky .pdp-specs-panel > div span {
-    color: #6b5b48 !important;
+    color: var(--pdp-specs-label-color, #6b5b48) !important;
+}
+
+/* ---------- Related products heading ---------- */
+.pdp-layout-sticky .related-products-section .section-title {
+    color: var(--pdp-related-heading-color, #333333);
+    font-family: var(--pdp-title-font, var(--font-heading));
 }
 
 /* ---------- Description ---------- */
