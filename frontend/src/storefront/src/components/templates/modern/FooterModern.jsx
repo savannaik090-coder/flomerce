@@ -35,10 +35,13 @@ export default function FooterModern() {
   const showPlayStore = appBanner.showPlayStore !== false;
 
   const contactInfo = {
-    email: siteConfig?.email || settings.email || '',
-    phone: siteConfig?.phone || settings.phone || '',
-    address: siteConfig?.address || settings.address || '',
+    email: settings.email || siteConfig?.email || '',
+    phone: settings.phone || siteConfig?.phone || '',
+    address: settings.address || siteConfig?.address || '',
   };
+  const contactToggles = (settings.footer && settings.footer.contact) || {};
+  const showAddress = contactToggles.showAddress !== false;
+  const showContact = contactToggles.showContact !== false;
 
   function toggleSection(section) {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -50,11 +53,11 @@ export default function FooterModern() {
         <div className="mn-footer-grid">
           <div className="mn-footer-col mn-footer-brand-col">
             <h3 className="mn-footer-heading">{siteConfig?.brandName || 'Store'}</h3>
-            {contactInfo.address && <p className="mn-footer-address">{contactInfo.address}</p>}
-            {contactInfo.email && (
+            {showAddress && contactInfo.address && <p className="mn-footer-address">{contactInfo.address}</p>}
+            {showContact && contactInfo.email && (
               <a href={`mailto:${contactInfo.email}`} className="mn-footer-contact-link">{contactInfo.email}</a>
             )}
-            {contactInfo.phone && (
+            {showContact && contactInfo.phone && (
               <a href={`tel:${contactInfo.phone}`} className="mn-footer-contact-link">{contactInfo.phone}</a>
             )}
             {hasSocialLinks && (

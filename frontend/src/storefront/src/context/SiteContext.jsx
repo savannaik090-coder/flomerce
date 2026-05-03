@@ -483,6 +483,7 @@ export function SiteProvider({ children }) {
     apply('--footer-classic-link-color',          settings.footerClassicLinkColor);
     apply('--footer-classic-link-font',           settings.footerClassicLinkFont);
     apply('--footer-classic-follow-title-color',  settings.footerClassicFollowTitleColor);
+    apply('--footer-classic-contact-color',       settings.footerClassicContactColor);
     apply('--footer-classic-social-icon-bg',      settings.footerClassicSocialIconBg);
     apply('--footer-classic-social-icon-color',   settings.footerClassicSocialIconColor);
     apply('--footer-classic-social-icon-border',  settings.footerClassicSocialIconBorder);

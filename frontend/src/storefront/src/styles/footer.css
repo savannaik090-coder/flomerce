@@ -104,6 +104,30 @@
     letter-spacing: 0.5px;
 }
 
+.footer-contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: var(--spacing-md);
+}
+
+.footer-contact-address {
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 4px 0;
+    color: var(--footer-classic-contact-color, var(--color-text-light));
+}
+
+.footer-contact-link {
+    font-size: 14px;
+    color: var(--footer-classic-contact-color, var(--color-text-light));
+    text-decoration: none;
+}
+
+.footer-contact-link:hover {
+    text-decoration: underline;
+}
+
 .social-icons-container {
     display: flex;
     justify-content: flex-start;

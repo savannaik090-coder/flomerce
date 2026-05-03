@@ -28,6 +28,14 @@ export default function Footer() {
 
   const hasSocialLinks = socialLinks.instagram || socialLinks.facebook || socialLinks.twitter || socialLinks.youtube;
 
+  const contactToggles = footerConfig.contact || {};
+  const showAddress = contactToggles.showAddress !== false;
+  const showContact = contactToggles.showContact !== false;
+  const contactAddress = settings.address || siteConfig?.address || '';
+  const contactEmail = settings.email || siteConfig?.email || '';
+  const contactPhone = settings.phone || siteConfig?.phone || '';
+  const hasContactInfo = (showAddress && contactAddress) || (showContact && (contactEmail || contactPhone));
+
   const appBanner = footerConfig.appBanner || {};
   const showAppBanner = appBanner.show === true;
   const showAppStore = appBanner.showAppStore !== false;
@@ -179,31 +187,48 @@ export default function Footer() {
           </div>
         )}
 
-        {hasSocialLinks && (
+        {(hasSocialLinks || hasContactInfo) && (
           <div className="footer-social-section">
-            <h3 className="social-section-title"><TranslatedText text="Follow us on social media" /></h3>
-            <div className="social-icons-container">
-              {socialLinks.instagram && (
-                <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                  <i className="fab fa-instagram"></i>
-                </a>
-              )}
-              {socialLinks.facebook && (
-                <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                  <i className="fab fa-facebook-f"></i>
-                </a>
-              )}
-              {socialLinks.twitter && (
-                <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                  <i className="fab fa-twitter"></i>
-                </a>
-              )}
-              {socialLinks.youtube && (
-                <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                  <i className="fab fa-youtube"></i>
-                </a>
-              )}
-            </div>
+            {hasSocialLinks && (
+              <h3 className="social-section-title"><TranslatedText text="Follow us on social media" /></h3>
+            )}
+            {hasContactInfo && (
+              <div className="footer-contact-info">
+                {showAddress && contactAddress && (
+                  <p className="footer-contact-address">{contactAddress}</p>
+                )}
+                {showContact && contactEmail && (
+                  <a href={`mailto:${contactEmail}`} className="footer-contact-link">{contactEmail}</a>
+                )}
+                {showContact && contactPhone && (
+                  <a href={`tel:${contactPhone}`} className="footer-contact-link">{contactPhone}</a>
+                )}
+              </div>
+            )}
+            {hasSocialLinks && (
+              <div className="social-icons-container">
+                {socialLinks.instagram && (
+                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                    <i className="fab fa-instagram"></i>
+                  </a>
+                )}
+                {socialLinks.facebook && (
+                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                    <i className="fab fa-facebook-f"></i>
+                  </a>
+                )}
+                {socialLinks.twitter && (
+                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                    <i className="fab fa-twitter"></i>
+                  </a>
+                )}
+                {socialLinks.youtube && (
+                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                    <i className="fab fa-youtube"></i>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
 
