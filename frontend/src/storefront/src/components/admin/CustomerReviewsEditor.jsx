@@ -393,7 +393,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
           <h3>No Reviews Yet</h3>
           <p>Add customer reviews with images and ratings. These appear in the "What Our Customers Say" section on your homepage.</p>
           <button className="btn btn-primary" onClick={openAdd} style={{ marginTop: 16 }}>
-            <i className="fas fa-plus" style={{ marginInlineEnd: 8 }} />Add First Review
+            <i className="fas fa-plus" /> Add First Review
           </button>
         </div>
       ) : (
