@@ -72,7 +72,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
   const [panelAccentText, setPanelAccentText] = useState('');
   const [panelFont, setPanelFont] = useState('');
   const [navTransparent, setNavTransparent] = useState(false);
-  const [navTransparentText, setNavTransparentText] = useState('');
   const [activeView, setActiveView] = useState('content');
   const logoInputRef = useRef(null);
   const pendingMedia = usePendingMedia(siteConfig?.id);
@@ -81,7 +80,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
     navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
     navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
     panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-    navTransparent, navTransparentText,
+    navTransparent,
   });
 
   useEffect(() => {
@@ -98,13 +97,13 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
       navbarMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
       navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
       panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-      navTransparent, navTransparentText,
+      navTransparent,
     });
   }, [
     navbarMenus, logoUrl, logoSize, logoPosition, showAccountIcon, showCartIcon,
     navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
     panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-    navTransparent, navTransparentText,
+    navTransparent,
   ]);
 
   async function loadCategories() {
@@ -146,7 +145,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         const panelAccentTextVal = settings.panelAccentText || '';
         const panelFontVal = settings.panelFont || '';
         const navTransparentVal = settings.navTransparent === true;
-        const navTransparentTextVal = settings.navTransparentText || '';
         setNavbarMenus(menusVal);
         savedLogoRef.current = logoVal;
         setLogoUrl(logoVal);
@@ -168,7 +166,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
         setPanelAccentText(panelAccentTextVal);
         setPanelFont(panelFontVal);
         setNavTransparent(navTransparentVal);
-        setNavTransparentText(navTransparentTextVal);
         dirty.baseline({
           navbarMenus: menusVal, logoUrl: logoVal, logoSize: sizeVal, logoPosition: posVal,
           showAccountIcon: accVal, showCartIcon: cartVal,
@@ -176,7 +173,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
           navIcon: navIconVal, navFont: navFontVal, brandColor: brandColorVal, brandFont: brandFontVal,
           panelBg: panelBgVal, panelText: panelTextVal, panelMuted: panelMutedVal,
           panelAccent: panelAccentVal, panelAccentText: panelAccentTextVal, panelFont: panelFontVal,
-          navTransparent: navTransparentVal, navTransparentText: navTransparentTextVal,
+          navTransparent: navTransparentVal,
         });
       }
     } catch (e) {
@@ -283,7 +280,7 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
             navbarMenus: cleanMenus, logoSize, logoPosition, showAccountIcon, showCartIcon,
             navBg, navLinkText, navLinkHover, navIcon, navFont, brandColor, brandFont,
             panelBg, panelText, panelMuted, panelAccent, panelAccentText, panelFont,
-            navTransparent, navTransparentText,
+            navTransparent,
           },
           logoUrl: logoUrl || null,
         }),
@@ -1102,14 +1099,6 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
                 }} />
               </button>
             </div>
-            {navTransparent && (
-              <AdminColorField
-                label="Transparent text / icon color"
-                value={navTransparentText}
-                fallback="#ffffff"
-                onChange={setNavTransparentText}
-              />
-            )}
           </div>
         </div>
 
