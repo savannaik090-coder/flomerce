@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-03T10:31:40.486Z",
-  "hash": "c2a19bee7b9bb19d",
-  "count": 1034,
+  "generatedAt": "2026-05-03T12:28:06.047Z",
+  "hash": "4f0869ad97833cf7",
+  "count": 1035,
   "strings": [
     " until you verify your email.",
     "\"Amazing customer service and wonderful products. Will definitely order again!\"",
@@ -214,6 +214,7 @@
     "Dadra and Nagar Haveli and Daman and Diu",
     "Default",
     "Default Currency",
+    "Default · ${defaults[f.key]}",
     "Delete",
     "Delete coupon",
     "Delete menu group",
