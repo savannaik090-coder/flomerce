@@ -2635,6 +2635,10 @@ body.mn-nav-transparent .modern-hero {
   scrollbar-width: none;
   padding: 4px 0;
   flex: 1;
+  justify-content: center;
+}
+.mn-store-locations-scroll:has(.mn-store-card:nth-child(3)) {
+  justify-content: flex-start;
 }
 .mn-store-locations-scroll::-webkit-scrollbar {
   display: none;
