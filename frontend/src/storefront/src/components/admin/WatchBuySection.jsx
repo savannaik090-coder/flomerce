@@ -539,7 +539,7 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
                         onChange={e => { setPickerQuery(e.target.value); setPickerOpen(true); setPickerHighlight(0); }}
                         onFocus={() => setPickerOpen(true)}
                         onKeyDown={e => {
-                          if (e.key === 'ArrowDown') { e.preventDefault(); setPickerHighlight(i => Math.min(i + 1, results.length - 1)); }
+                          if (e.key === 'ArrowDown') { e.preventDefault(); setPickerHighlight(i => results.length === 0 ? 0 : Math.min(i + 1, results.length - 1)); }
                           else if (e.key === 'ArrowUp') { e.preventDefault(); setPickerHighlight(i => Math.max(i - 1, 0)); }
                           else if (e.key === 'Enter') { e.preventDefault(); if (results[pickerHighlight]) selectProduct(results[pickerHighlight]); }
                           else if (e.key === 'Escape') { e.preventDefault(); setPickerOpen(false); }
