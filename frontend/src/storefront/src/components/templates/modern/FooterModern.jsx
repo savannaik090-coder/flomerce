@@ -53,12 +53,22 @@ export default function FooterModern() {
         <div className="mn-footer-grid">
           <div className="mn-footer-col mn-footer-brand-col">
             <h3 className="mn-footer-heading">{siteConfig?.brandName || 'Store'}</h3>
-            {showAddress && contactInfo.address && <p className="mn-footer-address">{contactInfo.address}</p>}
+            {showAddress && contactInfo.address && (
+              <p className="mn-footer-address">
+                <span className="mn-footer-contact-label"><TranslatedText text="Address" />:</span> {contactInfo.address}
+              </p>
+            )}
             {showContact && contactInfo.email && (
-              <a href={`mailto:${contactInfo.email}`} className="mn-footer-contact-link">{contactInfo.email}</a>
+              <p className="mn-footer-contact-line">
+                <span className="mn-footer-contact-label"><TranslatedText text="Email" />:</span>{' '}
+                <a href={`mailto:${contactInfo.email}`} className="mn-footer-contact-link">{contactInfo.email}</a>
+              </p>
             )}
             {showContact && contactInfo.phone && (
-              <a href={`tel:${contactInfo.phone}`} className="mn-footer-contact-link">{contactInfo.phone}</a>
+              <p className="mn-footer-contact-line">
+                <span className="mn-footer-contact-label"><TranslatedText text="Phone no" />:</span>{' '}
+                <a href={`tel:${contactInfo.phone}`} className="mn-footer-contact-link">{contactInfo.phone}</a>
+              </p>
             )}
             {hasSocialLinks && (
               <div className="mn-footer-social">

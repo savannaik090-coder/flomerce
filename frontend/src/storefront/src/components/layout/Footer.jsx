@@ -189,16 +189,23 @@ export default function Footer() {
 
         {hasContactInfo && (
           <div className="footer-contact-section">
-            <h3 className="footer-contact-brand">{siteConfig?.brandName || 'Store'}</h3>
             <div className="footer-contact-info">
               {showAddress && contactAddress && (
-                <p className="footer-contact-address">{contactAddress}</p>
+                <p className="footer-contact-address">
+                  <span className="footer-contact-label"><TranslatedText text="Address" />:</span> {contactAddress}
+                </p>
               )}
               {showContact && contactEmail && (
-                <a href={`mailto:${contactEmail}`} className="footer-contact-link">{contactEmail}</a>
+                <p className="footer-contact-line">
+                  <span className="footer-contact-label"><TranslatedText text="Email" />:</span>{' '}
+                  <a href={`mailto:${contactEmail}`} className="footer-contact-link">{contactEmail}</a>
+                </p>
               )}
               {showContact && contactPhone && (
-                <a href={`tel:${contactPhone}`} className="footer-contact-link">{contactPhone}</a>
+                <p className="footer-contact-line">
+                  <span className="footer-contact-label"><TranslatedText text="Phone no" />:</span>{' '}
+                  <a href={`tel:${contactPhone}`} className="footer-contact-link">{contactPhone}</a>
+                </p>
               )}
             </div>
           </div>

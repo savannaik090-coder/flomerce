@@ -1076,18 +1076,27 @@ body.mn-nav-transparent .modern-hero {
   margin: 0 0 16px 0;
 }
 
-.mn-footer-address {
+.mn-footer-address,
+.mn-footer-contact-line {
   font-size: 0.88rem;
   line-height: 1.6;
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: var(--footer-modern-contact-color, #999);
 }
 
+.mn-footer-contact-label {
+  font-weight: 600;
+  margin-inline-end: 4px;
+  color: var(--footer-modern-contact-color, #ccc);
+}
+
 .mn-footer-contact-link {
-  display: block;
-  font-size: 0.88rem;
-  margin-bottom: 6px;
   color: var(--footer-modern-contact-color, inherit);
+  text-decoration: none;
+}
+
+.mn-footer-contact-link:hover {
+  text-decoration: underline;
 }
 
 .mn-footer-social {
