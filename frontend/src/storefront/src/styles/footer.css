@@ -104,11 +104,28 @@
     letter-spacing: 0.5px;
 }
 
+.footer-contact-section {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) 0 var(--spacing-lg) 0;
+    text-align: start;
+}
+
+.footer-contact-brand {
+    font-family: var(--footer-classic-section-title-font, Georgia, 'Times New Roman', serif);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--footer-classic-section-title-color, var(--color-text-light));
+    margin: 0 0 var(--spacing-sm) 0;
+    letter-spacing: 0.5px;
+    text-align: start;
+}
+
 .footer-contact-info {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 6px;
-    margin-bottom: var(--spacing-md);
+    text-align: start;
 }
 
 .footer-contact-address {
@@ -116,12 +133,14 @@
     line-height: 1.5;
     margin: 0 0 4px 0;
     color: var(--footer-classic-contact-color, var(--color-text-light));
+    text-align: start;
 }
 
 .footer-contact-link {
     font-size: 14px;
     color: var(--footer-classic-contact-color, var(--color-text-light));
     text-decoration: none;
+    text-align: start;
 }
 
 .footer-contact-link:hover {

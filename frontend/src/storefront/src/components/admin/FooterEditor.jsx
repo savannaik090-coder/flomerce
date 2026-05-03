@@ -131,9 +131,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   const [paymentMethods, setPaymentMethods] = useState(DEFAULT_PAYMENT_METHODS);
 
-  const [address, setAddress] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [showAddress, setShowAddress] = useState(true);
   const [showContact, setShowContact] = useState(true);
 
@@ -146,7 +143,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   const [categories, setCategories] = useState([]);
 
-  const dirty = useDirtyTracker({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, paymentMethods, address, email, phone, showAddress, showContact, appearance });
+  const dirty = useDirtyTracker({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, paymentMethods, showAddress, showContact, appearance });
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -160,9 +157,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
     const social = { instagram, facebook, twitter, youtube };
     if (onPreviewUpdate) onPreviewUpdate({
       social,
-      address,
-      email,
-      phone,
       footer: {
         social,
         bottomNav: { shopRedirect },
@@ -173,7 +167,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       },
       ...appearance,
     });
-  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, paymentMethods, address, email, phone, showAddress, showContact, appearance]);
+  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, paymentMethods, showAddress, showContact, appearance]);
 
   async function loadCategories() {
     try {
@@ -233,15 +227,9 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
           : DEFAULT_PAYMENT_METHODS.slice();
         setPaymentMethods(paymentMethodsVal);
 
-        const addressVal = settings.address || result.data.address || '';
-        const emailVal = settings.email || result.data.email || '';
-        const phoneVal = settings.phone || result.data.phone || '';
         const contact = footer.contact || {};
         const showAddressVal = contact.showAddress !== false;
         const showContactVal = contact.showContact !== false;
-        setAddress(addressVal);
-        setEmail(emailVal);
-        setPhone(phoneVal);
         setShowAddress(showAddressVal);
         setShowContact(showContactVal);
 
@@ -251,7 +239,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         }
         setAppearance(appearanceVal);
 
-        dirty.baseline({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, paymentMethods: paymentMethodsVal, address: addressVal, email: emailVal, phone: phoneVal, showAddress: showAddressVal, showContact: showContactVal, appearance: appearanceVal });
+        dirty.baseline({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, paymentMethods: paymentMethodsVal, showAddress: showAddressVal, showContact: showContactVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
@@ -272,14 +260,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
     try {
       var token = sessionStorage.getItem('site_admin_token');
       var payload = {
-        address: address,
-        email: email,
-        phone: phone,
         settings: {
           social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
-          address: address,
-          email: email,
-          phone: phone,
           footer: {
             social: { instagram: instagram, facebook: facebook, twitter: twitter, youtube: youtube },
             bottomNav: { shopRedirect: shopRedirect },
@@ -363,7 +345,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         <div className="card-header"><h3 className="card-title">Contact Details</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
-            Address, email, and phone shown in the footer. These same values are also used on invoices and checkout.
+            Choose whether to display your store address and contact details (email &amp; phone) in the footer. The actual address, email, and phone values are managed in <strong>Settings → Store Information</strong>.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12 }}>
@@ -379,9 +361,9 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             </label>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
             <div>
-              <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show Contact (Email & Phone)</label>
+              <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Show Contact (Email &amp; Phone)</label>
               <span style={{ fontSize: 12, color: '#94a3b8' }}>Display email and phone links in the footer</span>
             </div>
             <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
@@ -390,28 +372,6 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
                 <span style={{ position: 'absolute', left: showContact ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               </span>
             </label>
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-              <i className="fas fa-map-marker-alt" style={{ marginInlineEnd: 6, color: '#dc2626' }} />Address
-            </label>
-            <textarea value={address} onChange={function (ev) { setAddress(ev.target.value); }} rows={2} placeholder="Store address" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fas fa-envelope" style={{ marginInlineEnd: 6, color: '#2563eb' }} />Email
-              </label>
-              <input type="email" value={email} onChange={function (ev) { setEmail(ev.target.value); }} placeholder="contact@store.com" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
-                <i className="fas fa-phone" style={{ marginInlineEnd: 6, color: '#2563eb' }} />Phone
-              </label>
-              <input type="tel" value={phone} onChange={function (ev) { setPhone(ev.target.value); }} placeholder="+1 555 000 0000" style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
           </div>
         </div>
       </div>

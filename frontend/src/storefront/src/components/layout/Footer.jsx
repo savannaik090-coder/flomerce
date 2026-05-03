@@ -187,48 +187,48 @@ export default function Footer() {
           </div>
         )}
 
-        {(hasSocialLinks || hasContactInfo) && (
+        {hasContactInfo && (
+          <div className="footer-contact-section">
+            <h3 className="footer-contact-brand">{siteConfig?.brandName || 'Store'}</h3>
+            <div className="footer-contact-info">
+              {showAddress && contactAddress && (
+                <p className="footer-contact-address">{contactAddress}</p>
+              )}
+              {showContact && contactEmail && (
+                <a href={`mailto:${contactEmail}`} className="footer-contact-link">{contactEmail}</a>
+              )}
+              {showContact && contactPhone && (
+                <a href={`tel:${contactPhone}`} className="footer-contact-link">{contactPhone}</a>
+              )}
+            </div>
+          </div>
+        )}
+
+        {hasSocialLinks && (
           <div className="footer-social-section">
-            {hasSocialLinks && (
-              <h3 className="social-section-title"><TranslatedText text="Follow us on social media" /></h3>
-            )}
-            {hasContactInfo && (
-              <div className="footer-contact-info">
-                {showAddress && contactAddress && (
-                  <p className="footer-contact-address">{contactAddress}</p>
-                )}
-                {showContact && contactEmail && (
-                  <a href={`mailto:${contactEmail}`} className="footer-contact-link">{contactEmail}</a>
-                )}
-                {showContact && contactPhone && (
-                  <a href={`tel:${contactPhone}`} className="footer-contact-link">{contactPhone}</a>
-                )}
-              </div>
-            )}
-            {hasSocialLinks && (
-              <div className="social-icons-container">
-                {socialLinks.instagram && (
-                  <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                    <i className="fab fa-instagram"></i>
-                  </a>
-                )}
-                {socialLinks.facebook && (
-                  <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                    <i className="fab fa-facebook-f"></i>
-                  </a>
-                )}
-                {socialLinks.twitter && (
-                  <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                    <i className="fab fa-twitter"></i>
-                  </a>
-                )}
-                {socialLinks.youtube && (
-                  <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="social-icon-link">
-                    <i className="fab fa-youtube"></i>
-                  </a>
-                )}
-              </div>
-            )}
+            <h3 className="social-section-title"><TranslatedText text="Follow us on social media" /></h3>
+            <div className="social-icons-container">
+              {socialLinks.instagram && (
+                <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-instagram"></i>
+                </a>
+              )}
+              {socialLinks.facebook && (
+                <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-facebook-f"></i>
+                </a>
+              )}
+              {socialLinks.twitter && (
+                <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-twitter"></i>
+                </a>
+              )}
+              {socialLinks.youtube && (
+                <a href={socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="social-icon-link">
+                  <i className="fab fa-youtube"></i>
+                </a>
+              )}
+            </div>
           </div>
         )}
 
