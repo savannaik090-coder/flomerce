@@ -1615,11 +1615,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
                   <AdminColorField label="Banner Divider Color" value={catBannerDividerColor} fallback="#ffffff" onChange={setCatBannerDividerColor} />
 
-                  <AdminColorField label='"VIEW ALL" Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
+                  <AdminColorField label='Banner "VIEW ALL" Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
 
-                  <AdminColorField label='"VIEW ALL" Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
+                  <AdminColorField label='Banner "VIEW ALL" Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
 
-                  <AdminFontPicker label='"VIEW ALL" Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
+                  <AdminFontPicker label='Banner "VIEW ALL" Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
 
                   <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Product Cards (Classic)</div>
@@ -1644,9 +1644,9 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                   <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Banner Hover Text (Modern)</div>
 
-                  <AdminColorField label='"Shop {name}" Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
+                  <AdminColorField label='Banner "Shop {name}" Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
 
-                  <AdminFontPicker label='"Shop {name}" Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
+                  <AdminFontPicker label='Banner "Shop {name}" Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
 
                   <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Product Cards (Modern)</div>
