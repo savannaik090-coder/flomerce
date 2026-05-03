@@ -1433,10 +1433,13 @@
    AA for normal text (≥4.5:1) instead of the original pale pink. */
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn {
     background: transparent;
-    color: #6b5b48;
-    border: 1px solid rgba(96, 48, 0, 0.20);
+    color: var(--pdp-wishlist-color, #6b5b48);
+    border: 1px solid var(--pdp-wishlist-color, rgba(96, 48, 0, 0.20));
     height: 46px;
     font-size: 13px;
+}
+.pdp-layout-sticky .product-actions .add-to-wishlist-btn i.fas {
+    color: var(--pdp-wishlist-color, inherit);
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn:hover {
     color: var(--pdp-wishlist-color, #8a4a52);

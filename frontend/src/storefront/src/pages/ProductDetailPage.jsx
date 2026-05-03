@@ -390,6 +390,7 @@ export default function ProductDetailPage() {
                   <span style={{
                     fontSize: 16,
                     color: 'var(--pdp-mrp-color, #94a3b8)',
+                    fontFamily: 'var(--pdp-price-font, inherit)',
                     textDecoration: 'line-through',
                   }}>
                     {formatAmount(comparePrice)}
