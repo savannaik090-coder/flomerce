@@ -251,11 +251,18 @@
   border-bottom-color: transparent !important;
   box-shadow: none !important;
 }
-.mn-header--transparent .mn-nav-link,
-.mn-header--transparent .mn-brand-text,
+.mn-header--transparent {
+  --nav-icon: var(--nav-transparent-icon, #ffffff);
+}
+.mn-header--transparent .mn-nav-link {
+  color: var(--nav-transparent-link, #ffffff);
+}
+.mn-header--transparent .mn-brand-text {
+  color: var(--nav-transparent-brand, #ffffff);
+}
 .mn-header--transparent .mn-icon-btn,
 .mn-header--transparent .mn-hamburger {
-  color: var(--nav-transparent-text, #ffffff);
+  color: var(--nav-transparent-icon, #ffffff);
 }
 /* Mobile panel has its own solid background — restore normal link colour inside it */
 .mn-header--transparent .mn-mobile-menu.mn-mobile-open .mn-nav-link {

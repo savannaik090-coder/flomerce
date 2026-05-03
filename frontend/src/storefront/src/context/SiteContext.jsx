@@ -271,7 +271,11 @@ export function SiteProvider({ children }) {
     apply('--nav-font', settings.navFont);
     apply('--brand-color', settings.brandColor);
     apply('--brand-font', settings.brandFont);
-    apply('--nav-transparent-text', settings.navLinkText);
+    // Transparent-mode per-element colour sources (each maps to its own
+    // appearance control; CSS fallback is #ffffff for visibility over hero).
+    apply('--nav-transparent-link', settings.navLinkText);
+    apply('--nav-transparent-brand', settings.brandColor);
+    apply('--nav-transparent-icon', settings.navIcon);
 
     // Cart + wishlist side-panel customization (single shared block).
     apply('--panel-bg', settings.panelBg);

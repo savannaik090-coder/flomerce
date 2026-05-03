@@ -29,20 +29,22 @@
     border-bottom-color: transparent !important;
 }
 
-/* Apply the merchant-chosen "transparent text colour" to text + icons.
- * Scoping --nav-icon / --nav-text here makes PngIcons (whose mask colour is an
- * inline `var(--nav-icon, …)` reference) resolve to the transparent colour. */
+/* Transparent state — each element uses its own appearance-section control.
+ * --nav-icon is scoped here so PngIcons (inline var(--nav-icon,…)) resolve to
+ * the icon colour rather than the template default dark fallback. */
 .header--transparent {
-    --nav-icon: var(--nav-transparent-text, #ffffff);
-    --nav-text: var(--nav-transparent-text, #ffffff);
+    --nav-icon: var(--nav-transparent-icon, #ffffff);
 }
-/* Desktop bar elements only — brand, icons, hamburger, top-level nav links */
 .header--transparent .nav-link,
-.header--transparent .brand-text,
-.header--transparent .icon-link,
 .header--transparent .hamburger,
 .header--transparent .hamburger i {
-    color: var(--nav-transparent-text, #ffffff) !important;
+    color: var(--nav-transparent-link, #ffffff) !important;
+}
+.header--transparent .brand-text {
+    color: var(--nav-transparent-brand, #ffffff) !important;
+}
+.header--transparent .icon-link {
+    color: var(--nav-transparent-icon, #ffffff) !important;
 }
 /* Mobile panel has its own solid background — restore normal link colour inside it */
 .header--transparent .nav-menu.active .nav-link {
