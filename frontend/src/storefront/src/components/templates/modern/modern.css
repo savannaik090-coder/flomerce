@@ -1569,7 +1569,7 @@ body.mn-nav-transparent .modern-hero {
   font-size: 13px;
 }
 .modern-theme .product-description-section h3 {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--pdp-title-font, 'Inter', sans-serif);
   font-weight: 700;
   font-size: 14px;
   text-transform: uppercase;
@@ -1577,7 +1577,7 @@ body.mn-nav-transparent .modern-hero {
   color: #111;
 }
 .modern-theme .product-description-section p {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--pdp-body-font, 'Inter', sans-serif);
   font-size: 14px;
   line-height: 1.7;
   color: #666;
