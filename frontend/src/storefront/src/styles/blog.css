@@ -164,8 +164,8 @@
 
 .blog-post-title {
   font-family: var(--blog-post-title-font, inherit);
-  font-size: var(--blog-page-heading-size, 2rem);
-  font-weight: var(--blog-page-heading-weight, 700);
+  font-size: var(--blog-post-title-size, 2rem);
+  font-weight: var(--blog-post-title-weight, 700);
   color: var(--blog-post-title-color, var(--text-primary, #0f172a));
   margin: 0 0 32px;
   line-height: 1.3;
