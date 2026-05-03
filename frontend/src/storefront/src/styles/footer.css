@@ -1,6 +1,6 @@
 .footer-minimalist {
-    background-color: var(--color-bg);
-    color: var(--color-text-light);
+    background-color: var(--footer-classic-bg, var(--color-bg));
+    color: var(--footer-classic-text, var(--color-text-light));
     margin-top: var(--spacing-xxxl);
     margin-bottom: 80px;
     font-family: Georgia, 'Times New Roman', serif !important;
@@ -22,7 +22,7 @@
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    font-family: Georgia, 'Times New Roman', serif !important;
+    font-family: var(--footer-classic-section-title-font, Georgia, 'Times New Roman', serif) !important;
     transition: background-color var(--transition-slow);
 }
 
@@ -33,7 +33,7 @@
 .footer-title {
     font-size: 16px;
     font-weight: 500;
-    color: var(--color-text-light);
+    color: var(--footer-classic-section-title-color, var(--color-text-light));
     text-align: start;
     letter-spacing: 0.5px;
     transition: color var(--transition-base);
@@ -75,10 +75,10 @@
 }
 
 .footer-content ul li a {
-    color: var(--color-text-light);
+    color: var(--footer-classic-link-color, var(--color-text-light));
     text-decoration: none;
     font-size: 14px;
-    font-family: var(--font-primary);
+    font-family: var(--footer-classic-link-font, var(--font-primary));
     transition: color var(--transition-base);
     display: block;
     padding: var(--spacing-xs) 0;
@@ -98,7 +98,7 @@
     font-family: Georgia, 'Times New Roman', serif !important;
     font-size: 16px;
     font-weight: 500;
-    color: var(--color-text-light);
+    color: var(--footer-classic-follow-title-color, var(--color-text-light));
     margin-bottom: var(--spacing-md);
     text-align: start;
     letter-spacing: 0.5px;
@@ -117,12 +117,12 @@
     justify-content: center;
     width: 40px;
     height: 40px;
-    background-color: var(--color-bg);
+    background-color: var(--footer-classic-social-icon-bg, var(--color-bg));
     border-radius: 50%;
-    color: var(--color-text-light);
+    color: var(--footer-classic-social-icon-color, var(--color-text-light));
     font-size: 18px;
     transition: all var(--transition-base);
-    border: 1px solid var(--color-border-light);
+    border: 1px solid var(--footer-classic-social-icon-border, var(--color-border-light));
 }
 
 .social-icon-link:hover {
@@ -135,15 +135,15 @@
 .footer-app-section {
     margin-top: var(--spacing-xl);
     padding: var(--spacing-xl) var(--spacing-lg);
-    background-color: rgba(156, 124, 56, 0.1);
+    background-color: var(--footer-classic-app-banner-bg, rgba(156, 124, 56, 0.1));
     border-radius: var(--radius-xl);
     text-align: center;
 }
 
 .app-section-title {
-    font-family: var(--font-heading);
+    font-family: var(--footer-classic-app-title-font, var(--font-heading));
     font-size: 24px;
-    color: var(--color-text);
+    color: var(--footer-classic-app-title-color, var(--color-text));
     margin-bottom: var(--spacing-lg);
     font-weight: 500;
 }
@@ -174,8 +174,8 @@
 }
 
 .footer-bottom {
-    background-color: var(--color-bg);
-    color: var(--color-text-light);
+    background-color: var(--footer-classic-bottom-bg, var(--color-bg));
+    color: var(--footer-classic-text, var(--color-text-light));
     padding: 25px 0;
     margin-top: 0;
     border-top: 1px solid var(--color-border-light);
@@ -201,12 +201,12 @@
     margin: 0;
     font-size: 14px;
     line-height: 1.5;
-    color: var(--color-text-light);
+    color: var(--footer-classic-copyright-color, var(--color-text-light));
     font-family: var(--font-primary);
 }
 
 .powered-by-link {
-    color: var(--color-accent-light);
+    color: var(--footer-classic-powered-by-color, var(--color-accent-light));
     text-decoration: none;
     font-weight: 500;
     transition: color var(--transition-base);
@@ -223,7 +223,7 @@
 }
 
 .footer-links a {
-    color: var(--color-text-light);
+    color: var(--footer-classic-bottom-links-color, var(--color-text-light));
     text-decoration: none;
     font-size: 14px;
     font-family: Georgia, 'Times New Roman', serif;
@@ -264,13 +264,13 @@
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.footer-payment-icons span:nth-child(1) i { font-size: 18px; color: #006FCF; }
-.footer-payment-icons span:nth-child(2) i { font-size: 18px; color: #FF6000; }
-.footer-payment-icons span:nth-child(3) i { font-size: 18px; color: #4285F4; }
-.footer-payment-icons span:nth-child(4) i { font-size: 18px; color: #EB001B; }
-.footer-payment-icons span:nth-child(5) i { font-size: 18px; color: #003087; }
+.footer-payment-icons span:nth-child(1) i { font-size: 18px; color: var(--footer-classic-payment-icon-color, #006FCF); }
+.footer-payment-icons span:nth-child(2) i { font-size: 18px; color: var(--footer-classic-payment-icon-color, #FF6000); }
+.footer-payment-icons span:nth-child(3) i { font-size: 18px; color: var(--footer-classic-payment-icon-color, #4285F4); }
+.footer-payment-icons span:nth-child(4) i { font-size: 18px; color: var(--footer-classic-payment-icon-color, #EB001B); }
+.footer-payment-icons span:nth-child(5) i { font-size: 18px; color: var(--footer-classic-payment-icon-color, #003087); }
 .footer-payment-icons span:nth-child(6) { background-color: #E21836; }
-.footer-payment-icons span:nth-child(7) i { font-size: 18px; color: #1A1F71; }
+.footer-payment-icons span:nth-child(7) i { font-size: 18px; color: var(--footer-classic-payment-icon-color, #1A1F71); }
 .union-pay {
     font-family: var(--font-primary);
     font-weight: 700;

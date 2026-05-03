@@ -2,8 +2,109 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { getCategories } from '../../services/categoryService.js';
 import SaveBar from './SaveBar.jsx';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import FeatureGate, { isFeatureAvailable } from './FeatureGate.jsx';
+
+// Per-template appearance fields. Settings keys are `footer{Template}{Key}`
+// (e.g. `footerClassicFooterBg`, `footerModernHeadingColor`). Each
+// template owns its own field set because Classic + Modern look completely
+// different and don't share variables.
+const CLASSIC_APPEARANCE_FIELDS = [
+  { key: 'FooterBg',          label: 'Footer Background',          type: 'color' },
+  { key: 'TextColor',         label: 'Footer Text Color',          type: 'color' },
+  { key: 'SectionTitleColor', label: 'Section Title Color',        type: 'color' },
+  { key: 'SectionTitleFont',  label: 'Section Title Font',         type: 'font'  },
+  { key: 'LinkColor',         label: 'Link Color',                 type: 'color' },
+  { key: 'LinkFont',          label: 'Link Font',                  type: 'font'  },
+  { key: 'FollowTitleColor',  label: '"Follow us" Title Color',    type: 'color' },
+  { key: 'SocialIconBg',      label: 'Social Icon Background',     type: 'color' },
+  { key: 'SocialIconColor',   label: 'Social Icon Color',          type: 'color' },
+  { key: 'SocialIconBorder',  label: 'Social Icon Border Color',   type: 'color' },
+  { key: 'AppTitleColor',     label: '"Download Our App" Title Color', type: 'color' },
+  { key: 'AppTitleFont',      label: '"Download Our App" Title Font',  type: 'font'  },
+  { key: 'AppBannerBg',       label: 'App Banner Background',      type: 'color' },
+  { key: 'BottomBg',          label: 'Bottom Bar Background',      type: 'color' },
+  { key: 'CopyrightColor',    label: 'Copyright Text Color',       type: 'color' },
+  { key: 'BottomLinksColor',  label: 'Bottom Links Color',         type: 'color' },
+  { key: 'PoweredByColor',    label: '"Powered by" Link Color',    type: 'color' },
+  { key: 'PaymentIconColor',  label: 'Payment Icon Color',         type: 'color' },
+];
+
+const MODERN_APPEARANCE_FIELDS = [
+  { key: 'FooterBg',            label: 'Footer Background',            type: 'color' },
+  { key: 'HeadingColor',        label: 'Brand Heading Color',          type: 'color' },
+  { key: 'HeadingFont',         label: 'Brand Heading Font',           type: 'font'  },
+  { key: 'ContactColor',        label: 'Address / Contact Text Color', type: 'color' },
+  { key: 'SocialIconColor',     label: 'Social Icon Color',            type: 'color' },
+  { key: 'SocialIconBorder',    label: 'Social Icon Border Color',     type: 'color' },
+  { key: 'SocialHoverBg',       label: 'Social Icon Hover Background', type: 'color' },
+  { key: 'ColTitleColor',       label: 'Column Title Color',           type: 'color' },
+  { key: 'ColTitleFont',        label: 'Column Title Font',            type: 'font'  },
+  { key: 'LinkColor',           label: 'Link Color',                   type: 'color' },
+  { key: 'LinkFont',            label: 'Link Font',                    type: 'font'  },
+  { key: 'AppLabelColor',       label: '"Download Our App" Label Color', type: 'color' },
+  { key: 'BottomBg',            label: 'Bottom Bar Background',        type: 'color' },
+  { key: 'BottomDividerColor',  label: 'Bottom Divider Color',         type: 'color' },
+  { key: 'CopyrightColor',      label: 'Copyright Text Color',         type: 'color' },
+  { key: 'BottomLinkColor',     label: 'Bottom Link Color',            type: 'color' },
+  { key: 'PaymentIconColor',    label: 'Payment Icon Color',           type: 'color' },
+];
+
+// Defaults shown as the swatch fallback when nothing is saved. These must
+// match the literal CSS fallbacks in footer.css / modern.css so the
+// "default" preview the merchant sees matches what the storefront actually
+// renders when the field is left blank.
+const TEMPLATE_DEFAULTS = {
+  Classic: {
+    FooterBg:          '#f8f8f5',
+    TextColor:         '#666666',
+    SectionTitleColor: '#666666',
+    LinkColor:         '#666666',
+    FollowTitleColor:  '#666666',
+    SocialIconBg:      '#f8f8f5',
+    SocialIconColor:   '#666666',
+    SocialIconBorder:  '#e0e0e0',
+    AppTitleColor:     '#333333',
+    AppBannerBg:       '#efece2',
+    BottomBg:          '#f8f8f5',
+    CopyrightColor:    '#666666',
+    BottomLinksColor:  '#666666',
+    PoweredByColor:    '#9c7c38',
+    PaymentIconColor:  '#1A1F71',
+  },
+  Modern: {
+    FooterBg:           '#111111',
+    HeadingColor:       '#ffffff',
+    ContactColor:       '#999999',
+    SocialIconColor:    '#cccccc',
+    SocialIconBorder:   '#333333',
+    SocialHoverBg:      '#ffffff',
+    ColTitleColor:      '#ffffff',
+    LinkColor:          '#999999',
+    AppLabelColor:      '#999999',
+    BottomBg:           '#111111',
+    BottomDividerColor: '#222222',
+    CopyrightColor:     '#666666',
+    BottomLinkColor:    '#888888',
+    PaymentIconColor:   '#555555',
+  },
+};
+
+function fieldsFor(template) {
+  return template === 'Modern' ? MODERN_APPEARANCE_FIELDS : CLASSIC_APPEARANCE_FIELDS;
+}
+
+function buildEmptyAppearance() {
+  const out = {};
+  for (const tmpl of ['Classic', 'Modern']) {
+    for (const f of fieldsFor(tmpl)) {
+      out[`footer${tmpl}${f.key}`] = '';
+    }
+  }
+  return out;
+}
 
 export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig, refetchSite } = useContext(SiteContext);
@@ -32,6 +133,9 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   const [hideBranding, setHideBranding] = useState(false);
 
+  const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
+  const [activeTemplate, setActiveTemplate] = useState('Classic');
+
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -43,7 +147,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    const current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding });
+    const current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance });
     setHasChanges(current !== serverValuesRef.current);
     const social = { instagram, facebook, twitter, youtube };
     if (onPreviewUpdate) onPreviewUpdate({
@@ -54,8 +158,9 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
         hideBranding,
       },
+      ...appearance,
     });
-  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding]);
+  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance]);
 
   async function loadCategories() {
     try {
@@ -108,7 +213,14 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         setPlayStoreUrl(playUrlVal);
         const hideBrandingVal = footer.hideBranding === true;
         setHideBranding(hideBrandingVal);
-        serverValuesRef.current = JSON.stringify({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal });
+
+        const appearanceVal = buildEmptyAppearance();
+        for (const k of Object.keys(appearanceVal)) {
+          if (typeof settings[k] === 'string') appearanceVal[k] = settings[k];
+        }
+        setAppearance(appearanceVal);
+
+        serverValuesRef.current = JSON.stringify({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
@@ -116,6 +228,10 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       setLoading(false);
       setTimeout(() => { hasLoadedRef.current = true; }, 0);
     }
+  }
+
+  function updateAppearance(key, value) {
+    setAppearance(prev => ({ ...prev, [key]: value }));
   }
 
   async function handleSave(e) {
@@ -133,6 +249,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             appBanner: { show: showAppBanner, showAppStore: showAppStore, showPlayStore: showPlayStore, appStoreUrl: appStoreUrl, playStoreUrl: playStoreUrl },
             hideBranding: canRemoveBranding ? hideBranding : false,
           },
+          ...appearance,
         },
       };
       var response = await fetch(API_BASE + '/api/sites/' + siteConfig.id, {
@@ -146,7 +263,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       var result = await response.json();
       if (response.ok && result.success) {
         setStatus('success');
-        serverValuesRef.current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding });
+        serverValuesRef.current = JSON.stringify({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance });
         setHasChanges(false);
         if (onSaved) onSaved();
         if (refetchSite) refetchSite();
@@ -311,6 +428,68 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             </select>
           </div>
 
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h3 className="card-title">Appearance</h3></div>
+        <div className="card-content">
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
+            Customize colors and fonts for the Classic and Modern footer templates separately. Leave any field blank to use the template's default.
+          </p>
+
+          <div style={{ display: 'flex', gap: 6, padding: 4, background: '#f1f5f9', borderRadius: 8, marginBottom: 20 }}>
+            {['Classic', 'Modern'].map(function (tmpl) {
+              var active = activeTemplate === tmpl;
+              return (
+                <button
+                  key={tmpl}
+                  type="button"
+                  onClick={function () { setActiveTemplate(tmpl); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: active ? 600 : 500,
+                    background: active ? '#fff' : 'transparent',
+                    color: active ? '#0f172a' : '#64748b',
+                    cursor: 'pointer',
+                    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                    fontFamily: 'inherit',
+                  }}
+                >{tmpl} Template</button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {fieldsFor(activeTemplate).map(function (field) {
+              var settingKey = 'footer' + activeTemplate + field.key;
+              var value = appearance[settingKey] || '';
+              var fallback = TEMPLATE_DEFAULTS[activeTemplate][field.key];
+              if (field.type === 'color') {
+                return (
+                  <AdminColorField
+                    key={settingKey}
+                    label={field.label}
+                    value={value}
+                    fallback={fallback}
+                    onChange={function (v) { updateAppearance(settingKey, v); }}
+                  />
+                );
+              }
+              return (
+                <AdminFontPicker
+                  key={settingKey}
+                  label={field.label}
+                  value={value}
+                  onChange={function (v) { updateAppearance(settingKey, v); }}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
 

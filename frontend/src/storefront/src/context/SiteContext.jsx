@@ -459,6 +459,45 @@ export function SiteProvider({ children }) {
     apply('--cr-classic-arrow-bg',       settings.crClassicArrowBg);
     apply('--cr-classic-arrow-icon',     settings.crClassicArrowIcon);
 
+    // ── Footer appearance (Classic) ──────────────────────────────────
+    apply('--footer-classic-bg',                  settings.footerClassicFooterBg);
+    apply('--footer-classic-text',                settings.footerClassicTextColor);
+    apply('--footer-classic-section-title-color', settings.footerClassicSectionTitleColor);
+    apply('--footer-classic-section-title-font',  settings.footerClassicSectionTitleFont);
+    apply('--footer-classic-link-color',          settings.footerClassicLinkColor);
+    apply('--footer-classic-link-font',           settings.footerClassicLinkFont);
+    apply('--footer-classic-follow-title-color',  settings.footerClassicFollowTitleColor);
+    apply('--footer-classic-social-icon-bg',      settings.footerClassicSocialIconBg);
+    apply('--footer-classic-social-icon-color',   settings.footerClassicSocialIconColor);
+    apply('--footer-classic-social-icon-border',  settings.footerClassicSocialIconBorder);
+    apply('--footer-classic-app-title-color',     settings.footerClassicAppTitleColor);
+    apply('--footer-classic-app-title-font',      settings.footerClassicAppTitleFont);
+    apply('--footer-classic-app-banner-bg',       settings.footerClassicAppBannerBg);
+    apply('--footer-classic-bottom-bg',           settings.footerClassicBottomBg);
+    apply('--footer-classic-copyright-color',     settings.footerClassicCopyrightColor);
+    apply('--footer-classic-bottom-links-color',  settings.footerClassicBottomLinksColor);
+    apply('--footer-classic-powered-by-color',    settings.footerClassicPoweredByColor);
+    apply('--footer-classic-payment-icon-color',  settings.footerClassicPaymentIconColor);
+
+    // ── Footer appearance (Modern) ───────────────────────────────────
+    apply('--footer-modern-bg',                  settings.footerModernFooterBg);
+    apply('--footer-modern-heading-color',       settings.footerModernHeadingColor);
+    apply('--footer-modern-heading-font',        settings.footerModernHeadingFont);
+    apply('--footer-modern-contact-color',       settings.footerModernContactColor);
+    apply('--footer-modern-social-icon-color',   settings.footerModernSocialIconColor);
+    apply('--footer-modern-social-icon-border',  settings.footerModernSocialIconBorder);
+    apply('--footer-modern-social-hover-bg',     settings.footerModernSocialHoverBg);
+    apply('--footer-modern-col-title-color',     settings.footerModernColTitleColor);
+    apply('--footer-modern-col-title-font',      settings.footerModernColTitleFont);
+    apply('--footer-modern-link-color',          settings.footerModernLinkColor);
+    apply('--footer-modern-link-font',           settings.footerModernLinkFont);
+    apply('--footer-modern-app-label-color',     settings.footerModernAppLabelColor);
+    apply('--footer-modern-bottom-bg',           settings.footerModernBottomBg);
+    apply('--footer-modern-bottom-divider-color',settings.footerModernBottomDividerColor);
+    apply('--footer-modern-copyright-color',     settings.footerModernCopyrightColor);
+    apply('--footer-modern-bottom-link-color',   settings.footerModernBottomLinkColor);
+    apply('--footer-modern-payment-icon-color',  settings.footerModernPaymentIconColor);
+
     // ── Customer Reviews appearance (Modern) ─────────────────────────
     apply('--cr-modern-section-bg',     settings.crModernSectionBg);
     apply('--cr-modern-title-color',    settings.crModernTitleColor);
