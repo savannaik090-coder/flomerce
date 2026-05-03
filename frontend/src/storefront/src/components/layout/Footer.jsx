@@ -5,6 +5,7 @@ import { PLATFORM_URL } from '../../config.js';
 import { isPlanAtLeast } from '../../utils/plan.js';
 import TranslatedText from '../TranslatedText.jsx';
 import { useShopperTranslation } from '../../context/ShopperTranslationContext.jsx';
+import PaymentIcons, { DEFAULT_PAYMENT_METHODS } from '../common/PaymentIcons.jsx';
 
 export default function Footer() {
   const { translate: tx } = useShopperTranslation();
@@ -233,15 +234,7 @@ export default function Footer() {
               <Link to="/terms"><TranslatedText text="Terms and Conditions" /></Link>
               <Link to="/privacy-policy"><TranslatedText text="Privacy Policy" /></Link>
             </div>
-            <div className="footer-payment-icons">
-              <span><i className="fab fa-cc-amex"></i></span>
-              <span><i className="fab fa-cc-discover"></i></span>
-              <span><i className="fab fa-google-pay"></i></span>
-              <span><i className="fab fa-cc-mastercard"></i></span>
-              <span><i className="fab fa-cc-paypal"></i></span>
-              <span className="union-pay" aria-label={tx("Union Pay")}>UP</span>
-              <span><i className="fab fa-cc-visa"></i></span>
-            </div>
+            <PaymentIcons methods={Array.isArray(footerConfig.paymentMethods) ? footerConfig.paymentMethods : DEFAULT_PAYMENT_METHODS} className="footer-payment-icons" />
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import FeatureGate, { isFeatureAvailable } from './FeatureGate.jsx';
 import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
+import { PAYMENT_METHODS, DEFAULT_PAYMENT_METHODS } from '../common/PaymentIcons.jsx';
 
 // Per-template appearance fields. Settings keys are `footer{Template}{Key}`
 // (e.g. `footerClassicFooterBg`, `footerModernHeadingColor`). Each
@@ -30,7 +31,6 @@ const CLASSIC_APPEARANCE_FIELDS = [
   { key: 'CopyrightColor',    label: 'Copyright Text Color',       type: 'color' },
   { key: 'BottomLinksColor',  label: 'Bottom Links Color',         type: 'color' },
   { key: 'PoweredByColor',    label: '"Powered by" Link Color',    type: 'color' },
-  { key: 'PaymentIconColor',  label: 'Payment Icon Color',         type: 'color' },
 ];
 
 const MODERN_APPEARANCE_FIELDS = [
@@ -50,7 +50,6 @@ const MODERN_APPEARANCE_FIELDS = [
   { key: 'BottomDividerColor',  label: 'Bottom Divider Color',         type: 'color' },
   { key: 'CopyrightColor',      label: 'Copyright Text Color',         type: 'color' },
   { key: 'BottomLinkColor',     label: 'Bottom Link Color',            type: 'color' },
-  { key: 'PaymentIconColor',    label: 'Payment Icon Color',           type: 'color' },
 ];
 
 // Defaults shown as the swatch fallback when nothing is saved. These must
@@ -73,7 +72,6 @@ const TEMPLATE_DEFAULTS = {
     CopyrightColor:    '#666666',
     BottomLinksColor:  '#666666',
     PoweredByColor:    '#9c7c38',
-    PaymentIconColor:  '#1A1F71',
   },
   Modern: {
     FooterBg:           '#111111',
@@ -89,7 +87,6 @@ const TEMPLATE_DEFAULTS = {
     BottomDividerColor: '#222222',
     CopyrightColor:     '#666666',
     BottomLinkColor:    '#888888',
-    PaymentIconColor:   '#555555',
   },
 };
 
@@ -132,6 +129,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   const [hideBranding, setHideBranding] = useState(false);
 
+  const [paymentMethods, setPaymentMethods] = useState(DEFAULT_PAYMENT_METHODS);
+
   const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
   const activeTemplate = (() => {
     let s = siteConfig?.settings || {};
@@ -141,7 +140,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
 
   const [categories, setCategories] = useState([]);
 
-  const dirty = useDirtyTracker({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance });
+  const dirty = useDirtyTracker({ instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, paymentMethods, appearance });
 
   useEffect(() => {
     if (siteConfig?.id) {
@@ -160,10 +159,11 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         bottomNav: { shopRedirect },
         appBanner: { show: showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl },
         hideBranding,
+        paymentMethods,
       },
       ...appearance,
     });
-  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, appearance]);
+  }, [instagram, facebook, twitter, youtube, shopRedirect, showAppBanner, showAppStore, showPlayStore, appStoreUrl, playStoreUrl, hideBranding, paymentMethods, appearance]);
 
   async function loadCategories() {
     try {
@@ -217,13 +217,19 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         const hideBrandingVal = footer.hideBranding === true;
         setHideBranding(hideBrandingVal);
 
+        const validIds = new Set(PAYMENT_METHODS.map((m) => m.id));
+        const paymentMethodsVal = Array.isArray(footer.paymentMethods)
+          ? footer.paymentMethods.filter((id) => validIds.has(id))
+          : DEFAULT_PAYMENT_METHODS.slice();
+        setPaymentMethods(paymentMethodsVal);
+
         const appearanceVal = buildEmptyAppearance();
         for (const k of Object.keys(appearanceVal)) {
           if (typeof settings[k] === 'string') appearanceVal[k] = settings[k];
         }
         setAppearance(appearanceVal);
 
-        dirty.baseline({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, appearance: appearanceVal });
+        dirty.baseline({ instagram: igVal, facebook: fbVal, twitter: twVal, youtube: ytVal, shopRedirect: shopVal, showAppBanner: showBannerVal, showAppStore: showAppVal, showPlayStore: showPlayVal, appStoreUrl: appUrlVal, playStoreUrl: playUrlVal, hideBranding: hideBrandingVal, paymentMethods: paymentMethodsVal, appearance: appearanceVal });
       }
     } catch (e) {
       console.error('Failed to load footer config:', e);
@@ -251,6 +257,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             bottomNav: { shopRedirect: shopRedirect },
             appBanner: { show: showAppBanner, showAppStore: showAppStore, showPlayStore: showPlayStore, appStoreUrl: appStoreUrl, playStoreUrl: playStoreUrl },
             hideBranding: canRemoveBranding ? hideBranding : false,
+            paymentMethods: paymentMethods,
           },
           ...appearance,
         },
@@ -430,6 +437,63 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
             </select>
           </div>
 
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h3 className="card-title">Payment Icons</h3></div>
+        <div className="card-content">
+          <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
+            Choose which payment method logos appear in your footer and in what order. Disable everything to hide the row entirely. Logos render in their official brand colors.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(function () {
+              var enabled = paymentMethods.filter(function (id) { return PAYMENT_METHODS.some(function (m) { return m.id === id; }); });
+              var disabled = PAYMENT_METHODS.filter(function (m) { return !enabled.includes(m.id); }).map(function (m) { return m.id; });
+              var rows = enabled.map(function (id, idx) { return { id: id, on: true, idx: idx }; })
+                .concat(disabled.map(function (id) { return { id: id, on: false, idx: -1 }; }));
+              return rows.map(function (row) {
+                var meta = PAYMENT_METHODS.find(function (m) { return m.id === row.id; });
+                function toggle() {
+                  setPaymentMethods(function (prev) {
+                    if (prev.includes(row.id)) return prev.filter(function (x) { return x !== row.id; });
+                    return prev.concat([row.id]);
+                  });
+                }
+                function move(delta) {
+                  setPaymentMethods(function (prev) {
+                    var arr = prev.slice();
+                    var i = arr.indexOf(row.id);
+                    var j = i + delta;
+                    if (i < 0 || j < 0 || j >= arr.length) return prev;
+                    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+                    return arr;
+                  });
+                }
+                return (
+                  <div key={row.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{meta.label}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {row.on && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button type="button" onClick={function () { move(-1); }} disabled={row.idx === 0} title="Move up" style={{ width: 28, height: 28, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, cursor: row.idx === 0 ? 'not-allowed' : 'pointer', opacity: row.idx === 0 ? 0.4 : 1 }}>↑</button>
+                          <button type="button" onClick={function () { move(1); }} disabled={row.idx === enabled.length - 1} title="Move down" style={{ width: 28, height: 28, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, cursor: row.idx === enabled.length - 1 ? 'not-allowed' : 'pointer', opacity: row.idx === enabled.length - 1 ? 0.4 : 1 }}>↓</button>
+                        </div>
+                      )}
+                      <label style={{ position: 'relative', display: 'inline-block', width: 44, height: 24, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={row.on} onChange={toggle} style={{ opacity: 0, width: 0, height: 0 }} />
+                        <span style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: row.on ? '#10b981' : '#cbd5e1', borderRadius: 24, transition: 'background-color 0.2s' }}>
+                          <span style={{ position: 'absolute', left: row.on ? 22 : 2, top: 2, width: 20, height: 20, backgroundColor: '#fff', borderRadius: '50%', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
         </div>
       </div>
 

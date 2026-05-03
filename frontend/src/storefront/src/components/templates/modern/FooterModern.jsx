@@ -5,6 +5,7 @@ import { PLATFORM_URL } from '../../../config.js';
 import { isPlanAtLeast } from '../../../utils/plan.js';
 import TranslatedText from '../../TranslatedText.jsx';
 import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
+import PaymentIcons, { DEFAULT_PAYMENT_METHODS } from '../../common/PaymentIcons.jsx';
 import './modern.css';
 
 export default function FooterModern() {
@@ -159,13 +160,7 @@ export default function FooterModern() {
 
       <div className="mn-footer-bottom">
         <p>{`\u00a9 ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. `}<TranslatedText text="All rights reserved." />{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'starter'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Flomerce</a></>}</p>
-        <div className="mn-footer-payment">
-          <span><i className="fab fa-cc-visa"></i></span>
-          <span><i className="fab fa-cc-mastercard"></i></span>
-          <span><i className="fab fa-cc-amex"></i></span>
-          <span><i className="fab fa-google-pay"></i></span>
-          <span><i className="fab fa-cc-paypal"></i></span>
-        </div>
+        <PaymentIcons methods={Array.isArray(footerConfig.paymentMethods) ? footerConfig.paymentMethods : DEFAULT_PAYMENT_METHODS} className="mn-footer-payment" />
       </div>
     </footer>
   );

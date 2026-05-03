@@ -494,7 +494,6 @@ export function SiteProvider({ children }) {
     apply('--footer-classic-copyright-color',     settings.footerClassicCopyrightColor);
     apply('--footer-classic-bottom-links-color',  settings.footerClassicBottomLinksColor);
     apply('--footer-classic-powered-by-color',    settings.footerClassicPoweredByColor);
-    apply('--footer-classic-payment-icon-color',  settings.footerClassicPaymentIconColor);
 
     // ── Footer appearance (Modern) ───────────────────────────────────
     apply('--footer-modern-bg',                  settings.footerModernFooterBg);
@@ -513,7 +512,6 @@ export function SiteProvider({ children }) {
     apply('--footer-modern-bottom-divider-color',settings.footerModernBottomDividerColor);
     apply('--footer-modern-copyright-color',     settings.footerModernCopyrightColor);
     apply('--footer-modern-bottom-link-color',   settings.footerModernBottomLinkColor);
-    apply('--footer-modern-payment-icon-color',  settings.footerModernPaymentIconColor);
 
     // ── Customer Reviews appearance (Modern) ─────────────────────────
     apply('--cr-modern-section-bg',     settings.crModernSectionBg);
