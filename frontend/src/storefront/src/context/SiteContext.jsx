@@ -350,6 +350,23 @@ export function SiteProvider({ children }) {
     // Modern-template overlay banner text ("Shop {name}" hover label).
     apply('--mn-cat-banner-text-color', settings.catBannerTextColorModern);
     apply('--mn-cat-banner-text-font',  settings.catBannerTextFontModern);
+    // Classic-template product card + carousel arrow button styles. Each
+    // var falls back to the existing hardcoded default in the consuming
+    // CSS / inline style, so unset values render exactly as before.
+    apply('--cat-product-name-color',  settings.catProductNameColor);
+    apply('--cat-product-name-font',   settings.catProductNameFont);
+    apply('--cat-product-price-color', settings.catProductPriceColor);
+    apply('--cat-product-price-font',  settings.catProductPriceFont);
+    apply('--cat-arrow-bg',            settings.catArrowBg);
+    apply('--cat-arrow-color',         settings.catArrowColor);
+    apply('--cat-arrow-hover-bg',      settings.catArrowHoverBg);
+    // Modern-template product card styles (scoped via .mn-category-section
+    // in modern.css so they only apply inside the Categories grid, not on
+    // product listing or search pages).
+    apply('--mn-cat-product-name-color',  settings.catProductNameColorModern);
+    apply('--mn-cat-product-name-font',   settings.catProductNameFontModern);
+    apply('--mn-cat-product-price-color', settings.catProductPriceColorModern);
+    apply('--mn-cat-product-price-font',  settings.catProductPriceFontModern);
     // View All button style
     const catViewAllStyle = settings.catViewAllStyle || '';
     const catViewAllBg    = settings.catViewAllBg    || '';

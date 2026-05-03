@@ -133,6 +133,22 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   // Modern-template-only banner overlay text controls
   const [catBannerTextColorModern, setCatBannerTextColorModern] = useState('');
   const [catBannerTextFontModern, setCatBannerTextFontModern] = useState('');
+  // Classic-template product card + carousel arrow style controls.
+  // Empty string = "use the storefront's hardcoded default" (preserved
+  // exactly via fallbacks in categories.css / ProductCard inline styles).
+  const [catProductNameColor, setCatProductNameColor] = useState('');
+  const [catProductNameFont, setCatProductNameFont] = useState('');
+  const [catProductPriceColor, setCatProductPriceColor] = useState('');
+  const [catProductPriceFont, setCatProductPriceFont] = useState('');
+  const [catArrowBg, setCatArrowBg] = useState('');
+  const [catArrowColor, setCatArrowColor] = useState('');
+  const [catArrowHoverBg, setCatArrowHoverBg] = useState('');
+  // Modern-template product card style controls (no arrow buttons — the
+  // Modern Categories layout is a static grid).
+  const [catProductNameColorModern, setCatProductNameColorModern] = useState('');
+  const [catProductNameFontModern, setCatProductNameFontModern] = useState('');
+  const [catProductPriceColorModern, setCatProductPriceColorModern] = useState('');
+  const [catProductPriceFontModern, setCatProductPriceFontModern] = useState('');
   const [chooseSectionTitle, setChooseSectionTitle] = useState('');
   const [chooseCardShape, setChooseCardShape] = useState('');
   const [chooseOverlayColor, setChooseOverlayColor] = useState('');
@@ -261,6 +277,17 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setCatBannerBtnFont(settings.catBannerBtnFont || '');
       setCatBannerTextColorModern(settings.catBannerTextColorModern || '');
       setCatBannerTextFontModern(settings.catBannerTextFontModern || '');
+      setCatProductNameColor(settings.catProductNameColor || '');
+      setCatProductNameFont(settings.catProductNameFont || '');
+      setCatProductPriceColor(settings.catProductPriceColor || '');
+      setCatProductPriceFont(settings.catProductPriceFont || '');
+      setCatArrowBg(settings.catArrowBg || '');
+      setCatArrowColor(settings.catArrowColor || '');
+      setCatArrowHoverBg(settings.catArrowHoverBg || '');
+      setCatProductNameColorModern(settings.catProductNameColorModern || '');
+      setCatProductNameFontModern(settings.catProductNameFontModern || '');
+      setCatProductPriceColorModern(settings.catProductPriceColorModern || '');
+      setCatProductPriceFontModern(settings.catProductPriceFontModern || '');
       setChooseSectionTitle(settings.chooseSectionTitle || '');
       setChooseCardShape(settings.chooseCardShape || '');
       setChooseOverlayColor(settings.chooseOverlayColor || '');
@@ -339,6 +366,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
       catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
       catBannerTextColorModern, catBannerTextFontModern,
+      // Per-template product card + arrow style. Both templates' values
+      // are kept in the snapshot so switching templates doesn't trip the
+      // dirty check or lose the inactive template's values.
+      catProductNameColor, catProductNameFont,
+      catProductPriceColor, catProductPriceFont,
+      catArrowBg, catArrowColor, catArrowHoverBg,
+      catProductNameColorModern, catProductNameFontModern,
+      catProductPriceColorModern, catProductPriceFontModern,
       chooseSectionTitle, chooseCardShape,
       chooseOverlayColor, chooseOverlayOpacity,
       chooseLabelColor, chooseLabelFont, chooseLabelBg,
@@ -354,6 +389,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
     catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
     catBannerTextColorModern, catBannerTextFontModern,
+    catProductNameColor, catProductNameFont,
+    catProductPriceColor, catProductPriceFont,
+    catArrowBg, catArrowColor, catArrowHoverBg,
+    catProductNameColorModern, catProductNameFontModern,
+    catProductPriceColorModern, catProductPriceFontModern,
     chooseSectionTitle, chooseCardShape,
     chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont, chooseLabelBg,
     chooseExploreColor, chooseExploreFont,
@@ -392,6 +432,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
       catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
       catBannerTextColorModern, catBannerTextFontModern,
+      catProductNameColor, catProductNameFont,
+      catProductPriceColor, catProductPriceFont,
+      catArrowBg, catArrowColor, catArrowHoverBg,
+      catProductNameColorModern, catProductNameFontModern,
+      catProductPriceColorModern, catProductPriceFontModern,
       chooseSectionTitle,
       chooseCardShape,
       chooseOverlayColor,
@@ -407,6 +452,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
     catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
     catBannerTextColorModern, catBannerTextFontModern,
+    catProductNameColor, catProductNameFont,
+    catProductPriceColor, catProductPriceFont,
+    catArrowBg, catArrowColor, catArrowHoverBg,
+    catProductNameColorModern, catProductNameFontModern,
+    catProductPriceColorModern, catProductPriceFontModern,
     chooseSectionTitle, chooseCardShape,
     chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont, chooseLabelBg,
     chooseExploreColor, chooseExploreFont,
@@ -937,6 +987,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           catBannerTitleColor, catBannerTitleFont, catBannerDividerColor,
           catBannerBtnBg, catBannerBtnText, catBannerBtnFont,
           catBannerTextColorModern, catBannerTextFontModern,
+          // Per-template product card + arrow style settings. Persisted
+          // for both templates regardless of which is currently active so
+          // that switching templates preserves each side's values.
+          catProductNameColor, catProductNameFont,
+          catProductPriceColor, catProductPriceFont,
+          catArrowBg, catArrowColor, catArrowHoverBg,
+          catProductNameColorModern, catProductNameFontModern,
+          catProductPriceColorModern, catProductPriceFontModern,
           chooseSectionTitle,
           chooseCardShape,
           chooseOverlayColor,
@@ -1562,6 +1620,21 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                   <AdminColorField label='"VIEW ALL" Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
 
                   <AdminFontPicker label='"VIEW ALL" Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
+
+                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Product Cards (Classic)</div>
+
+                  <AdminColorField label="Product Name Color" value={catProductNameColor} fallback="#333333" onChange={setCatProductNameColor} />
+                  <AdminFontPicker label="Product Name Font" value={catProductNameFont} onChange={v => setCatProductNameFont(v)} />
+                  <AdminColorField label="Product Price Color" value={catProductPriceColor} fallback="#333333" onChange={setCatProductPriceColor} />
+                  <AdminFontPicker label="Product Price Font" value={catProductPriceFont} onChange={v => setCatProductPriceFont(v)} />
+
+                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Carousel Arrow Buttons (Classic)</div>
+
+                  <AdminColorField label="Arrow Background" value={catArrowBg} fallback="rgba(255,255,255,0.95)" onChange={setCatArrowBg} />
+                  <AdminColorField label="Arrow Icon Color" value={catArrowColor} fallback="#333333" onChange={setCatArrowColor} />
+                  <AdminColorField label="Arrow Hover Background" value={catArrowHoverBg} fallback="#d4af37" onChange={setCatArrowHoverBg} />
                 </>
               )}
 
@@ -1574,6 +1647,14 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                   <AdminColorField label='"Shop {name}" Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
 
                   <AdminFontPicker label='"Shop {name}" Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
+
+                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Product Cards (Modern)</div>
+
+                  <AdminColorField label="Product Name Color" value={catProductNameColorModern} fallback="#111111" onChange={setCatProductNameColorModern} />
+                  <AdminFontPicker label="Product Name Font" value={catProductNameFontModern} onChange={v => setCatProductNameFontModern(v)} />
+                  <AdminColorField label="Product Price Color" value={catProductPriceColorModern} fallback="#111111" onChange={setCatProductPriceColorModern} />
+                  <AdminFontPicker label="Product Price Font" value={catProductPriceFontModern} onChange={v => setCatProductPriceFontModern(v)} />
                 </>
               )}
             </div>

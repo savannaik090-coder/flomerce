@@ -134,10 +134,17 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
           <h3
             className="product-name"
             style={{
-              fontFamily: "var(--font-product, 'Futura PT', sans-serif)",
+              // When rendered inside the Classic Categories carousel
+              // (variant="scroll"), honour the per-section product-name
+              // style overrides; everywhere else (e.g. product listing
+              // pages) keep the original hardcoded defaults so this
+              // editor's settings can't leak outside Categories.
+              fontFamily: isScroll
+                ? "var(--cat-product-name-font, var(--font-product, 'Futura PT', sans-serif))"
+                : "var(--font-product, 'Futura PT', sans-serif)",
               fontSize: '14px',
               fontWeight: 500,
-              color: '#333',
+              color: isScroll ? 'var(--cat-product-name-color, #333)' : '#333',
               margin: '0 0 6px 0',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -150,10 +157,12 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
             <span
               className="current-price"
               style={{
-                fontFamily: "var(--font-primary, 'Lato', sans-serif)",
+                fontFamily: isScroll
+                  ? "var(--cat-product-price-font, var(--font-primary, 'Lato', sans-serif))"
+                  : "var(--font-primary, 'Lato', sans-serif)",
                 fontSize: '15px',
                 fontWeight: 600,
-                color: '#333',
+                color: isScroll ? 'var(--cat-product-price-color, #333)' : '#333',
               }}
             >
               {formatAmount(product.price)}

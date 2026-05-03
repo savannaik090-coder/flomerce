@@ -857,6 +857,21 @@ body.mn-nav-transparent .modern-hero {
   color: var(--panel-accent, #111);
 }
 
+/* Categories-section-scoped overrides for product card name/price.
+   Modern's ProductCardModern is shared with product listing / related /
+   subcategory grids, so these per-section overrides are intentionally
+   scoped under .mn-category-section to keep the merchant's Categories
+   editor changes from affecting other pages. Each var falls back to the
+   default rendered above. */
+.mn-category-section .mn-product-name {
+  color: var(--mn-cat-product-name-color, #111);
+  font-family: var(--mn-cat-product-name-font, 'Inter', 'Helvetica Neue', sans-serif);
+}
+.mn-category-section .mn-product-price {
+  color: var(--mn-cat-product-price-color, var(--panel-accent, #111));
+  font-family: var(--mn-cat-product-price-font, 'Inter', 'Helvetica Neue', sans-serif);
+}
+
 .mn-product-compare {
   font-size: 0.82rem;
   color: #999;
