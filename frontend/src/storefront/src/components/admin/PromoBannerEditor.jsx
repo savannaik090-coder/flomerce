@@ -163,7 +163,7 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
               setPendingVisible(next);
               if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
             }}
-            label="Show Promo Banner"
+            label="Show Promotional Banner"
             description="Display the rotating promotional banner at the top of every page"
           />
         )}

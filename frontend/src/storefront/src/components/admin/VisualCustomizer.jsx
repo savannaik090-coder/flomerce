@@ -41,8 +41,8 @@ function getStoreUrl(siteConfig) {
 function getHomepageSections(theme) {
   const isModern = theme === 'modern';
   const sections = [
-    { id: 'promo-banner', label: 'Promo Banner', icon: 'fa-bullhorn', showKey: 'showPromoBanner' },
-    { id: 'navbar', label: 'Navigation', icon: 'fa-bars', showKey: null, fixed: true },
+    { id: 'promo-banner', label: 'Promotional Banner', icon: 'fa-bullhorn', showKey: 'showPromoBanner' },
+    { id: 'navbar', label: 'Header', icon: 'fa-bars', showKey: null, fixed: true },
     { id: 'hero-slider', label: 'Main Banner', icon: 'fa-images', showKey: null, fixed: true },
     { id: 'welcome-banner', label: 'Welcome Banner', icon: 'fa-hand-sparkles', showKey: 'showWelcomeBanner' },
     { id: 'categories', label: 'Categories', icon: 'fa-th-large', showKey: null, fixed: true },
