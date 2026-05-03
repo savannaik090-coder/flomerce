@@ -386,6 +386,51 @@ export function SiteProvider({ children }) {
       root.style.removeProperty('--cat-view-all-border');
     }
 
+    // ── Category page (/category/:slug) appearance ───────────────────
+    // Two independent style sets keyed by template:
+    //   classicStyle → --cat-page-*    (consumed by category.css)
+    //   modernStyle  → --mn-cat-page-* (consumed by modern.css + category.css)
+    // Both var sets coexist on :root because each one is consumed by
+    // selectors scoped to their own theme (`.category-page:not(.modern-theme)`
+    // for Classic, `.modern-theme.category-page` for Modern), so they never
+    // collide. Unset keys are removed so CSS fallbacks render today's look.
+    const applyCategoryPageStyle = (style, prefix) => {
+      const s = style && typeof style === 'object' ? style : {};
+      const px = (v, suffix) => (v !== undefined && v !== null && v !== '' ? `${v}${suffix || ''}` : '');
+      apply(`--${prefix}-bg`,                      s.pageBg);
+      apply(`--${prefix}-hero-title-color`,        s.heroTitleColor);
+      apply(`--${prefix}-hero-title-font`,         s.heroTitleFont);
+      apply(`--${prefix}-hero-title-size`,         px(s.heroTitleSize, 'px'));
+      apply(`--${prefix}-hero-title-weight`,       s.heroTitleWeight);
+      apply(`--${prefix}-hero-subtitle-color`,     s.heroSubtitleColor);
+      apply(`--${prefix}-hero-subtitle-font`,      s.heroSubtitleFont);
+      apply(`--${prefix}-hero-subtitle-size`,      px(s.heroSubtitleSize, 'px'));
+      apply(`--${prefix}-hero-subtitle-style`,     s.heroSubtitleItalic === false ? 'normal' : (s.heroSubtitleItalic === true ? 'italic' : ''));
+      apply(`--${prefix}-hero-overlay-color`,      s.heroOverlayColor);
+      if (s.heroOverlayOpacity !== undefined && s.heroOverlayOpacity !== '' && s.heroOverlayOpacity !== null) {
+        root.style.setProperty(`--${prefix}-hero-overlay-opacity`, String(s.heroOverlayOpacity), 'important');
+      } else {
+        root.style.removeProperty(`--${prefix}-hero-overlay-opacity`);
+      }
+      apply(`--${prefix}-chip-strip-bg`,           s.chipStripBg);
+      apply(`--${prefix}-chip-strip-border`,       s.chipStripBorderColor);
+      apply(`--${prefix}-chip-bg`,                 s.chipBg);
+      apply(`--${prefix}-chip-border`,             s.chipBorderColor);
+      apply(`--${prefix}-chip-text`,               s.chipTextColor);
+      apply(`--${prefix}-chip-font`,               s.chipFont);
+      apply(`--${prefix}-chip-active-bg`,          s.chipActiveBg);
+      apply(`--${prefix}-chip-active-text`,        s.chipActiveTextColor);
+      apply(`--${prefix}-chip-active-border`,      s.chipActiveBorderColor);
+      apply(`--${prefix}-filter-strip-bg`,         s.filterStripBg);
+      apply(`--${prefix}-filter-strip-border`,     s.filterStripBorderColor);
+      apply(`--${prefix}-filter-strip-text`,       s.filterStripTextColor);
+      apply(`--${prefix}-filter-strip-font`,       s.filterStripFont);
+      apply(`--${prefix}-count-color`,             s.productCountColor);
+      apply(`--${prefix}-count-font`,              s.productCountFont);
+    };
+    applyCategoryPageStyle(settings.categoryPage?.classicStyle, 'cat-page');
+    applyCategoryPageStyle(settings.categoryPage?.modernStyle,  'mn-cat-page');
+
     // ── Choose by Category appearance ────────────────────────────────
     apply('--choose-overlay-color', settings.chooseOverlayColor);
     if (settings.chooseOverlayOpacity !== undefined && settings.chooseOverlayOpacity !== '') {

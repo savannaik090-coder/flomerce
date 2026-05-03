@@ -1374,33 +1374,57 @@ body.mn-nav-transparent .modern-hero {
 }
 
 /* --- Modern Category Page --- */
+.modern-theme.category-page {
+  background-color: var(--mn-cat-page-bg, #ffffff);
+}
 .modern-theme.category-page .hero-section {
   height: 50vh;
   min-height: 380px;
   background-color: #f8f8f8;
 }
 .modern-theme.category-page .hero-section .hero-overlay {
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--mn-cat-page-hero-overlay-color, rgba(0, 0, 0, 1));
+  opacity: var(--mn-cat-page-hero-overlay-opacity, 0.35);
 }
 .modern-theme.category-page .hero-title {
-  font-family: 'Inter', 'Helvetica Neue', sans-serif;
-  font-weight: 800;
+  font-family: var(--mn-cat-page-hero-title-font, 'Inter', 'Helvetica Neue', sans-serif);
+  font-weight: var(--mn-cat-page-hero-title-weight, 800);
+  font-size: var(--mn-cat-page-hero-title-size, clamp(2rem, 5vw, 3.5rem));
+  color: var(--mn-cat-page-hero-title-color, inherit);
   letter-spacing: -0.02em;
-  font-size: clamp(2rem, 5vw, 3.5rem);
   text-shadow: none;
 }
 .modern-theme.category-page .hero-subtitle {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--mn-cat-page-hero-subtitle-font, 'Inter', sans-serif);
   font-weight: 400;
-  font-size: 1.05rem;
+  font-size: var(--mn-cat-page-hero-subtitle-size, 1.05rem);
+  color: var(--mn-cat-page-hero-subtitle-color, inherit);
   letter-spacing: 0;
   text-shadow: none;
   opacity: 0.9;
+}
+.modern-theme.category-page .shop-filter-row {
+  background: var(--mn-cat-page-filter-strip-bg, transparent);
+  /* Explicit width+style so the merchant's border-color override actually
+     paints; default style is transparent so today's look is unchanged. */
+  border-bottom: 1px solid var(--mn-cat-page-filter-strip-border, transparent);
+}
+.modern-theme.category-page .product-count-label {
+  color: var(--mn-cat-page-count-color, #888);
+  font-family: var(--mn-cat-page-count-font, 'Inter', sans-serif);
 }
 .modern-theme .shop-filter-header {
   background-color: #111;
   font-family: 'Inter', sans-serif;
   padding: 12px 24px;
+}
+/* Category-page-scoped overrides for the merchant-customizable filter strip
+   so the Visual Customizer's Modern category-page vars don't bleed into
+   other pages that also use FilterSortBar. */
+.modern-theme.category-page .shop-filter-header {
+  background-color: var(--mn-cat-page-filter-strip-bg, #111);
+  color: var(--mn-cat-page-filter-strip-text, inherit);
+  font-family: var(--mn-cat-page-filter-strip-font, 'Inter', sans-serif);
 }
 .modern-theme .filter-option,
 .modern-theme .sort-option {
@@ -1408,6 +1432,14 @@ body.mn-nav-transparent .modern-hero {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 1.5px;
+}
+/* Category-page-scoped overrides for the merchant-customizable filter/sort
+   text so the Visual Customizer's Modern filter strip font + text color
+   actually take effect on /category/:slug without bleeding into other pages. */
+.modern-theme.category-page .filter-option,
+.modern-theme.category-page .sort-option {
+  font-family: var(--mn-cat-page-filter-strip-font, 'Inter', sans-serif);
+  color: var(--mn-cat-page-filter-strip-text, inherit);
 }
 .modern-theme .sort-dropdown {
   border-radius: 4px;

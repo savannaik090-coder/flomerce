@@ -15,7 +15,7 @@
    ============================================================ */
 
 .category-page:not(.modern-theme) {
-    background-color: #fbf8f3;
+    background-color: var(--cat-page-bg, #fbf8f3);
     --product-image-height: 560px;
 }
 
@@ -39,13 +39,14 @@
     inset-inline-start: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.3) 55%, rgba(0, 0, 0, 0.6) 100%);
+    background: var(--cat-page-hero-overlay-color, linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.3) 55%, rgba(0, 0, 0, 0.6) 100%));
+    opacity: var(--cat-page-hero-overlay-opacity, 1);
     z-index: 1;
 }
 
 .category-page:not(.modern-theme) .hero-section .hero-content {
     text-align: start;
-    color: white;
+    color: var(--cat-page-hero-title-color, white);
     z-index: 2;
     width: 100%;
     max-width: 1280px;
@@ -55,9 +56,10 @@
 }
 
 .category-page:not(.modern-theme) .hero-section .hero-title {
-    font-family: var(--font-heading);
-    font-size: 60px;
-    font-weight: 400;
+    font-family: var(--cat-page-hero-title-font, var(--font-heading));
+    font-size: var(--cat-page-hero-title-size, 60px);
+    font-weight: var(--cat-page-hero-title-weight, 400);
+    color: var(--cat-page-hero-title-color, inherit);
     margin: 0 0 12px 0;
     letter-spacing: 0;
     text-shadow: 1px 2px 6px rgba(0, 0, 0, 0.35);
@@ -65,9 +67,12 @@
 }
 
 .category-page:not(.modern-theme) .hero-section .hero-subtitle {
-    font-family: 'Lora', 'Playfair Display', Georgia, serif;
-    font-style: italic;
-    font-size: 18px;
+    font-family: var(--cat-page-hero-subtitle-font, 'Lora', 'Playfair Display', Georgia, serif);
+    font-style: var(--cat-page-hero-subtitle-style, italic);
+    font-size: var(--cat-page-hero-subtitle-size, 18px);
+    /* Decoupled from the title color so leaving the subtitle color blank
+       keeps the original white look even when the title color is overridden. */
+    color: var(--cat-page-hero-subtitle-color, white);
     max-width: 640px;
     margin: 0;
     font-weight: 400;
@@ -81,8 +86,8 @@
    above the filter strip when scrolled. Modal is portalled to <body>
    so neither sticky strip can trap it. */
 .subcategory-chip-row-wrap {
-    background: #fbf8f3;
-    border-bottom: 1px solid #ebe2d3;
+    background: var(--cat-page-chip-strip-bg, #fbf8f3);
+    border-bottom: 1px solid var(--cat-page-chip-strip-border, #ebe2d3);
     position: sticky;
     top: 95px;
     z-index: 51;
@@ -108,10 +113,10 @@
     white-space: nowrap;
     padding: 8px 20px;
     border-radius: 25px;
-    border: 1px solid #e0d6c2;
-    background: #ffffff;
-    color: #603000;
-    font-family: var(--font-primary);
+    border: 1px solid var(--cat-page-chip-border, #e0d6c2);
+    background: var(--cat-page-chip-bg, #ffffff);
+    color: var(--cat-page-chip-text, #603000);
+    font-family: var(--cat-page-chip-font, var(--font-primary));
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.18em;
@@ -121,45 +126,47 @@
 }
 
 .subcategory-chip:hover {
-    border-color: #603000;
-    color: #603000;
-    background: #fff;
+    border-color: var(--cat-page-chip-active-border, var(--cat-page-chip-active-bg, #603000));
+    color: var(--cat-page-chip-text, #603000);
+    background: var(--cat-page-chip-bg, #fff);
 }
 
 .subcategory-chip.active {
-    background: #603000;
-    border-color: #603000;
-    color: #ffffff;
+    background: var(--cat-page-chip-active-bg, #603000);
+    border-color: var(--cat-page-chip-active-border, #603000);
+    color: var(--cat-page-chip-active-text, #ffffff);
 }
 
 /* Modern theme: square chips, monochrome */
 .modern-theme .subcategory-chip-row-wrap {
-    background: #ffffff;
-    border-bottom: 1px solid #efefef;
+    background: var(--mn-cat-page-chip-strip-bg, #ffffff);
+    border-bottom: 1px solid var(--mn-cat-page-chip-strip-border, #efefef);
     top: 100px;
 }
 
 .modern-theme .subcategory-chip {
-    border-color: #e5e5e5;
-    color: #1a1a1a;
+    background: var(--mn-cat-page-chip-bg, #ffffff);
+    border-color: var(--mn-cat-page-chip-border, #e5e5e5);
+    color: var(--mn-cat-page-chip-text, #1a1a1a);
+    font-family: var(--mn-cat-page-chip-font, 'Inter', sans-serif);
     border-radius: 4px;
     letter-spacing: 0.1em;
 }
 
 .modern-theme .subcategory-chip:hover {
-    border-color: #1a1a1a;
+    border-color: var(--mn-cat-page-chip-active-border, var(--mn-cat-page-chip-active-bg, #1a1a1a));
 }
 
 .modern-theme .subcategory-chip.active {
-    background: #1a1a1a;
-    border-color: #1a1a1a;
-    color: #ffffff;
+    background: var(--mn-cat-page-chip-active-bg, #1a1a1a);
+    border-color: var(--mn-cat-page-chip-active-border, #1a1a1a);
+    color: var(--mn-cat-page-chip-active-text, #ffffff);
 }
 
 /* ---------- SHOP / FILTER STRIP (classic only) ---------- */
 .category-page:not(.modern-theme) .shop-products-section {
     padding: 0;
-    background: #fbf8f3;
+    background: var(--cat-page-bg, #fbf8f3);
 }
 
 .category-page:not(.modern-theme) .shop-products {
@@ -178,8 +185,8 @@
        Safe to raise now that the filter modal is portalled to <body>
        and no longer lives inside this stacking context. */
     z-index: 50;
-    background: #fbf8f3;
-    border-bottom: 1px solid #ebe2d3;
+    background: var(--cat-page-filter-strip-bg, #fbf8f3);
+    border-bottom: 1px solid var(--cat-page-filter-strip-border, #ebe2d3);
 }
 
 /* When chip row is present, push the filter strip below it */
@@ -197,7 +204,8 @@
 /* Restyle FilterSortBar's existing header (no JSX changes) */
 .category-page:not(.modern-theme) .shop-filter-header {
     background-color: transparent;
-    color: #603000;
+    color: var(--cat-page-filter-strip-text, #603000);
+    font-family: var(--cat-page-filter-strip-font, var(--font-primary));
     padding: 14px 0;
     margin: 0;
     display: flex;
@@ -212,18 +220,19 @@
     top: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    font-family: var(--font-primary);
+    font-family: var(--cat-page-count-font, var(--font-primary));
     font-size: 11px;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: #888;
+    color: var(--cat-page-count-color, #888);
     user-select: none;
     text-align: center;
     white-space: nowrap;
 }
 
 .category-page:not(.modern-theme) .filter-option {
-    color: #603000;
+    color: var(--cat-page-filter-strip-text, #603000);
+    font-family: var(--cat-page-filter-strip-font, var(--font-primary));
     font-size: 12px;
     letter-spacing: 0.25em;
     font-weight: 600;
@@ -237,7 +246,8 @@
 }
 
 .category-page:not(.modern-theme) .sort-option {
-    color: #603000;
+    color: var(--cat-page-filter-strip-text, #603000);
+    font-family: var(--cat-page-filter-strip-font, var(--font-primary));
     font-size: 12px;
     letter-spacing: 0.25em;
     font-weight: 600;

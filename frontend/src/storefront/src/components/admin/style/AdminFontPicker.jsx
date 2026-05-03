@@ -8,7 +8,7 @@ import { FONT_GROUPS, FONT_LOOKUP } from './fontCatalog.js';
 //  - value: current saved font-family stack (empty string = template default)
 //  - onChange: (newValue: string) => void — pass '' to reset
 //  - label: visible label (default 'Font Family')
-export default function AdminFontPicker({ value, onChange, label = 'Font Family' }) {
+export default function AdminFontPicker({ value, onChange, label = 'Font Family', fallback = '' }) {
   const [activeGroup, setActiveGroup] = useState(() => {
     const found = FONT_LOOKUP.find(f => f.value === value);
     return found ? found.group : FONT_GROUPS[0].label;
@@ -16,6 +16,11 @@ export default function AdminFontPicker({ value, onChange, label = 'Font Family'
 
   const visibleFonts = FONT_GROUPS.find(g => g.label === activeGroup)?.fonts || [];
   const selectedName = FONT_LOOKUP.find(f => f.value === value)?.name;
+  // When the merchant hasn't picked a font, surface the section's hardcoded
+  // default (looked up by stack) so the field still reflects the live value.
+  const fallbackName = !value && fallback
+    ? (FONT_LOOKUP.find(f => f.value === fallback)?.name || null)
+    : null;
 
   return (
     <div>
@@ -24,6 +29,9 @@ export default function AdminFontPicker({ value, onChange, label = 'Font Family'
           {label}
           {selectedName && (
             <span style={{ color: '#64748b', fontWeight: 400, marginLeft: 6 }}>· {selectedName}</span>
+          )}
+          {!selectedName && fallbackName && (
+            <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: 6 }}>· default · {fallbackName}</span>
           )}
         </label>
         {value && (

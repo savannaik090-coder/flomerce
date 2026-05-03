@@ -316,6 +316,88 @@ export const FAQ_MODERN_STYLE_DEFAULTS = Object.freeze({
 export function getFaqClassicStyleDefaults() { return { ...FAQ_CLASSIC_STYLE_DEFAULTS }; }
 export function getFaqModernStyleDefaults() { return { ...FAQ_MODERN_STYLE_DEFAULTS }; }
 
+// Storefront Category page (/category/:slug) style defaults — these
+// reproduce today's hardcoded look exactly. Classic values come from the
+// `.category-page:not(.modern-theme)` rules in styles/category.css; Modern
+// values come from the `.modern-theme.category-page` rules in modern.css and
+// the `.modern-theme .subcategory-chip*` rules in category.css. Each key
+// maps to a `--cat-page-*` (Classic) or `--mn-cat-page-*` (Modern) CSS
+// variable injected by SiteContext, with the same value used as the CSS
+// fallback so an unset key renders pixel-identical to today.
+export const CATEGORY_PAGE_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#fbf8f3',
+  heroTitleColor: '#ffffff',
+  // CSS fallback is var(--font-heading) — theme-dependent. Leave blank so the
+  // picker doesn't claim a specific stack the live page may not actually use.
+  heroTitleFont: '',
+  heroTitleSize: '60',
+  heroTitleWeight: '400',
+  heroSubtitleColor: '#ffffff',
+  heroSubtitleFont: "'Lora', 'Playfair Display', Georgia, serif",
+  heroSubtitleSize: '18',
+  heroSubtitleItalic: true,
+  // Classic hero overlay is a 3-stop black gradient (rgba 0.2 → 0.3 → 0.6)
+  // by default, not a flat color. We expose flat color + opacity controls
+  // so merchants can override with a single tone, but leave the placeholder
+  // empty so the form doesn't misrepresent the current gradient look.
+  heroOverlayColor: '',
+  heroOverlayOpacity: '',
+  chipStripBg: '#fbf8f3',
+  chipStripBorderColor: '#ebe2d3',
+  chipBg: '#ffffff',
+  chipBorderColor: '#e0d6c2',
+  chipTextColor: '#603000',
+  // CSS fallback is var(--font-primary) — theme-dependent system stack.
+  chipFont: '',
+  chipActiveBg: '#603000',
+  chipActiveTextColor: '#ffffff',
+  chipActiveBorderColor: '#603000',
+  filterStripBg: '#fbf8f3',
+  filterStripBorderColor: '#ebe2d3',
+  filterStripTextColor: '#603000',
+  filterStripFont: '',
+  productCountColor: '#888888',
+  productCountFont: '',
+});
+
+export const CATEGORY_PAGE_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  heroTitleColor: '#ffffff',
+  heroTitleFont: "'Inter', 'Helvetica Neue', sans-serif",
+  // Modern hero title size is responsive by default — clamp(2rem, 5vw, 3.5rem).
+  // Empty placeholder so the form doesn't misrepresent it as a fixed value.
+  heroTitleSize: '',
+  heroTitleWeight: '800',
+  heroSubtitleColor: '#ffffff',
+  heroSubtitleFont: "'Inter', sans-serif",
+  // CSS fallback is 1.05rem (~16.8px). Empty so the form doesn't claim 17px.
+  heroSubtitleSize: '',
+  heroOverlayColor: '#000000',
+  heroOverlayOpacity: '0.35',
+  chipStripBg: '#ffffff',
+  chipStripBorderColor: '#efefef',
+  chipBg: '#ffffff',
+  chipBorderColor: '#e5e5e5',
+  chipTextColor: '#1a1a1a',
+  chipFont: "'Inter', sans-serif",
+  chipActiveBg: '#1a1a1a',
+  chipActiveTextColor: '#ffffff',
+  chipActiveBorderColor: '#1a1a1a',
+  // Modern .shop-filter-header is dark by default (#111). Defaults must
+  // mirror that so the merchant sees the actual current look as a hint.
+  filterStripBg: '#111111',
+  // CSS fallback is transparent (no visible border) — leave blank so the
+  // form doesn't claim a colored border that isn't actually rendered.
+  filterStripBorderColor: '',
+  filterStripTextColor: '#ffffff',
+  filterStripFont: "'Inter', sans-serif",
+  productCountColor: '#888888',
+  productCountFont: "'Inter', sans-serif",
+});
+
+export function getCategoryPageClassicStyleDefaults() { return { ...CATEGORY_PAGE_CLASSIC_STYLE_DEFAULTS }; }
+export function getCategoryPageModernStyleDefaults() { return { ...CATEGORY_PAGE_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;

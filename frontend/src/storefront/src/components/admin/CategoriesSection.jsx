@@ -8,6 +8,10 @@ import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useToast } from '../../../../shared/ui/Toast.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 import AdminColorField from './style/AdminColorField.jsx';
+import {
+  CATEGORY_PAGE_CLASSIC_STYLE_DEFAULTS,
+  CATEGORY_PAGE_MODERN_STYLE_DEFAULTS,
+} from '../../defaults/index.js';
 
 function resolveImageUrl(src) {
   if (!src) return '';
@@ -160,6 +164,37 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const [chooseExploreColor, setChooseExploreColor] = useState('');
   const [chooseExploreFont, setChooseExploreFont] = useState('');
 
+  // Category page (/category/:slug) — independent style sets per template.
+  // Only defined keys are persisted; unset keys fall back to the storefront's
+  // hardcoded defaults via CSS var fallbacks so existing sites are unchanged.
+  const [categoryPageClassicStyle, setCategoryPageClassicStyle] = useState({});
+  const [categoryPageModernStyle, setCategoryPageModernStyle] = useState({});
+
+  function makeStyleUpdater(setter) {
+    return (key, value) => setter(prev => {
+      const next = { ...prev };
+      if (value === '' || value === null || value === undefined) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }
+  function makeGroupResetter(setter) {
+    return (keys) => setter(prev => {
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
+  }
+  const updateCatPageClassicField = makeStyleUpdater(setCategoryPageClassicStyle);
+  const updateCatPageModernField  = makeStyleUpdater(setCategoryPageModernStyle);
+  const resetCatPageClassicGroup  = makeGroupResetter(setCategoryPageClassicStyle);
+  const resetCatPageModernGroup   = makeGroupResetter(setCategoryPageModernStyle);
+
+  // Per-section template switcher inside the Category Page Styling card.
+  // Defaults to the active template (so the merchant first sees the side
+  // they're previewing) but can be flipped without changing the live theme.
+  const [catPageStyleTab, setCatPageStyleTab] = useState(null);
+
   // Match the active template the same way HeroSliderEditor / PromoBannerEditor do.
   // Used to gate which control groups render in the appearance view and which
   // keys are included in the live-preview / serializer / save payloads, so the
@@ -297,6 +332,9 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       setChooseLabelBg(settings.chooseLabelBg || '');
       setChooseExploreColor(settings.chooseExploreColor || '');
       setChooseExploreFont(settings.chooseExploreFont || '');
+      const cp = settings.categoryPage || {};
+      setCategoryPageClassicStyle(cp.classicStyle && typeof cp.classicStyle === 'object' ? cp.classicStyle : {});
+      setCategoryPageModernStyle(cp.modernStyle && typeof cp.modernStyle === 'object' ? cp.modernStyle : {});
       // Reloading server values means we should re-capture the snapshot so
       // the dirty check resets to "no changes". The capture effect below
       // handles this by gating on hasLoadedRef.
@@ -378,6 +416,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       chooseOverlayColor, chooseOverlayOpacity,
       chooseLabelColor, chooseLabelFont, chooseLabelBg,
       chooseExploreColor, chooseExploreFont,
+      categoryPageClassicStyle, categoryPageModernStyle,
       catImages,
     });
   }, [
@@ -397,6 +436,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     chooseSectionTitle, chooseCardShape,
     chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont, chooseLabelBg,
     chooseExploreColor, chooseExploreFont,
+    categoryPageClassicStyle, categoryPageModernStyle,
   ]);
 
   // Capture the initial (or post-save) server snapshot once both settings
@@ -443,6 +483,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
       chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
       chooseLabelColor, chooseLabelFont, chooseLabelBg,
       chooseExploreColor, chooseExploreFont,
+      categoryPage: { classicStyle: categoryPageClassicStyle, modernStyle: categoryPageModernStyle },
     });
   }, [
     settingsLoaded, chooseEnabled, chooseCats, subcatSections, sectionOrder,
@@ -460,6 +501,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     chooseSectionTitle, chooseCardShape,
     chooseOverlayColor, chooseOverlayOpacity, chooseLabelColor, chooseLabelFont, chooseLabelBg,
     chooseExploreColor, chooseExploreFont,
+    categoryPageClassicStyle, categoryPageModernStyle,
   ]);
 
   useEffect(() => {
@@ -1001,6 +1043,13 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
           chooseOverlayOpacity: chooseOverlayOpacity !== '' ? parseFloat(chooseOverlayOpacity) : undefined,
           chooseLabelColor, chooseLabelFont, chooseLabelBg,
           chooseExploreColor, chooseExploreFont,
+          // Category page (/category/:slug) per-template style sets.
+          // Both templates' values are persisted side-by-side so editing
+          // one never disturbs the other.
+          categoryPage: {
+            classicStyle: categoryPageClassicStyle,
+            modernStyle: categoryPageModernStyle,
+          },
         };
         const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
           method: 'PUT',
@@ -1701,6 +1750,25 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               )}
             </div>
           </SectionCard>
+
+          <SectionCard
+            title="Category Page Styling"
+            subtitle="Style the /category/:slug page hero, chip row, filter strip, and product count — independently for Classic and Modern templates"
+            icon="fa-paint-brush"
+            defaultOpen={false}
+          >
+            <CategoryPageStyleControls
+              activeTemplateIsModern={isModern}
+              tab={catPageStyleTab}
+              setTab={setCatPageStyleTab}
+              classicStyle={categoryPageClassicStyle}
+              modernStyle={categoryPageModernStyle}
+              updateClassicField={updateCatPageClassicField}
+              updateModernField={updateCatPageModernField}
+              resetClassicGroup={resetCatPageClassicGroup}
+              resetModernGroup={resetCatPageModernGroup}
+            />
+          </SectionCard>
         </>
       )}
 
@@ -1723,5 +1791,236 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     </div>
     <ConfirmModal open={!!confirmModal} title={confirmModal?.title} message={confirmModal?.message} danger={confirmModal?.danger} confirmText={confirmModal?.confirmText} onConfirm={() => { confirmModal?.onConfirm?.(); setConfirmModal(null); }} onCancel={() => setConfirmModal(null)} />
     </>
+  );
+}
+
+// Independent Classic / Modern style editors for the storefront's
+// /category/:slug page. The merchant sees the side that matches the
+// active template by default but can flip the tab to edit the other
+// template's saved values without changing the live theme. Each field
+// stays empty until the merchant edits it; on save the populated keys
+// land in settings.categoryPage.{classicStyle,modernStyle}, and CSS var
+// fallbacks reproduce today's hardcoded look for every unset key.
+function CategoryPageStyleControls({
+  activeTemplateIsModern,
+  tab, setTab,
+  classicStyle, modernStyle,
+  updateClassicField, updateModernField,
+  resetClassicGroup, resetModernGroup,
+}) {
+  const effectiveTab = tab || (activeTemplateIsModern ? 'modern' : 'classic');
+  const isModern = effectiveTab === 'modern';
+  const style = isModern ? modernStyle : classicStyle;
+  const defaults = isModern ? CATEGORY_PAGE_MODERN_STYLE_DEFAULTS : CATEGORY_PAGE_CLASSIC_STYLE_DEFAULTS;
+  const updateField = isModern ? updateModernField : updateClassicField;
+  const resetGroup = isModern ? resetModernGroup : resetClassicGroup;
+
+  const groups = [
+    {
+      title: 'Page',
+      keys: ['pageBg'],
+      fields: [{ kind: 'color', key: 'pageBg', label: 'Page Background' }],
+    },
+    {
+      title: 'Hero',
+      keys: [
+        'heroTitleColor', 'heroTitleFont', 'heroTitleSize', 'heroTitleWeight',
+        'heroSubtitleColor', 'heroSubtitleFont', 'heroSubtitleSize', 'heroSubtitleItalic',
+        'heroOverlayColor', 'heroOverlayOpacity',
+      ],
+      fields: [
+        { kind: 'color', key: 'heroTitleColor', label: 'Hero Title Color' },
+        { kind: 'font',  key: 'heroTitleFont',  label: 'Hero Title Font' },
+        {
+          kind: 'number', key: 'heroTitleSize', label: 'Hero Title Size (px)',
+          min: 12, max: 200, step: 1,
+          defaultHint: isModern ? 'default · responsive clamp(2rem, 5vw, 3.5rem)' : null,
+        },
+        { kind: 'number', key: 'heroTitleWeight', label: 'Hero Title Weight', min: 100, max: 900, step: 100 },
+        { kind: 'color', key: 'heroSubtitleColor', label: 'Hero Subtitle Color' },
+        { kind: 'font',  key: 'heroSubtitleFont',  label: 'Hero Subtitle Font' },
+        { kind: 'number', key: 'heroSubtitleSize', label: 'Hero Subtitle Size (px)', min: 10, max: 80, step: 1 },
+        ...(isModern ? [] : [{ kind: 'bool', key: 'heroSubtitleItalic', label: 'Italic Subtitle' }]),
+        {
+          kind: 'color', key: 'heroOverlayColor', label: 'Hero Overlay Color',
+          defaultHint: isModern ? null : 'default · 3-stop black gradient (rgba 0.2 → 0.3 → 0.6)',
+        },
+        {
+          kind: 'number', key: 'heroOverlayOpacity', label: 'Hero Overlay Opacity (0–1)',
+          min: 0, max: 1, step: 0.05,
+          defaultHint: isModern ? null : 'default · gradient (no flat opacity)',
+        },
+      ],
+    },
+    {
+      title: 'Subcategory Chip Row',
+      keys: [
+        'chipStripBg', 'chipStripBorderColor',
+        'chipBg', 'chipBorderColor', 'chipTextColor', 'chipFont',
+        'chipActiveBg', 'chipActiveTextColor', 'chipActiveBorderColor',
+      ],
+      fields: [
+        { kind: 'color', key: 'chipStripBg', label: 'Strip Background' },
+        { kind: 'color', key: 'chipStripBorderColor', label: 'Strip Border Color' },
+        { kind: 'color', key: 'chipBg', label: 'Chip Background' },
+        { kind: 'color', key: 'chipBorderColor', label: 'Chip Border Color' },
+        { kind: 'color', key: 'chipTextColor', label: 'Chip Text Color' },
+        { kind: 'font',  key: 'chipFont', label: 'Chip Font' },
+        { kind: 'color', key: 'chipActiveBg', label: 'Active Chip Background' },
+        { kind: 'color', key: 'chipActiveTextColor', label: 'Active Chip Text Color' },
+        { kind: 'color', key: 'chipActiveBorderColor', label: 'Active Chip Border Color' },
+      ],
+    },
+    {
+      title: 'Filter Strip',
+      keys: ['filterStripBg', 'filterStripBorderColor', 'filterStripTextColor', 'filterStripFont'],
+      fields: [
+        { kind: 'color', key: 'filterStripBg', label: 'Strip Background' },
+        { kind: 'color', key: 'filterStripBorderColor', label: 'Strip Border Color' },
+        { kind: 'color', key: 'filterStripTextColor', label: 'FILTER / SORT BY Text Color' },
+        { kind: 'font',  key: 'filterStripFont', label: 'FILTER / SORT BY Font' },
+      ],
+    },
+    {
+      title: 'Product Count',
+      keys: ['productCountColor', 'productCountFont'],
+      fields: [
+        { kind: 'color', key: 'productCountColor', label: 'Count Text Color' },
+        { kind: 'font',  key: 'productCountFont', label: 'Count Font' },
+      ],
+    },
+  ];
+
+  const tabBtn = (val, label) => (
+    <button
+      type="button"
+      onClick={() => setTab(val)}
+      style={{
+        flex: 1,
+        padding: '8px 12px',
+        background: effectiveTab === val ? '#0f172a' : '#f1f5f9',
+        color: effectiveTab === val ? '#fff' : '#475569',
+        border: '1px solid ' + (effectiveTab === val ? '#0f172a' : '#e2e8f0'),
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontSize: 13,
+        fontWeight: 600,
+      }}
+    >
+      {label}{(val === 'classic' && !activeTemplateIsModern) || (val === 'modern' && activeTemplateIsModern) ? ' (active)' : ''}
+    </button>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
+        Each template keeps its own saved styling. Editing one side never disturbs the other.
+        Unset fields fall back to the storefront's hardcoded defaults so existing sites look identical.
+      </p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {tabBtn('classic', 'Classic')}
+        {tabBtn('modern', 'Modern')}
+      </div>
+
+      {groups.map(group => (
+        <div key={group.title} style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <h4 style={{ fontSize: 12, fontWeight: 700, margin: 0, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              {group.title}
+            </h4>
+            {group.keys.some(k => style[k] !== undefined) && (
+              <button
+                type="button"
+                onClick={() => resetGroup(group.keys)}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: 12, color: '#475569', textDecoration: 'underline',
+                }}
+              >
+                Reset to default
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {group.fields.map(f => {
+              if (f.kind === 'color') {
+                return (
+                  <div key={f.key}>
+                    <AdminColorField
+                      label={f.label}
+                      value={style[f.key] || ''}
+                      fallback={defaults[f.key] || ''}
+                      onChange={(v) => updateField(f.key, v)}
+                    />
+                    {f.defaultHint && (
+                      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>{f.defaultHint}</p>
+                    )}
+                  </div>
+                );
+              }
+              if (f.kind === 'font') {
+                return (
+                  <AdminFontPicker
+                    key={f.key}
+                    label={f.label}
+                    value={style[f.key] || ''}
+                    fallback={defaults[f.key] || ''}
+                    onChange={(v) => updateField(f.key, v)}
+                  />
+                );
+              }
+              if (f.kind === 'number') {
+                const cur = style[f.key];
+                const defaultVal = defaults[f.key];
+                // A few fields have non-numeric live defaults (gradient overlay,
+                // responsive clamp() title size). Their JS default is '' so the
+                // placeholder doesn't lie; we surface the actual look via hint.
+                const hint = f.defaultHint || (defaultVal === '' ? null : `default · ${defaultVal}`);
+                return (
+                  <div key={f.key}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 12, color: '#475569' }}>{f.label}</label>
+                    <input
+                      type="number"
+                      value={cur === undefined || cur === null ? '' : cur}
+                      min={f.min}
+                      max={f.max}
+                      step={f.step}
+                      placeholder={hint || ''}
+                      onChange={e => updateField(f.key, e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                    />
+                    {f.defaultHint && (
+                      <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>{f.defaultHint}</p>
+                    )}
+                  </div>
+                );
+              }
+              if (f.kind === 'bool') {
+                const cur = style[f.key];
+                const isOn = cur === undefined ? !!defaults[f.key] : !!cur;
+                return (
+                  <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: '#475569' }}>
+                    <input
+                      type="checkbox"
+                      checked={isOn}
+                      onChange={e => {
+                        // Persist explicit boolean only when it differs from
+                        // the default; matching the default clears the key
+                        // so the snapshot dirty check resolves to "no change".
+                        const nextVal = e.target.checked;
+                        if (nextVal === !!defaults[f.key]) updateField(f.key, '');
+                        else updateField(f.key, nextVal);
+                      }}
+                    />
+                    {f.label}
+                  </label>
+                );
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
