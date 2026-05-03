@@ -121,6 +121,8 @@ export default function ProductPageEditor({ onSaved, onPreviewUpdate }) {
 
   function handleResetDefaults() {
     setFields(DEFAULTS);
+    setClassicStyle({});
+    setModernStyle({});
   }
 
   function updateStyleField(template, key, value) {
