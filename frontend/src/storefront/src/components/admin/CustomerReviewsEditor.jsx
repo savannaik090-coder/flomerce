@@ -75,8 +75,11 @@ function buildEmptyAppearance() {
   return out;
 }
 
-export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [sectionTitle, setSectionTitle] = useState('');
   const [sectionSubtitle, setSectionSubtitle] = useState('');
   const [reviews, setReviews] = useState([]);
@@ -178,10 +181,12 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         reviewsSectionSubtitle: sectionSubtitle,
         reviews,
         ...appearance,
+        ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
       });
       setStatus('success');
       serverValuesRef.current = JSON.stringify({ sectionTitle, sectionSubtitle, reviews, appearance });
       setHasChanges(false);
+      if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
       // Only after the settings PUT succeeds do we actually delete any
       // replaced/removed images from R2. Anything still referenced in the
       // final reviews array is passed as keepUrls so it's never touched.
@@ -307,7 +312,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
   return (
     <>
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
         {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -319,8 +324,12 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
 
       {activeView === 'content' && <>
       <SectionToggle
-        enabled={sectionVisible}
-        onChange={() => onToggleVisibility?.()}
+        enabled={pendingVisible}
+        onChange={() => {
+          const next = !pendingVisible;
+          setPendingVisible(next);
+          if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+        }}
         label="Show Customer Reviews"
         description="Toggle the customer reviews section on your homepage"
       />
@@ -468,7 +477,7 @@ export default function CustomerReviewsEditor({ onSaved, onPreviewUpdate, sectio
         </div>
       )}
 
-      <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
+      <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSaveSection(e || { preventDefault: () => {} })} />
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

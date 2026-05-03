@@ -28,8 +28,11 @@ function compressImage(file, maxWidth = 1400, quality = 0.85) {
   });
 }
 
-export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [title, setTitle] = useState('');
   const [mainImage, setMainImage] = useState('');
   const [mainImageKey, setMainImageKey] = useState('');
@@ -260,6 +263,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
             stlHeadingFont,
             stlDividerColor,
             stlAccentColor,
+            ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
           },
         }),
       });
@@ -268,6 +272,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         serverValuesRef.current = JSON.stringify({ title, mainImage, mainImageKey, dots });
         setHasChanges(false);
         setUsingDefaults(false);
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         const cleanup = await pendingMedia.commit([mainImage]);
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
@@ -295,10 +300,14 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
 
   return (
     <div>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={handleSave} />
       <SectionToggle
-        enabled={sectionVisible}
-        onChange={() => onToggleVisibility?.()}
+        enabled={pendingVisible}
+        onChange={() => {
+          const next = !pendingVisible;
+          setPendingVisible(next);
+          if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+        }}
         label="Show Shop the Look"
         description="Display interactive product showcase on homepage"
       />
@@ -641,7 +650,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
         </div>
       )}
 
-      <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+      <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={handleSave} />
       </>}
 
       {activeView === 'appearance' && (
@@ -663,7 +672,7 @@ export default function ShopTheLookEditor({ onSaved, onPreviewUpdate, sectionVis
               <AdminColorField label="Divider Color" value={stlDividerColor} fallback="#5a3f2a" onChange={v => { setStlDividerColor(v); setHasChanges(true); }} />
               <AdminColorField label="Accent Color (dots, price, button)" value={stlAccentColor} fallback="#5a3f2a" onChange={v => { setStlAccentColor(v); setHasChanges(true); }} />
             </div>
-            <SaveBar saving={saving} hasChanges={hasChanges} onSave={handleSave} />
+            <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={handleSave} />
           </div>
         </div>
       )}

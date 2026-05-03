@@ -9,8 +9,11 @@ import { getFeaturedVideoPlaceholders, getFeaturedVideoDefaults } from '../../de
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 
-export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
@@ -187,6 +190,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
             fvBtnBg,
             fvBtnText,
             fvBtnRadius,
+            ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
           }
         }),
       });
@@ -195,6 +199,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ title, description, videoUrl, chatLink, chatButtonText });
         setHasChanges(false);
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         commit(videoUrl ? [videoUrl] : []);
         if (onSaved) onSaved();
       } else {
@@ -211,11 +216,15 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <SectionToggle
-          enabled={sectionVisible}
-          onChange={() => onToggleVisibility?.()}
+          enabled={pendingVisible}
+          onChange={() => {
+            const next = !pendingVisible;
+            setPendingVisible(next);
+            if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+          }}
           label="Show Featured Video"
           description="Toggle the featured video section on your homepage"
         />
@@ -365,7 +374,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
         </>}
 
         {activeView === 'appearance' && (
@@ -402,7 +411,7 @@ export default function FeaturedVideoEditor({ onSaved, onPreviewUpdate, sectionV
                   ))}
                 </div>
               </div>
-              <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+              <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
             </div>
           </div>
         )}

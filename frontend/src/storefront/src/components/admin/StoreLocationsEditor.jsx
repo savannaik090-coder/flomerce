@@ -90,8 +90,11 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, onToggleVisibility }) {
+export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
+  const [pendingVisible, setPendingVisible] = useState(sectionVisible);
+  useEffect(() => { setPendingVisible(sectionVisible); }, [sectionVisible]);
+  const visDirty = !!visibilityKey && pendingVisible !== sectionVisible;
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
   const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
   const [activeView, setActiveView] = useState('content');
@@ -243,6 +246,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
           settings: {
             storeLocations: persistedStores,
             ...appearance,
+            ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
           },
         }),
       });
@@ -251,6 +255,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
         setStatus('success');
         serverValuesRef.current = JSON.stringify({ stores, appearance });
         setHasChanges(false);
+        if (visibilityKey && onVisibilitySaved) onVisibilitySaved(pendingVisible);
         const cleanup = await pendingMedia.commit(persistedStores.map(s => s.image).filter(Boolean));
         if (!cleanup.ok) console.warn('Some images failed to delete from storage:', cleanup.failed);
         if (onSaved) onSaved();
@@ -271,7 +276,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
 
   return (
     <div style={{ maxWidth: 700 }}>
-      <SaveBar topBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+      <SaveBar topBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       <form onSubmit={handleSave}>
         <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
           {[{ key: 'content', icon: 'fa-edit', label: 'Content' }, { key: 'appearance', icon: 'fa-paint-brush', label: 'Appearance' }].map(tab => (
@@ -282,8 +287,16 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
         </div>
 
         {activeView === 'content' && <>
-          {onToggleVisibility && (
-            <SectionToggle enabled={sectionVisible} onChange={() => onToggleVisibility?.()} label="Store Locations Section" />
+          {visibilityKey && (
+            <SectionToggle
+              enabled={pendingVisible}
+              onChange={() => {
+                const next = !pendingVisible;
+                setPendingVisible(next);
+                if (onPreviewUpdate && visibilityKey) onPreviewUpdate({ [visibilityKey]: next });
+              }}
+              label="Store Locations Section"
+            />
           )}
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-header">
@@ -441,7 +454,7 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
           </div>
         )}
 
-        <SaveBar saving={saving} hasChanges={hasChanges} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
+        <SaveBar saving={saving} hasChanges={hasChanges || visDirty} onSave={(e) => handleSave(e || { preventDefault: () => {} })} />
       </form>
     </div>
   );
