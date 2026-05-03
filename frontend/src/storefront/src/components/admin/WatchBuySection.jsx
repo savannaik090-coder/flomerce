@@ -44,6 +44,12 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
   const [activeView, setActiveView] = useState('content');
   const fileInputRef = useRef(null);
   const hasLoadedRef = useRef(false);
+  // Last-saved videos snapshot. On unmount we push this back through the live
+  // preview channel so an editor closed without saving (or a discarded edit)
+  // returns the iframe to the saved state without a full reload.
+  const savedVideosRef = useRef([]);
+  const onPreviewUpdateRef = useRef(onPreviewUpdate);
+  onPreviewUpdateRef.current = onPreviewUpdate;
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
@@ -54,6 +60,29 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
       wbCardBorder: wbCardBorder || undefined,
     });
   }, [wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder]);
+
+  // Live-preview the videos array so add/remove/edit/reorder reflect in the
+  // iframe immediately, mirroring how appearance fields already work. The
+  // storefront filters out entries without a videoUrl, so sending only real
+  // (uploaded) entries — and an empty array when defaults are showing —
+  // matches the saved-state semantics exactly.
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    if (!onPreviewUpdate) return;
+    const previewVideos = usingDefaults ? [] : videos.filter(v => v && v.videoUrl);
+    onPreviewUpdate({ watchAndBuyVideos: previewVideos });
+  }, [videos, usingDefaults]);
+
+  // On unmount, restore the last-saved videos in the preview so a discarded
+  // edit (or simply leaving the editor) doesn't leave stale unsaved videos
+  // visible in the iframe until the next reload.
+  useEffect(() => {
+    return () => {
+      if (onPreviewUpdateRef.current) {
+        onPreviewUpdateRef.current({ watchAndBuyVideos: savedVideosRef.current });
+      }
+    };
+  }, []);
   const skipNextChangeRef = useRef(false);
   const { markUploaded, markForDeletion, commit } = usePendingMedia(siteConfig?.id);
 
@@ -112,6 +141,9 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
         const baselineVideos = realSaved.length > 0
           ? realSaved
           : getWatchAndBuyDefaults(siteConfig?.category || 'generic');
+        // Snapshot what's actually persisted (real entries only); the unmount
+        // effect uses this to restore the iframe to the saved state.
+        savedVideosRef.current = realSaved;
         dirty.baseline({
           videos: baselineVideos,
           showSection: val,
@@ -295,6 +327,9 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
         // saved defaults-as-empty, leave the displayed defaults alone.
         const newVideosState = usingDefaults ? videos : videosToPersist;
         if (!usingDefaults) setVideos(videosToPersist);
+        // Refresh the unmount snapshot so a later discard returns to the
+        // newly-saved state rather than the stale pre-save baseline.
+        savedVideosRef.current = videosToPersist;
         dirty.markSaved({
           videos: newVideosState,
           showSection,
