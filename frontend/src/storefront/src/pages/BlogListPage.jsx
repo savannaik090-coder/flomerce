@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import { apiRequest } from '../services/api.js';
+import { resolveBlogStyle, buildBlogStyleVars } from '../utils/blogStyle.js';
 import '../styles/blog.css';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -11,6 +13,7 @@ export default function BlogListPage() {
   const { translate: tx, target, contentLanguage } = useShopperTranslation();
   const dateLocale = target || contentLanguage || 'en-US';
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -23,6 +26,7 @@ export default function BlogListPage() {
   }
   const showBlog = settings.showBlog !== false;
   const brandName = siteConfig?.brandName || siteConfig?.brand_name || "Our Store";
+  const styleVars = buildBlogStyleVars(resolveBlogStyle(settings.blogPage, isModern), isModern);
 
   useEffect(() => {
     if (siteConfig?.id && showBlog) fetchPosts();
@@ -51,7 +55,7 @@ export default function BlogListPage() {
   }
 
   return (
-    <div className="blog-list-page">
+    <div className="blog-list-page" style={styleVars}>
       <div className="blog-header">
         <h1><TranslatedText text="Blog" /></h1>
         <p><TranslatedText text="Latest stories and updates from" /> {brandName}</p>

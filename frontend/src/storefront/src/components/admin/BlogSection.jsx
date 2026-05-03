@@ -1,15 +1,25 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { apiRequest } from '../../services/api.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useConfirm } from '../../../../shared/ui/ConfirmDialog.jsx';
+import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
+import {
+  BLOG_CLASSIC_STYLE_DEFAULTS,
+  BLOG_MODERN_STYLE_DEFAULTS,
+} from '../../defaults/index.js';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
+import SaveBar from './SaveBar.jsx';
 
 let ReactQuill = null;
 let quillCssLoaded = false;
 
 export default function BlogSection() {
   const { siteConfig, refetchSite } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const confirm = useConfirm();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +30,36 @@ export default function BlogSection() {
   const [blogInNavbar, setBlogInNavbar] = useState(false);
   const [quillLoaded, setQuillLoaded] = useState(false);
 
+  // Per-template style overrides — both kept side-by-side so editing one
+  // template never disturbs the other's saved values. The active template's
+  // controls are shown; the inactive template's saved object is preserved.
+  const [classicStyle, setClassicStyle] = useState({});
+  const [modernStyle, setModernStyle] = useState({});
+  const [savingStyle, setSavingStyle] = useState(false);
+  const [styleStatus, setStyleStatus] = useState('');
+
+  const dirty = useDirtyTracker({ classicStyle, modernStyle });
+  const activeStyle = isModern ? modernStyle : classicStyle;
+  const setActiveStyle = isModern ? setModernStyle : setClassicStyle;
+  const styleDefaults = isModern ? BLOG_MODERN_STYLE_DEFAULTS : BLOG_CLASSIC_STYLE_DEFAULTS;
+
+  function updateStyleField(key, value) {
+    setActiveStyle(prev => {
+      const next = { ...prev };
+      if (value === '' || value === null || value === undefined) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }
+
+  function resetStyleGroup(keys) {
+    setActiveStyle(prev => {
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (siteConfig) {
       let settings = siteConfig.settings || {};
@@ -28,8 +68,36 @@ export default function BlogSection() {
       }
       setShowBlog(settings.showBlog !== false);
       setBlogInNavbar(settings.blogInNavbar === true);
+      const blogPage = settings.blogPage || {};
+      const csVal = (blogPage.classic && typeof blogPage.classic === 'object') ? blogPage.classic : {};
+      const msVal = (blogPage.modern && typeof blogPage.modern === 'object') ? blogPage.modern : {};
+      setClassicStyle(csVal);
+      setModernStyle(msVal);
+      dirty.baseline({ classicStyle: csVal, modernStyle: msVal });
     }
   }, [siteConfig]);
+
+  async function handleSaveStyle() {
+    setSavingStyle(true);
+    setStyleStatus('');
+    try {
+      await apiRequest(`/api/sites/${siteConfig.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          settings: {
+            blogPage: { classic: classicStyle, modern: modernStyle },
+          },
+        }),
+      });
+      dirty.markSaved();
+      setStyleStatus('success');
+      await refetchSite();
+    } catch (e) {
+      setStyleStatus('error:' + (e.message || 'Failed to save'));
+    } finally {
+      setSavingStyle(false);
+    }
+  }
 
   useEffect(() => {
     if (siteConfig?.id) fetchPosts();
@@ -134,6 +202,18 @@ export default function BlogSection() {
         <ToggleRow label="Show in Navbar" description="Add a Blog link in the storefront navigation bar" checked={blogInNavbar} onChange={handleToggleBlogInNavbar} />
       </div>
 
+      <BlogStyleSection
+        isModern={isModern}
+        style={activeStyle}
+        defaults={styleDefaults}
+        updateField={updateStyleField}
+        resetGroup={resetStyleGroup}
+        hasChanges={dirty.hasChanges}
+        saving={savingStyle}
+        status={styleStatus}
+        onSave={handleSaveStyle}
+      />
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0f172a', margin: 0 }}>{`Posts (${posts.length})`}</h3>
         <button style={btnPrimary} onClick={() => setCreating(true)}>
@@ -180,6 +260,175 @@ export default function BlogSection() {
           />
         ))
       )}
+    </div>
+  );
+}
+
+const WEIGHT_OPTIONS = ['400', '500', '600', '700', '800'];
+
+function BlogStyleSection({ isModern, style, defaults, updateField, resetGroup, hasChanges, saving, status, onSave }) {
+  const templateLabel = isModern ? 'Modern' : 'Classic';
+
+  const groups = [
+    {
+      title: 'Page',
+      keys: ['pageBg', 'linkColor', 'dividerColor'],
+      fields: [
+        { kind: 'color', key: 'pageBg', label: 'Page Background' },
+        { kind: 'color', key: 'linkColor', label: 'Link / Accent Color' },
+        { kind: 'color', key: 'dividerColor', label: 'Divider / Border Color' },
+      ],
+    },
+    {
+      title: 'Page Heading',
+      keys: ['pageHeadingFont', 'pageHeadingSize', 'pageHeadingWeight', 'pageHeadingColor', 'subtitleColor'],
+      fields: [
+        { kind: 'font', key: 'pageHeadingFont', label: 'Heading Font' },
+        { kind: 'size', key: 'pageHeadingSize', label: 'Heading Size (e.g. 2rem, 32px)' },
+        { kind: 'weight', key: 'pageHeadingWeight', label: 'Heading Weight' },
+        { kind: 'color', key: 'pageHeadingColor', label: 'Heading Color' },
+        { kind: 'color', key: 'subtitleColor', label: 'Subtitle Color' },
+      ],
+    },
+    {
+      title: 'Post Title',
+      keys: ['postTitleFont', 'postTitleSize', 'postTitleWeight', 'postTitleColor'],
+      fields: [
+        { kind: 'font', key: 'postTitleFont', label: 'Post Title Font' },
+        { kind: 'size', key: 'postTitleSize', label: 'Post Title Size' },
+        { kind: 'weight', key: 'postTitleWeight', label: 'Post Title Weight' },
+        { kind: 'color', key: 'postTitleColor', label: 'Post Title Color' },
+      ],
+    },
+    {
+      title: 'Excerpt & Meta',
+      keys: ['excerptFont', 'excerptSize', 'excerptColor', 'metaColor'],
+      fields: [
+        { kind: 'font', key: 'excerptFont', label: 'Excerpt Font' },
+        { kind: 'size', key: 'excerptSize', label: 'Excerpt Size' },
+        { kind: 'color', key: 'excerptColor', label: 'Excerpt Color' },
+        { kind: 'color', key: 'metaColor', label: 'Meta (date / author) Color' },
+      ],
+    },
+    {
+      title: 'Card',
+      keys: isModern ? ['cardBg', 'cardShadowColor'] : ['cardBg'],
+      fields: [
+        { kind: 'color', key: 'cardBg', label: 'Card Background' },
+        ...(isModern ? [{ kind: 'color', key: 'cardShadowColor', label: 'Card Shadow / Border Accent' }] : []),
+      ],
+    },
+    {
+      title: 'Post Page',
+      keys: ['postContentColor'],
+      fields: [
+        { kind: 'color', key: 'postContentColor', label: 'Post Body Text Color' },
+      ],
+    },
+  ];
+
+  return (
+    <div className="card" style={{ marginBottom: 24 }}>
+      <div className="card-header">
+        <h3 className="card-title">Appearance — {templateLabel} template</h3>
+      </div>
+      <div className="card-content">
+        <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
+          Customize colors and fonts for the blog list and blog post pages. These settings apply only to the
+          <strong> {templateLabel}</strong> template — the other template's saved styling is preserved.
+          Switch templates in your theme to edit the other set.
+        </p>
+
+        {groups.map(group => (
+          <div key={group.title} style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {group.title}
+              </h4>
+              {group.keys.some(k => style[k]) && (
+                <button
+                  type="button"
+                  onClick={() => resetGroup(group.keys)}
+                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#475569', textDecoration: 'underline' }}
+                >
+                  Reset to default
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {group.fields.map(f => {
+                if (f.kind === 'color') {
+                  return (
+                    <AdminColorField
+                      key={f.key}
+                      label={f.label}
+                      value={style[f.key] || ''}
+                      fallback={defaults[f.key]}
+                      onChange={(v) => updateField(f.key, v)}
+                    />
+                  );
+                }
+                if (f.kind === 'font') {
+                  return (
+                    <AdminFontPicker
+                      key={f.key}
+                      label={f.label}
+                      value={style[f.key] || ''}
+                      onChange={(v) => updateField(f.key, v)}
+                    />
+                  );
+                }
+                if (f.kind === 'size') {
+                  return (
+                    <div key={f.key}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{f.label}</label>
+                      <input
+                        type="text"
+                        value={style[f.key] || ''}
+                        placeholder={defaults[f.key]}
+                        onChange={(e) => updateField(f.key, e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }}
+                      />
+                    </div>
+                  );
+                }
+                if (f.kind === 'weight') {
+                  return (
+                    <div key={f.key}>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{f.label}</label>
+                      <select
+                        value={style[f.key] || ''}
+                        onChange={(e) => updateField(f.key, e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' }}
+                      >
+                        <option value="">{`Default (${defaults[f.key]})`}</option>
+                        {WEIGHT_OPTIONS.map(w => (
+                          <option key={w} value={w}>{w}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </div>
+        ))}
+
+        {status && (
+          <div style={{
+            background: status === 'success' ? '#f0fdf4' : '#fef2f2',
+            border: `1px solid ${status === 'success' ? '#bbf7d0' : '#fecaca'}`,
+            borderRadius: 8, padding: '10px 14px',
+            color: status === 'success' ? '#166534' : '#dc2626',
+            marginBottom: 12, fontSize: 13,
+          }}>
+            {status === 'success' ? 'Blog appearance saved successfully!' : status.replace('error:', '')}
+          </div>
+        )}
+
+        <SaveBar saving={saving} hasChanges={hasChanges} onSave={onSave} />
+      </div>
     </div>
   );
 }

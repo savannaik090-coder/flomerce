@@ -90,6 +90,56 @@ export const ABOUT_MODERN_STYLE_DEFAULTS = Object.freeze({
 export function getAboutClassicStyleDefaults() { return { ...ABOUT_CLASSIC_STYLE_DEFAULTS }; }
 export function getAboutModernStyleDefaults() { return { ...ABOUT_MODERN_STYLE_DEFAULTS }; }
 
+// Blog style defaults — captured from the existing blog.css rules so that
+// merchants who haven't customized anything render exactly as today. Each
+// field maps to a CSS variable injected on the .blog-list-page /
+// .blog-post-page wrapper.
+export const BLOG_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  pageHeadingFont: 'inherit',
+  pageHeadingSize: '2rem',
+  pageHeadingWeight: '700',
+  pageHeadingColor: '#0f172a',
+  subtitleColor: '#64748b',
+  postTitleFont: 'inherit',
+  postTitleSize: '1.125rem',
+  postTitleWeight: '600',
+  postTitleColor: '#0f172a',
+  excerptFont: 'inherit',
+  excerptSize: '0.875rem',
+  excerptColor: '#64748b',
+  metaColor: '#94a3b8',
+  dividerColor: '#e5e7eb',
+  linkColor: '#0f172a',
+  cardBg: '#ffffff',
+  postContentColor: '#1e293b',
+});
+
+export const BLOG_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  pageHeadingFont: 'inherit',
+  pageHeadingSize: '2rem',
+  pageHeadingWeight: '700',
+  pageHeadingColor: '#0f172a',
+  subtitleColor: '#64748b',
+  postTitleFont: 'inherit',
+  postTitleSize: '1.125rem',
+  postTitleWeight: '600',
+  postTitleColor: '#0f172a',
+  excerptFont: 'inherit',
+  excerptSize: '0.875rem',
+  excerptColor: '#64748b',
+  metaColor: '#94a3b8',
+  dividerColor: '#e5e7eb',
+  linkColor: '#0f172a',
+  cardBg: '#ffffff',
+  cardShadowColor: 'rgba(0, 0, 0, 0.08)',
+  postContentColor: '#1e293b',
+});
+
+export function getBlogClassicStyleDefaults() { return { ...BLOG_CLASSIC_STYLE_DEFAULTS }; }
+export function getBlogModernStyleDefaults() { return { ...BLOG_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;

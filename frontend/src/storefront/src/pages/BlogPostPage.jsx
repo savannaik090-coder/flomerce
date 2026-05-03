@@ -2,8 +2,10 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { SiteContext } from '../context/SiteContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { useSEO } from '../hooks/useSEO.js';
 import { apiRequest } from '../services/api.js';
+import { resolveBlogStyle, buildBlogStyleVars } from '../utils/blogStyle.js';
 import '../styles/blog.css';
 import TranslatedText from '../components/TranslatedText';
 import { useShopperTranslation } from '../context/ShopperTranslationContext.jsx';
@@ -13,6 +15,7 @@ export default function BlogPostPage() {
   const dateLocale = target || contentLanguage || 'en-US';
   const { slug } = useParams();
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,8 +74,14 @@ export default function BlogPostPage() {
     image: post.cover_image || undefined,
   };
 
+  let settings = siteConfig?.settings || {};
+  if (typeof settings === 'string') {
+    try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
+  }
+  const styleVars = buildBlogStyleVars(resolveBlogStyle(settings.blogPage, isModern), isModern);
+
   return (
-    <div className="blog-post-page">
+    <div className="blog-post-page" style={styleVars}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
 
       <Link to="/blog" className="blog-post-back">
