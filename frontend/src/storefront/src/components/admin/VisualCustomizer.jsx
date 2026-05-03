@@ -53,7 +53,6 @@ function getHomepageSections(theme) {
       { id: 'watchbuy', label: 'Watch & Buy', icon: 'fa-video', showKey: 'showWatchAndBuy' },
       { id: 'featured-video', label: 'Featured Video', icon: 'fa-film', showKey: 'showFeaturedVideo' },
       { id: 'shop-the-look', label: 'Shop the Look', icon: 'fa-crosshairs', showKey: 'showShopTheLook' },
-      { id: 'store-locations', label: 'Store Locations', icon: 'fa-map-marker-alt', showKey: 'showStoreLocations' },
     );
   } else {
     sections.push(
@@ -63,6 +62,7 @@ function getHomepageSections(theme) {
   }
 
   sections.push(
+    { id: 'store-locations', label: 'Store Locations', icon: 'fa-map-marker-alt', showKey: 'showStoreLocations' },
     { id: 'customer-reviews', label: 'Customer Reviews', icon: 'fa-star', showKey: 'showCustomerReviews' },
     { id: 'footer', label: 'Footer', icon: 'fa-columns', showKey: null, fixed: true },
   );

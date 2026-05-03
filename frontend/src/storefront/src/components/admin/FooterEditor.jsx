@@ -134,7 +134,11 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
   const [hideBranding, setHideBranding] = useState(false);
 
   const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
-  const [activeTemplate, setActiveTemplate] = useState('Classic');
+  const activeTemplate = (() => {
+    let s = siteConfig?.settings || {};
+    if (typeof s === 'string') { try { s = JSON.parse(s); } catch { s = {}; } }
+    return s.theme === 'modern' ? 'Modern' : 'Classic';
+  })();
 
   const [categories, setCategories] = useState([]);
 
@@ -435,34 +439,8 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
         <div className="card-header"><h3 className="card-title">Appearance</h3></div>
         <div className="card-content">
           <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 16 }}>
-            Customize colors and fonts for the Classic and Modern footer templates separately. Leave any field blank to use the template's default.
+            Customize colors and fonts for your {activeTemplate} footer template. Leave any field blank to use the default.
           </p>
-
-          <div style={{ display: 'flex', gap: 6, padding: 4, background: '#f1f5f9', borderRadius: 8, marginBottom: 20 }}>
-            {['Classic', 'Modern'].map(function (tmpl) {
-              var active = activeTemplate === tmpl;
-              return (
-                <button
-                  key={tmpl}
-                  type="button"
-                  onClick={function () { setActiveTemplate(tmpl); }}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 500,
-                    background: active ? '#fff' : 'transparent',
-                    color: active ? '#0f172a' : '#64748b',
-                    cursor: 'pointer',
-                    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                    fontFamily: 'inherit',
-                  }}
-                >{tmpl} Template</button>
-              );
-            })}
-          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {fieldsFor(activeTemplate).map(function (field) {

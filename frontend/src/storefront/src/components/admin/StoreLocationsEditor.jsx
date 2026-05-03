@@ -95,7 +95,11 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
   const [stores, setStores] = useState([{ ...EMPTY_STORE }]);
   const [appearance, setAppearance] = useState(() => buildEmptyAppearance());
   const [activeView, setActiveView] = useState('content');
-  const [activeTemplate, setActiveTemplate] = useState('Classic');
+  const activeTemplate = (() => {
+    let s = siteConfig?.settings || {};
+    if (typeof s === 'string') { try { s = JSON.parse(s); } catch { s = {}; } }
+    return s.theme === 'modern' ? 'Modern' : 'Classic';
+  })();
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
@@ -398,34 +402,8 @@ export default function StoreLocationsEditor({ onSaved, onPreviewUpdate, section
             </div>
             <div className="card-content">
               <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-                Customize colors and fonts for the Classic and Modern templates separately. Leave any field blank to use the template's default.
+                Customize colors and fonts for your {activeTemplate} template. Leave any field blank to use the default.
               </p>
-
-              <div style={{ display: 'flex', gap: 6, padding: 4, background: '#f1f5f9', borderRadius: 8, marginBottom: 20 }}>
-                {['Classic', 'Modern'].map(tmpl => {
-                  const active = activeTemplate === tmpl;
-                  return (
-                    <button
-                      key={tmpl}
-                      type="button"
-                      onClick={() => setActiveTemplate(tmpl)}
-                      style={{
-                        flex: 1,
-                        padding: '8px 12px',
-                        border: 'none',
-                        borderRadius: 6,
-                        fontSize: 13,
-                        fontWeight: active ? 600 : 500,
-                        background: active ? '#fff' : 'transparent',
-                        color: active ? '#0f172a' : '#64748b',
-                        cursor: 'pointer',
-                        boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                        fontFamily: 'inherit',
-                      }}
-                    >{tmpl} Template</button>
-                  );
-                })}
-              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                 {APPEARANCE_FIELDS.map(field => {

@@ -18,7 +18,6 @@ export default function StoreLocations() {
   const appointmentBookingAllowed = isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth');
 
   if (settings.showStoreLocations !== true) return null;
-  if (!stores.length && !address) return null;
 
   const defaultStore = stores.length
     ? stores
