@@ -246,6 +246,31 @@ export const PRODUCT_MODERN_STYLE_DEFAULTS = Object.freeze({
 export function getProductClassicStyleDefaults() { return { ...PRODUCT_CLASSIC_STYLE_DEFAULTS }; }
 export function getProductModernStyleDefaults() { return { ...PRODUCT_MODERN_STYLE_DEFAULTS }; }
 
+// Book Appointment style defaults — Classic values reproduce today's
+// hardcoded warm/serif look (Playfair Display + #9c7c38 accent + #333 text).
+// Modern values match the Modern template's baseline (Inter + neutral palette)
+// and are consumed by the .mn-appointment-* CSS variables in modern.css.
+export const APPOINTMENT_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  headingFont: "'Playfair Display', serif",
+  headingColor: '#333333',
+  bodyFont: "'Lato', sans-serif",
+  bodyColor: '#333333',
+  accentColor: '#9c7c38',
+});
+
+export const APPOINTMENT_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  headingFont: "'Inter', 'Helvetica Neue', sans-serif",
+  headingColor: '#111111',
+  bodyFont: "'Inter', sans-serif",
+  bodyColor: '#444444',
+  accentColor: '#111111',
+});
+
+export function getAppointmentClassicStyleDefaults() { return { ...APPOINTMENT_CLASSIC_STYLE_DEFAULTS }; }
+export function getAppointmentModernStyleDefaults() { return { ...APPOINTMENT_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;
