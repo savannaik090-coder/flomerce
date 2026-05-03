@@ -375,7 +375,7 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
         {activeView === 'content' && <>
         <div className="card" style={{ marginBottom: 20 }}>
           <div className="card-header">
-            <h3 className="card-title">Hero Slider</h3>
+            <h3 className="card-title">Main Banner</h3>
           </div>
           <div className="card-content">
             {usingDefaults && (
