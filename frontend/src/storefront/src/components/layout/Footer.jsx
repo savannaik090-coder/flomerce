@@ -227,7 +227,7 @@ export default function Footer() {
         <div className="footer-bottom">
           <div className="footer-info">
             <div className="copyright">
-              <p>{`© ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. All rights reserved.`}{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer" className="powered-by-link">Flomerce</a></>}</p>
+              <p>{`© ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. All rights reserved.`}{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'starter'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer" className="powered-by-link">Flomerce</a></>}</p>
             </div>
             <div className="footer-links">
               <Link to="/terms"><TranslatedText text="Terms and Conditions" /></Link>

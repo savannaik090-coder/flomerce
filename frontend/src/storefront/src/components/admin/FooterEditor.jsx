@@ -396,7 +396,7 @@ export default function FooterEditor({ onSaved, onPreviewUpdate }) {
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-header"><h3 className="card-title">Branding</h3></div>
         <div className="card-content">
-          <FeatureGate currentPlan={currentPlan} requiredPlan="growth" featureName="Remove Flomerce Branding">
+          <FeatureGate currentPlan={currentPlan} requiredPlan="starter" featureName="Remove Flomerce Branding">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <label style={{ fontWeight: 600, fontSize: 13, display: 'block' }}>Hide "Powered by Flomerce"</label>

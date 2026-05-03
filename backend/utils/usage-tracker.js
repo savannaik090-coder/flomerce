@@ -10,7 +10,7 @@ const PLAN_LIMITS = {
     pushManual: false, pushAutomated: false,
     advancedSeo: true, revenue: false,
     appointmentBooking: false,
-    removeBranding: false,
+    removeBranding: true,
   },
   growth: {
     d1Bytes: 1 * 1024 * 1024 * 1024, r2Bytes: 50 * 1024 * 1024 * 1024,
@@ -67,7 +67,7 @@ const FEATURE_REQUIRED_PLAN = {
   pushAutomated: 'pro',
   revenue: 'growth',
   appointmentBooking: 'growth',
-  removeBranding: 'growth',
+  removeBranding: 'starter',
 };
 
 const DEFAULT_OVERAGE_RATES = {

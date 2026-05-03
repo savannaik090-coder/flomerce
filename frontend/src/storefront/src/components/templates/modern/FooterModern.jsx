@@ -158,7 +158,7 @@ export default function FooterModern() {
       </div>
 
       <div className="mn-footer-bottom">
-        <p>{`\u00a9 ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. `}<TranslatedText text="All rights reserved." />{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Flomerce</a></>}</p>
+        <p>{`\u00a9 ${new Date().getFullYear()} ${siteConfig?.brandName || 'Store'}. `}<TranslatedText text="All rights reserved." />{(!(settings?.footer?.hideBranding === true && isPlanAtLeast(siteConfig?.subscriptionPlan, 'starter'))) && <> <TranslatedText text="Powered by" /> <a href={PLATFORM_URL} target="_blank" rel="noopener noreferrer">Flomerce</a></>}</p>
         <div className="mn-footer-payment">
           <span><i className="fab fa-cc-visa"></i></span>
           <span><i className="fab fa-cc-mastercard"></i></span>

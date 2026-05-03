@@ -17,7 +17,7 @@ export function getRequiredPlan(feature) {
     notifications: 'growth',
     appointmentBooking: 'growth',
     'book-appointment': 'growth',
-    removeBranding: 'growth',
+    removeBranding: 'starter',
   };
   return map[feature] || 'growth';
 }
