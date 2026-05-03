@@ -548,7 +548,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
               {sidebarTab === 'sections' && (
                 <div style={{ padding: '8px 12px' }}>
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
-                    Click a section to edit it. Toggle visibility with the eye icon.
+                    Click a section to edit it.
                   </p>
                   {homepageSections.map((section) => {
                     const isVisible = section.fixed || sectionVisibility[section.id] !== false;
@@ -599,26 +599,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                           {isLocked && <PlanBadge plan={getRequiredPlan(gatedFeature)} small />}
                         </div>
 
-                        {section.showKey && !isLocked && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSectionVisibility(section.id, section.showKey);
-                            }}
-                            title={isVisible ? "Hide section" : "Show section"}
-                            style={{
-                              background: 'none', border: 'none', cursor: 'pointer',
-                              padding: '4px 6px', borderRadius: 4, flexShrink: 0,
-                              color: isVisible ? '#2563eb' : '#cbd5e1', fontSize: 13,
-                              transition: 'color 0.15s ease',
-                            }}
-                          >
-                            <i className={`fas ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`} />
-                          </button>
-                        )}
-
-                        {!section.showKey && !isLocked && (
+                        {!isLocked && (
                           <button
                             type="button"
                             onClick={() => changeActiveSection(section.id)}
