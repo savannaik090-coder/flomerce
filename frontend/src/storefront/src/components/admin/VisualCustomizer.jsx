@@ -445,18 +445,13 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     const props = {
       onSaved: refreshPreview,
       onPreviewUpdate: sendPreviewUpdate,
-      // Visibility is owned by the outer customizer for the sidebar eye icon,
-      // but in-editor SectionToggles stage their change locally and commit
-      // only when the editor's Save Bar is clicked. After save, the editor
-      // calls onVisibilitySaved() so the eye icon stays in sync without
-      // a separate network round-trip.
+      // In-editor SectionToggles stage their visibility change locally and
+      // commit only when the editor's Save Bar is clicked. After save, the
+      // editor calls onVisibilitySaved() so the sidebar state stays in sync.
       sectionVisible: sec?.fixed ? true : (sectionVisibility[activeSection] !== false),
       visibilityKey: sec?.showKey || null,
       onVisibilitySaved: sec?.showKey
         ? (val) => setSectionVisibility(prev => ({ ...prev, [activeSection]: val }))
-        : null,
-      onToggleVisibility: sec?.showKey
-        ? () => toggleSectionVisibility(activeSection, sec.showKey)
         : null,
     };
 
