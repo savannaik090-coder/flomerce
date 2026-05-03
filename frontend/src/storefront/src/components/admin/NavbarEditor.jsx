@@ -10,6 +10,15 @@ import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 import AdminColorField from './style/AdminColorField.jsx';
 import AdminFontPicker from './style/AdminFontPicker.jsx';
 
+function SectionHeading({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>{children}</p>
+    </div>
+  );
+}
+
 function generateId() {
   return 'nav_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
 }
@@ -1152,55 +1161,59 @@ export default function NavbarEditor({ onSaved, onPreviewUpdate }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-              <AdminColorField
-                label="Navbar Background"
-                value={navBg}
-                fallback={isModern ? '#ffffff' : '#f8f8f5'}
-                onChange={setNavBg}
-              />
-              <AdminColorField
-                label="Logo / Brand Color"
-                value={brandColor}
-                fallback="#000000"
-                onChange={setBrandColor}
-              />
+            {/* Colors */}
+            <div style={{ marginBottom: 24 }}>
+              <SectionHeading>Colors</SectionHeading>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <AdminColorField
+                  label="Navbar Background"
+                  value={navBg}
+                  fallback={isModern ? '#ffffff' : '#f8f8f5'}
+                  onChange={setNavBg}
+                />
+                <AdminColorField
+                  label="Logo / Brand Color"
+                  value={brandColor}
+                  fallback="#000000"
+                  onChange={setBrandColor}
+                />
+                <AdminColorField
+                  label="Icon Color"
+                  value={navIcon}
+                  fallback="#333333"
+                  onChange={setNavIcon}
+                />
+                <AdminColorField
+                  label="Nav Link Color"
+                  value={navLinkText}
+                  fallback="#333333"
+                  onChange={setNavLinkText}
+                />
+                <AdminColorField
+                  label="Nav Link Hover"
+                  value={navLinkHover}
+                  fallback={isModern ? '#000000' : '#c59d5f'}
+                  onChange={setNavLinkHover}
+                />
+              </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <AdminFontPicker
-                label="Logo / Brand Font"
-                value={brandFont}
-                onChange={setBrandFont}
-              />
+            {/* Typography */}
+            <div style={{ marginBottom: 12 }}>
+              <SectionHeading>Typography</SectionHeading>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <AdminFontPicker
+                  label="Logo / Brand Font"
+                  value={brandFont}
+                  onChange={setBrandFont}
+                />
+                <AdminFontPicker
+                  label="Nav Menu Font"
+                  value={navFont}
+                  onChange={setNavFont}
+                />
+              </div>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
-              <AdminColorField
-                label="Icon Color"
-                value={navIcon}
-                fallback="#333333"
-                onChange={setNavIcon}
-              />
-              <AdminColorField
-                label="Nav Link Color"
-                value={navLinkText}
-                fallback="#333333"
-                onChange={setNavLinkText}
-              />
-              <AdminColorField
-                label="Nav Link Hover"
-                value={navLinkHover}
-                fallback={isModern ? '#000000' : '#c59d5f'}
-                onChange={setNavLinkHover}
-              />
-            </div>
-
-            <AdminFontPicker
-              label="Nav Menu Font"
-              value={navFont}
-              onChange={setNavFont}
-            />
 
             <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, marginBottom: 0 }}>
               <i className="fas fa-info-circle" style={{ marginInlineEnd: 4 }} />

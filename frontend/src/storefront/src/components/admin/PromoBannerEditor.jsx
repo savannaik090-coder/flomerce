@@ -7,6 +7,15 @@ import AdminFontPicker from './style/AdminFontPicker.jsx';
 import { API_BASE } from '../../config.js';
 import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 
+function SectionHeading({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>{children}</p>
+    </div>
+  );
+}
+
 // Mirrors the per-template defaults declared in navbar.css / modern.css.
 // Used only to populate the color-picker swatch when no custom value is saved
 // — the actual rendered defaults come from CSS, not from these constants.
@@ -240,22 +249,30 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-              <AdminColorField
-                label="Background Color"
-                value={bgColor}
-                fallback={defaultBg}
-                onChange={setBgColor}
-              />
-              <AdminColorField
-                label="Text Color"
-                value={textColor}
-                fallback={defaultText}
-                onChange={setTextColor}
-              />
+            {/* Colors */}
+            <div style={{ marginBottom: 24 }}>
+              <SectionHeading>Colors</SectionHeading>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <AdminColorField
+                  label="Background Color"
+                  value={bgColor}
+                  fallback={defaultBg}
+                  onChange={setBgColor}
+                />
+                <AdminColorField
+                  label="Text Color"
+                  value={textColor}
+                  fallback={defaultText}
+                  onChange={setTextColor}
+                />
+              </div>
             </div>
 
-            <AdminFontPicker value={fontFamily} onChange={setFontFamily} />
+            {/* Typography */}
+            <div>
+              <SectionHeading>Typography</SectionHeading>
+              <AdminFontPicker label="Font Family" value={fontFamily} onChange={setFontFamily} />
+            </div>
           </div>
         </div>
         </>}

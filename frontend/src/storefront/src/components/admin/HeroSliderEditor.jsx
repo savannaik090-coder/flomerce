@@ -648,13 +648,13 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
               Customize colors, fonts, and overlay for the hero section. Leave any field blank to use the theme default.
             </p>
 
-            {/* Typography */}
+            {/* Colors */}
             <div style={{ marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                 <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Typography</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Colors</p>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <AdminColorField
                   label="Title & Subtitle Color"
                   value={heroTitleColor}
@@ -667,6 +667,14 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
                   fallback={themeDefaults.descColor}
                   onChange={setHeroDescColor}
                 />
+              </div>
+            </div>
+
+            {/* Typography */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>Typography</p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <AdminFontPicker label="Title Font" value={heroTitleFont} onChange={setHeroTitleFont} />
