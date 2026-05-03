@@ -53,6 +53,43 @@ export function getHeroSliderDefaults(_category) {
   return generic.heroSliderDefaults;
 }
 
+// About Us style defaults — these reproduce today's Classic and Modern
+// looks exactly. Each field corresponds to a CSS variable injected on the
+// .about-page wrapper so the storefront page picks up merchant overrides
+// without changing existing markup.
+export const ABOUT_CLASSIC_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  heroBg: '#ffffff',
+  heroTitleColor: '#1a1a2e',
+  heroSubtitleColor: '#777777',
+  storyBg: '#ffffff',
+  storyHeadingColor: '#d4af37',
+  storyBodyColor: '#555555',
+  sectionHeadingColor: '#1a1a2e',
+  sectionBodyColor: '#555555',
+  headingFont: "'Playfair Display', Georgia, serif",
+  bodyFont: "'Poppins', sans-serif",
+});
+
+export const ABOUT_MODERN_STYLE_DEFAULTS = Object.freeze({
+  pageBg: '#ffffff',
+  heroBg: '#ffffff',
+  heroTitleColor: '#111111',
+  heroSubtitleColor: '#666666',
+  storyBg: '#ffffff',
+  storyHeadingColor: '#888888',
+  storyBodyColor: '#555555',
+  sectionHeadingColor: '#111111',
+  sectionBodyColor: '#555555',
+  headingFont: "'Inter', 'Helvetica Neue', sans-serif",
+  bodyFont: "'Inter', sans-serif",
+  accentColor: '#111111',
+  storyCardBg: '#f5f5f5',
+});
+
+export function getAboutClassicStyleDefaults() { return { ...ABOUT_CLASSIC_STYLE_DEFAULTS }; }
+export function getAboutModernStyleDefaults() { return { ...ABOUT_MODERN_STYLE_DEFAULTS }; }
+
 export function getAboutPageWithBrand(_category, brandName) {
   const name = brandName || 'Our Store';
   const fallback = generic.aboutPage;
@@ -67,6 +104,11 @@ export function getAboutPageWithBrand(_category, brandName) {
         visible: true,
       },
     ],
+    // Per-template style overrides — empty by default so AboutPage.jsx
+    // falls back to ABOUT_*_STYLE_DEFAULTS at read time. Merchant edits
+    // populate these objects on save.
+    classicStyle: {},
+    modernStyle: {},
   };
 }
 

@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { SiteContext } from '../../context/SiteContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import SectionToggle from './SectionToggle.jsx';
 import SaveBar from './SaveBar.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
 
-import { getAboutPageWithBrand } from '../../defaults/index.js';
+import {
+  getAboutPageWithBrand,
+  ABOUT_CLASSIC_STYLE_DEFAULTS,
+  ABOUT_MODERN_STYLE_DEFAULTS,
+} from '../../defaults/index.js';
 import { API_BASE } from '../../config.js';
 import { usePendingMedia } from '../../hooks/usePendingMedia.js';
 import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
+import AdminColorField from './style/AdminColorField.jsx';
+import AdminFontPicker from './style/AdminFontPicker.jsx';
 
 const inputStyle = { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' };
 const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 };
@@ -16,11 +23,16 @@ const textareaStyle = { ...inputStyle, resize: 'vertical' };
 
 export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
+  const { isModern } = useTheme();
   const [confirmModal, setConfirmModal] = useState(null);
   const [heroSubtitle, setHeroSubtitle] = useState('');
   const [storyText, setStoryText] = useState('');
   const [storyImage, setStoryImage] = useState('');
   const [sections, setSections] = useState([]);
+  // Both templates' style overrides are tracked side-by-side so editing one
+  // template never disturbs the other's saved values.
+  const [classicStyle, setClassicStyle] = useState({});
+  const [modernStyle, setModernStyle] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSection, setShowSection] = useState(true);
@@ -30,7 +42,28 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
   const hasLoadedRef = useRef(false);
   const pendingMedia = usePendingMedia(siteConfig?.id);
 
-  const dirty = useDirtyTracker({ heroSubtitle, storyText, storyImage, sections, showSection });
+  const dirty = useDirtyTracker({ heroSubtitle, storyText, storyImage, sections, showSection, classicStyle, modernStyle });
+
+  const activeStyle = isModern ? modernStyle : classicStyle;
+  const setActiveStyle = isModern ? setModernStyle : setClassicStyle;
+  const styleDefaults = isModern ? ABOUT_MODERN_STYLE_DEFAULTS : ABOUT_CLASSIC_STYLE_DEFAULTS;
+
+  function updateStyleField(key, value) {
+    setActiveStyle(prev => {
+      const next = { ...prev };
+      if (value === '' || value === null || value === undefined) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }
+
+  function resetStyleGroup(keys) {
+    setActiveStyle(prev => {
+      const next = { ...prev };
+      for (const k of keys) delete next[k];
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (siteConfig?.id) loadSettings();
@@ -38,8 +71,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
-    if (onPreviewUpdate) onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections }, showAboutUs: showSection });
-  }, [heroSubtitle, storyText, storyImage, sections, showSection]);
+    if (onPreviewUpdate) onPreviewUpdate({ aboutPage: { heroSubtitle, storyText, storyImage, sections, classicStyle, modernStyle }, showAboutUs: showSection });
+  }, [heroSubtitle, storyText, storyImage, sections, showSection, classicStyle, modernStyle]);
 
   async function loadSettings() {
     setLoading(true);
@@ -81,7 +114,13 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
           sectionsVal = defaults.sections;
         }
         setSections(sectionsVal);
-        dirty.baseline({ heroSubtitle: hsVal, storyText: stVal, storyImage: siVal, sections: sectionsVal, showSection: ssVal });
+
+        const csVal = (aboutPage.classicStyle && typeof aboutPage.classicStyle === 'object') ? aboutPage.classicStyle : {};
+        const msVal = (aboutPage.modernStyle && typeof aboutPage.modernStyle === 'object') ? aboutPage.modernStyle : {};
+        setClassicStyle(csVal);
+        setModernStyle(msVal);
+
+        dirty.baseline({ heroSubtitle: hsVal, storyText: stVal, storyImage: siVal, sections: sectionsVal, showSection: ssVal, classicStyle: csVal, modernStyle: msVal });
       }
     } catch (e) {
       console.error('Failed to load about page settings:', e);
@@ -180,6 +219,8 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
               storyText,
               storyImage,
               sections,
+              classicStyle,
+              modernStyle,
             },
             showAboutUs: showSection,
           }
@@ -388,6 +429,14 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
           </div>
         ))}
 
+        <StyleSection
+          isModern={isModern}
+          style={activeStyle}
+          defaults={styleDefaults}
+          updateField={updateStyleField}
+          resetGroup={resetStyleGroup}
+        />
+
         {status && (
           <div style={{
             background: status === 'success' ? '#f0fdf4' : '#fef2f2',
@@ -415,5 +464,124 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
         onCancel={() => setConfirmModal(null)}
       />
     </>
+  );
+}
+
+// Style controls for the active template (Classic or Modern). Each group
+// has a "Reset to default" link that clears only that group's keys, leaving
+// the inactive template's saved values untouched (those live in a separate
+// state object in the parent).
+function StyleSection({ isModern, style, defaults, updateField, resetGroup }) {
+  const templateLabel = isModern ? 'Modern' : 'Classic';
+
+  const groups = [
+    {
+      title: 'Page',
+      keys: ['pageBg'],
+      fields: [
+        { kind: 'color', key: 'pageBg', label: 'Page Background' },
+      ],
+    },
+    {
+      title: 'Hero',
+      keys: ['heroBg', 'heroTitleColor', 'heroSubtitleColor'],
+      fields: [
+        { kind: 'color', key: 'heroBg', label: 'Hero Background' },
+        { kind: 'color', key: 'heroTitleColor', label: 'Hero Title Color' },
+        { kind: 'color', key: 'heroSubtitleColor', label: 'Hero Subtitle Color' },
+      ],
+    },
+    {
+      title: 'Our Story',
+      keys: isModern
+        ? ['storyBg', 'storyHeadingColor', 'storyBodyColor', 'storyCardBg']
+        : ['storyBg', 'storyHeadingColor', 'storyBodyColor'],
+      fields: [
+        { kind: 'color', key: 'storyBg', label: 'Story Section Background' },
+        ...(isModern ? [{ kind: 'color', key: 'storyCardBg', label: 'Story Image Background' }] : []),
+        { kind: 'color', key: 'storyHeadingColor', label: 'Story Heading Color' },
+        { kind: 'color', key: 'storyBodyColor', label: 'Story Body Color' },
+      ],
+    },
+    {
+      title: 'Extra Sections',
+      keys: ['sectionHeadingColor', 'sectionBodyColor'],
+      fields: [
+        { kind: 'color', key: 'sectionHeadingColor', label: 'Heading Color' },
+        { kind: 'color', key: 'sectionBodyColor', label: 'Body Color' },
+      ],
+    },
+    ...(isModern ? [{
+      title: 'Accent',
+      keys: ['accentColor'],
+      fields: [
+        { kind: 'color', key: 'accentColor', label: 'Accent Color (Dividers)' },
+      ],
+    }] : []),
+    {
+      title: 'Typography',
+      keys: ['headingFont', 'bodyFont'],
+      fields: [
+        { kind: 'font', key: 'headingFont', label: 'Heading Font' },
+        { kind: 'font', key: 'bodyFont', label: 'Body Font' },
+      ],
+    },
+  ];
+
+  return (
+    <div className="card" style={{ marginTop: 24, marginBottom: 20 }}>
+      <div className="card-header">
+        <h3 className="card-title">Style — {templateLabel} template</h3>
+      </div>
+      <div className="card-content">
+        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+          Customize colors and fonts for your About Us page. These settings apply only to the
+          <strong> {templateLabel}</strong> template — the other template's saved styling is preserved.
+          Switch templates in your theme to edit the other set.
+        </p>
+
+        {groups.map(group => (
+          <div key={group.title} style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {group.title}
+              </h4>
+              {group.keys.some(k => style[k]) && (
+                <button
+                  type="button"
+                  onClick={() => resetGroup(group.keys)}
+                  style={{
+                    background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                    fontSize: 12, color: '#475569', textDecoration: 'underline',
+                  }}
+                >
+                  Reset to default
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {group.fields.map(f => (
+                f.kind === 'color' ? (
+                  <AdminColorField
+                    key={f.key}
+                    label={f.label}
+                    value={style[f.key] || ''}
+                    fallback={defaults[f.key]}
+                    onChange={(v) => updateField(f.key, v)}
+                  />
+                ) : (
+                  <AdminFontPicker
+                    key={f.key}
+                    label={f.label}
+                    value={style[f.key] || ''}
+                    onChange={(v) => updateField(f.key, v)}
+                  />
+                )
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

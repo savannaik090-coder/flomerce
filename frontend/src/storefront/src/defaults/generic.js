@@ -24,12 +24,20 @@ export const policyPlaceholders = {
   careGuideMaintenance: 'e.g., Store in cool, dry place',
 };
 
+// Empty per-template style objects — the actual default values live in
+// ABOUT_CLASSIC_STYLE_DEFAULTS / ABOUT_MODERN_STYLE_DEFAULTS in
+// defaults/index.js. Seeding these as `{}` keeps the schema shape
+// present so newly-created sites store the keys (merchant overrides
+// land here on save), while still letting AboutPage.jsx fall back to
+// the per-template defaults at read time when no override is set.
 export const aboutPage = {
   heroSubtitle: 'Discover our story, heritage, and the passion behind every product we offer',
   storyText: 'Welcome to {brandName}. We are dedicated to bringing you the finest products with unmatched quality and service that speaks for itself.\n\nOur commitment to excellence and attention to detail has made us one of the most trusted names in our industry. Every product in our collection reflects expertise, quality, and care.\n\nWe believe in creating experiences, not just selling products. Each item is carefully curated and selected to perfection for discerning customers worldwide.',
   sections: [
     { heading: 'Our Mission', text: '{brandName} is more than just a brand – it is a commitment to excellence, quality, and customer satisfaction that drives everything we do.\n\nWe aim to deliver the finest products, creating an experience that blends quality with exceptional service.\n\nOur commitment extends beyond selling products – we are dedicated to building lasting relationships with our customers and ensuring satisfaction for generations to come.', visible: true },
   ],
+  classicStyle: {},
+  modernStyle: {},
 };
 
 export const heroSliderDefaults = [

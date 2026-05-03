@@ -1,5 +1,6 @@
 .about-page {
   overflow: hidden;
+  background: var(--about-page-bg, #fff);
 }
 
 .about-hero {
@@ -7,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--about-hero-bg, #fff);
   overflow: hidden;
 }
 
@@ -41,19 +42,19 @@
 }
 
 .about-hero h1 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--about-heading-font, 'Playfair Display', Georgia, serif);
   font-size: 48px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--about-hero-title-color, #1a1a2e);
   margin: 0 0 20px;
   line-height: 1.15;
   letter-spacing: -0.5px;
 }
 
 .about-hero p {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--about-body-font, 'Poppins', sans-serif);
   font-size: 17px;
-  color: #777;
+  color: var(--about-hero-subtitle-color, #777);
   line-height: 1.7;
   margin: 0;
   font-weight: 300;
@@ -69,7 +70,7 @@
 
 .about-story {
   padding: 100px 24px;
-  background: #fff;
+  background: var(--about-story-bg, #fff);
 }
 
 .about-story-inner {
@@ -102,13 +103,27 @@
   border-radius: 16px;
   background: linear-gradient(145deg, #f8f6f3, #efe9e0);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   position: relative;
   z-index: 2;
-  font-size: 72px;
-  color: #d4af37;
+  color: #c9b27a;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08);
+}
+
+.about-story-placeholder svg {
+  opacity: 0.55;
+}
+
+.about-story-placeholder-hint {
+  font-family: var(--about-body-font, 'Poppins', sans-serif);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94816a;
+  opacity: 0.85;
 }
 
 .about-story-image-accent {
@@ -134,16 +149,16 @@
   font-weight: 600;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: #d4af37;
+  color: var(--about-story-heading-color, #d4af37);
   margin-bottom: 12px;
 }
 
 
 .about-story-text p {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--about-body-font, 'Poppins', sans-serif);
   font-size: 15.5px;
   line-height: 1.85;
-  color: #555;
+  color: var(--about-story-body-color, #555);
   margin: 0 0 18px;
 }
 
@@ -182,10 +197,10 @@
 }
 
 .about-content-section h2 {
-  font-family: 'Playfair Display', Georgia, serif;
+  font-family: var(--about-heading-font, 'Playfair Display', Georgia, serif);
   font-size: 40px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--about-section-heading-color, #1a1a2e);
   margin: 0 0 16px;
   line-height: 1.2;
 }
@@ -199,10 +214,10 @@
 }
 
 .about-content-section-text p {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--about-body-font, 'Poppins', sans-serif);
   font-size: 17px;
   line-height: 1.9;
-  color: #555;
+  color: var(--about-section-body-color, #555);
   margin: 0 0 22px;
   font-weight: 300;
 }
