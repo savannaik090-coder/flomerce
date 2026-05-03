@@ -29,9 +29,9 @@ export default function PromoBannerEditor({ onSaved, onPreviewUpdate, sectionVis
   const serverValuesRef = useRef(null);
 
   const activeTemplate = useMemo(() => {
-    const id = siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
+    const id = siteConfig?.settings?.theme === 'modern' ? 'modern' : 'classic';
     return TEMPLATE_DEFAULTS[id] ? id : 'classic';
-  }, [siteConfig?.settings?.theme, siteConfig?.templateId]);
+  }, [siteConfig?.settings?.theme]);
   const defaultBg = TEMPLATE_DEFAULTS[activeTemplate].bg;
   const defaultText = TEMPLATE_DEFAULTS[activeTemplate].text;
 

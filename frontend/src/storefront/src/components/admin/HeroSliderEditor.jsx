@@ -72,9 +72,9 @@ export default function HeroSliderEditor({ onSaved, onPreviewUpdate }) {
   const [activeView, setActiveView] = useState('content');
 
   const activeTheme = useMemo(() => {
-    const t = siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
+    const t = siteConfig?.settings?.theme === 'modern' ? 'modern' : 'classic';
     return HERO_DEFAULTS[t] ? t : 'classic';
-  }, [siteConfig?.settings?.theme, siteConfig?.templateId]);
+  }, [siteConfig?.settings?.theme]);
   const themeDefaults = HERO_DEFAULTS[activeTheme];
 
   function getFileRef(index) {

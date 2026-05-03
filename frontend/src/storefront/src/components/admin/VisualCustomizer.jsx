@@ -173,7 +173,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     if (typeof settings === 'string') {
       try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
     }
-    return settings.theme || siteConfig?.templateId || 'classic';
+    return settings.theme === 'modern' ? 'modern' : 'classic';
   }, [siteConfig?.settings, siteConfig?.templateId]);
 
   const homepageSections = useMemo(() => getHomepageSections(resolvedTheme), [resolvedTheme]);

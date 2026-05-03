@@ -148,9 +148,13 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   // Used to gate which control groups render in the appearance view and which
   // keys are included in the live-preview / serializer / save payloads, so the
   // dirty check and live preview stay consistent across template switches.
+  // settings.theme is the only source of truth for Classic/Modern. templateId
+  // is a separate concept (storefront vs clothing template family) and must
+  // NOT be folded into theme detection — doing so makes isClassic falsely
+  // false for sites with template_id='storefront' and no explicit theme set.
   const activeTheme = useMemo(() => {
-    return siteConfig?.settings?.theme || siteConfig?.templateId || 'classic';
-  }, [siteConfig?.settings?.theme, siteConfig?.templateId]);
+    return siteConfig?.settings?.theme === 'modern' ? 'modern' : 'classic';
+  }, [siteConfig?.settings?.theme]);
   const isClassic = activeTheme === 'classic';
   const isModern = activeTheme === 'modern';
 
