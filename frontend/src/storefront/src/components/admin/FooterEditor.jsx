@@ -21,6 +21,7 @@ const CLASSIC_APPEARANCE_FIELDS = [
   { key: 'LinkFont',          label: 'Link Font',                  type: 'font'  },
   { key: 'FollowTitleColor',  label: '"Follow us on social media" Title Color', type: 'color' },
   { key: 'ContactColor',      label: 'Address / Contact Text Color', type: 'color' },
+  { key: 'ContactFont',       label: 'Address / Contact Text Font',  type: 'font'  },
   { key: 'SocialIconBg',      label: 'Social Icon Background',     type: 'color' },
   { key: 'SocialIconColor',   label: 'Social Icon Color',          type: 'color' },
   { key: 'SocialIconBorder',  label: 'Social Icon Border Color',   type: 'color' },

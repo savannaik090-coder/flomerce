@@ -124,6 +124,7 @@
     line-height: 1.5;
     margin: 0;
     color: var(--footer-classic-contact-color, var(--color-text-light));
+    font-family: var(--footer-classic-contact-font, inherit);
     text-align: start;
 }
 
@@ -131,10 +132,12 @@
     font-weight: 600;
     margin-inline-end: 4px;
     color: var(--footer-classic-contact-color, var(--color-text-light));
+    font-family: var(--footer-classic-contact-font, inherit);
 }
 
 .footer-contact-link {
     color: var(--footer-classic-contact-color, var(--color-text-light));
+    font-family: var(--footer-classic-contact-font, inherit);
     text-decoration: none;
 }
 

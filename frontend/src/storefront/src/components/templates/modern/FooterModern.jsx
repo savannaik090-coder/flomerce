@@ -34,15 +34,6 @@ export default function FooterModern() {
   const showAppStore = appBanner.showAppStore !== false;
   const showPlayStore = appBanner.showPlayStore !== false;
 
-  const contactInfo = {
-    email: settings.email || siteConfig?.email || '',
-    phone: settings.phone || siteConfig?.phone || '',
-    address: settings.address || siteConfig?.address || '',
-  };
-  const contactToggles = (settings.footer && settings.footer.contact) || {};
-  const showAddress = contactToggles.showAddress !== false;
-  const showContact = contactToggles.showContact !== false;
-
   function toggleSection(section) {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   }
@@ -53,23 +44,6 @@ export default function FooterModern() {
         <div className="mn-footer-grid">
           <div className="mn-footer-col mn-footer-brand-col">
             <h3 className="mn-footer-heading">{siteConfig?.brandName || 'Store'}</h3>
-            {showAddress && contactInfo.address && (
-              <p className="mn-footer-address">
-                <span className="mn-footer-contact-label"><TranslatedText text="Address" />:</span> {contactInfo.address}
-              </p>
-            )}
-            {showContact && contactInfo.email && (
-              <p className="mn-footer-contact-line">
-                <span className="mn-footer-contact-label"><TranslatedText text="Email" />:</span>{' '}
-                <a href={`mailto:${contactInfo.email}`} className="mn-footer-contact-link">{contactInfo.email}</a>
-              </p>
-            )}
-            {showContact && contactInfo.phone && (
-              <p className="mn-footer-contact-line">
-                <span className="mn-footer-contact-label"><TranslatedText text="Phone no" />:</span>{' '}
-                <a href={`tel:${contactInfo.phone}`} className="mn-footer-contact-link">{contactInfo.phone}</a>
-              </p>
-            )}
             {hasSocialLinks && (
               <div className="mn-footer-social">
                 {socialLinks.instagram && (
