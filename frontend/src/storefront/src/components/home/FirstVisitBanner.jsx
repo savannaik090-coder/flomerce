@@ -69,6 +69,8 @@ export default function FirstVisitBanner() {
   const wbTextColor = settings.wbTextColor || '#666666';
   const wbBtnBg = settings.wbBtnBg || '#b3a681';
   const wbBtnText = settings.wbBtnText || '#ffffff';
+  const wbBtnFont = settings.wbBtnFont || '';
+  const wbTextFont = settings.wbTextFont || '';
   const wbBtnRadius = settings.wbBtnRadius || '';
   const wbCouponCode = settings.wbCouponCode || '';
   const wbCouponLabel = settings.wbCouponLabel || '';
@@ -112,7 +114,7 @@ export default function FirstVisitBanner() {
                   : <TranslatedText text="Welcome to our store!" />)
               : <TranslatedText text={heading} />}
           </h2>
-          <p style={{ color: wbTextColor }}>
+          <p style={{ color: wbTextColor, ...(wbTextFont ? { fontFamily: wbTextFont } : {}) }}>
             {message
               ? <TranslatedText text={message} />
               : <TranslatedText text="Discover our exquisite collection. Sign up today to receive exclusive offers and updates." />}
@@ -136,7 +138,7 @@ export default function FirstVisitBanner() {
           <Link
             to={buttonLink}
             className="first-visit-cta-button"
-            style={{ backgroundColor: wbBtnBg, color: wbBtnText, borderRadius: btnRadius }}
+            style={{ backgroundColor: wbBtnBg, color: wbBtnText, borderRadius: btnRadius, ...(wbBtnFont ? { fontFamily: wbBtnFont } : {}) }}
             onClick={close}
           >
             {buttonText

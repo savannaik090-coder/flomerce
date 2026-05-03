@@ -27,8 +27,15 @@ function compressImage(file, maxWidth = 1200, quality = 0.85) {
   });
 }
 
-const LABEL_STYLE = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 14 };
 const SECTION_STYLE = { marginBottom: 24 };
+function SectionHeading({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>{children}</p>
+    </div>
+  );
+}
 
 export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionVisible = true, visibilityKey, onVisibilitySaved }) {
   const { siteConfig } = useContext(SiteContext);
@@ -50,6 +57,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
   const [wbTextColor, setWbTextColor] = useState('');
   const [wbBtnBg, setWbBtnBg] = useState('');
   const [wbBtnText, setWbBtnText] = useState('');
+  const [wbBtnFont, setWbBtnFont] = useState('');
+  const [wbTextFont, setWbTextFont] = useState('');
   const [wbBtnRadius, setWbBtnRadius] = useState('');
 
   // Behavior
@@ -73,8 +82,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
   const dirty = useDirtyTracker({
     heading, message, buttonText, buttonLink, bannerImage,
-    wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor,
-    wbBtnBg, wbBtnText, wbBtnRadius,
+    wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor, wbTextFont,
+    wbBtnBg, wbBtnText, wbBtnFont, wbBtnRadius,
     wbDelay, wbShowAgain, wbCouponCode, wbCouponLabel,
   });
 
@@ -88,13 +97,13 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
       welcomeBannerImage: bannerImage, welcomeBannerHeading: heading,
       welcomeBannerMessage: message, welcomeBannerButtonText: buttonText,
       welcomeBannerButtonLink: buttonLink,
-      wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor,
-      wbBtnBg, wbBtnText, wbBtnRadius,
+      wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor, wbTextFont,
+      wbBtnBg, wbBtnText, wbBtnFont, wbBtnRadius,
       wbDelay, wbShowAgain, wbCouponCode, wbCouponLabel,
     });
   }, [heading, message, buttonText, buttonLink, bannerImage,
-      wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor,
-      wbBtnBg, wbBtnText, wbBtnRadius,
+      wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor, wbTextFont,
+      wbBtnBg, wbBtnText, wbBtnFont, wbBtnRadius,
       wbDelay, wbShowAgain, wbCouponCode, wbCouponLabel]);
 
   async function loadSettings() {
@@ -119,6 +128,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         setWbTextColor(s.wbTextColor || '');
         setWbBtnBg(s.wbBtnBg || '');
         setWbBtnText(s.wbBtnText || '');
+        setWbBtnFont(s.wbBtnFont || '');
+        setWbTextFont(s.wbTextFont || '');
         setWbBtnRadius(s.wbBtnRadius || '');
         setWbDelay(s.wbDelay !== undefined ? String(s.wbDelay) : '3');
         setWbShowAgain(s.wbShowAgain || 'never');
@@ -127,8 +138,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
         dirty.baseline({
           heading: hVal, message: mVal, buttonText: btVal, buttonLink: blVal, bannerImage: biVal,
           wbBgColor: s.wbBgColor || '', wbHeadingColor: s.wbHeadingColor || '',
-          wbHeadingFont: s.wbHeadingFont || '', wbTextColor: s.wbTextColor || '',
-          wbBtnBg: s.wbBtnBg || '', wbBtnText: s.wbBtnText || '', wbBtnRadius: s.wbBtnRadius || '',
+          wbHeadingFont: s.wbHeadingFont || '', wbTextColor: s.wbTextColor || '', wbTextFont: s.wbTextFont || '',
+          wbBtnBg: s.wbBtnBg || '', wbBtnText: s.wbBtnText || '', wbBtnFont: s.wbBtnFont || '', wbBtnRadius: s.wbBtnRadius || '',
           wbDelay: s.wbDelay !== undefined ? String(s.wbDelay) : '3',
           wbShowAgain: s.wbShowAgain || 'never',
           wbCouponCode: s.wbCouponCode || '', wbCouponLabel: s.wbCouponLabel || '',
@@ -186,8 +197,8 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
             welcomeBannerMessage: message,
             welcomeBannerButtonText: buttonText,
             welcomeBannerButtonLink: buttonLink,
-            wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor,
-            wbBtnBg, wbBtnText, wbBtnRadius,
+            wbBgColor, wbHeadingColor, wbHeadingFont, wbTextColor, wbTextFont,
+            wbBtnBg, wbBtnText, wbBtnFont, wbBtnRadius,
             wbDelay, wbShowAgain, wbCouponCode, wbCouponLabel,
             ...(visibilityKey ? { [visibilityKey]: pendingVisible } : {}),
           }
@@ -342,7 +353,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
             {/* Coupon */}
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 16 }}>
-              <p style={LABEL_STYLE}>Coupon Code (optional)</p>
+              <SectionHeading>Coupon Code (optional)</SectionHeading>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Code</label>
@@ -374,30 +385,34 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
             {/* Colors */}
             <div style={SECTION_STYLE}>
-              <p style={LABEL_STYLE}>Colors</p>
+              <SectionHeading>Colors</SectionHeading>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <AdminColorField label="Modal Background" value={wbBgColor} fallback="#ffffff" onChange={setWbBgColor} />
+                <AdminColorField label="Background Color" value={wbBgColor} fallback="#ffffff" onChange={setWbBgColor} />
                 <AdminColorField label="Heading Color" value={wbHeadingColor} fallback="#333333" onChange={setWbHeadingColor} />
                 <AdminColorField label="Body Text Color" value={wbTextColor} fallback="#666666" onChange={setWbTextColor} />
               </div>
             </div>
 
-            {/* Heading font */}
+            {/* Typography */}
             <div style={SECTION_STYLE}>
-              <p style={LABEL_STYLE}>Heading Font</p>
-              <AdminFontPicker label="Font Family" value={wbHeadingFont} onChange={setWbHeadingFont} />
+              <SectionHeading>Typography</SectionHeading>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <AdminFontPicker label="Heading Font" value={wbHeadingFont} onChange={setWbHeadingFont} />
+                <AdminFontPicker label="Body Text Font" value={wbTextFont} onChange={setWbTextFont} />
+              </div>
             </div>
 
-            {/* CTA button colors */}
+            {/* CTA button */}
             <div style={SECTION_STYLE}>
-              <p style={LABEL_STYLE}>CTA Button</p>
+              <SectionHeading>CTA Button</SectionHeading>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
                 <AdminColorField label="Button Background" value={wbBtnBg} fallback="#b3a681" onChange={setWbBtnBg} />
                 <AdminColorField label="Button Text" value={wbBtnText} fallback="#ffffff" onChange={setWbBtnText} />
+                <AdminFontPicker label="Button Font" value={wbBtnFont} onChange={setWbBtnFont} />
               </div>
 
               {/* Radius */}
-              <p style={{ ...LABEL_STYLE, marginTop: 4 }}>Button Shape</p>
+              <SectionHeading>Button Shape</SectionHeading>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {radiusOptions.map(opt => {
                   const active = wbBtnRadius === opt.value;
@@ -427,7 +442,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
             {/* Delay */}
             <div style={SECTION_STYLE}>
-              <p style={LABEL_STYLE}>Popup Delay</p>
+              <SectionHeading>Popup Delay</SectionHeading>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
                 {delayOptions.map(opt => {
                   const active = wbDelay === opt.value;
@@ -448,7 +463,7 @@ export default function WelcomeBannerEditor({ onSaved, onPreviewUpdate, sectionV
 
             {/* Show again */}
             <div style={{ marginBottom: 0 }}>
-              <p style={LABEL_STYLE}>Show Again</p>
+              <SectionHeading>Show Again</SectionHeading>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                 {showAgainOptions.map(opt => {
                   const active = wbShowAgain === opt.value;
