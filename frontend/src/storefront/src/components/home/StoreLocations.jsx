@@ -17,7 +17,7 @@ export default function StoreLocations() {
   const phone = siteConfig?.phone;
   const appointmentBookingAllowed = isPlanAtLeast(siteConfig?.subscriptionPlan, 'growth');
 
-  if (settings.showStoreLocations !== true) return null;
+  if (settings.showStoreLocations === false) return null;
 
   const defaultStore = stores.length
     ? stores
