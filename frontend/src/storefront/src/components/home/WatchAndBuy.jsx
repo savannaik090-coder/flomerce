@@ -22,8 +22,13 @@ export default function WatchAndBuy() {
   useEffect(() => {
     if (isSectionHidden) return;
     const configVideos = siteConfig?.settings?.watchAndBuyVideos || [];
-    if (configVideos.length > 0) {
-      setVideos(configVideos);
+    // Only entries with a real videoUrl count as merchant-uploaded
+    // content. Older sites may have persisted placeholder default
+    // entries (no videoUrl) before the no-mix fix landed; filtering here
+    // keeps defaults from leaking in alongside real uploads.
+    const realConfigVideos = configVideos.filter(v => v && v.videoUrl);
+    if (realConfigVideos.length > 0) {
+      setVideos(realConfigVideos);
       setIsDefaults(false);
     } else {
       const category = siteConfig?.category || 'generic';
@@ -31,12 +36,12 @@ export default function WatchAndBuy() {
       setIsDefaults(true);
     }
 
-    if (configVideos.length > 0 && siteConfig?.id) {
+    if (realConfigVideos.length > 0 && siteConfig?.id) {
       getProducts(siteConfig.id, { limit: 500 })
         .then(res => {
           const prods = res.data || res.products || [];
           const map = {};
-          configVideos.forEach(v => {
+          realConfigVideos.forEach(v => {
             if (v.productSku) {
               const found = prods.find(p => p.sku === v.productSku || p.id === v.productSku);
               const extractImage = (p) => {

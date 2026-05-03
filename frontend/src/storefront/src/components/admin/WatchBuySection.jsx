@@ -22,14 +22,20 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
   const [showModal, setShowModal] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [editingVideo, setEditingVideo] = useState(null);
-  const [form, setForm] = useState({ productSku: '', videoUrl: '', videoKey: '' });
+  const [form, setForm] = useState({ productSku: '', productId: '', videoUrl: '', videoKey: '' });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [showSection, setShowSection] = useState(true);
-  const [skuLookup, setSkuLookup] = useState(null);
-  const [skuSearching, setSkuSearching] = useState(false);
+  // Product picker state. `pickerOpen` controls dropdown visibility,
+  // `pickerQuery` is the live search string, `pickerHighlight` is the
+  // keyboard-highlighted result index.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [pickerHighlight, setPickerHighlight] = useState(0);
+  const pickerRef = useRef(null);
+  const pickerInputRef = useRef(null);
   const [usingDefaults, setUsingDefaults] = useState(false);
   const [wbHeadingColor, setWbHeadingColor] = useState('');
   const [wbHeadingFont, setWbHeadingFont] = useState('');
@@ -84,8 +90,13 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
           try { settings = JSON.parse(settings); } catch (e) { settings = {}; }
         }
         const savedVideos = settings.watchAndBuyVideos || [];
-        if (savedVideos.length > 0) {
-          setVideos(savedVideos);
+        // Treat only entries with an actual videoUrl as "real" content.
+        // Older sites may have persisted placeholder default entries
+        // (no videoUrl) before the no-mix fix landed; filtering here
+        // drops them so defaults can never appear alongside uploads.
+        const realSaved = savedVideos.filter(v => v && v.videoUrl);
+        if (realSaved.length > 0) {
+          setVideos(realSaved);
           setUsingDefaults(false);
         } else {
           const category = siteConfig?.category || 'generic';
@@ -98,8 +109,8 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
         setWbHeadingFont(settings.wbHeadingFont || '');
         setWbDividerColor(settings.wbDividerColor || '');
         setWbCardBorder(settings.wbCardBorder || '');
-        const baselineVideos = savedVideos.length > 0
-          ? savedVideos
+        const baselineVideos = realSaved.length > 0
+          ? realSaved
           : getWatchAndBuyDefaults(siteConfig?.category || 'generic');
         dirty.baseline({
           videos: baselineVideos,
@@ -128,35 +139,74 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
     return products.find(p => p.sku === sku || p.id === sku) || null;
   }
 
-  function handleSkuChange(sku) {
-    setForm(p => ({ ...p, productSku: sku }));
-    if (sku.trim()) {
-      setSkuSearching(true);
-      const found = findProductBySku(sku.trim());
-      setSkuLookup(found);
-      setSkuSearching(false);
-    } else {
-      setSkuLookup(null);
-    }
+  function findProductById(id) {
+    if (!id || !products.length) return null;
+    return products.find(p => p.id === id) || null;
   }
+
+  // Resolve the linked product for the modal form. Prefer matching by the
+  // stored productId (stable across SKU edits), then fall back to SKU.
+  function resolveLinkedProduct() {
+    return findProductById(form.productId) || findProductBySku(form.productSku);
+  }
+
+  function selectProduct(product) {
+    setForm(p => ({ ...p, productSku: product.sku || product.id || '', productId: product.id || '' }));
+    setPickerOpen(false);
+    setPickerQuery('');
+    setPickerHighlight(0);
+  }
+
+  function clearProduct() {
+    setForm(p => ({ ...p, productSku: '', productId: '' }));
+    setPickerOpen(true);
+    setPickerQuery('');
+    setPickerHighlight(0);
+    setTimeout(() => pickerInputRef.current?.focus(), 0);
+  }
+
+  // Filter products by case-insensitive name/SKU match, capped at 10.
+  function getPickerResults() {
+    const q = pickerQuery.trim().toLowerCase();
+    if (!q) return products.slice(0, 10);
+    return products
+      .filter(p => (p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q))
+      .slice(0, 10);
+  }
+
+  // Close the picker dropdown when the user clicks outside it.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onDocClick(e) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [pickerOpen]);
 
   function openAdd() {
     setEditingVideo(null);
-    setForm({ productSku: '', videoUrl: '', videoKey: '' });
-    setSkuLookup(null);
+    setForm({ productSku: '', productId: '', videoUrl: '', videoKey: '' });
+    setPickerOpen(false);
+    setPickerQuery('');
+    setPickerHighlight(0);
     setError('');
     setShowModal(true);
   }
 
   function openEdit(video) {
     setEditingVideo(video);
-    setForm({ productSku: video.productSku || '', videoUrl: video.videoUrl || '', videoKey: video.videoKey || '' });
-    if (video.productSku) {
-      const found = findProductBySku(video.productSku);
-      setSkuLookup(found);
-    } else {
-      setSkuLookup(null);
-    }
+    setForm({
+      productSku: video.productSku || '',
+      productId: video.productId || '',
+      videoUrl: video.videoUrl || '',
+      videoKey: video.videoKey || '',
+    });
+    setPickerOpen(false);
+    setPickerQuery('');
+    setPickerHighlight(0);
     setError('');
     setShowModal(true);
   }
@@ -224,18 +274,33 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
     setSaving(true);
     try {
       const token = sessionStorage.getItem('site_admin_token');
+      // Never persist placeholder defaults (no videoUrl). When the
+      // editor is still showing defaults (usingDefaults), save an empty
+      // array so the storefront falls back to defaults; otherwise save
+      // only the merchant's real entries so storage can never end up in
+      // a "mixed" state where defaults sit alongside uploads.
+      const videosToPersist = usingDefaults ? [] : videos.filter(v => v && v.videoUrl);
       const response = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `SiteAdmin ${token}` : '',
         },
-        body: JSON.stringify({ settings: { watchAndBuyVideos: videos, showWatchAndBuy: showSection, wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder } }),
+        body: JSON.stringify({ settings: { watchAndBuyVideos: videosToPersist, showWatchAndBuy: showSection, wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder } }),
       });
       const result = await response.json();
       if (response.ok && result.success) {
-        dirty.markSaved();
-        const keepUrls = videos.map(v => v.videoUrl).filter(Boolean);
+        // Sync local videos state to what we actually persisted so the
+        // dirty tracker baseline (captured in markSaved) matches; if we
+        // saved defaults-as-empty, leave the displayed defaults alone.
+        const newVideosState = usingDefaults ? videos : videosToPersist;
+        if (!usingDefaults) setVideos(videosToPersist);
+        dirty.markSaved({
+          videos: newVideosState,
+          showSection,
+          wbHeadingColor, wbHeadingFont, wbDividerColor, wbCardBorder,
+        });
+        const keepUrls = newVideosState.map(v => v.videoUrl).filter(Boolean);
         commit(keepUrls);
         if (onSaved) onSaved();
       }
@@ -252,14 +317,14 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
   // after handleSaveAll succeeds.
   function handleSave(e) {
     e.preventDefault();
-    if (!form.productSku.trim()) { setError("Product SKU is required."); return; }
+    if (!form.productSku.trim() && !form.productId) { setError("Please link a product."); return; }
     if (!form.videoUrl) { setError("Please upload a video."); return; }
 
-    const productInfo = findProductBySku(form.productSku.trim());
+    const productInfo = findProductById(form.productId) || findProductBySku(form.productSku.trim());
     const videoData = {
       id: editingVideo ? editingVideo.id : Date.now().toString(),
       productSku: form.productSku.trim(),
-      productId: productInfo?.id || '',
+      productId: form.productId || productInfo?.id || '',
       videoUrl: form.videoUrl,
       videoKey: form.videoKey || '',
       title: productInfo?.name || form.productSku.trim(),
@@ -414,35 +479,111 @@ export default function WatchBuySection({ onSaved, onPreviewUpdate }) {
               </div>
             )}
             <form onSubmit={handleSave}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Product SKU *</label>
-                <input
-                  type="text"
-                  placeholder="e.g., NKL-001"
-                  value={form.productSku}
-                  onChange={e => handleSkuChange(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
-                  required
-                />
-                {form.productSku.trim() && (
-                  <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 6, fontSize: 13, background: skuLookup ? '#f0fdf4' : '#fffbeb', border: `1px solid ${skuLookup ? '#bbf7d0' : '#fed7aa'}` }}>
-                    {skuSearching ? (
-                      <span style={{ color: '#64748b' }}>Searching...</span>
-                    ) : skuLookup ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {skuLookup.images?.[0]?.url && (
-                          <img src={skuLookup.images[0].url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover' }} />
+              <div style={{ marginBottom: 16 }} ref={pickerRef}>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Link Product *</label>
+                {(() => {
+                  const linked = resolveLinkedProduct();
+                  // Selected product chip — shown when picker is closed
+                  // and we have a valid linked product (matched by id or
+                  // sku against the loaded products list).
+                  if (linked && !pickerOpen) {
+                    const img = linked.images?.[0]?.url || linked.thumbnail_url || linked.image_url || '';
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8 }}>
+                        {img ? (
+                          <img src={img} alt="" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, borderRadius: 6, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className="fas fa-image" style={{ color: '#94a3b8' }} />
+                          </div>
                         )}
-                        <div>
-                          <div style={{ fontWeight: 600, color: '#166534' }}>{skuLookup.name}</div>
-                          {skuLookup.price && <div style={{ fontSize: 12, color: '#166534' }}>{formatPrice(Number(skuLookup.price), getAdminCurrency(siteConfig))}</div>}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, color: '#166534', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{linked.name}</div>
+                          <div style={{ fontSize: 12, color: '#166534', display: 'flex', gap: 8 }}>
+                            {linked.price ? <span>{formatPrice(Number(linked.price), getAdminCurrency(siteConfig))}</span> : null}
+                            {linked.sku ? <span style={{ color: '#65a30d' }}>SKU: {linked.sku}</span> : null}
+                          </div>
                         </div>
+                        <button type="button" onClick={clearProduct} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4, fontSize: 14 }} aria-label="Unlink product">
+                          <i className="fas fa-times" />
+                        </button>
                       </div>
-                    ) : (
-                      <span style={{ color: '#92400e' }}>No product found with this SKU. The video will still be saved.</span>
-                    )}
-                  </div>
-                )}
+                    );
+                  }
+                  // Stale stored SKU (editing an old video whose product
+                  // is gone): show the raw SKU plus a "Search to replace"
+                  // affordance that opens the picker.
+                  if (!linked && form.productSku.trim() && !pickerOpen) {
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: 8 }}>
+                        <i className="fas fa-exclamation-triangle" style={{ color: '#92400e' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, color: '#92400e', fontSize: 13 }}>Stored SKU: {form.productSku}</div>
+                          <div style={{ fontSize: 12, color: '#92400e' }}>This SKU no longer matches any product.</div>
+                        </div>
+                        <button type="button" onClick={() => { setPickerOpen(true); setPickerQuery(''); setPickerHighlight(0); setTimeout(() => pickerInputRef.current?.focus(), 0); }} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, color: '#92400e', fontWeight: 600 }}>
+                          Search to replace
+                        </button>
+                      </div>
+                    );
+                  }
+                  // Search input + dropdown of matching products.
+                  const results = getPickerResults();
+                  return (
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        ref={pickerInputRef}
+                        type="text"
+                        placeholder="Search by product name or SKU..."
+                        value={pickerQuery}
+                        onChange={e => { setPickerQuery(e.target.value); setPickerOpen(true); setPickerHighlight(0); }}
+                        onFocus={() => setPickerOpen(true)}
+                        onKeyDown={e => {
+                          if (e.key === 'ArrowDown') { e.preventDefault(); setPickerHighlight(i => Math.min(i + 1, results.length - 1)); }
+                          else if (e.key === 'ArrowUp') { e.preventDefault(); setPickerHighlight(i => Math.max(i - 1, 0)); }
+                          else if (e.key === 'Enter') { e.preventDefault(); if (results[pickerHighlight]) selectProduct(results[pickerHighlight]); }
+                          else if (e.key === 'Escape') { e.preventDefault(); setPickerOpen(false); }
+                        }}
+                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+                      />
+                      {pickerOpen && (
+                        <div style={{ position: 'absolute', top: '100%', insetInlineStart: 0, insetInlineEnd: 0, marginTop: 4, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: 320, overflowY: 'auto', zIndex: 10 }}>
+                          {results.length === 0 ? (
+                            <div style={{ padding: 16, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No products match</div>
+                          ) : (
+                            results.map((p, idx) => {
+                              const img = p.images?.[0]?.url || p.thumbnail_url || p.image_url || '';
+                              const isHi = idx === pickerHighlight;
+                              return (
+                                <div
+                                  key={p.id}
+                                  onMouseEnter={() => setPickerHighlight(idx)}
+                                  onMouseDown={e => { e.preventDefault(); selectProduct(p); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', background: isHi ? '#eff6ff' : 'transparent', borderBottom: '1px solid #f1f5f9' }}
+                                >
+                                  {img ? (
+                                    <img src={img} alt="" style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
+                                  ) : (
+                                    <div style={{ width: 36, height: 36, borderRadius: 4, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                      <i className="fas fa-image" style={{ color: '#94a3b8', fontSize: 12 }} />
+                                    </div>
+                                  )}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                                    <div style={{ fontSize: 11, color: '#64748b', display: 'flex', gap: 8 }}>
+                                      {p.price ? <span>{formatPrice(Number(p.price), getAdminCurrency(siteConfig))}</span> : null}
+                                      {p.sku ? <span>SKU: {p.sku}</span> : null}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div style={{ marginBottom: 24 }}>
