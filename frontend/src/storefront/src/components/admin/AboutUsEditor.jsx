@@ -435,6 +435,7 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
           defaults={styleDefaults}
           updateField={updateStyleField}
           resetGroup={resetStyleGroup}
+          settings={siteConfig?.settings || {}}
         />
 
         {status && (
@@ -471,8 +472,23 @@ export default function AboutUsEditor({ onSaved, onPreviewUpdate }) {
 // has a "Reset to default" link that clears only that group's keys, leaving
 // the inactive template's saved values untouched (those live in a separate
 // state object in the parent).
-function StyleSection({ isModern, style, defaults, updateField, resetGroup }) {
+function StyleSection({ isModern, style, defaults, updateField, resetGroup, settings }) {
   const templateLabel = isModern ? 'Modern' : 'Classic';
+
+  // For the Classic template, show brand identity values as the effective
+  // fallback in each field so the merchant can see what the page inherits
+  // before they set a per-page override. Modern keeps the static defaults.
+  const s = settings || {};
+  const classicFallbacks = isModern ? {} : {
+    pageBg: s.brandBg,
+    heroBg: s.brandBg,
+    storyBg: s.brandBg,
+    heroTitleColor: s.brandPrimary,
+    sectionHeadingColor: s.brandPrimary,
+    storyHeadingColor: s.brandAccent,
+    headingFont: s.brandHeadingFont,
+    bodyFont: s.brandBodyFont,
+  };
 
   const groups = [
     {
@@ -566,7 +582,7 @@ function StyleSection({ isModern, style, defaults, updateField, resetGroup }) {
                     key={f.key}
                     label={f.label}
                     value={style[f.key] || ''}
-                    fallback={defaults[f.key]}
+                    fallback={classicFallbacks[f.key] || defaults[f.key]}
                     onChange={(v) => updateField(f.key, v)}
                   />
                 ) : (
@@ -574,6 +590,7 @@ function StyleSection({ isModern, style, defaults, updateField, resetGroup }) {
                     key={f.key}
                     label={f.label}
                     value={style[f.key] || ''}
+                    fallback={classicFallbacks[f.key] || defaults[f.key]}
                     onChange={(v) => updateField(f.key, v)}
                   />
                 )

@@ -1,6 +1,6 @@
 .about-page {
   overflow: hidden;
-  background: var(--about-page-bg, #fff);
+  background: var(--about-page-bg, var(--brand-bg, #fff));
 }
 
 .about-hero {
@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--about-hero-bg, #fff);
+  background: var(--about-hero-bg, var(--brand-bg, #fff));
   overflow: hidden;
 }
 
@@ -42,17 +42,17 @@
 }
 
 .about-hero h1 {
-  font-family: var(--about-heading-font, 'Playfair Display', Georgia, serif);
+  font-family: var(--about-heading-font, var(--font-heading, 'Playfair Display', Georgia, serif));
   font-size: 48px;
   font-weight: 700;
-  color: var(--about-hero-title-color, #1a1a2e);
+  color: var(--about-hero-title-color, var(--color-primary, #1a1a2e));
   margin: 0 0 20px;
   line-height: 1.15;
   letter-spacing: -0.5px;
 }
 
 .about-hero p {
-  font-family: var(--about-body-font, 'Poppins', sans-serif);
+  font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 17px;
   color: var(--about-hero-subtitle-color, #777);
   line-height: 1.7;
@@ -70,7 +70,7 @@
 
 .about-story {
   padding: 100px 24px;
-  background: var(--about-story-bg, #fff);
+  background: var(--about-story-bg, var(--brand-bg, #fff));
 }
 
 .about-story-inner {
@@ -118,7 +118,7 @@
 }
 
 .about-story-placeholder-hint {
-  font-family: var(--about-body-font, 'Poppins', sans-serif);
+  font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 13px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -149,7 +149,7 @@
   font-weight: 600;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: var(--about-story-heading-color, var(--color-accent-gold, #d4af37));
+  color: var(--about-story-heading-color, var(--color-accent, var(--color-accent-gold, #d4af37)));
   margin-bottom: 12px;
 }
 
