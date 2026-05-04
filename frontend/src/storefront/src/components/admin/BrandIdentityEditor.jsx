@@ -134,7 +134,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
 
   const swatches = [
     { label: 'Primary',   color: brandPrimary   || '#5a3f2a' },
-    { label: 'Secondary', color: brandSecondary || '#b3a681' },
+    { label: 'Secondary', color: brandSecondary || '#b3a68e' },
     { label: 'Accent',    color: brandAccent    || '#d4af37' },
     { label: 'BG',        color: brandBg        || '#f8f8f5' },
   ];
@@ -196,7 +196,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
       <AdminColorField
         label="Secondary Color"
         value={brandSecondary}
-        fallback="#b3a681"
+        fallback="#b3a68e"
         onChange={v => handleColor(setBrandSecondary, 'brandSecondary', v)}
       />
       <AdminColorField
