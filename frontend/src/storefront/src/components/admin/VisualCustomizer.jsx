@@ -80,7 +80,7 @@ const PAGE_SECTIONS = [
 ];
 
 const SETTINGS_SECTIONS = [
-  { id: 'checkout', label: 'Checkout', icon: 'fa-shopping-bag' },
+  { id: 'checkout', label: 'Checkout', icon: 'fa-shopping-bag', page: '/checkout' },
   { id: 'product-page', label: 'Product Page', icon: 'fa-box-open' },
   { id: 'product-policies', label: 'Product Policies', icon: 'fa-shield-alt' },
   { id: 'terms', label: 'Terms & Conditions', icon: 'fa-file-contract', page: '/terms' },

@@ -163,6 +163,13 @@ Flomerce utilizes a shared shard-based D1 database architecture where multiple s
 - **Storefront vite config** has a `resolve.alias` block pointing `react`, `react-dom`, and the JSX runtimes back to its own `node_modules/` so files in `frontend/src/shared/` resolve React correctly.
 - **Migration goal:** progressively replace remaining `window.alert(...)` / `window.confirm(...)` / one-off inline modals with `useToast()` / `useConfirm()` / `<AlertModal>`.
 
+### Checkout Page Customization (Classic template only)
+- **`CHECKOUT_CLASSIC_STYLE_DEFAULTS`** exported from `frontend/src/storefront/src/defaults/index.js` — 12 keys: `pageBg`, `cardBg`, `borderColor`, `accentColor`, `accentAltColor`, `textDark`, `textBody`, `textMuted`, `btnBg`, `btnText`, `headingFont`, `bodyFont`.
+- **`CheckoutPageClassic.jsx`** reads `settings.checkoutPage.classicStyle` and builds the `T` color map, `SERIF`, `BODY`, and `S` style objects dynamically inside the component (moved from module-level constants). Falls back to `CHECKOUT_CLASSIC_STYLE_DEFAULTS` so uncustomized stores render identically to before.
+- **`CheckoutEditor.jsx`** now has two tabs — **Coupon Codes** (existing) and **Appearance** (new). The Appearance tab shows 10 `AdminColorField` pickers + 2 `AdminFontPicker` selectors; saves to `settings.checkoutPage.classicStyle`. Live preview updates sent via `onPreviewUpdate({ checkoutPage: { classicStyle } })`.
+- **`VisualCustomizer.jsx`** checkout SETTINGS_SECTION now has `page: '/checkout'` so the preview iframe shows the checkout page when the Checkout editor is open.
+- Modern template checkout is **not** affected.
+
 ### Production vs Local Development
 - **Always plan and reason for production first.** This codebase runs on Cloudflare Pages + Workers + D1 + R2. The local Wrangler dev mode is a Miniflare simulation and does NOT replicate production behavior for: edge cache (Cloudflare CDN cache for public endpoints), custom domain SSL provisioning, scheduled (cron) triggers, D1 sharding routing in production, R2 region pinning, and rate limits.
 - **Code or DB changes don't reach the live site until both the backend Worker and frontend Pages are redeployed.** Local restarts only affect the Miniflare simulation.

@@ -13,55 +13,7 @@ import * as authService from '../../../services/authService.js';
 import { getApiUrl } from '../../../services/api.js';
 import TranslatedText from '../../TranslatedText';
 import { useShopperTranslation } from '../../../context/ShopperTranslationContext.jsx';
-
-const T = {
-  bg: '#FAF3E8',
-  cardBg: '#FEFCF7',
-  border: '#D9C5A0',
-  borderInput: '#C5A87E',
-  borderFocus: '#8B5E3C',
-  stepActive: '#8B5E3C',
-  stepDone: '#C8960C',
-  dark: '#2E1A0E',
-  body: '#5C3D1E',
-  muted: '#8B7355',
-  btn: '#4A2E17',
-  btnText: '#FAF3E8',
-  gold: '#C8960C',
-  successGreen: '#2d6a4f',
-  errorBg: '#FDE8DC',
-  errorBorder: '#C5714A',
-  errorText: '#7A2800',
-};
-
-const SERIF = { fontFamily: "'Playfair Display', Georgia, serif" };
-const BODY  = { fontFamily: "'Lora', Georgia, serif" };
-
-const S = {
-  label: { display: 'block', fontSize: 13, color: T.body, marginBottom: 5, ...BODY },
-  input: {
-    width: '100%', background: T.cardBg, border: `1px solid ${T.borderInput}`,
-    padding: '10px 13px', color: T.dark, fontSize: 14, outline: 'none',
-    boxSizing: 'border-box', ...BODY, transition: 'border-color 0.2s',
-  },
-  fieldError: { fontSize: 12, color: T.errorText, marginTop: 4, ...BODY },
-  card: { background: T.cardBg, border: `1px solid ${T.border}`, padding: '28px 28px 24px' },
-  cardHeading: { ...SERIF, fontSize: 20, fontWeight: 600, color: T.dark, margin: '0 0 20px' },
-  primaryBtn: {
-    background: T.btn, color: T.btnText, border: 'none', padding: '13px 24px',
-    ...SERIF, fontSize: 15, fontWeight: 500, cursor: 'pointer',
-    display: 'inline-flex', alignItems: 'center', gap: 8,
-  },
-  outlineBtn: {
-    background: 'transparent', color: T.btn, border: `1px solid ${T.btn}`,
-    padding: '12px 20px', ...SERIF, fontSize: 14, fontWeight: 500, cursor: 'pointer',
-  },
-  goldOutlineBtn: {
-    background: 'transparent', color: T.stepFocus, border: `1px solid ${T.stepActive}`,
-    color: T.stepActive, padding: '10px 20px', ...BODY, fontSize: 14, cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-};
+import { CHECKOUT_CLASSIC_STYLE_DEFAULTS } from '../../../defaults/index.js';
 
 function FieldRow({ children, span2 }) {
   return (
@@ -104,6 +56,54 @@ export default function CheckoutPageClassic() {
   const [whatsappOptIn, setWhatsappOptIn] = useState(false);
 
   const settings                    = siteConfig?.settings || {};
+  const _cs = (settings.checkoutPage?.classicStyle && typeof settings.checkoutPage.classicStyle === 'object') ? settings.checkoutPage.classicStyle : {};
+  const D   = CHECKOUT_CLASSIC_STYLE_DEFAULTS;
+  const T = {
+    bg:          _cs.pageBg         || D.pageBg,
+    cardBg:      _cs.cardBg         || D.cardBg,
+    border:      _cs.borderColor    || D.borderColor,
+    borderInput: _cs.accentColor    || D.accentColor,
+    borderFocus: _cs.accentColor    || D.accentColor,
+    stepActive:  _cs.accentColor    || D.accentColor,
+    stepDone:    _cs.accentAltColor || D.accentAltColor,
+    dark:        _cs.textDark       || D.textDark,
+    body:        _cs.textBody       || D.textBody,
+    muted:       _cs.textMuted      || D.textMuted,
+    btn:         _cs.btnBg          || D.btnBg,
+    btnText:     _cs.btnText        || D.btnText,
+    gold:        _cs.accentAltColor || D.accentAltColor,
+    successGreen: '#2d6a4f',
+    errorBg:     '#FDE8DC',
+    errorBorder: '#C5714A',
+    errorText:   '#7A2800',
+  };
+  const SERIF = { fontFamily: _cs.headingFont || D.headingFont };
+  const BODY  = { fontFamily: _cs.bodyFont    || D.bodyFont };
+  const S = {
+    label: { display: 'block', fontSize: 13, color: T.body, marginBottom: 5, ...BODY },
+    input: {
+      width: '100%', background: T.cardBg, border: `1px solid ${T.borderInput}`,
+      padding: '10px 13px', color: T.dark, fontSize: 14, outline: 'none',
+      boxSizing: 'border-box', ...BODY, transition: 'border-color 0.2s',
+    },
+    fieldError: { fontSize: 12, color: T.errorText, marginTop: 4, ...BODY },
+    card: { background: T.cardBg, border: `1px solid ${T.border}`, padding: '28px 28px 24px' },
+    cardHeading: { ...SERIF, fontSize: 20, fontWeight: 600, color: T.dark, margin: '0 0 20px' },
+    primaryBtn: {
+      background: T.btn, color: T.btnText, border: 'none', padding: '13px 24px',
+      ...SERIF, fontSize: 15, fontWeight: 500, cursor: 'pointer',
+      display: 'inline-flex', alignItems: 'center', gap: 8,
+    },
+    outlineBtn: {
+      background: 'transparent', color: T.btn, border: `1px solid ${T.btn}`,
+      padding: '12px 20px', ...SERIF, fontSize: 14, fontWeight: 500, cursor: 'pointer',
+    },
+    goldOutlineBtn: {
+      background: 'transparent', border: `1px solid ${T.stepActive}`,
+      color: T.stepActive, padding: '10px 20px', ...BODY, fontSize: 14, cursor: 'pointer',
+      transition: 'all 0.2s',
+    },
+  };
   const codEnabled                  = settings.codEnabled !== false;
   const shiprocketEnabled           = settings.shiprocketEnabled === true;
   const availableCoupons            = Array.isArray(settings.coupons) ? settings.coupons : [];
