@@ -4,9 +4,9 @@
 }
 
 .featured-collection-header2 .section-title {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--font-heading, 'Playfair Display', serif);
     font-size: 2.5rem;
-    color: #333;
+    color: var(--section-title-color, var(--brand-primary, #5a3f2a));
     margin-bottom: 15px;
     font-weight: 400;
 }
@@ -44,9 +44,9 @@
 }
 
 .wb-title {
-    font-family: var(--wb-heading-font, 'Playfair Display', serif);
+    font-family: var(--wb-heading-font, var(--font-heading, 'Playfair Display', serif));
     font-size: 2.5rem;
-    color: var(--wb-heading-color, #333);
+    color: var(--wb-heading-color, var(--section-title-color, var(--brand-primary, #5a3f2a)));
     margin-bottom: 0;
     font-weight: 400;
 }
@@ -181,7 +181,7 @@
     width: auto;
     max-width: 90%;
     background: rgba(255, 255, 255, 0.95);
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     padding: 8px;
     text-align: start;
     font-weight: 500;
@@ -201,7 +201,7 @@
 .wb-product-link:hover {
     background: rgba(255, 255, 255, 1);
     transform: translateX(-50%) scale(1.05);
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
@@ -232,19 +232,19 @@
 .wb-product-name {
     font-weight: 600;
     font-size: 14px;
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     margin-bottom: 4px;
 }
 
 .wb-product-price {
     font-size: 13px;
-    color: #693208;
+    color: var(--brand-primary, #693208);
     font-weight: 500;
 }
 
 .wb-product-sku {
     font-size: 12px;
-    color: #666;
+    color: var(--section-subtitle-color, #666);
 }
 
 @media (max-width: 1100px) {

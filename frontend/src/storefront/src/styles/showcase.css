@@ -16,9 +16,9 @@
 }
 
 .showcase-header .section-title {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--font-heading, 'Playfair Display', serif);
     font-size: 2.5rem;
-    color: #333;
+    color: var(--section-title-color, var(--brand-primary, #5a3f2a));
     margin-bottom: 15px;
     font-weight: 400;
 }
@@ -128,15 +128,15 @@
 .showcase-product-info { flex: 1; }
 
 .showcase-product-name {
-    font-family: 'Lato', sans-serif;
+    font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 14px;
     font-weight: 600;
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     margin-bottom: 5px;
 }
 
 .showcase-product-price {
-    font-family: 'Lato', sans-serif;
+    font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 16px;
     color: var(--color-secondary, #5a3f2a);
     font-weight: 700;
@@ -149,7 +149,7 @@
     border: none;
     padding: 16px;
     border-radius: 30px;
-    font-family: 'Lato', sans-serif;
+    font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 14px;
     font-weight: 600;
     text-transform: uppercase;
@@ -229,14 +229,14 @@
 .popup-product-details { padding: 25px; }
 
 .popup-product-name {
-    font-family: 'Playfair Display', serif;
+    font-family: var(--font-heading, 'Playfair Display', serif);
     font-size: 24px;
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     margin-bottom: 15px;
 }
 
 .popup-product-price {
-    font-family: 'Lato', sans-serif;
+    font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 22px;
     color: var(--color-secondary, #5a3f2a);
     font-weight: 700;
@@ -244,10 +244,10 @@
 }
 
 .popup-product-description {
-    font-family: 'Lato', sans-serif;
+    font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 14px;
     line-height: 1.6;
-    color: #666;
+    color: var(--section-subtitle-color, #666);
     margin-bottom: 25px;
 }
 
@@ -262,7 +262,7 @@
     padding: 14px;
     border: none;
     border-radius: 6px;
-    font-family: 'Lato', sans-serif;
+    font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 14px;
     font-weight: 600;
     text-transform: uppercase;

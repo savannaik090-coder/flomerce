@@ -15,9 +15,9 @@
 }
 
 .store-locations-header h2 {
-    font-family: var(--sl-classic-title-font, 'Playfair Display', serif);
+    font-family: var(--sl-classic-title-font, var(--font-heading, 'Playfair Display', serif));
     font-size: 2.5rem;
-    color: var(--sl-classic-title-color, #333);
+    color: var(--sl-classic-title-color, var(--section-title-color, var(--brand-primary, #5a3f2a)));
     margin-bottom: 10px;
     font-weight: 400;
     position: relative;
@@ -36,9 +36,9 @@
 }
 
 .store-locations-header p {
-    font-family: var(--sl-classic-subtitle-font, inherit);
+    font-family: var(--sl-classic-subtitle-font, var(--font-primary, inherit));
     font-size: 1.1rem;
-    color: var(--sl-classic-subtitle-color, #666);
+    color: var(--sl-classic-subtitle-color, var(--section-subtitle-color, #666));
     font-weight: 300;
 }
 
@@ -131,9 +131,9 @@
 .store-details { padding: 25px; }
 
 .store-name {
-    font-family: var(--sl-classic-storename-font, 'Playfair Display', serif);
+    font-family: var(--sl-classic-storename-font, var(--font-heading, 'Playfair Display', serif));
     font-size: 1.5rem;
-    color: var(--sl-classic-storename-color, #333);
+    color: var(--sl-classic-storename-color, var(--brand-primary, #5a3f2a));
     margin-bottom: 15px;
     font-weight: 500;
 }
