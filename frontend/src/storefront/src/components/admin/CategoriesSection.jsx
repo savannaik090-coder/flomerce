@@ -218,6 +218,23 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
   const isClassic = activeTheme === 'classic';
   const isModern = activeTheme === 'modern';
 
+  // Fixed sections that are enabled on the homepage (their visibility is
+  // controlled by each section's own editor; we only read the flag here
+  // so we can include them in Section Display Order).
+  const fixedSections = useMemo(() => {
+    let s = {};
+    try { s = typeof siteConfig?.settings === 'string' ? JSON.parse(siteConfig.settings) : (siteConfig?.settings || {}); } catch (e) { s = {}; }
+    if (isModern) return [
+      ...(s.showTrendingNow !== false ? [{ id: 'trending_now', name: 'Trending Now' }] : []),
+      ...(s.showBrandStory !== false ? [{ id: 'brand_story', name: 'Brand Story' }] : []),
+    ];
+    return [
+      ...(s.showWatchAndBuy !== false ? [{ id: 'watch_and_buy', name: 'Watch & Buy' }] : []),
+      ...(s.showFeaturedVideo !== false ? [{ id: 'featured_video', name: 'Featured Video' }] : []),
+      ...(s.showShopTheLook !== false ? [{ id: 'shop_the_look', name: 'Shop the Look' }] : []),
+    ];
+  }, [siteConfig?.settings, isModern]);
+
   // ── Snapshot-based dirty tracking ─────────────────────────────────
   // We compare a JSON serialization of "all settings + per-category image
   // overrides" against a snapshot captured right after the server values
@@ -371,6 +388,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     homeCats.forEach(cat => baseItems.push({ type: 'category', id: cat.id }));
     subcatSections.forEach(sec => baseItems.push({ type: 'subcategory', id: sec.id }));
     if (chooseEnabled) baseItems.push({ type: 'choose', id: 'choose_by_category' });
+    fixedSections.forEach(fs => baseItems.push({ type: 'fixed', id: fs.id }));
     let canonicalOrder;
     if (sectionOrder.length === 0) {
       canonicalOrder = baseItems;
@@ -882,6 +900,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     homeCats.forEach(cat => allItems.push({ type: 'category', id: cat.id, name: cat.name }));
     subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, name: sec.name, subtitle: sec.subtitle, label: sec.subcategoryLabel }));
     if (chooseEnabled) allItems.push({ type: 'choose', id: 'choose_by_category', name: 'Browse by Category Circles' });
+    fixedSections.forEach(fs => allItems.push({ type: 'fixed', id: fs.id, name: fs.name }));
     if (sectionOrder.length === 0) return allItems;
     const ordered = [];
     const remaining = [...allItems];
@@ -1630,10 +1649,10 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                       </div>
                       <span style={{
                         padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, flexShrink: 0,
-                        background: item.type === 'category' ? '#dbeafe' : item.type === 'choose' ? '#dcfce7' : '#fae8ff',
-                        color: item.type === 'category' ? '#2563eb' : item.type === 'choose' ? '#16a34a' : '#a21caf',
+                        background: item.type === 'category' ? '#dbeafe' : item.type === 'choose' ? '#dcfce7' : item.type === 'fixed' ? '#ffedd5' : '#fae8ff',
+                        color: item.type === 'category' ? '#2563eb' : item.type === 'choose' ? '#16a34a' : item.type === 'fixed' ? '#c2410c' : '#a21caf',
                       }}>
-                        {item.type === 'category' ? 'Category' : item.type === 'choose' ? 'Browse Circles' : 'Featured'}
+                        {item.type === 'category' ? 'Category' : item.type === 'choose' ? 'Browse Circles' : item.type === 'fixed' ? 'Section' : 'Featured'}
                       </span>
                     </div>
                   ))}

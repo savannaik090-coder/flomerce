@@ -79,11 +79,26 @@ export default function HomePage() {
     return visible;
   }, [allCategories]);
 
+  // Build the list of fixed sections that are currently enabled, in
+  // default visual order. Their position can be overridden by sectionOrder.
+  const fixedSections = useMemo(() => {
+    if (isModern) return [
+      ...(parsedSettings.showTrendingNow !== false ? [{ id: 'trending_now', name: 'Trending Now' }] : []),
+      ...(parsedSettings.showBrandStory !== false ? [{ id: 'brand_story', name: 'Brand Story' }] : []),
+    ];
+    return [
+      ...(parsedSettings.showWatchAndBuy !== false ? [{ id: 'watch_and_buy', name: 'Watch & Buy' }] : []),
+      ...(parsedSettings.showFeaturedVideo !== false ? [{ id: 'featured_video', name: 'Featured Video' }] : []),
+      ...(parsedSettings.showShopTheLook !== false ? [{ id: 'shop_the_look', name: 'Shop the Look' }] : []),
+    ];
+  }, [parsedSettings, isModern]);
+
   const orderedSections = useMemo(() => {
     const allItems = [];
     homeCategories.forEach(cat => allItems.push({ type: 'category', id: cat.id, data: cat }));
     subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, data: sec }));
     if (chooseEnabled) allItems.push({ type: 'choose', id: 'choose_by_category', data: null });
+    fixedSections.forEach(fs => allItems.push({ type: 'fixed', id: fs.id, data: null }));
 
     if (sectionOrder.length === 0) return allItems;
 
@@ -91,12 +106,10 @@ export default function HomePage() {
     const remaining = [...allItems];
     for (const entry of sectionOrder) {
       const idx = remaining.findIndex(item => item.type === entry.type && item.id === entry.id);
-      if (idx !== -1) {
-        ordered.push(remaining.splice(idx, 1)[0]);
-      }
+      if (idx !== -1) ordered.push(remaining.splice(idx, 1)[0]);
     }
     return [...ordered, ...remaining];
-  }, [homeCategories, subcatSections, sectionOrder, chooseEnabled]);
+  }, [homeCategories, subcatSections, sectionOrder, chooseEnabled, fixedSections]);
 
   if (!categoriesLoaded) {
     return (
@@ -124,6 +137,13 @@ export default function HomePage() {
     if (item.type === 'choose') {
       return <ActiveChooseByCategory key="choose_by_category" categories={allCategories} />;
     }
+    if (item.type === 'fixed') {
+      if (item.id === 'watch_and_buy') return <WatchAndBuy key="watch_and_buy" />;
+      if (item.id === 'featured_video') return <FeaturedVideoSection key="featured_video" />;
+      if (item.id === 'shop_the_look') return <ShopTheLook key="shop_the_look" />;
+      if (item.id === 'trending_now') return <TrendingNow key="trending_now" />;
+      if (item.id === 'brand_story') return <BrandStory key="brand_story" />;
+    }
     return null;
   }
 
@@ -132,8 +152,6 @@ export default function HomePage() {
       <div className="home-page">
         <ActiveHero />
         {orderedSections.map((item) => renderSection(item))}
-        <TrendingNow />
-        <BrandStory />
         <StoreLocationsModern />
         <ProductShowcase />
         <ActiveCustomerReviews />
@@ -146,9 +164,6 @@ export default function HomePage() {
     <div className="home-page">
       <HeroSlider />
       {orderedSections.map((item) => renderSection(item))}
-      <WatchAndBuy />
-      <FeaturedVideoSection />
-      <ShopTheLook />
       <ProductShowcase />
       <StoreLocations />
       <ActiveCustomerReviews />
