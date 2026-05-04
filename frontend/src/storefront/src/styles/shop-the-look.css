@@ -1,6 +1,6 @@
 .stl-section {
     padding: 60px 0;
-    background-color: #f8f8f5;
+    background-color: var(--color-bg, #f8f8f5);
 }
 
 .stl-container {

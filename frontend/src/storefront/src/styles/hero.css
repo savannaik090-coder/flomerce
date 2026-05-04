@@ -1,7 +1,7 @@
 .hero-slider {
     position: relative;
     overflow: hidden;
-    background-color: #f8f8f5;
+    background-color: var(--color-bg, #f8f8f5);
     margin: 0;
     max-width: 100%;
     /* Default height — `dvh` accounts for mobile browser URL bars so the hero
@@ -226,5 +226,5 @@
     align-items: center;
     justify-content: center;
     min-height: 80vh;
-    background-color: #f8f8f5;
+    background-color: var(--color-bg, #f8f8f5);
 }

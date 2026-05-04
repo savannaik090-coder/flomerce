@@ -6,7 +6,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f8f8f5;
+    background-color: var(--color-bg, #f8f8f5);
     margin-bottom: 10px;
 }
 

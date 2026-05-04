@@ -1,5 +1,5 @@
 .home-category-section {
-    background: #f8f8f5;
+    background: var(--color-bg, #f8f8f5);
     padding: 30px 0 40px;
     margin-bottom: 0;
     border-bottom: 1px solid #f0f0f0;
@@ -86,7 +86,7 @@
 }
 
 .home-category-banner-title {
-    font-family: var(--cat-banner-title-font, 'Playfair Display', serif);
+    font-family: var(--cat-banner-title-font, var(--font-heading, 'Playfair Display', serif));
     font-size: 2.5rem;
     color: var(--cat-banner-title-color, #fff);
     font-weight: 400;
