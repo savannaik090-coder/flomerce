@@ -81,7 +81,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
     setSaving(true);
     try {
       const res = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           settings: {
