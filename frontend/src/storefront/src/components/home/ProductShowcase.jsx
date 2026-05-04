@@ -31,7 +31,7 @@ export default function ProductShowcase() {
     { className: 'dot-bangle', bottom: '37%', right: '82%' },
   ];
 
-  if (!showcaseImage && !products.length) return null;
+  if (!showcaseImage && !showcaseTitle) return null;
 
   return (
     <section className="interactive-showcase-section">
