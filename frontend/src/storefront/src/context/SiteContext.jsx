@@ -268,9 +268,16 @@ export function SiteProvider({ children }) {
     // Per-section overrides (set below in this same effect) also use !important
     // inline styles, so they continue to take precedence over brand-level values
     // wherever a merchant has explicitly set a section-specific colour.
-    apply('--brand-primary',      settings.brandPrimary);
+    // force() always writes with !important — even when the merchant has not
+    // saved a custom value — so these vars beat global.css which redefines
+    // --color-primary, --color-secondary, and --color-bg on :root after
+    // variables.css in the bundle.
+    const force = (cssVar, value, def) =>
+      root.style.setProperty(cssVar, value && value.trim() ? value : def, 'important');
+
+    force('--brand-primary', settings.brandPrimary, '#5a3f2a');
+    force('--brand-cta',     settings.brandSecondary, '#b3a68e');
     apply('--brand-accent',       settings.brandAccent);
-    apply('--brand-cta',          settings.brandSecondary);
     apply('--brand-bg',           settings.brandBg);
     apply('--brand-heading-font', settings.brandHeadingFont);
     apply('--brand-body-font',    settings.brandBodyFont);
@@ -279,11 +286,11 @@ export function SiteProvider({ children }) {
     // when global.css or modern.css redefines the same :root keys.
     // Both --color-primary and --color-secondary use brandPrimary (the main brand brown).
     // The CTA/action colour (buttons, badges, active links) is tracked via --brand-cta.
-    apply('--color-primary',     settings.brandPrimary);
-    apply('--color-secondary',   settings.brandPrimary);
+    force('--color-primary',   settings.brandPrimary, '#5a3f2a');
+    force('--color-secondary', settings.brandPrimary, '#5a3f2a');
+    force('--color-bg',        settings.brandBg,      '#f8f8f5');
     apply('--color-accent',      settings.brandAccent);
     apply('--color-accent-gold', settings.brandAccent);
-    apply('--color-bg',          settings.brandBg);
     apply('--font-heading',      settings.brandHeadingFont);
     apply('--font-primary',      settings.brandBodyFont);
 
