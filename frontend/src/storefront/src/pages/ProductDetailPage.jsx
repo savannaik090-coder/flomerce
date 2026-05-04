@@ -375,8 +375,8 @@ export default function ProductDetailPage() {
             {product.short_description ? (
               <p style={{
                 margin: '4px 0 12px', fontSize: 15,
-                color: 'var(--pdp-short-desc-color, #475569)',
-                fontFamily: 'var(--pdp-body-font, inherit)',
+                color: 'var(--section-subtitle-color, var(--pdp-short-desc-color, #475569))',
+                fontFamily: 'var(--font-primary, var(--pdp-body-font, inherit))',
                 lineHeight: 1.5,
               }}>
                 <TranslatedText text={product.short_description} />
@@ -562,31 +562,33 @@ export default function ProductDetailPage() {
             {pdpShowSpecsPanel && hasAnySpec && (
               <div className="pdp-specs-panel" style={{
                 marginTop: 16, padding: '12px 14px',
-                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+                background: 'var(--color-bg, #fff)', border: '1px solid #e2e8f0', borderRadius: 10,
               }}>
                 <h4 style={{
-                  margin: '0 0 8px', fontSize: 13, color: '#0f172a',
+                  margin: '0 0 8px', fontSize: 13,
+                  color: 'var(--brand-primary, #0f172a)',
+                  fontFamily: 'var(--font-heading, inherit)',
                   fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
                 }}>
-                  <i className="fas fa-clipboard-list" style={{ marginInlineEnd: 8, color: '#64748b' }} />
+                  <i className="fas fa-clipboard-list" style={{ marginInlineEnd: 8, color: 'var(--brand-cta, #64748b)' }} />
                   <TranslatedText text="Specifications" />
                 </h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 24px', fontSize: 13, color: '#334155' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 24px', fontSize: 13, color: 'var(--section-subtitle-color, var(--color-text-muted, #334155))' }}>
                   {hasSpecWeight && (
                     <div>
-                      <span style={{ color: '#64748b' }}><TranslatedText text="Weight" />: </span>
-                      <strong>{specWeight} g</strong>
+                      <span style={{ color: 'var(--brand-cta, #64748b)' }}><TranslatedText text="Weight" />: </span>
+                      <strong><TranslatedText text={`${specWeight} g`} /></strong>
                     </div>
                   )}
                   {hasSpecDims && (
                     <div>
-                      <span style={{ color: '#64748b' }}><TranslatedText text="Dimensions" />: </span>
+                      <span style={{ color: 'var(--brand-cta, #64748b)' }}><TranslatedText text="Dimensions" />: </span>
                       <strong>{specDims.length} × {specDims.breadth} × {specDims.height} cm</strong>
                     </div>
                   )}
                   {customSpecs.map((row, i) => (
                     <div key={`spec-${i}`}>
-                      <span style={{ color: '#64748b' }}><TranslatedText text={row.label} />: </span>
+                      <span style={{ color: 'var(--brand-cta, #64748b)' }}><TranslatedText text={row.label} />: </span>
                       <strong><TranslatedText text={row.value} /></strong>
                     </div>
                   ))}

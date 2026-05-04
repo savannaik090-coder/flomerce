@@ -1114,7 +1114,7 @@
     display: block;
     font-weight: 600;
     font-size: 13px;
-    color: #333;
+    color: var(--brand-primary, #333);
     margin-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1123,7 +1123,7 @@
 .product-option-selected {
     display: inline-block;
     font-size: 12px;
-    color: #64748b;
+    color: var(--section-subtitle-color, var(--color-text-muted, #64748b));
     margin-top: 6px;
 }
 
@@ -1349,7 +1349,7 @@
 
 /* ---------- Option swatches & chips ---------- */
 .pdp-layout-sticky .product-option-label {
-    color: #2a2520;
+    color: var(--brand-primary, #2a2520);
     text-transform: uppercase;
     font-size: 12px;
     letter-spacing: 0.08em;
@@ -1413,9 +1413,9 @@
 }
 /* Add to Cart — secondary, outlined with CTA/secondary colour */
 .pdp-layout-sticky .product-actions .add-to-cart-btn {
-    background: var(--pdp-add-cart-bg, transparent);
-    color: var(--pdp-add-cart-text, var(--brand-cta, #603000));
-    border: 1px solid var(--pdp-add-cart-border, var(--brand-cta, #603000));
+    background: transparent;
+    color: var(--brand-cta, #603000);
+    border: 1px solid var(--brand-cta, #603000);
 }
 .pdp-layout-sticky .product-actions .add-to-cart-btn:hover:not(:disabled) {
     background: rgba(96, 48, 0, 0.05);
