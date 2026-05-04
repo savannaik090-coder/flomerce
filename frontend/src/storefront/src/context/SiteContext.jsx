@@ -259,16 +259,31 @@ export function SiteProvider({ children }) {
       }
     };
     // ── Global Brand Identity (Classic template) ─────────────────────
-    // Applied first so per-section overrides (below) correctly take
-    // precedence. --brand-primary / --brand-accent / --brand-promo cascade
-    // into --color-primary, --color-secondary, --color-accent-gold, etc.
-    // (defined in variables.css) so all Classic CSS is recolored in one shot.
+    // We set both the --brand-* bridge vars AND the concrete semantic vars
+    // (--color-primary, --color-secondary, etc.) directly via JS with
+    // !important. This is necessary because global.css also declares these
+    // same semantic vars on :root (for admin-panel UI defaults) and, due to
+    // CSS source order, would otherwise win over the variables.css cascade
+    // chain. Inline !important beats any stylesheet rule regardless of order.
+    // Per-section overrides (set below in this same effect) also use !important
+    // inline styles, so they continue to take precedence over brand-level values
+    // wherever a merchant has explicitly set a section-specific colour.
     apply('--brand-primary',      settings.brandPrimary);
     apply('--brand-accent',       settings.brandAccent);
     apply('--brand-promo',        settings.brandPromo);
     apply('--brand-bg',           settings.brandBg);
     apply('--brand-heading-font', settings.brandHeadingFont);
     apply('--brand-body-font',    settings.brandBodyFont);
+
+    // Directly write concrete semantic vars so the brand colour wins even
+    // when global.css or modern.css redefines the same :root keys.
+    apply('--color-primary',    settings.brandPrimary);
+    apply('--color-secondary',  settings.brandPrimary);
+    apply('--color-accent',     settings.brandAccent);
+    apply('--color-accent-gold', settings.brandAccent);
+    apply('--color-bg',         settings.brandBg);
+    apply('--font-heading',     settings.brandHeadingFont);
+    apply('--font-primary',     settings.brandBodyFont);
 
     apply('--promo-bg', settings.promoBannerBg);
     apply('--promo-text', settings.promoBannerText);
