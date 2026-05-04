@@ -144,7 +144,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
                 : "var(--font-product, 'Futura PT', sans-serif)",
               fontSize: '14px',
               fontWeight: 500,
-              color: isScroll ? 'var(--cat-product-name-color, #333)' : '#333',
+              color: isScroll ? 'var(--cat-product-name-color, var(--brand-primary, #5a3f2a))' : 'var(--brand-primary, #5a3f2a)',
               margin: '0 0 6px 0',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

@@ -151,7 +151,7 @@
     font-family: var(--font-primary, 'Lato', sans-serif);
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
