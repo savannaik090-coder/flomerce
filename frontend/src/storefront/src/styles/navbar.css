@@ -55,15 +55,23 @@
     box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
 }
 
-/* Layout compensation — same pattern as Modern's 70px / .modern-hero rules.
- * 65px = height of .nav-container. main gets top padding so non-hero pages
- * start below the bar; .hero-slider pulls up by the same amount so the hero
- * image fills the full viewport behind the transparent header. */
+/* Layout compensation for transparent navbar.
+ * --cl-header-h is set dynamically by Navbar.jsx via ResizeObserver so it
+ * always equals the actual rendered header height (navbar + optional promo
+ * banner). Falls back to 65px (navbar-only height) when the variable is not
+ * yet set (first paint). */
 body.cl-nav-transparent main {
-    padding-top: 65px;
+    padding-top: var(--cl-header-h, 65px);
 }
+/* Homepage hero — pulls up to fill behind the transparent header */
 body.cl-nav-transparent .hero-slider {
-    margin-top: -65px;
+    margin-top: calc(-1 * var(--cl-header-h, 65px));
+}
+/* Inner-page heroes — same treatment so they connect seamlessly to the header */
+body.cl-nav-transparent .hero-section,
+body.cl-nav-transparent .about-hero,
+body.cl-nav-transparent .modern-hero {
+    margin-top: calc(-1 * var(--cl-header-h, 65px));
 }
 
 .promo-banner {

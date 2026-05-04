@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SiteContext } from '../../context/SiteContext.jsx';
 import { CartContext } from '../../context/CartContext.jsx';
@@ -51,11 +51,13 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   useEffect(() => { setLogoError(false); }, [siteConfig?.logoUrl]);
 
   const navTransparent = siteConfig?.settings?.navTransparent === true;
+  const headerRef = useRef(null);
 
   useEffect(() => {
     if (!navTransparent) {
       setScrolled(false);
       document.body.classList.remove('cl-nav-transparent');
+      document.documentElement.style.removeProperty('--cl-header-h');
       return;
     }
     document.body.classList.add('cl-nav-transparent');
@@ -66,8 +68,23 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
     return () => {
       window.removeEventListener('scroll', onScroll);
       document.body.classList.remove('cl-nav-transparent');
+      document.documentElement.style.removeProperty('--cl-header-h');
     };
   }, [navTransparent]);
+
+  // Measure actual header height (navbar + optional promo banner) and expose
+  // it as --cl-header-h so the layout-compensation CSS never needs hardcoded px.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || !navTransparent) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--cl-header-h', el.offsetHeight + 'px');
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [navTransparent, siteConfig?.settings?.showPromoBanner, siteConfig?.settings?.promoBanner]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -135,7 +152,7 @@ export default function Navbar({ onSearchOpen, onCartOpen, onWishlistOpen }) {
   }
 
   return (
-    <header className={`header${navTransparent && !scrolled ? ' header--transparent' : ''}${navTransparent && scrolled ? ' header--scrolled' : ''}`}>
+    <header ref={headerRef} className={`header${navTransparent && !scrolled ? ' header--transparent' : ''}${navTransparent && scrolled ? ' header--scrolled' : ''}`}>
       {siteConfig?.settings?.showPromoBanner !== false && (() => {
         const msgs = siteConfig?.settings?.promoBanner;
         const validMsgs = msgs && Array.isArray(msgs) ? msgs.filter(m => m.trim()) : [];
