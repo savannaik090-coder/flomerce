@@ -683,7 +683,7 @@ body:has(.category-page:not(.modern-theme)) .clear-filter-btn {
 
 body:has(.category-page:not(.modern-theme)) .clear-filter-btn:hover {
     border-color: #999;
-    background: #f8f8f5;
+    background: var(--color-bg, #faf6ef);
     color: #333;
 }
 

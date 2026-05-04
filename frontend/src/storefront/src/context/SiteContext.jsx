@@ -296,7 +296,7 @@ export function SiteProvider({ children }) {
     // The CTA/action colour (buttons, badges, active links) is tracked via --brand-cta.
     force('--color-primary',   settings.brandPrimary, '#5a3f2a');
     force('--color-secondary', settings.brandPrimary, '#5a3f2a');
-    force('--color-bg',        settings.brandBg,      '#f8f8f5');
+    force('--color-bg',        settings.brandBg,      '#faf6ef');
     apply('--color-accent',      settings.brandAccent);
     apply('--color-accent-gold', settings.brandAccent);
     apply('--font-heading',      settings.brandHeadingFont);

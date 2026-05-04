@@ -1,6 +1,6 @@
 .customer-reviews-section {
     padding: 80px 0;
-    background-color: var(--cr-classic-section-bg, #f8f8f5);
+    background-color: var(--cr-classic-section-bg, var(--color-bg, #faf6ef));
     margin-top: 0;
 }
 

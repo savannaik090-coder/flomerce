@@ -12,7 +12,7 @@
 }
 
 .testimonials-section {
-    background-color: var(--color-bg, #f8f8f5);
+    background-color: var(--color-bg, #faf6ef);
     padding: 40px 0;
 }
 
@@ -34,7 +34,7 @@
 
 .wb-section {
     padding: 10px 0 20px 0;
-    background-color: var(--color-bg, #f8f8f5);
+    background-color: var(--color-bg, #faf6ef);
     margin-top: 0px;
 }
 

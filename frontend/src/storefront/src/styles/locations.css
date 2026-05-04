@@ -1,6 +1,6 @@
 .store-locations-section {
     padding: 60px 0;
-    background: var(--sl-classic-section-bg, linear-gradient(135deg, #f8f8f5 0%, #fafafa 100%));
+    background: var(--sl-classic-section-bg, var(--color-bg, #faf6ef));
 }
 
 .store-locations-container {
