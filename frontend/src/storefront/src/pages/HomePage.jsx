@@ -51,6 +51,8 @@ export default function HomePage() {
 
   const subcatSections = parsedSettings.subcategorySections || [];
   const sectionOrder = parsedSettings.homepageSectionOrder || [];
+  const chooseConf = parsedSettings.chooseByCategory || {};
+  const chooseEnabled = !!chooseConf.enabled;
 
   useEffect(() => {
     if (!siteConfig?.id) {
@@ -81,6 +83,7 @@ export default function HomePage() {
     const allItems = [];
     homeCategories.forEach(cat => allItems.push({ type: 'category', id: cat.id, data: cat }));
     subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, data: sec }));
+    if (chooseEnabled) allItems.push({ type: 'choose', id: 'choose_by_category', data: null });
 
     if (sectionOrder.length === 0) return allItems;
 
@@ -93,7 +96,7 @@ export default function HomePage() {
       }
     }
     return [...ordered, ...remaining];
-  }, [homeCategories, subcatSections, sectionOrder]);
+  }, [homeCategories, subcatSections, sectionOrder, chooseEnabled]);
 
   if (!categoriesLoaded) {
     return (
@@ -107,14 +110,21 @@ export default function HomePage() {
   }
 
   const ActiveHero = isModern ? HeroSplit : HeroSlider;
-  const ActiveCategory = isModern ? CategoryGrid : CategorySection;
   const ActiveCustomerReviews = isModern ? CustomerReviewsModern : CustomerReviews;
+  const ActiveChooseByCategory = isModern ? ChooseByCategoryModern : ChooseByCategory;
 
   function renderSection(item) {
     if (item.type === 'category') {
+      const ActiveCategory = isModern ? CategoryGrid : CategorySection;
       return <ActiveCategory key={item.id} category={item.data} />;
     }
-    return <SubcategorySection key={item.id} section={item.data} />;
+    if (item.type === 'subcategory') {
+      return <SubcategorySection key={item.id} section={item.data} />;
+    }
+    if (item.type === 'choose') {
+      return <ActiveChooseByCategory key="choose_by_category" categories={allCategories} />;
+    }
+    return null;
   }
 
   if (isModern) {
@@ -122,7 +132,6 @@ export default function HomePage() {
       <div className="home-page">
         <ActiveHero />
         {orderedSections.map((item) => renderSection(item))}
-        <ChooseByCategoryModern categories={allCategories} />
         <TrendingNow />
         <BrandStory />
         <StoreLocationsModern />
@@ -136,32 +145,10 @@ export default function HomePage() {
   return (
     <div className="home-page">
       <HeroSlider />
-      {orderedSections.length > 0 && orderedSections[0].type === 'category' ? (
-        <CategorySection key={orderedSections[0].id} category={orderedSections[0].data} />
-      ) : orderedSections.length > 0 && orderedSections[0].type === 'subcategory' ? (
-        <SubcategorySection key={orderedSections[0].id} section={orderedSections[0].data} />
-      ) : null}
-      <ChooseByCategory categories={allCategories} />
-      {orderedSections.length > 1 && orderedSections[1].type === 'category' ? (
-        <CategorySection key={orderedSections[1].id} category={orderedSections[1].data} />
-      ) : orderedSections.length > 1 && orderedSections[1].type === 'subcategory' ? (
-        <SubcategorySection key={orderedSections[1].id} section={orderedSections[1].data} />
-      ) : null}
+      {orderedSections.map((item) => renderSection(item))}
       <WatchAndBuy />
       <FeaturedVideoSection />
-      {orderedSections.length > 2 && orderedSections[2].type === 'category' ? (
-        <CategorySection key={orderedSections[2].id} category={orderedSections[2].data} />
-      ) : orderedSections.length > 2 && orderedSections[2].type === 'subcategory' ? (
-        <SubcategorySection key={orderedSections[2].id} section={orderedSections[2].data} />
-      ) : null}
       <ShopTheLook />
-      {orderedSections.slice(3).map((item) => (
-        item.type === 'category' ? (
-          <CategorySection key={item.id} category={item.data} />
-        ) : (
-          <SubcategorySection key={item.id} section={item.data} />
-        )
-      ))}
       <ProductShowcase />
       <StoreLocations />
       <ActiveCustomerReviews />

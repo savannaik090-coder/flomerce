@@ -35,6 +35,15 @@ function Toggle({ checked, onChange, size = 'normal' }) {
   );
 }
 
+function SectionHeading({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div style={{ width: 3, height: 18, background: '#2563eb', borderRadius: 2, flexShrink: 0 }} />
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>{children}</p>
+    </div>
+  );
+}
+
 function SectionCard({ title, subtitle, icon, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -361,6 +370,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     const baseItems = [];
     homeCats.forEach(cat => baseItems.push({ type: 'category', id: cat.id }));
     subcatSections.forEach(sec => baseItems.push({ type: 'subcategory', id: sec.id }));
+    if (chooseEnabled) baseItems.push({ type: 'choose', id: 'choose_by_category' });
     let canonicalOrder;
     if (sectionOrder.length === 0) {
       canonicalOrder = baseItems;
@@ -831,9 +841,21 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     return null;
   }
 
+  function findSubcatInfoMerged(subcatId) {
+    for (const cat of previewCategories) {
+      for (const group of (cat.children || [])) {
+        for (const val of (group.children || [])) {
+          if (String(val.id) === String(subcatId)) return { valueName: val.name, groupName: group.name, categoryName: cat.name, categorySlug: cat.slug || '', categoryId: cat.id };
+        }
+        if (String(group.id) === String(subcatId)) return { valueName: group.name, groupName: null, categoryName: cat.name, categorySlug: cat.slug || '', categoryId: cat.id };
+      }
+    }
+    return null;
+  }
+
   function handleAddSubcatSection() {
     if (!newSectionName.trim() || !newSectionSubcatId) return;
-    const info = findSubcatInfo(newSectionSubcatId);
+    const info = findSubcatInfoMerged(newSectionSubcatId);
     const section = {
       id: Date.now().toString(),
       name: newSectionName.trim(),
@@ -859,6 +881,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     const allItems = [];
     homeCats.forEach(cat => allItems.push({ type: 'category', id: cat.id, name: cat.name }));
     subcatSections.forEach(sec => allItems.push({ type: 'subcategory', id: sec.id, name: sec.name, subtitle: sec.subtitle, label: sec.subcategoryLabel }));
+    if (chooseEnabled) allItems.push({ type: 'choose', id: 'choose_by_category', name: 'Browse by Category Circles' });
     if (sectionOrder.length === 0) return allItems;
     const ordered = [];
     const remaining = [...allItems];
@@ -1293,7 +1316,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Homepage</div>
+                          <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Show on homepage</div>
                           <Toggle checked={getShowOnHome(cat)} onChange={() => handleToggleHomepage(cat.id, getShowOnHome(cat))} size="small" />
                         </div>
                         {editingCategory !== cat.id && (
@@ -1464,7 +1487,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             title="Browse by Category Circles"
             subtitle="Circular icons on homepage for quick browsing"
             icon="fa-th"
-            defaultOpen={true}
+            defaultOpen={false}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, marginBottom: 16 }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Enable this section</span>
@@ -1524,7 +1547,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
             title="Featured Subcategory Sections"
             subtitle="Highlight specific subcategories on the homepage"
             icon="fa-star"
-            defaultOpen={true}
+            defaultOpen={false}
           >
             <div style={{ marginTop: 12 }}>
               <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px', lineHeight: 1.5 }}>
@@ -1559,15 +1582,16 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                   <input type="text" placeholder="Short description (optional)" value={newSectionSubtitle} onChange={e => setNewSectionSubtitle(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', color: '#64748b', background: '#fff' }} />
                   <select value={newSectionSubcatId} onChange={e => setNewSectionSubcatId(e.target.value)} style={{ padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, background: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}>
                     <option value="">Choose which products to show...</option>
-                    {categories.map(cat => {
+                    {previewCategories.map(cat => {
                       const groups = cat.children || [];
                       if (groups.length === 0) return null;
                       return groups.map(group => {
                         const values = group.children || [];
-                        if (values.length === 0) return <option key={group.id} value={group.id}>{cat.name} &gt; {group.name}</option>;
+                        const groupLabel = cat._isPending || group._isPending ? `${cat.name} > ${group.name} (unsaved)` : `${cat.name} > ${group.name}`;
+                        if (values.length === 0) return <option key={group.id} value={group.id}>{groupLabel}</option>;
                         return (
-                          <optgroup key={group.id} label={`${cat.name} > ${group.name}`}>
-                            {values.map(val => <option key={val.id} value={val.id}>{val.name}</option>)}
+                          <optgroup key={group.id} label={groupLabel}>
+                            {values.map(val => <option key={val.id} value={val.id}>{val._isPending ? `${val.name} (unsaved)` : val.name}</option>)}
                           </optgroup>
                         );
                       });
@@ -1586,7 +1610,7 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
               title="Section Display Order"
               subtitle="Drag sections up or down to change their homepage order"
               icon="fa-sort"
-              defaultOpen={true}
+              defaultOpen={false}
             >
               <div style={{ marginTop: 12 }}>
                 <p style={{ color: '#64748b', fontSize: 13, margin: '0 0 14px' }}>
@@ -1604,8 +1628,12 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                         <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{item.name}</div>
                         {item.label && <div style={{ color: '#94a3b8', fontSize: 11 }}>{item.label}</div>}
                       </div>
-                      <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, background: item.type === 'category' ? '#dbeafe' : '#fae8ff', color: item.type === 'category' ? '#2563eb' : '#a21caf', flexShrink: 0 }}>
-                        {item.type === 'category' ? "Category" : "Featured"}
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, flexShrink: 0,
+                        background: item.type === 'category' ? '#dbeafe' : item.type === 'choose' ? '#dcfce7' : '#fae8ff',
+                        color: item.type === 'category' ? '#2563eb' : item.type === 'choose' ? '#16a34a' : '#a21caf',
+                      }}>
+                        {item.type === 'category' ? 'Category' : item.type === 'choose' ? 'Browse Circles' : 'Featured'}
                       </span>
                     </div>
                   ))}
@@ -1618,102 +1646,124 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
       {activeView === 'appearance' && (
         <>
-          <SectionCard title="Category Section" subtitle="Style the title, subtitle, divider, View All button, and banner overlay" icon="fa-th-large" defaultOpen={false}>
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <SectionCard title="Category Section" subtitle="Style the title, subtitle, View All button, banner overlay and product cards" icon="fa-th-large" defaultOpen={false}>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-              <AdminColorField label="Title Color" value={catTitleColor} fallback="#333333" onChange={setCatTitleColor} />
-
-              <AdminFontPicker label="Title Font" value={catTitleFont} onChange={v => setCatTitleFont(v)} />
-
-              <AdminColorField label="Subtitle Color" value={catSubtitleColor} fallback="#666666" onChange={setCatSubtitleColor} />
-
-              <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => setCatSubtitleFont(v)} />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>"View All" Button Style</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {[['','Default'],['filled','Filled'],['outlined','Outlined'],['text-link','Text Link']].map(([val, label]) => (
-                    <button key={val} type="button" onClick={() => setCatViewAllStyle(val)} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${catViewAllStyle === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: catViewAllStyle === val ? '#eff6ff' : '#fff', color: catViewAllStyle === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
-                  ))}
+              {/* Colors */}
+              <div>
+                <SectionHeading>Colors</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <AdminColorField label="Title Color" value={catTitleColor} fallback="#333333" onChange={setCatTitleColor} />
+                  <AdminColorField label="Subtitle Color" value={catSubtitleColor} fallback="#666666" onChange={setCatSubtitleColor} />
                 </div>
               </div>
 
-              {catViewAllStyle && catViewAllStyle !== '' && (
-                <>
-                  <AdminColorField label="Button Color" value={catViewAllBg} fallback="#5a3f2a" onChange={setCatViewAllBg} />
-                  <AdminColorField label="Button Text Color" value={catViewAllText} fallback="#ffffff" onChange={setCatViewAllText} />
-                </>
-              )}
-
-              <AdminColorField label="Banner Overlay Color" value={catBannerOverlayColor} fallback="#000000" onChange={setCatBannerOverlayColor} />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Banner Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
-                <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
+              {/* Typography */}
+              <div>
+                <SectionHeading>Typography</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <AdminFontPicker label="Title Font" value={catTitleFont} onChange={v => setCatTitleFont(v)} />
+                  <AdminFontPicker label="Subtitle Font" value={catSubtitleFont} onChange={v => setCatSubtitleFont(v)} />
+                </div>
               </div>
 
-              {/* Classic-template banner controls — only shown when active template is Classic. */}
+              {/* "View All" Button */}
+              <div>
+                <SectionHeading>"View All" Button</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[['','Default'],['filled','Filled'],['outlined','Outlined'],['text-link','Text Link']].map(([val, label]) => (
+                      <button key={val} type="button" onClick={() => setCatViewAllStyle(val)} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${catViewAllStyle === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: catViewAllStyle === val ? '#eff6ff' : '#fff', color: catViewAllStyle === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
+                    ))}
+                  </div>
+                  {catViewAllStyle && catViewAllStyle !== '' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <AdminColorField label="Button Color" value={catViewAllBg} fallback="#5a3f2a" onChange={setCatViewAllBg} />
+                      <AdminColorField label="Button Text Color" value={catViewAllText} fallback="#ffffff" onChange={setCatViewAllText} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Banner Overlay */}
+              <div>
+                <SectionHeading>Banner Overlay</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <AdminColorField label="Overlay Color" value={catBannerOverlayColor} fallback="#000000" onChange={setCatBannerOverlayColor} />
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 8 }}>Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
+                    <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Classic-template controls */}
               {isClassic && (
                 <>
-                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Banner Title & Button (Classic)</div>
+                  <div>
+                    <SectionHeading>Banner Title & CTA (Classic)</SectionHeading>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <AdminColorField label="Banner Title Color" value={catBannerTitleColor} fallback="#ffffff" onChange={setCatBannerTitleColor} />
+                      <AdminColorField label="Banner Divider Color" value={catBannerDividerColor} fallback="#ffffff" onChange={setCatBannerDividerColor} />
+                      <AdminColorField label='Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
+                      <AdminColorField label='Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
+                      <AdminFontPicker label="Banner Title Font" value={catBannerTitleFont} onChange={v => setCatBannerTitleFont(v)} />
+                      <AdminFontPicker label='Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
+                    </div>
+                  </div>
 
-                  <AdminColorField label="Banner Title Color" value={catBannerTitleColor} fallback="#ffffff" onChange={setCatBannerTitleColor} />
+                  <div>
+                    <SectionHeading>Product Cards (Classic)</SectionHeading>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <AdminColorField label="Product Name Color" value={catProductNameColor} fallback="#333333" onChange={setCatProductNameColor} />
+                      <AdminColorField label="Product Price Color" value={catProductPriceColor} fallback="#333333" onChange={setCatProductPriceColor} />
+                      <AdminFontPicker label="Product Name Font" value={catProductNameFont} onChange={v => setCatProductNameFont(v)} />
+                      <AdminFontPicker label="Product Price Font" value={catProductPriceFont} onChange={v => setCatProductPriceFont(v)} />
+                    </div>
+                  </div>
 
-                  <AdminFontPicker label="Banner Title Font" value={catBannerTitleFont} onChange={v => setCatBannerTitleFont(v)} />
-
-                  <AdminColorField label="Banner Divider Color" value={catBannerDividerColor} fallback="#ffffff" onChange={setCatBannerDividerColor} />
-
-                  <AdminColorField label='Banner "VIEW ALL" Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
-
-                  <AdminColorField label='Banner "VIEW ALL" Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
-
-                  <AdminFontPicker label='Banner "VIEW ALL" Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
-
-                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Product Cards (Classic)</div>
-
-                  <AdminColorField label="Product Name Color" value={catProductNameColor} fallback="#333333" onChange={setCatProductNameColor} />
-                  <AdminFontPicker label="Product Name Font" value={catProductNameFont} onChange={v => setCatProductNameFont(v)} />
-                  <AdminColorField label="Product Price Color" value={catProductPriceColor} fallback="#333333" onChange={setCatProductPriceColor} />
-                  <AdminFontPicker label="Product Price Font" value={catProductPriceFont} onChange={v => setCatProductPriceFont(v)} />
-
-                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Carousel Arrow Buttons (Classic)</div>
-
-                  <AdminColorField label="Arrow Background" value={catArrowBg} fallback="rgba(255,255,255,0.95)" onChange={setCatArrowBg} />
-                  <AdminColorField label="Arrow Icon Color" value={catArrowColor} fallback="#333333" onChange={setCatArrowColor} />
-                  <AdminColorField label="Arrow Hover Background" value={catArrowHoverBg} fallback="#d4af37" onChange={setCatArrowHoverBg} />
+                  <div>
+                    <SectionHeading>Carousel Arrows (Classic)</SectionHeading>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <AdminColorField label="Arrow Background" value={catArrowBg} fallback="rgba(255,255,255,0.95)" onChange={setCatArrowBg} />
+                      <AdminColorField label="Arrow Icon Color" value={catArrowColor} fallback="#333333" onChange={setCatArrowColor} />
+                      <AdminColorField label="Arrow Hover Background" value={catArrowHoverBg} fallback="#d4af37" onChange={setCatArrowHoverBg} />
+                    </div>
+                  </div>
                 </>
               )}
 
-              {/* Modern-template banner controls — only shown when active template is Modern. */}
+              {/* Modern-template controls */}
               {isModern && (
                 <>
-                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Banner Hover Text (Modern)</div>
+                  <div>
+                    <SectionHeading>Banner Hover Text (Modern)</SectionHeading>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <AdminColorField label='Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
+                      <AdminFontPicker label='Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
+                    </div>
+                  </div>
 
-                  <AdminColorField label='Banner "Shop {name}" Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
-
-                  <AdminFontPicker label='Banner "Shop {name}" Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
-
-                  <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: 1, textTransform: 'uppercase' }}>Product Cards (Modern)</div>
-
-                  <AdminColorField label="Product Name Color" value={catProductNameColorModern} fallback="#111111" onChange={setCatProductNameColorModern} />
-                  <AdminFontPicker label="Product Name Font" value={catProductNameFontModern} onChange={v => setCatProductNameFontModern(v)} />
-                  <AdminColorField label="Product Price Color" value={catProductPriceColorModern} fallback="#111111" onChange={setCatProductPriceColorModern} />
-                  <AdminFontPicker label="Product Price Font" value={catProductPriceFontModern} onChange={v => setCatProductPriceFontModern(v)} />
+                  <div>
+                    <SectionHeading>Product Cards (Modern)</SectionHeading>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <AdminColorField label="Product Name Color" value={catProductNameColorModern} fallback="#111111" onChange={setCatProductNameColorModern} />
+                      <AdminColorField label="Product Price Color" value={catProductPriceColorModern} fallback="#111111" onChange={setCatProductPriceColorModern} />
+                      <AdminFontPicker label="Product Name Font" value={catProductNameFontModern} onChange={v => setCatProductNameFontModern(v)} />
+                      <AdminFontPicker label="Product Price Font" value={catProductPriceFontModern} onChange={v => setCatProductPriceFontModern(v)} />
+                    </div>
+                  </div>
                 </>
               )}
             </div>
           </SectionCard>
 
-          <SectionCard title="Choose by Category" subtitle="Style the card shape, overlay, and label text" icon="fa-th" defaultOpen={false}>
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <SectionCard title="Browse by Category Circles" subtitle="Style the card shape, overlay, label and explore button" icon="fa-th" defaultOpen={false}>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Shape</label>
+              {/* Card Shape */}
+              <div>
+                <SectionHeading>Card Shape</SectionHeading>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[['','Default'],['rounded','Rounded'],['sharp','Sharp corners']].map(([val, label]) => (
                     <button key={val} type="button" onClick={() => setChooseCardShape(val)} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${chooseCardShape === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: chooseCardShape === val ? '#eff6ff' : '#fff', color: chooseCardShape === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
@@ -1721,33 +1771,42 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                 </div>
               </div>
 
-              <AdminColorField label="Card Overlay Color" value={chooseOverlayColor} fallback="#000000" onChange={setChooseOverlayColor} />
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Card Overlay Opacity — {Math.round((parseFloat(chooseOverlayOpacity || 0.3)) * 100)}%</label>
-                <input type="range" min="0" max="0.9" step="0.05" value={chooseOverlayOpacity || 0.3} onChange={e => setChooseOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
+              {/* Colors */}
+              <div>
+                <SectionHeading>Colors</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <AdminColorField label="Label Text Color" value={chooseLabelColor} fallback="#333333" onChange={setChooseLabelColor} />
+                  {isClassic && (
+                    <AdminColorField label="Label Background Color" value={chooseLabelBg} fallback="rgba(255,255,255,0.98)" onChange={setChooseLabelBg} />
+                  )}
+                  {isModern && (
+                    <AdminColorField label='"Explore" Button Color' value={chooseExploreColor} fallback="#ffffff" onChange={setChooseExploreColor} />
+                  )}
+                </div>
               </div>
 
-              <AdminColorField label="Label Text Color" value={chooseLabelColor} fallback="#333333" onChange={setChooseLabelColor} />
+              {/* Card Overlay */}
+              <div>
+                <SectionHeading>Card Overlay</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <AdminColorField label="Overlay Color" value={chooseOverlayColor} fallback="#000000" onChange={setChooseOverlayColor} />
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 8 }}>Overlay Opacity — {Math.round((parseFloat(chooseOverlayOpacity || 0.3)) * 100)}%</label>
+                    <input type="range" min="0" max="0.9" step="0.05" value={chooseOverlayOpacity || 0.3} onChange={e => setChooseOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
+                  </div>
+                </div>
+              </div>
 
-              {/* Classic-only label background pill — Modern overlays the
-                  label directly on the gradient with no pill behind it. */}
-              {isClassic && (
-                <AdminColorField label="Label Background Color" value={chooseLabelBg} fallback="rgba(255,255,255,0.98)" onChange={setChooseLabelBg} />
-              )}
-
-              <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => setChooseLabelFont(v)} />
-
-              {/* "Explore" controls only apply to Modern, where the element
-                  exists. Hidden in Classic but underlying state is preserved
-                  so previously-set values still apply when switching back. */}
-              {isModern && (
-                <>
-                  <AdminColorField label='"Explore" Button Color' value={chooseExploreColor} fallback="#ffffff" onChange={setChooseExploreColor} />
-
-                  <AdminFontPicker label='"Explore" Button Font' value={chooseExploreFont} onChange={v => setChooseExploreFont(v)} />
-                </>
-              )}
+              {/* Typography */}
+              <div>
+                <SectionHeading>Typography</SectionHeading>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <AdminFontPicker label="Label Font" value={chooseLabelFont} onChange={v => setChooseLabelFont(v)} />
+                  {isModern && (
+                    <AdminFontPicker label='"Explore" Button Font' value={chooseExploreFont} onChange={v => setChooseExploreFont(v)} />
+                  )}
+                </div>
+              </div>
             </div>
           </SectionCard>
 
