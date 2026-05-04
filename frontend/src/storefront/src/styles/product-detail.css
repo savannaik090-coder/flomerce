@@ -295,8 +295,8 @@
 
 .add-to-wishlist-btn {
     background: transparent;
-    color: #888;
-    border: 1px solid #bbb;
+    color: var(--brand-cta, #888);
+    border: 1px solid var(--brand-cta, #bbb);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -304,13 +304,14 @@
 }
 
 .add-to-wishlist-btn:hover {
-    border-color: #999;
-    color: #666;
+    border-color: var(--brand-cta, #999);
+    color: var(--brand-cta, #666);
+    opacity: 0.85;
 }
 
 .add-to-wishlist-btn.active {
-    color: #666;
-    border-color: #999;
+    color: var(--brand-cta, #666);
+    border-color: var(--brand-cta, #999);
 }
 
 .product-description-inline.product-description-section {
@@ -1425,24 +1426,25 @@
    AA for normal text (≥4.5:1) instead of the original pale pink. */
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn {
     background: transparent;
-    color: var(--pdp-wishlist-color, #6b5b48);
-    border: 1px solid var(--pdp-wishlist-color, rgba(96, 48, 0, 0.20));
+    color: var(--brand-cta, #6b5b48);
+    border: 1px solid var(--brand-cta, rgba(96, 48, 0, 0.20));
     height: 46px;
     font-size: 13px;
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn i.fas {
-    color: var(--pdp-wishlist-color, inherit);
+    color: var(--brand-cta, inherit);
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn:hover {
-    color: var(--pdp-wishlist-color, #8a4a52);
-    border-color: var(--pdp-wishlist-color, #8a4a52);
+    color: var(--brand-cta, #8a4a52);
+    border-color: var(--brand-cta, #8a4a52);
+    opacity: 0.85;
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn.active {
-    color: var(--pdp-wishlist-color, #8a4a52);
-    border-color: var(--pdp-wishlist-color, #8a4a52);
+    color: var(--brand-cta, #8a4a52);
+    border-color: var(--brand-cta, #8a4a52);
 }
 .pdp-layout-sticky .product-actions .add-to-wishlist-btn.active i.fas.fa-heart {
-    color: var(--pdp-wishlist-color, #8a4a52);
+    color: var(--brand-cta, #8a4a52);
 }
 
 .pdp-layout-sticky .product-actions button:disabled {

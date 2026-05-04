@@ -570,7 +570,7 @@ export default function ProductDetailPage() {
                   fontFamily: 'var(--font-heading, inherit)',
                   fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
                 }}>
-                  <i className="fas fa-clipboard-list" style={{ marginInlineEnd: 8, color: 'var(--brand-cta, #64748b)' }} />
+                  <i className="fas fa-list" style={{ marginInlineEnd: 8, color: 'var(--brand-cta, #64748b)' }} />
                   <TranslatedText text="Specifications" />
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 24px', fontSize: 13, color: 'var(--section-subtitle-color, var(--color-text-muted, #334155))' }}>
