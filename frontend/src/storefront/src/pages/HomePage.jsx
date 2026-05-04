@@ -85,11 +85,15 @@ export default function HomePage() {
     if (isModern) return [
       ...(parsedSettings.showTrendingNow !== false ? [{ id: 'trending_now', name: 'Trending Now' }] : []),
       ...(parsedSettings.showBrandStory !== false ? [{ id: 'brand_story', name: 'Brand Story' }] : []),
+      ...(parsedSettings.showStoreLocations !== false ? [{ id: 'store_locations', name: 'Store Locations' }] : []),
+      ...(parsedSettings.showCustomerReviews !== false ? [{ id: 'customer_reviews', name: 'Customer Reviews' }] : []),
     ];
     return [
       ...(parsedSettings.showWatchAndBuy !== false ? [{ id: 'watch_and_buy', name: 'Watch & Buy' }] : []),
       ...(parsedSettings.showFeaturedVideo !== false ? [{ id: 'featured_video', name: 'Featured Video' }] : []),
       ...(parsedSettings.showShopTheLook !== false ? [{ id: 'shop_the_look', name: 'Shop the Look' }] : []),
+      ...(parsedSettings.showStoreLocations !== false ? [{ id: 'store_locations', name: 'Store Locations' }] : []),
+      ...(parsedSettings.showCustomerReviews !== false ? [{ id: 'customer_reviews', name: 'Customer Reviews' }] : []),
     ];
   }, [parsedSettings, isModern]);
 
@@ -143,6 +147,8 @@ export default function HomePage() {
       if (item.id === 'shop_the_look') return <ShopTheLook key="shop_the_look" />;
       if (item.id === 'trending_now') return <TrendingNow key="trending_now" />;
       if (item.id === 'brand_story') return <BrandStory key="brand_story" />;
+      if (item.id === 'store_locations') return isModern ? <StoreLocationsModern key="store_locations" /> : <StoreLocations key="store_locations" />;
+      if (item.id === 'customer_reviews') return <ActiveCustomerReviews key="customer_reviews" />;
     }
     return null;
   }
@@ -152,9 +158,7 @@ export default function HomePage() {
       <div className="home-page">
         <ActiveHero />
         {orderedSections.map((item) => renderSection(item))}
-        <StoreLocationsModern />
         <ProductShowcase />
-        <ActiveCustomerReviews />
         <FirstVisitBanner />
       </div>
     );
@@ -165,8 +169,6 @@ export default function HomePage() {
       <HeroSlider />
       {orderedSections.map((item) => renderSection(item))}
       <ProductShowcase />
-      <StoreLocations />
-      <ActiveCustomerReviews />
       <FirstVisitBanner />
     </div>
   );

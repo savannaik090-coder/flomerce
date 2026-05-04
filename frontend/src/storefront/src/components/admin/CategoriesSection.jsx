@@ -227,11 +227,15 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
     if (isModern) return [
       ...(s.showTrendingNow !== false ? [{ id: 'trending_now', name: 'Trending Now' }] : []),
       ...(s.showBrandStory !== false ? [{ id: 'brand_story', name: 'Brand Story' }] : []),
+      ...(s.showStoreLocations !== false ? [{ id: 'store_locations', name: 'Store Locations' }] : []),
+      ...(s.showCustomerReviews !== false ? [{ id: 'customer_reviews', name: 'Customer Reviews' }] : []),
     ];
     return [
       ...(s.showWatchAndBuy !== false ? [{ id: 'watch_and_buy', name: 'Watch & Buy' }] : []),
       ...(s.showFeaturedVideo !== false ? [{ id: 'featured_video', name: 'Featured Video' }] : []),
       ...(s.showShopTheLook !== false ? [{ id: 'shop_the_look', name: 'Shop the Look' }] : []),
+      ...(s.showStoreLocations !== false ? [{ id: 'store_locations', name: 'Store Locations' }] : []),
+      ...(s.showCustomerReviews !== false ? [{ id: 'customer_reviews', name: 'Customer Reviews' }] : []),
     ];
   }, [siteConfig?.settings, isModern]);
 
