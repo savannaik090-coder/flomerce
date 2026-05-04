@@ -162,7 +162,7 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
                   : "var(--font-primary, 'Lato', sans-serif)",
                 fontSize: '15px',
                 fontWeight: 600,
-                color: isScroll ? 'var(--cat-product-price-color, #333)' : '#333',
+                color: isScroll ? 'var(--cat-product-price-color, var(--brand-cta, #b3a68e))' : 'var(--brand-cta, #b3a68e)',
               }}
             >
               {formatAmount(product.price)}

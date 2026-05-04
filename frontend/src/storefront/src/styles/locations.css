@@ -154,7 +154,7 @@
     gap: 8px;
 }
 
-.store-hours i { color: var(--sl-classic-accent-color, #9c7c38); }
+.store-hours i { color: var(--sl-classic-accent-color, var(--brand-cta, #b3a68e)); }
 
 .store-contact {
     display: flex;
@@ -180,7 +180,7 @@
 
 .book-appointment-btn {
     flex: 1;
-    background-color: var(--sl-classic-bookbtn-bg, #333);
+    background-color: var(--sl-classic-bookbtn-bg, var(--brand-cta, #b3a68e));
     color: var(--sl-classic-bookbtn-text, white);
     border: none;
     padding: 12px 20px;

@@ -60,7 +60,7 @@ export default function MobileBottomNav({ onCartOpen }) {
         {cartCount > 0 && (
           <span style={{
             position: 'absolute', top: 2, right: '50%', transform: 'translateX(12px)',
-            background: isModern ? '#111' : '#c8a97e', color: '#fff', fontSize: 10, width: 16, height: 16,
+            background: isModern ? '#111' : 'var(--brand-cta, #b3a68e)', color: '#fff', fontSize: 10, width: 16, height: 16,
             borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600,
           }}>{cartCount}</span>
         )}

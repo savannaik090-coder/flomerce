@@ -77,7 +77,7 @@ function SiteLoadingScreen() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ width: 48, height: 48, border: '3px solid #eee', borderTop: '3px solid #000', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }} />
+        <div style={{ width: 48, height: 48, border: '3px solid #eee', borderTop: '3px solid var(--brand-cta, #b3a68e)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }} />
         <p style={{ fontSize: 18, color: '#333' }}><TranslatedText text="Loading store..." /></p>
       </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
