@@ -486,18 +486,3 @@ export function getDemoProductsForCategory(category, categoryName) {
     id: `${p.id}-${(categoryName || 'cat').toLowerCase().replace(/\s+/g, '-')}-${i}`,
   }));
 }
-
-export const CHECKOUT_CLASSIC_STYLE_DEFAULTS = Object.freeze({
-  pageBg:        '#FAF3E8',
-  cardBg:        '#FEFCF7',
-  borderColor:   '#D9C5A0',
-  accentColor:   '#8B5E3C',
-  accentAltColor:'#C8960C',
-  textDark:      '#2E1A0E',
-  textBody:      '#5C3D1E',
-  textMuted:     '#8B7355',
-  btnBg:         '#4A2E17',
-  btnText:       '#FAF3E8',
-  headingFont:   "'Playfair Display', serif",
-  bodyFont:      "'Lora', serif",
-});
