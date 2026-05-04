@@ -111,7 +111,7 @@
 }
 
 .fv-chat-btn:hover {
-    background-color: #d4af37;
+    background-color: var(--color-accent-gold, #d4af37);
     color: #ffffff;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(212,175,55,0.4);

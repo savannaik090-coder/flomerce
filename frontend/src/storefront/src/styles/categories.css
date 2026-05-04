@@ -161,7 +161,7 @@
 }
 
 .home-category-scroll-arrow:hover {
-    background: var(--cat-arrow-hover-bg, #d4af37);
+    background: var(--cat-arrow-hover-bg, var(--color-accent-gold, #d4af37));
     color: white;
     transform: translateY(-50%) scale(1.1);
 }
@@ -176,7 +176,7 @@
 }
 
 .home-category-view-all {
-    background: var(--cat-view-all-bg, #5a3f2a);
+    background: var(--cat-view-all-bg, var(--color-secondary, #5a3f2a));
     color: var(--cat-view-all-text, white);
     border: var(--cat-view-all-border, none);
     padding: 12px 40px;

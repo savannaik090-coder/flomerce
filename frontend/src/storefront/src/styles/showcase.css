@@ -49,7 +49,7 @@
     width: 30px;
     height: 30px;
     background: rgba(255,255,255,0.8);
-    border: 2px solid #5a3f2a;
+    border: 2px solid var(--color-secondary, #5a3f2a);
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -57,7 +57,7 @@
 }
 
 .product-dot:hover {
-    background: #5a3f2a;
+    background: var(--color-secondary, #5a3f2a);
     transform: scale(1.2);
 }
 
@@ -69,7 +69,7 @@
     transform: translate(-50%, -50%);
     width: 10px;
     height: 10px;
-    background: #5a3f2a;
+    background: var(--color-secondary, #5a3f2a);
     border-radius: 50%;
     transition: all 0.3s ease;
 }
@@ -138,13 +138,13 @@
 .showcase-product-price {
     font-family: 'Lato', sans-serif;
     font-size: 16px;
-    color: #5a3f2a;
+    color: var(--color-secondary, #5a3f2a);
     font-weight: 700;
 }
 
 .add-set-to-bag-btn {
     width: 100%;
-    background: #603000;
+    background: var(--color-primary, #603000);
     color: white;
     border: none;
     padding: 16px;
@@ -238,7 +238,7 @@
 .popup-product-price {
     font-family: 'Lato', sans-serif;
     font-size: 22px;
-    color: #5a3f2a;
+    color: var(--color-secondary, #5a3f2a);
     font-weight: 700;
     margin-bottom: 20px;
 }
@@ -271,19 +271,19 @@
 }
 
 .popup-add-to-cart-btn {
-    background: #5a3f2a;
+    background: var(--color-secondary, #5a3f2a);
     color: white;
 }
 
-.popup-add-to-cart-btn:hover { background: #4a2f1a; }
+.popup-add-to-cart-btn:hover { filter: brightness(0.85); }
 
 .popup-view-details-btn {
     background: transparent;
-    color: #5a3f2a;
-    border: 2px solid #5a3f2a;
+    color: var(--color-secondary, #5a3f2a);
+    border: 2px solid var(--color-secondary, #5a3f2a);
 }
 
 .popup-view-details-btn:hover {
-    background: #5a3f2a;
+    background: var(--color-secondary, #5a3f2a);
     color: white;
 }

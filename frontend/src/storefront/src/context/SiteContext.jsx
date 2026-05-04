@@ -258,6 +258,18 @@ export function SiteProvider({ children }) {
         root.style.removeProperty(cssVar);
       }
     };
+    // ── Global Brand Identity (Classic template) ─────────────────────
+    // Applied first so per-section overrides (below) correctly take
+    // precedence. --brand-primary / --brand-accent / --brand-promo cascade
+    // into --color-primary, --color-secondary, --color-accent-gold, etc.
+    // (defined in variables.css) so all Classic CSS is recolored in one shot.
+    apply('--brand-primary',      settings.brandPrimary);
+    apply('--brand-accent',       settings.brandAccent);
+    apply('--brand-promo',        settings.brandPromo);
+    apply('--brand-bg',           settings.brandBg);
+    apply('--brand-heading-font', settings.brandHeadingFont);
+    apply('--brand-body-font',    settings.brandBodyFont);
+
     apply('--promo-bg', settings.promoBannerBg);
     apply('--promo-text', settings.promoBannerText);
     apply('--promo-font', settings.promoBannerFont);

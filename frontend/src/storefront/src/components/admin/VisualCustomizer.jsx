@@ -24,6 +24,7 @@ import FAQSection from './FAQSection.jsx';
 import BlogSection from './BlogSection.jsx';
 import PromoBannerEditor from './PromoBannerEditor.jsx';
 import SidePanelsEditor from './SidePanelsEditor.jsx';
+import BrandIdentityEditor from './BrandIdentityEditor.jsx';
 import FeatureGate, { isFeatureAvailable, getRequiredPlan, PlanBadge } from './FeatureGate.jsx';
 import { API_BASE, PLATFORM_DOMAIN } from '../../config.js';
 import { isEditorDirty, clearEditorDirty } from '../../admin/editorDirtyStore.js';
@@ -460,6 +461,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
     // republishing stale preview updates that would override the eye-icon
     // toggle (the original "hide works, show doesn't" bug).
     const inner = (() => { switch (activeSection) {
+      case 'brand-identity': return <BrandIdentityEditor {...props} />;
       case 'navbar': return <NavbarEditor {...props} />;
       case 'promo-banner': return <PromoBannerEditor {...props} />;
       case 'hero-slider': return <HeroSliderEditor {...props} />;
@@ -493,6 +495,7 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
   }
 
   function getSectionLabel(id) {
+    if (id === 'brand-identity') return 'Brand Identity';
     const hp = homepageSections.find(s => s.id === id);
     if (hp) return hp.label;
     const pg = PAGE_SECTIONS.find(s => s.id === id);
@@ -545,6 +548,39 @@ export default function VisualCustomizer({ currentPlan, onBack }) {
                   <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 10px', padding: '0 4px' }}>
                     Click a section to edit it.
                   </p>
+
+                  {/* ── Brand Identity global card ── */}
+                  <div
+                    onClick={() => changeActiveSection('brand-identity')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', marginBottom: 10,
+                      borderRadius: 10, cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #fef9f0 0%, #f8f3e8 100%)',
+                      border: '1px solid #e8d9b8',
+                      transition: 'box-shadow 0.12s ease',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(176,140,76,0.18)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 7, flexShrink: 0,
+                      background: 'linear-gradient(135deg, #d4af37, #b08c4c)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <i className="fas fa-palette" style={{ color: '#fff', fontSize: 13 }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                        Brand Identity
+                      </p>
+                      <p style={{ margin: '1px 0 0', fontSize: 11, color: '#78716c' }}>
+                        Global colors &amp; fonts
+                      </p>
+                    </div>
+                    <i className="fas fa-chevron-right" style={{ fontSize: 10, color: '#b08c4c', flexShrink: 0 }} />
+                  </div>
+
                   {homepageSections.map((section) => {
                     const isVisible = section.fixed || sectionVisibility[section.id] !== false;
                     const gatedFeature = GATED_TABS[section.id];

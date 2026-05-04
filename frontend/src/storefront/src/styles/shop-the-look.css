@@ -27,7 +27,7 @@
     display: block;
     width: 60px;
     height: 2px;
-    background: var(--stl-divider-color, #5a3f2a);
+    background: var(--stl-divider-color, var(--color-secondary, #5a3f2a));
     margin: 12px auto 0;
 }
 
@@ -62,7 +62,7 @@
     margin-left: -14px;
     margin-top: -14px;
     background: rgba(255, 255, 255, 0.85);
-    border: 2px solid var(--stl-accent-color, #5a3f2a);
+    border: 2px solid var(--stl-accent-color, var(--color-secondary, #5a3f2a));
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -78,13 +78,13 @@
     transform: translate(-50%, -50%);
     width: 10px;
     height: 10px;
-    background: var(--stl-accent-color, #5a3f2a);
+    background: var(--stl-accent-color, var(--color-secondary, #5a3f2a));
     border-radius: 50%;
     transition: all 0.3s ease;
 }
 
 .stl-dot:hover {
-    background: var(--stl-accent-color, #5a3f2a);
+    background: var(--stl-accent-color, var(--color-secondary, #5a3f2a));
     transform: scale(1.2);
 }
 
@@ -157,7 +157,7 @@
 .stl-product-price {
     font-family: 'Lato', sans-serif;
     font-size: 15px;
-    color: var(--stl-accent-color, #5a3f2a);
+    color: var(--stl-accent-color, var(--color-secondary, #5a3f2a));
     font-weight: 700;
 }
 
@@ -252,7 +252,7 @@
 .stl-popup-price {
     font-family: 'Lato', sans-serif;
     font-size: 20px;
-    color: var(--stl-accent-color, #5a3f2a);
+    color: var(--stl-accent-color, var(--color-secondary, #5a3f2a));
     font-weight: 700;
     margin-bottom: 16px;
 }
@@ -265,7 +265,7 @@
 .stl-popup-view-btn {
     flex: 1;
     padding: 12px;
-    background: var(--stl-accent-color, #5a3f2a);
+    background: var(--stl-accent-color, var(--color-secondary, #5a3f2a));
     color: #fff;
     border: none;
     border-radius: 6px;

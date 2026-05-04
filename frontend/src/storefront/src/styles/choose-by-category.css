@@ -30,7 +30,7 @@
 .choose-by-category-divider {
     width: 60px;
     height: 2px;
-    background-color: var(--cat-divider-color, #d4af37);
+    background-color: var(--cat-divider-color, var(--color-accent-gold, #d4af37));
     margin: 12px auto 0;
     border: none;
 }

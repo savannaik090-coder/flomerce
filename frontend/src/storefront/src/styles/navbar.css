@@ -75,7 +75,7 @@ body.cl-nav-transparent .modern-hero {
 }
 
 .promo-banner {
-    background-color: var(--promo-bg, #b3a681) !important;
+    background-color: var(--promo-bg, var(--brand-promo, #b3a681)) !important;
     color: var(--promo-text, #ffffff);
     padding: 7px 0 !important;
     text-align: center;
