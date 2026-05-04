@@ -140,8 +140,8 @@ export default function ProductCard({ product, variant = 'grid', onWishlistToggl
               // pages) keep the original hardcoded defaults so this
               // editor's settings can't leak outside Categories.
               fontFamily: isScroll
-                ? "var(--cat-product-name-font, var(--font-product, 'Futura PT', sans-serif))"
-                : "var(--font-product, 'Futura PT', sans-serif)",
+                ? "var(--cat-product-name-font, var(--font-product, var(--font-primary, 'Futura PT', sans-serif)))"
+                : "var(--font-product, var(--font-primary, 'Futura PT', sans-serif))",
               fontSize: '14px',
               fontWeight: 500,
               color: isScroll ? 'var(--cat-product-name-color, var(--brand-primary, #5a3f2a))' : 'var(--brand-primary, #5a3f2a)',

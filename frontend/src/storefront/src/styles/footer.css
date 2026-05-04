@@ -78,7 +78,7 @@
     color: var(--footer-classic-link-color, var(--color-text-light));
     text-decoration: none;
     font-size: 14px;
-    font-family: var(--footer-classic-link-font, var(--brand-nav-font, inherit));
+    font-family: var(--footer-classic-link-font, var(--brand-nav-font, 'Lato', sans-serif));
     transition: color var(--transition-base);
     display: block;
     padding: var(--spacing-xs) 0;
@@ -269,7 +269,7 @@
     color: var(--footer-classic-bottom-links-color, var(--color-text-light));
     text-decoration: none;
     font-size: 14px;
-    font-family: var(--brand-nav-font, inherit);
+    font-family: var(--brand-nav-font, 'Lato', sans-serif);
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
     transition: all var(--transition-base);
@@ -350,7 +350,7 @@
 .bottom-nav-item span {
     font-size: 10px;
     font-weight: 400;
-    font-family: var(--font-primary);
+    font-family: var(--brand-nav-font, 'Lato', sans-serif);
 }
 
 .bottom-nav-item:hover {

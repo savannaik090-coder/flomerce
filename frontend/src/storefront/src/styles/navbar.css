@@ -263,7 +263,7 @@ body.cl-nav-transparent .modern-hero {
 
 .nav-link {
     color: var(--nav-link-text, var(--nav-text, #333));
-    font-family: var(--nav-font, var(--brand-nav-font, inherit));
+    font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
     text-decoration: none;
     font-size: 12px;
     font-weight: 600;
@@ -309,7 +309,7 @@ body.cl-nav-transparent .modern-hero {
 .dropdown-menu a {
     padding: 14px 25px;
     color: var(--nav-link-text, var(--nav-text, #333));
-    font-family: var(--nav-font, var(--brand-nav-font, inherit));
+    font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
     font-size: 16px;
     font-weight: 500;
     display: block;
@@ -376,7 +376,7 @@ body.cl-nav-transparent .modern-hero {
     flex: 1;
     padding: 14px 12px 14px 25px;
     color: var(--nav-link-text, var(--nav-text, #333));
-    font-family: var(--nav-font, var(--brand-nav-font, inherit));
+    font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
     font-size: 16px;
     font-weight: 600;
     text-decoration: none;
@@ -448,7 +448,7 @@ body.cl-nav-transparent .modern-hero {
     cursor: pointer;
     padding: 14px 25px;
     color: var(--nav-link-text, var(--nav-text, #333));
-    font-family: var(--nav-font, var(--brand-nav-font, inherit));
+    font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
     font-size: 15px;
     font-weight: 600;
     display: flex;
@@ -501,7 +501,7 @@ body.cl-nav-transparent .modern-hero {
 .sub-group-menu a {
     padding: 12px 25px 12px 40px;
     color: var(--nav-link-text, #555);
-    font-family: var(--nav-font, var(--brand-nav-font, inherit));
+    font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
     font-size: 16px;
     font-weight: 400;
     display: block;
@@ -628,7 +628,7 @@ body.cl-nav-transparent .modern-hero {
     }
     .nav-link {
         color: var(--nav-link-text, var(--nav-text, #333)) !important;
-        font-family: var(--nav-font, var(--brand-nav-font, inherit));
+        font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
         font-size: 13px;
         padding: 20px 4px;
         border-bottom: none !important;
@@ -741,7 +741,7 @@ body.cl-nav-transparent .modern-hero {
     }
     .nav-link {
         color: var(--nav-link-text, var(--nav-text, #333)) !important;
-        font-family: var(--nav-font, var(--brand-nav-font, inherit));
+        font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
         font-size: 14px !important;
         font-weight: 500;
         letter-spacing: 0.8px;
@@ -782,7 +782,7 @@ body.cl-nav-transparent .modern-hero {
         padding-bottom: 10px;
     }
     .dropdown-menu a {
-        font-family: var(--nav-font, var(--brand-nav-font, inherit));
+        font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
         font-size: 15px;
         padding: 12px 0;
         color: var(--nav-link-text, #555);
@@ -864,7 +864,7 @@ body.cl-nav-transparent .modern-hero {
     }
     .mobile-account-links { display: block; }
     .mobile-account-link {
-        font-family: var(--nav-font, var(--brand-nav-font, inherit));
+        font-family: var(--nav-font, var(--brand-nav-font, 'Lato', sans-serif));
         color: var(--nav-link-text, #000);
         font-size: 15px;
         font-weight: 400;
