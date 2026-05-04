@@ -80,9 +80,13 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   async function handleSave() {
     setSaving(true);
     try {
+      const token = sessionStorage.getItem('site_admin_token');
       const res = await fetch(`${API_BASE}/api/sites/${siteConfig.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `SiteAdmin ${token}` } : {}),
+        },
         body: JSON.stringify({
           settings: {
             brandPrimary, brandSecondary, brandAccent, brandBg,
