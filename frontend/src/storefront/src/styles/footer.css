@@ -85,7 +85,7 @@
 }
 
 .footer-content ul li a:hover {
-    color: var(--color-text);
+    color: var(--brand-cta, #b3a68e);
 }
 
 .footer-social-section {
@@ -142,6 +142,7 @@
 }
 
 .footer-contact-link:hover {
+    color: var(--brand-cta, #b3a68e);
     text-decoration: underline;
 }
 
@@ -167,10 +168,10 @@
 }
 
 .social-icon-link:hover {
-    background-color: var(--color-accent-light);
+    background-color: var(--brand-cta, var(--color-accent-light));
     color: var(--color-bg-white);
     transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(156, 124, 56, 0.3);
+    box-shadow: 0 4px 8px rgba(179, 166, 142, 0.35);
 }
 
 .footer-app-section {
@@ -247,14 +248,15 @@
 }
 
 .powered-by-link {
-    color: var(--footer-classic-powered-by-color, var(--color-accent-light));
+    color: var(--footer-classic-powered-by-color, var(--brand-cta, #b3a68e));
     text-decoration: none;
     font-weight: 500;
     transition: color var(--transition-base);
 }
 
 .powered-by-link:hover {
-    color: #b8905f;
+    color: var(--brand-cta, #b3a68e);
+    filter: brightness(0.85);
 }
 
 .footer-links {
@@ -275,8 +277,8 @@
 }
 
 .footer-links a:hover {
-    color: var(--color-text);
-    background-color: rgba(156, 124, 56, 0.2);
+    color: var(--brand-cta, #b3a68e);
+    background-color: color-mix(in srgb, var(--brand-cta, #b3a68e) 12%, transparent);
 }
 
 .footer-payment-icons {
@@ -352,11 +354,11 @@
 }
 
 .bottom-nav-item:hover {
-    color: #8B7355;
+    color: var(--nav-link-hover, var(--brand-cta, #8B7355));
 }
 
 .bottom-nav-item.active {
-    color: #8B7355;
+    color: var(--nav-link-hover, var(--brand-cta, #8B7355));
 }
 
 .bottom-nav-item.currency-selector-wrapper,
