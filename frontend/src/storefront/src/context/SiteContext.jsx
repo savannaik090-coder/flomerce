@@ -270,16 +270,17 @@ export function SiteProvider({ children }) {
     // wherever a merchant has explicitly set a section-specific colour.
     apply('--brand-primary',      settings.brandPrimary);
     apply('--brand-accent',       settings.brandAccent);
-    apply('--brand-promo',        settings.brandPromo);
+    apply('--brand-cta',          settings.brandSecondary);
     apply('--brand-bg',           settings.brandBg);
     apply('--brand-heading-font', settings.brandHeadingFont);
     apply('--brand-body-font',    settings.brandBodyFont);
 
     // Directly write concrete semantic vars so the brand colour wins even
     // when global.css or modern.css redefines the same :root keys.
-    // --color-secondary uses brandSecondary when set, falls back to brandPrimary.
+    // Both --color-primary and --color-secondary use brandPrimary (the main brand brown).
+    // The CTA/action colour (buttons, badges, active links) is tracked via --brand-cta.
     apply('--color-primary',     settings.brandPrimary);
-    apply('--color-secondary',   settings.brandSecondary || settings.brandPrimary);
+    apply('--color-secondary',   settings.brandPrimary);
     apply('--color-accent',      settings.brandAccent);
     apply('--color-accent-gold', settings.brandAccent);
     apply('--color-bg',          settings.brandBg);
@@ -345,7 +346,7 @@ export function SiteProvider({ children }) {
       apply('--hero-btn-text', heroBtnText);
       apply('--hero-btn-border', '1px solid rgba(255,255,255,0.5)');
     } else {
-      apply('--hero-btn-bg', heroBtnBg);
+      apply('--hero-btn-bg', heroBtnBg || settings.brandSecondary);
       apply('--hero-btn-text', heroBtnText);
       root.style.removeProperty('--hero-btn-border');
     }

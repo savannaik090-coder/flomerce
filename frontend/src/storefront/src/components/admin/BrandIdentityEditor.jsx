@@ -12,7 +12,6 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   const [brandPrimary,     setBrandPrimary]     = useState('');
   const [brandSecondary,   setBrandSecondary]   = useState('');
   const [brandAccent,      setBrandAccent]       = useState('');
-  const [brandPromo,       setBrandPromo]        = useState('');
   const [brandBg,          setBrandBg]           = useState('');
   const [brandHeadingFont, setBrandHeadingFont]  = useState('');
   const [brandBodyFont,    setBrandBodyFont]     = useState('');
@@ -23,7 +22,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   const savedRef = useRef({});
 
   const dirty = useDirtyTracker({
-    brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+    brandPrimary, brandSecondary, brandAccent, brandBg,
     brandHeadingFont, brandBodyFont,
   });
 
@@ -39,7 +38,6 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
           brandPrimary:     s.brandPrimary     || '',
           brandSecondary:   s.brandSecondary   || '',
           brandAccent:      s.brandAccent      || '',
-          brandPromo:       s.brandPromo       || '',
           brandBg:          s.brandBg          || '',
           brandHeadingFont: s.brandHeadingFont || '',
           brandBodyFont:    s.brandBodyFont    || '',
@@ -47,7 +45,6 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         setBrandPrimary(snap.brandPrimary);
         setBrandSecondary(snap.brandSecondary);
         setBrandAccent(snap.brandAccent);
-        setBrandPromo(snap.brandPromo);
         setBrandBg(snap.brandBg);
         setBrandHeadingFont(snap.brandHeadingFont);
         setBrandBodyFont(snap.brandBodyFont);
@@ -64,7 +61,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
 
   function preview(patch) {
     onPreviewUpdate?.({
-      brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+      brandPrimary, brandSecondary, brandAccent, brandBg,
       brandHeadingFont, brandBodyFont,
       ...patch,
     });
@@ -88,14 +85,14 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           settings: {
-            brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+            brandPrimary, brandSecondary, brandAccent, brandBg,
             brandHeadingFont, brandBodyFont,
           },
         }),
       });
       if (!res.ok) throw new Error('save failed');
       const snap = {
-        brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+        brandPrimary, brandSecondary, brandAccent, brandBg,
         brandHeadingFont, brandBodyFont,
       };
       savedRef.current = snap;
@@ -113,7 +110,6 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
     setBrandPrimary(s.brandPrimary       || '');
     setBrandSecondary(s.brandSecondary   || '');
     setBrandAccent(s.brandAccent         || '');
-    setBrandPromo(s.brandPromo           || '');
     setBrandBg(s.brandBg                 || '');
     setBrandHeadingFont(s.brandHeadingFont || '');
     setBrandBodyFont(s.brandBodyFont     || '');
@@ -121,7 +117,6 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
       brandPrimary:     s.brandPrimary     || '',
       brandSecondary:   s.brandSecondary   || '',
       brandAccent:      s.brandAccent      || '',
-      brandPromo:       s.brandPromo       || '',
       brandBg:          s.brandBg          || '',
       brandHeadingFont: s.brandHeadingFont || '',
       brandBodyFont:    s.brandBodyFont    || '',
@@ -138,10 +133,9 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   }
 
   const swatches = [
-    { label: 'Primary',   color: brandPrimary   || '#603000' },
-    { label: 'Secondary', color: brandSecondary || '#5a3f2a' },
+    { label: 'Primary',   color: brandPrimary   || '#5a3f2a' },
+    { label: 'Secondary', color: brandSecondary || '#c8a97e' },
     { label: 'Accent',    color: brandAccent    || '#d4af37' },
-    { label: 'Banner',    color: brandPromo     || '#b3a681' },
     { label: 'BG',        color: brandBg        || '#f8f8f5' },
   ];
 
@@ -196,13 +190,13 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
       <AdminColorField
         label="Primary Color"
         value={brandPrimary}
-        fallback="#603000"
+        fallback="#5a3f2a"
         onChange={v => handleColor(setBrandPrimary, 'brandPrimary', v)}
       />
       <AdminColorField
         label="Secondary Color"
         value={brandSecondary}
-        fallback="#5a3f2a"
+        fallback="#c8a97e"
         onChange={v => handleColor(setBrandSecondary, 'brandSecondary', v)}
       />
       <AdminColorField
@@ -210,12 +204,6 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         value={brandAccent}
         fallback="#d4af37"
         onChange={v => handleColor(setBrandAccent, 'brandAccent', v)}
-      />
-      <AdminColorField
-        label="Banner / Promo Strip"
-        value={brandPromo}
-        fallback="#b3a681"
-        onChange={v => handleColor(setBrandPromo, 'brandPromo', v)}
       />
       <AdminColorField
         label="Page Background"
