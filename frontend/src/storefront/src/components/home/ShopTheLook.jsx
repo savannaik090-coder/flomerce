@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSiteConfig } from '../../hooks/useSiteConfig.js';
 import { getProducts } from '../../services/productService.js';
 import { useCurrency } from '../../hooks/useCurrency.js';
+import { useCart } from '../../hooks/useCart.js';
 import { resolveImageUrl } from '../../utils/imageUrl.js';
 import { getShopTheLookDefaults } from '../../defaults/index.js';
 import TranslatedText from '../TranslatedText';
@@ -10,6 +11,7 @@ import TranslatedText from '../TranslatedText';
 export default function ShopTheLook() {
   const { siteConfig } = useSiteConfig();
   const { formatAmount } = useCurrency();
+  const { addToCart } = useCart();
   const [allProducts, setAllProducts] = useState([]);
   const [popupProduct, setPopupProduct] = useState(null);
   const imgRef = useRef(null);
@@ -116,6 +118,14 @@ export default function ShopTheLook() {
                 </Link>
               ))}
             </div>
+            {products.length > 0 && (
+              <button
+                className="add-set-to-bag-btn"
+                onClick={() => products.forEach(p => addToCart(p, 1))}
+              >
+                <TranslatedText text="Add Set to Bag" />
+              </button>
+            )}
           </div>
         </div>
       </div>
