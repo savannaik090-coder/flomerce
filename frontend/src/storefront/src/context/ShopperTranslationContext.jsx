@@ -71,31 +71,40 @@ function readStoredLanguage(fallback) {
 }
 
 function FullPageLoader() {
+  const brandName = (() => {
+    try { return window.localStorage?.getItem('flomerce_brand_name') || ''; } catch (_) { return ''; }
+  })();
   return (
     <div
       role="status"
-      aria-label="Loading translations"
+      aria-label="Loading"
       style={{
         position: 'fixed',
         inset: 0,
         background: '#ffffff',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 20,
         zIndex: 99999,
+        fontFamily: 'Inter, sans-serif',
       }}
     >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          border: '3px solid #e5e7eb',
-          borderTopColor: '#111827',
-          borderRadius: '50%',
-          animation: 'flomerce-xlt-spin 0.8s linear infinite',
-        }}
-      />
-      <style>{`@keyframes flomerce-xlt-spin { to { transform: rotate(360deg); } }`}</style>
+      <div id="flomerce-fpl-ring" style={{
+        width: 48,
+        height: 48,
+        border: '3px solid #eee',
+        borderRadius: '50%',
+        animation: 'flomerce-xlt-spin 0.8s linear infinite',
+      }} />
+      {brandName && (
+        <p style={{ fontSize: 18, color: '#333', margin: 0 }}>{brandName} Loading…</p>
+      )}
+      <style>{`
+        #flomerce-fpl-ring { border-top-color: #000 !important; }
+        @keyframes flomerce-xlt-spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
