@@ -10,6 +10,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
 
   const [brandPrimary,     setBrandPrimary]     = useState('');
+  const [brandSecondary,   setBrandSecondary]   = useState('');
   const [brandAccent,      setBrandAccent]       = useState('');
   const [brandPromo,       setBrandPromo]        = useState('');
   const [brandBg,          setBrandBg]           = useState('');
@@ -22,7 +23,8 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   const savedRef = useRef({});
 
   const dirty = useDirtyTracker({
-    brandPrimary, brandAccent, brandPromo, brandBg, brandHeadingFont, brandBodyFont,
+    brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+    brandHeadingFont, brandBodyFont,
   });
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         if (typeof s === 'string') { try { s = JSON.parse(s); } catch { s = {}; } }
         const snap = {
           brandPrimary:     s.brandPrimary     || '',
+          brandSecondary:   s.brandSecondary   || '',
           brandAccent:      s.brandAccent      || '',
           brandPromo:       s.brandPromo       || '',
           brandBg:          s.brandBg          || '',
@@ -42,6 +45,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
           brandBodyFont:    s.brandBodyFont    || '',
         };
         setBrandPrimary(snap.brandPrimary);
+        setBrandSecondary(snap.brandSecondary);
         setBrandAccent(snap.brandAccent);
         setBrandPromo(snap.brandPromo);
         setBrandBg(snap.brandBg);
@@ -60,7 +64,8 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
 
   function preview(patch) {
     onPreviewUpdate?.({
-      brandPrimary, brandAccent, brandPromo, brandBg, brandHeadingFont, brandBodyFont,
+      brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+      brandHeadingFont, brandBodyFont,
       ...patch,
     });
   }
@@ -82,11 +87,17 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          settings: { brandPrimary, brandAccent, brandPromo, brandBg, brandHeadingFont, brandBodyFont },
+          settings: {
+            brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+            brandHeadingFont, brandBodyFont,
+          },
         }),
       });
       if (!res.ok) throw new Error('save failed');
-      const snap = { brandPrimary, brandAccent, brandPromo, brandBg, brandHeadingFont, brandBodyFont };
+      const snap = {
+        brandPrimary, brandSecondary, brandAccent, brandPromo, brandBg,
+        brandHeadingFont, brandBodyFont,
+      };
       savedRef.current = snap;
       dirty.markSaved();
       onSaved?.();
@@ -99,14 +110,16 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
 
   function handleDiscard() {
     const s = savedRef.current;
-    setBrandPrimary(s.brandPrimary     || '');
-    setBrandAccent(s.brandAccent       || '');
-    setBrandPromo(s.brandPromo         || '');
-    setBrandBg(s.brandBg               || '');
+    setBrandPrimary(s.brandPrimary       || '');
+    setBrandSecondary(s.brandSecondary   || '');
+    setBrandAccent(s.brandAccent         || '');
+    setBrandPromo(s.brandPromo           || '');
+    setBrandBg(s.brandBg                 || '');
     setBrandHeadingFont(s.brandHeadingFont || '');
-    setBrandBodyFont(s.brandBodyFont   || '');
+    setBrandBodyFont(s.brandBodyFont     || '');
     onPreviewUpdate?.({
       brandPrimary:     s.brandPrimary     || '',
+      brandSecondary:   s.brandSecondary   || '',
       brandAccent:      s.brandAccent      || '',
       brandPromo:       s.brandPromo       || '',
       brandBg:          s.brandBg          || '',
@@ -125,10 +138,11 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   }
 
   const swatches = [
-    { label: 'Primary', color: brandPrimary  || '#5a3f2a' },
-    { label: 'Accent',  color: brandAccent   || '#d4af37' },
-    { label: 'Banner',  color: brandPromo    || '#b3a681' },
-    { label: 'BG',      color: brandBg       || '#f8f8f5' },
+    { label: 'Primary',   color: brandPrimary   || '#603000' },
+    { label: 'Secondary', color: brandSecondary || '#5a3f2a' },
+    { label: 'Accent',    color: brandAccent    || '#d4af37' },
+    { label: 'Banner',    color: brandPromo     || '#b3a681' },
+    { label: 'BG',        color: brandBg        || '#f8f8f5' },
   ];
 
   return (
@@ -160,14 +174,14 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 22 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
         {swatches.map(s => (
           <div key={s.label} style={{ flex: 1, textAlign: 'center' }}>
             <div style={{
-              height: 32, borderRadius: 6, background: s.color,
+              height: 28, borderRadius: 6, background: s.color,
               border: '1px solid rgba(0,0,0,0.08)', marginBottom: 4,
             }} />
-            <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>{s.label}</span>
+            <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 500 }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -180,10 +194,16 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
       </div>
 
       <AdminColorField
-        label="Primary Brand Color"
+        label="Primary Color"
         value={brandPrimary}
-        fallback="#5a3f2a"
+        fallback="#603000"
         onChange={v => handleColor(setBrandPrimary, 'brandPrimary', v)}
+      />
+      <AdminColorField
+        label="Secondary Color"
+        value={brandSecondary}
+        fallback="#5a3f2a"
+        onChange={v => handleColor(setBrandSecondary, 'brandSecondary', v)}
       />
       <AdminColorField
         label="Accent / Gold Highlight"

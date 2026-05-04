@@ -277,13 +277,14 @@ export function SiteProvider({ children }) {
 
     // Directly write concrete semantic vars so the brand colour wins even
     // when global.css or modern.css redefines the same :root keys.
-    apply('--color-primary',    settings.brandPrimary);
-    apply('--color-secondary',  settings.brandPrimary);
-    apply('--color-accent',     settings.brandAccent);
+    // --color-secondary uses brandSecondary when set, falls back to brandPrimary.
+    apply('--color-primary',     settings.brandPrimary);
+    apply('--color-secondary',   settings.brandSecondary || settings.brandPrimary);
+    apply('--color-accent',      settings.brandAccent);
     apply('--color-accent-gold', settings.brandAccent);
-    apply('--color-bg',         settings.brandBg);
-    apply('--font-heading',     settings.brandHeadingFont);
-    apply('--font-primary',     settings.brandBodyFont);
+    apply('--color-bg',          settings.brandBg);
+    apply('--font-heading',      settings.brandHeadingFont);
+    apply('--font-primary',      settings.brandBodyFont);
 
     apply('--promo-bg', settings.promoBannerBg);
     apply('--promo-text', settings.promoBannerText);
