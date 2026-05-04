@@ -1462,7 +1462,7 @@ body.mn-nav-transparent .modern-hero {
 .modern-theme .sort-dropdown-option:hover,
 .modern-theme .sort-dropdown-option.active {
   background: #f5f5f5;
-  color: #111;
+  color: var(--brand-primary, #111);
   padding-inline-start: 20px;
 }
 .modern-theme .filter-modal-content {
@@ -1491,17 +1491,18 @@ body.mn-nav-transparent .modern-hero {
   color: #444;
 }
 .modern-theme .filter-option-label:hover {
-  color: #111;
+  color: var(--brand-primary, #111);
 }
 .modern-theme .apply-filter-btn {
-  background: #111;
+  background: var(--brand-primary, #111);
   border-radius: 2px;
   font-family: 'Inter', sans-serif;
   font-weight: 600;
   letter-spacing: 0.5px;
 }
 .modern-theme .apply-filter-btn:hover {
-  background: #333;
+  background: var(--brand-primary, #111);
+  filter: brightness(1.15);
 }
 .modern-theme .clear-filter-btn {
   border-radius: 2px;

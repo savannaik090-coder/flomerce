@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SiteContext } from '../context/SiteContext.jsx';
 import { useWishlist } from '../hooks/useWishlist.js';
@@ -140,6 +140,15 @@ export default function CategoryPage() {
   const categoryName = categoryData?.name || formatSlugToTitle(slug);
   const categoryDescription = categoryData?.description || `Discover our exquisite ${categoryName} collection`;
 
+  const effectiveBannerImage = useMemo(() => {
+    const previewCats = siteConfig?.settings?._previewCategories;
+    if (Array.isArray(previewCats) && categoryData?.slug) {
+      const match = previewCats.find(c => c.slug === categoryData.slug);
+      if (match !== undefined) return match.image_url || null;
+    }
+    return categoryData?.image_url || null;
+  }, [siteConfig?.settings?._previewCategories, categoryData?.slug, categoryData?.image_url]);
+
   useSEO({
     title: categoryName,
     description: categoryDescription,
@@ -155,7 +164,7 @@ export default function CategoryPage() {
     <div className={`category-page${isModern ? ' modern-theme' : ''}`}>
       <section
         className="hero-section"
-        style={categoryData?.image_url ? { backgroundImage: `url(${resolveImageUrl(categoryData.image_url)})` } : {}}
+        style={effectiveBannerImage ? { backgroundImage: `url(${resolveImageUrl(effectiveBannerImage)})` } : {}}
       >
         <div className="hero-overlay" />
         <div className="hero-content">

@@ -25,7 +25,7 @@
     height: 45vh;
     min-height: 340px;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     overflow: hidden;
     background-color: #1a1a1a;
@@ -242,7 +242,7 @@
 }
 
 .category-page:not(.modern-theme) .filter-option:hover {
-    color: #c9949a;
+    color: var(--brand-cta, #c9949a);
 }
 
 .category-page:not(.modern-theme) .sort-option {
@@ -264,7 +264,7 @@
 
 .category-page:not(.modern-theme) .sort-option:hover {
     background-color: transparent;
-    color: #c9949a;
+    color: var(--brand-cta, #c9949a);
 }
 
 .category-page:not(.modern-theme) .sort-option .chevron {
@@ -314,11 +314,11 @@
 
 .category-page:not(.modern-theme) .sort-dropdown-option:hover {
     background: #fbf8f3;
-    color: #603000;
+    color: var(--brand-primary, #603000);
 }
 
 .category-page:not(.modern-theme) .sort-dropdown-option.active {
-    color: #603000;
+    color: var(--brand-primary, #603000);
     font-weight: 600;
 }
 
@@ -498,7 +498,7 @@
 }
 
 .close-filter-modal:hover {
-    color: #b5727a;
+    color: var(--brand-cta, #b5727a);
 }
 
 .filter-modal-body {
@@ -541,7 +541,7 @@
 }
 
 .filter-option-label:hover {
-    color: #b5727a;
+    color: var(--brand-cta, #b5727a);
 }
 
 .filter-modal-footer {
@@ -565,13 +565,14 @@
 }
 
 .apply-filter-btn {
-    background: #c9949a;
+    background: var(--brand-primary, #c9949a);
     color: white;
     flex: 1;
 }
 
 .apply-filter-btn:hover {
-    background: #b5727a;
+    background: var(--brand-primary, #c9949a);
+    filter: brightness(1.15);
 }
 
 .clear-filter-btn {
@@ -646,7 +647,7 @@ body:has(.category-page:not(.modern-theme)) .filter-option-label {
 }
 
 body:has(.category-page:not(.modern-theme)) .filter-option-label:hover {
-    color: #603000;
+    color: var(--brand-primary, #603000);
 }
 
 body:has(.category-page:not(.modern-theme)) .filter-modal-footer {
@@ -757,7 +758,7 @@ body:has(.category-page:not(.modern-theme)) .clear-filter-btn:hover {
 .category-page:not(.modern-theme) .empty-state .browse-btn {
     display: inline-block;
     padding: 14px 28px;
-    background: #603000;
+    background: var(--brand-primary, #603000);
     color: white;
     text-decoration: none;
     border-radius: 0;
@@ -770,7 +771,8 @@ body:has(.category-page:not(.modern-theme)) .clear-filter-btn:hover {
 }
 
 .category-page:not(.modern-theme) .empty-state .browse-btn:hover {
-    background: #7B410A;
+    background: var(--brand-primary, #603000);
+    filter: brightness(1.15);
 }
 
 /* ============================================================
