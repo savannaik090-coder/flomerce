@@ -155,7 +155,7 @@
 
 
 .about-story-text p {
-  font-family: var(--about-body-font, 'Poppins', sans-serif);
+  font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 15.5px;
   line-height: 1.85;
   color: var(--about-story-body-color, #555);
@@ -197,10 +197,10 @@
 }
 
 .about-content-section h2 {
-  font-family: var(--about-heading-font, 'Playfair Display', Georgia, serif);
+  font-family: var(--about-heading-font, var(--font-heading, 'Playfair Display', Georgia, serif));
   font-size: 40px;
   font-weight: 700;
-  color: var(--about-section-heading-color, #1a1a2e);
+  color: var(--about-section-heading-color, var(--color-primary, #1a1a2e));
   margin: 0 0 16px;
   line-height: 1.2;
 }
@@ -214,7 +214,7 @@
 }
 
 .about-content-section-text p {
-  font-family: var(--about-body-font, 'Poppins', sans-serif);
+  font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 17px;
   line-height: 1.9;
   color: var(--about-section-body-color, #555);
