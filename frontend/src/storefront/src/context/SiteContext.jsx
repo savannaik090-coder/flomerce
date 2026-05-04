@@ -365,6 +365,7 @@ export function SiteProvider({ children }) {
     apply('--cat-product-price-font',  settings.catProductPriceFont);
     apply('--cat-arrow-bg',            settings.catArrowBg);
     apply('--cat-arrow-color',         settings.catArrowColor);
+    apply('--cat-arrow-border-color',  settings.catArrowColor);
     apply('--cat-arrow-hover-bg',      settings.catArrowHoverBg);
     // Modern-template product card styles (scoped via .mn-category-section
     // in modern.css so they only apply inside the Categories grid, not on

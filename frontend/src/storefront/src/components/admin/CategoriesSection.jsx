@@ -1699,84 +1699,81 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
                       <button key={val} type="button" onClick={() => setCatViewAllStyle(val)} style={{ flex: 1, padding: '8px 4px', border: `2px solid ${catViewAllStyle === val ? '#3b82f6' : '#e2e8f0'}`, borderRadius: 8, background: catViewAllStyle === val ? '#eff6ff' : '#fff', color: catViewAllStyle === val ? '#2563eb' : '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{label}</button>
                     ))}
                   </div>
-                  {catViewAllStyle && catViewAllStyle !== '' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <AdminColorField label="Button Color" value={catViewAllBg} fallback="#5a3f2a" onChange={setCatViewAllBg} />
-                      <AdminColorField label="Button Text Color" value={catViewAllText} fallback="#ffffff" onChange={setCatViewAllText} />
-                    </div>
-                  )}
+                  <AdminColorField label="Button Color" value={catViewAllBg} fallback="#5a3f2a" onChange={setCatViewAllBg} />
+                  <AdminColorField label="Button Text Color" value={catViewAllText} fallback="#ffffff" onChange={setCatViewAllText} />
                 </div>
               </div>
 
-              {/* Banner Overlay */}
-              <div>
-                <SectionHeading>Banner Overlay</SectionHeading>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <AdminColorField label="Overlay Color" value={catBannerOverlayColor} fallback="#000000" onChange={setCatBannerOverlayColor} />
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 8 }}>Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
-                    <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Classic-template controls */}
+              {/* Banner — Classic: overlay + title/divider + CTA button */}
               {isClassic && (
-                <>
-                  <div>
-                    <SectionHeading>Banner Title & CTA (Classic)</SectionHeading>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <AdminColorField label="Banner Title Color" value={catBannerTitleColor} fallback="#ffffff" onChange={setCatBannerTitleColor} />
-                      <AdminColorField label="Banner Divider Color" value={catBannerDividerColor} fallback="#ffffff" onChange={setCatBannerDividerColor} />
-                      <AdminColorField label='Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
-                      <AdminColorField label='Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
-                      <AdminFontPicker label="Banner Title Font" value={catBannerTitleFont} onChange={v => setCatBannerTitleFont(v)} />
-                      <AdminFontPicker label='Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
+                <div>
+                  <SectionHeading>Banner</SectionHeading>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <AdminColorField label="Overlay Color" value={catBannerOverlayColor} fallback="#000000" onChange={setCatBannerOverlayColor} />
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 8 }}>Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
+                      <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
                     </div>
+                    <AdminColorField label="Title Color" value={catBannerTitleColor} fallback="#ffffff" onChange={setCatBannerTitleColor} />
+                    <AdminColorField label="Divider Color" value={catBannerDividerColor} fallback="#ffffff" onChange={setCatBannerDividerColor} />
+                    <AdminColorField label='CTA Button Background' value={catBannerBtnBg} fallback="transparent" onChange={setCatBannerBtnBg} />
+                    <AdminColorField label='CTA Button Text Color' value={catBannerBtnText} fallback="#ffffff" onChange={setCatBannerBtnText} />
+                    <AdminFontPicker label="Title Font" value={catBannerTitleFont} onChange={v => setCatBannerTitleFont(v)} />
+                    <AdminFontPicker label='CTA Button Font' value={catBannerBtnFont} onChange={v => setCatBannerBtnFont(v)} />
                   </div>
-
-                  <div>
-                    <SectionHeading>Product Cards (Classic)</SectionHeading>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <AdminColorField label="Product Name Color" value={catProductNameColor} fallback="#333333" onChange={setCatProductNameColor} />
-                      <AdminColorField label="Product Price Color" value={catProductPriceColor} fallback="#333333" onChange={setCatProductPriceColor} />
-                      <AdminFontPicker label="Product Name Font" value={catProductNameFont} onChange={v => setCatProductNameFont(v)} />
-                      <AdminFontPicker label="Product Price Font" value={catProductPriceFont} onChange={v => setCatProductPriceFont(v)} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <SectionHeading>Carousel Arrows (Classic)</SectionHeading>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <AdminColorField label="Arrow Background" value={catArrowBg} fallback="rgba(255,255,255,0.95)" onChange={setCatArrowBg} />
-                      <AdminColorField label="Arrow Icon Color" value={catArrowColor} fallback="#333333" onChange={setCatArrowColor} />
-                      <AdminColorField label="Arrow Hover Background" value={catArrowHoverBg} fallback="#d4af37" onChange={setCatArrowHoverBg} />
-                    </div>
-                  </div>
-                </>
+                </div>
               )}
 
-              {/* Modern-template controls */}
+              {/* Banner — Modern: overlay + hover text */}
               {isModern && (
-                <>
-                  <div>
-                    <SectionHeading>Banner Hover Text (Modern)</SectionHeading>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <AdminColorField label='Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
-                      <AdminFontPicker label='Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
+                <div>
+                  <SectionHeading>Banner</SectionHeading>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <AdminColorField label="Overlay Color" value={catBannerOverlayColor} fallback="#000000" onChange={setCatBannerOverlayColor} />
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 8 }}>Overlay Opacity — {Math.round((parseFloat(catBannerOverlayOpacity || 0.4)) * 100)}%</label>
+                      <input type="range" min="0" max="0.9" step="0.05" value={catBannerOverlayOpacity || 0.4} onChange={e => setCatBannerOverlayOpacity(e.target.value)} style={{ width: '100%', accentColor: '#3b82f6' }} />
                     </div>
+                    <AdminColorField label='Hover Text Color' value={catBannerTextColorModern} fallback="#ffffff" onChange={setCatBannerTextColorModern} />
+                    <AdminFontPicker label='Hover Text Font' value={catBannerTextFontModern} onChange={v => setCatBannerTextFontModern(v)} />
                   </div>
+                </div>
+              )}
 
-                  <div>
-                    <SectionHeading>Product Cards (Modern)</SectionHeading>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                      <AdminColorField label="Product Name Color" value={catProductNameColorModern} fallback="#111111" onChange={setCatProductNameColorModern} />
-                      <AdminColorField label="Product Price Color" value={catProductPriceColorModern} fallback="#111111" onChange={setCatProductPriceColorModern} />
-                      <AdminFontPicker label="Product Name Font" value={catProductNameFontModern} onChange={v => setCatProductNameFontModern(v)} />
-                      <AdminFontPicker label="Product Price Font" value={catProductPriceFontModern} onChange={v => setCatProductPriceFontModern(v)} />
-                    </div>
+              {/* Product Cards */}
+              {isClassic && (
+                <div>
+                  <SectionHeading>Product Cards</SectionHeading>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <AdminColorField label="Product Name Color" value={catProductNameColor} fallback="#333333" onChange={setCatProductNameColor} />
+                    <AdminColorField label="Product Price Color" value={catProductPriceColor} fallback="#333333" onChange={setCatProductPriceColor} />
+                    <AdminFontPicker label="Product Name Font" value={catProductNameFont} onChange={v => setCatProductNameFont(v)} />
+                    <AdminFontPicker label="Product Price Font" value={catProductPriceFont} onChange={v => setCatProductPriceFont(v)} />
                   </div>
-                </>
+                </div>
+              )}
+              {isModern && (
+                <div>
+                  <SectionHeading>Product Cards</SectionHeading>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <AdminColorField label="Product Name Color" value={catProductNameColorModern} fallback="#111111" onChange={setCatProductNameColorModern} />
+                    <AdminColorField label="Product Price Color" value={catProductPriceColorModern} fallback="#111111" onChange={setCatProductPriceColorModern} />
+                    <AdminFontPicker label="Product Name Font" value={catProductNameFontModern} onChange={v => setCatProductNameFontModern(v)} />
+                    <AdminFontPicker label="Product Price Font" value={catProductPriceFontModern} onChange={v => setCatProductPriceFontModern(v)} />
+                  </div>
+                </div>
+              )}
+
+              {/* Carousel Arrows — Classic only */}
+              {isClassic && (
+                <div>
+                  <SectionHeading>Carousel Arrows</SectionHeading>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <AdminColorField label="Arrow Background" value={catArrowBg} fallback="rgba(255,255,255,0.95)" onChange={setCatArrowBg} />
+                    <AdminColorField label="Arrow Icon & Border Color" value={catArrowColor} fallback="#333333" onChange={setCatArrowColor} />
+                    <AdminColorField label="Arrow Hover Background" value={catArrowHoverBg} fallback="#d4af37" onChange={setCatArrowHoverBg} />
+                  </div>
+                </div>
               )}
             </div>
           </SectionCard>
@@ -1835,14 +1832,12 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 
           <SectionCard
             title="Category Page Styling"
-            subtitle="Style the /category/:slug page hero, chip row, filter strip, and product count — independently for Classic and Modern templates"
+            subtitle="Style the /category/:slug page hero, chip row, filter strip, and product count"
             icon="fa-paint-brush"
             defaultOpen={false}
           >
             <CategoryPageStyleControls
               activeTemplateIsModern={isModern}
-              tab={catPageStyleTab}
-              setTab={setCatPageStyleTab}
               classicStyle={categoryPageClassicStyle}
               modernStyle={categoryPageModernStyle}
               updateClassicField={updateCatPageClassicField}
@@ -1885,12 +1880,11 @@ export default function CategoriesSection({ onSaved, onPreviewUpdate }) {
 // fallbacks reproduce today's hardcoded look for every unset key.
 function CategoryPageStyleControls({
   activeTemplateIsModern,
-  tab, setTab,
   classicStyle, modernStyle,
   updateClassicField, updateModernField,
   resetClassicGroup, resetModernGroup,
 }) {
-  const effectiveTab = tab || (activeTemplateIsModern ? 'modern' : 'classic');
+  const effectiveTab = activeTemplateIsModern ? 'modern' : 'classic';
   const isModern = effectiveTab === 'modern';
   const style = isModern ? modernStyle : classicStyle;
   const defaults = isModern ? CATEGORY_PAGE_MODERN_STYLE_DEFAULTS : CATEGORY_PAGE_CLASSIC_STYLE_DEFAULTS;
@@ -1995,15 +1989,6 @@ function CategoryPageStyleControls({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>
-        Each template keeps its own saved styling. Editing one side never disturbs the other.
-        Unset fields fall back to the storefront's hardcoded defaults so existing sites look identical.
-      </p>
-      <div style={{ display: 'flex', gap: 8 }}>
-        {tabBtn('classic', 'Classic')}
-        {tabBtn('modern', 'Modern')}
-      </div>
-
       {groups.map(group => (
         <div key={group.title} style={{ marginTop: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

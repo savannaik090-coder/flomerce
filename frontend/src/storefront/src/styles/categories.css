@@ -148,7 +148,7 @@
     height: 55px;
     border-radius: 50%;
     background: var(--cat-arrow-bg, rgba(255,255,255,0.95));
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--cat-arrow-border-color, #e0e0e0);
     cursor: pointer;
     display: flex;
     align-items: center;
