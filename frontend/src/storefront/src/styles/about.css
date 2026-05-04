@@ -54,7 +54,7 @@
 .about-hero p {
   font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 17px;
-  color: var(--about-hero-subtitle-color, #777);
+  color: var(--about-hero-subtitle-color, var(--section-subtitle-color, #777));
   line-height: 1.7;
   margin: 0;
   font-weight: 300;

@@ -57,8 +57,8 @@ const S = {
     padding: '12px 20px', ...SERIF, fontSize: 14, fontWeight: 500, cursor: 'pointer',
   },
   goldOutlineBtn: {
-    background: 'transparent', color: T.stepFocus, border: `1px solid ${T.stepActive}`,
-    color: T.stepActive, padding: '10px 20px', ...BODY, fontSize: 14, cursor: 'pointer',
+    background: 'transparent', color: T.stepActive, border: `1px solid ${T.stepActive}`,
+    padding: '10px 20px', ...BODY, fontSize: 14, cursor: 'pointer',
     transition: 'all 0.2s',
   },
 };
