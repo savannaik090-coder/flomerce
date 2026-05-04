@@ -105,6 +105,10 @@
     width: 100%;
 }
 
+.stl-products-wrapper .add-set-to-bag-btn {
+    margin-top: 16px;
+}
+
 .stl-product-list {
     display: flex;
     flex-direction: column;
