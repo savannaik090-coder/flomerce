@@ -192,10 +192,8 @@
 }
 
 .home-category-view-all:hover {
-    background: linear-gradient(135deg, #b8941f, #d4af37);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(212,175,55,0.4);
-    color: white;
+    background: var(--cat-view-all-bg, var(--color-secondary, #5a3f2a));
+    color: var(--cat-view-all-text, white);
 }
 
 @media (max-width: 1024px) {

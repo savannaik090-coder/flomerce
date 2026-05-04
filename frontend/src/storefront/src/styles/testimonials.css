@@ -110,7 +110,7 @@
 
 .wb-video-item.in-focus {
     transform: scale(1.05) translateY(-8px);
-    box-shadow: 0 15px 35px rgba(212, 175, 55, 0.3);
+    box-shadow: 0 15px 35px color-mix(in srgb, var(--color-accent-gold, #d4af37) 30%, transparent);
     border: 2px solid var(--wb-card-border, var(--color-accent-gold, #d4af37));
 }
 
@@ -127,7 +127,7 @@
 
 .wb-video-wrapper:hover {
     transform: scale(1.05);
-    box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+    box-shadow: 0 8px 25px color-mix(in srgb, var(--color-accent-gold, #d4af37) 30%, transparent);
 }
 
 .wb-video {

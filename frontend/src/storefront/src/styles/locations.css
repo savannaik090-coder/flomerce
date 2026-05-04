@@ -29,7 +29,7 @@
     position: absolute;
     width: 80px;
     height: 2px;
-    background-color: var(--sl-classic-accent-color, #B08C4C);
+    background-color: var(--sl-classic-accent-color, var(--color-accent, #B08C4C));
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
@@ -195,7 +195,7 @@
     text-align: center;
 }
 
-.book-appointment-btn:hover { background-color: #000; }
+.book-appointment-btn:hover { background-color: var(--sl-classic-bookbtn-bg, var(--brand-cta, #b3a68e)); }
 
 .call-btn {
     width: 50px;
