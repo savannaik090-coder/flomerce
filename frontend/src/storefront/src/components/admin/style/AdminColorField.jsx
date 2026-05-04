@@ -25,9 +25,11 @@ export default function AdminColorField({ label, value, fallback, onChange }) {
         </label>
         <input
           type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={`default · ${fallback}`}
+          value={value || fallback}
+          onChange={e => {
+            const v = e.target.value;
+            onChange(v === fallback ? '' : v);
+          }}
           style={textInputStyle}
         />
         {value && (

@@ -70,19 +70,19 @@
     height: 44px;
     border-radius: 50%;
     background: var(--sl-classic-arrow-bg, rgba(255, 255, 255, 0.95));
-    border: 1px solid #e2e8f0;
+    border: 2px solid var(--sl-classic-arrow-border, var(--color-accent-gold, #d4af37));
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: var(--sl-classic-arrow-icon, #333);
+    color: var(--sl-classic-arrow-icon, var(--color-accent-gold, #d4af37));
     font-size: 16px;
     transition: all 0.2s ease;
 }
 
 .stores-scroll-arrow:hover {
-    background: #333;
+    background: var(--color-accent-gold, #d4af37);
     color: #fff;
     border-color: #333;
 }

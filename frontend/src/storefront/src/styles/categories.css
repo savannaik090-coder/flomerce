@@ -148,13 +148,13 @@
     height: 55px;
     border-radius: 50%;
     background: var(--cat-arrow-bg, rgba(255,255,255,0.95));
-    border: 1px solid var(--cat-arrow-border-color, #e0e0e0);
+    border: 2px solid var(--cat-arrow-border-color, var(--color-accent-gold, #d4af37));
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: var(--cat-arrow-color, #333);
+    color: var(--cat-arrow-color, var(--color-accent-gold, #d4af37));
     z-index: 10;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
