@@ -277,10 +277,13 @@ export function SiteProvider({ children }) {
 
     force('--brand-primary', settings.brandPrimary, '#5a3f2a');
     force('--brand-cta',     settings.brandSecondary, '#b3a68e');
-    // Cache brand-cta so the pre-React loading screen can use it on next visit
+    // Cache brand-cta + brand name so the pre-React loading screen can use them on next visit
     try {
       const ctaColor = (settings.brandSecondary && settings.brandSecondary.trim()) ? settings.brandSecondary : '#b3a68e';
       localStorage.setItem('flomerce_brand_cta', ctaColor);
+    } catch (_) {}
+    try {
+      if (effectiveSiteConfig?.brandName) localStorage.setItem('flomerce_brand_name', effectiveSiteConfig.brandName);
     } catch (_) {}
     apply('--brand-accent',       settings.brandAccent);
     apply('--brand-bg',           settings.brandBg);

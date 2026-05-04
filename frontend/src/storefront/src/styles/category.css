@@ -67,7 +67,7 @@
 }
 
 .category-page:not(.modern-theme) .hero-section .hero-subtitle {
-    font-family: var(--cat-page-hero-subtitle-font, 'Lora', 'Playfair Display', Georgia, serif);
+    font-family: var(--cat-page-hero-subtitle-font, var(--font-primary, 'Lora', Georgia, serif));
     font-style: var(--cat-page-hero-subtitle-style, italic);
     font-size: var(--cat-page-hero-subtitle-size, 18px);
     /* Decoupled from the title color so leaving the subtitle color blank
