@@ -298,6 +298,10 @@ export function SiteProvider({ children }) {
     apply('--color-accent-gold', settings.brandAccent);
     apply('--font-heading',      settings.brandHeadingFont);
     apply('--font-primary',      settings.brandBodyFont);
+    // Global cascade vars — section editors can still override per-section
+    apply('--section-title-color',    settings.sectionTitleColor);
+    apply('--section-subtitle-color', settings.sectionSubtitleColor);
+    apply('--brand-nav-font',         settings.brandNavFont);
 
     apply('--promo-bg', settings.promoBannerBg);
     apply('--promo-text', settings.promoBannerText);

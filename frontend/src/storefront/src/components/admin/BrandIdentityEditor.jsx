@@ -9,12 +9,15 @@ import { useDirtyTracker } from '../../hooks/useDirtyTracker.js';
 export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   const { siteConfig } = useContext(SiteContext);
 
-  const [brandPrimary,     setBrandPrimary]     = useState('');
-  const [brandSecondary,   setBrandSecondary]   = useState('');
-  const [brandAccent,      setBrandAccent]       = useState('');
-  const [brandBg,          setBrandBg]           = useState('');
-  const [brandHeadingFont, setBrandHeadingFont]  = useState('');
-  const [brandBodyFont,    setBrandBodyFont]     = useState('');
+  const [brandPrimary,         setBrandPrimary]         = useState('');
+  const [brandSecondary,       setBrandSecondary]       = useState('');
+  const [brandAccent,          setBrandAccent]          = useState('');
+  const [brandBg,              setBrandBg]              = useState('');
+  const [sectionTitleColor,    setSectionTitleColor]    = useState('');
+  const [sectionSubtitleColor, setSectionSubtitleColor] = useState('');
+  const [brandHeadingFont,     setBrandHeadingFont]     = useState('');
+  const [brandBodyFont,        setBrandBodyFont]        = useState('');
+  const [brandNavFont,         setBrandNavFont]         = useState('');
 
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
@@ -23,7 +26,8 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
 
   const dirty = useDirtyTracker({
     brandPrimary, brandSecondary, brandAccent, brandBg,
-    brandHeadingFont, brandBodyFont,
+    sectionTitleColor, sectionSubtitleColor,
+    brandHeadingFont, brandBodyFont, brandNavFont,
   });
 
   useEffect(() => {
@@ -35,19 +39,25 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         let s = json.data?.settings || {};
         if (typeof s === 'string') { try { s = JSON.parse(s); } catch { s = {}; } }
         const snap = {
-          brandPrimary:     s.brandPrimary     || '',
-          brandSecondary:   s.brandSecondary   || '',
-          brandAccent:      s.brandAccent      || '',
-          brandBg:          s.brandBg          || '',
-          brandHeadingFont: s.brandHeadingFont || '',
-          brandBodyFont:    s.brandBodyFont    || '',
+          brandPrimary:         s.brandPrimary         || '',
+          brandSecondary:       s.brandSecondary       || '',
+          brandAccent:          s.brandAccent          || '',
+          brandBg:              s.brandBg              || '',
+          sectionTitleColor:    s.sectionTitleColor    || '',
+          sectionSubtitleColor: s.sectionSubtitleColor || '',
+          brandHeadingFont:     s.brandHeadingFont     || '',
+          brandBodyFont:        s.brandBodyFont        || '',
+          brandNavFont:         s.brandNavFont         || '',
         };
         setBrandPrimary(snap.brandPrimary);
         setBrandSecondary(snap.brandSecondary);
         setBrandAccent(snap.brandAccent);
         setBrandBg(snap.brandBg);
+        setSectionTitleColor(snap.sectionTitleColor);
+        setSectionSubtitleColor(snap.sectionSubtitleColor);
         setBrandHeadingFont(snap.brandHeadingFont);
         setBrandBodyFont(snap.brandBodyFont);
+        setBrandNavFont(snap.brandNavFont);
         savedRef.current = snap;
         requestAnimationFrame(() => dirty.baseline(snap));
       } catch (e) {
@@ -62,20 +72,14 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   function preview(patch) {
     onPreviewUpdate?.({
       brandPrimary, brandSecondary, brandAccent, brandBg,
-      brandHeadingFont, brandBodyFont,
+      sectionTitleColor, sectionSubtitleColor,
+      brandHeadingFont, brandBodyFont, brandNavFont,
       ...patch,
     });
   }
 
-  function handleColor(setter, key, val) {
-    setter(val);
-    preview({ [key]: val });
-  }
-
-  function handleFont(setter, key, val) {
-    setter(val);
-    preview({ [key]: val });
-  }
+  function handleColor(setter, key, val) { setter(val); preview({ [key]: val }); }
+  function handleFont(setter, key, val)  { setter(val); preview({ [key]: val }); }
 
   async function handleSave() {
     setSaving(true);
@@ -90,14 +94,16 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         body: JSON.stringify({
           settings: {
             brandPrimary, brandSecondary, brandAccent, brandBg,
-            brandHeadingFont, brandBodyFont,
+            sectionTitleColor, sectionSubtitleColor,
+            brandHeadingFont, brandBodyFont, brandNavFont,
           },
         }),
       });
       if (!res.ok) throw new Error('save failed');
       const snap = {
         brandPrimary, brandSecondary, brandAccent, brandBg,
-        brandHeadingFont, brandBodyFont,
+        sectionTitleColor, sectionSubtitleColor,
+        brandHeadingFont, brandBodyFont, brandNavFont,
       };
       savedRef.current = snap;
       dirty.markSaved();
@@ -111,19 +117,25 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
 
   function handleDiscard() {
     const s = savedRef.current;
-    setBrandPrimary(s.brandPrimary       || '');
-    setBrandSecondary(s.brandSecondary   || '');
-    setBrandAccent(s.brandAccent         || '');
-    setBrandBg(s.brandBg                 || '');
-    setBrandHeadingFont(s.brandHeadingFont || '');
-    setBrandBodyFont(s.brandBodyFont     || '');
+    setBrandPrimary(s.brandPrimary               || '');
+    setBrandSecondary(s.brandSecondary           || '');
+    setBrandAccent(s.brandAccent                 || '');
+    setBrandBg(s.brandBg                         || '');
+    setSectionTitleColor(s.sectionTitleColor     || '');
+    setSectionSubtitleColor(s.sectionSubtitleColor || '');
+    setBrandHeadingFont(s.brandHeadingFont       || '');
+    setBrandBodyFont(s.brandBodyFont             || '');
+    setBrandNavFont(s.brandNavFont               || '');
     onPreviewUpdate?.({
-      brandPrimary:     s.brandPrimary     || '',
-      brandSecondary:   s.brandSecondary   || '',
-      brandAccent:      s.brandAccent      || '',
-      brandBg:          s.brandBg          || '',
-      brandHeadingFont: s.brandHeadingFont || '',
-      brandBodyFont:    s.brandBodyFont    || '',
+      brandPrimary:         s.brandPrimary         || '',
+      brandSecondary:       s.brandSecondary       || '',
+      brandAccent:          s.brandAccent          || '',
+      brandBg:              s.brandBg              || '',
+      sectionTitleColor:    s.sectionTitleColor    || '',
+      sectionSubtitleColor: s.sectionSubtitleColor || '',
+      brandHeadingFont:     s.brandHeadingFont     || '',
+      brandBodyFont:        s.brandBodyFont        || '',
+      brandNavFont:         s.brandNavFont         || '',
     });
     requestAnimationFrame(() => dirty.baseline(s));
   }
@@ -137,11 +149,20 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
   }
 
   const swatches = [
-    { label: 'Primary',   color: brandPrimary   || '#5a3f2a' },
-    { label: 'Secondary', color: brandSecondary || '#b3a68e' },
-    { label: 'Accent',    color: brandAccent    || '#d4af37' },
-    { label: 'BG',        color: brandBg        || '#f8f8f5' },
+    { label: 'Primary',   color: brandPrimary         || '#5a3f2a' },
+    { label: 'Secondary', color: brandSecondary       || '#b3a68e' },
+    { label: 'Accent',    color: brandAccent          || '#d4af37' },
+    { label: 'BG',        color: brandBg              || '#f8f8f5' },
+    { label: 'Title',     color: sectionTitleColor    || brandPrimary || '#5a3f2a' },
+    { label: 'Subtitle',  color: sectionSubtitleColor || '#666666' },
   ];
+
+  const sectionHead = (label) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, marginTop: 22 }}>
+      <div style={{ width: 3, height: 18, background: '#b08c4c', borderRadius: 2, flexShrink: 0 }} />
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>{label}</p>
+    </div>
+  );
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -172,9 +193,9 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 22 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 22 }}>
         {swatches.map(s => (
-          <div key={s.label} style={{ flex: 1, textAlign: 'center' }}>
+          <div key={s.label} style={{ flex: '1 1 28%', textAlign: 'center' }}>
             <div style={{
               height: 28, borderRadius: 6, background: s.color,
               border: '1px solid rgba(0,0,0,0.08)', marginBottom: 4,
@@ -184,12 +205,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div style={{ width: 3, height: 18, background: '#b08c4c', borderRadius: 2, flexShrink: 0 }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>
-          Colors
-        </p>
-      </div>
+      {sectionHead('Colors')}
 
       <AdminColorField
         label="Primary Color"
@@ -215,13 +231,20 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         fallback="#f8f8f5"
         onChange={v => handleColor(setBrandBg, 'brandBg', v)}
       />
+      <AdminColorField
+        label="Section Title Color"
+        value={sectionTitleColor}
+        fallback={brandPrimary || '#5a3f2a'}
+        onChange={v => handleColor(setSectionTitleColor, 'sectionTitleColor', v)}
+      />
+      <AdminColorField
+        label="Subtitle / Muted Text Color"
+        value={sectionSubtitleColor}
+        fallback="#666666"
+        onChange={v => handleColor(setSectionSubtitleColor, 'sectionSubtitleColor', v)}
+      />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, marginTop: 22 }}>
-        <div style={{ width: 3, height: 18, background: '#b08c4c', borderRadius: 2, flexShrink: 0 }} />
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: 0.2 }}>
-          Typography
-        </p>
-      </div>
+      {sectionHead('Typography')}
 
       <AdminFontPicker
         label="Heading Font"
@@ -233,9 +256,14 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
         value={brandBodyFont}
         onChange={v => handleFont(setBrandBodyFont, 'brandBodyFont', v)}
       />
+      <AdminFontPicker
+        label="Nav / Link Font"
+        value={brandNavFont}
+        onChange={v => handleFont(setBrandNavFont, 'brandNavFont', v)}
+      />
 
       <p style={{ fontSize: 11, color: '#94a3b8', margin: '12px 0 0', lineHeight: 1.5 }}>
-        Per-section color and font overrides always take priority over these global defaults.
+        Per-section overrides always take priority over these global defaults.
       </p>
 
       <SaveBar
