@@ -24,7 +24,7 @@
     --color-whatsapp: #25D366;
     --font-primary: var(--brand-body-font, 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Arial Unicode MS', 'Noto Sans', sans-serif);
     --font-heading: var(--brand-heading-font, 'Playfair Display', serif);
-    --font-product: 'Futura PT', 'Futura', 'Century Gothic', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif;
+    --font-product: var(--font-primary, 'Futura PT', 'Futura', 'Century Gothic', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif);
     --font-body: 'Lora', serif;
     --spacing-xs: 5px;
     --spacing-sm: 10px;
