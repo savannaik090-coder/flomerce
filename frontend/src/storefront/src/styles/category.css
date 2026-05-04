@@ -404,10 +404,10 @@
 }
 
 .category-page:not(.modern-theme) .product-name {
-    font-family: var(--font-product);
+    font-family: var(--font-product, var(--font-primary, inherit));
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     margin-bottom: 6px;
     text-transform: none;
     letter-spacing: 0.5px;
@@ -419,7 +419,7 @@
     font-family: var(--font-primary);
     font-size: 15px;
     font-weight: 600;
-    color: #333;
+    color: var(--brand-primary, #5a3f2a);
     margin: 0;
     letter-spacing: 0.3px;
 }

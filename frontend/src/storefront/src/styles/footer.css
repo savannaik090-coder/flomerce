@@ -3,7 +3,7 @@
     color: var(--color-text-light);
     margin-top: var(--spacing-xxxl);
     margin-bottom: 80px;
-    font-family: Georgia, 'Times New Roman', serif !important;
+    font-family: var(--font-primary, Georgia, 'Times New Roman', serif) !important;
     padding: var(--spacing-xxl) var(--spacing-lg) var(--spacing-xl);
     border-top: 1px solid var(--color-border-light);
 }
@@ -22,7 +22,7 @@
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    font-family: var(--footer-classic-section-title-font, Georgia, 'Times New Roman', serif) !important;
+    font-family: var(--footer-classic-section-title-font, var(--font-heading, Georgia, 'Times New Roman', serif)) !important;
     transition: background-color var(--transition-slow);
 }
 
@@ -78,7 +78,7 @@
     color: var(--footer-classic-link-color, var(--color-text-light));
     text-decoration: none;
     font-size: 14px;
-    font-family: var(--footer-classic-link-font, var(--font-primary));
+    font-family: var(--footer-classic-link-font, var(--brand-nav-font, inherit));
     transition: color var(--transition-base);
     display: block;
     padding: var(--spacing-xs) 0;
@@ -95,7 +95,7 @@
 }
 
 .social-section-title {
-    font-family: Georgia, 'Times New Roman', serif !important;
+    font-family: var(--font-heading, Georgia, 'Times New Roman', serif) !important;
     font-size: 16px;
     font-weight: 500;
     color: var(--footer-classic-follow-title-color, var(--color-text-light));
@@ -269,7 +269,7 @@
     color: var(--footer-classic-bottom-links-color, var(--color-text-light));
     text-decoration: none;
     font-size: 14px;
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: var(--brand-nav-font, inherit);
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
     transition: all var(--transition-base);

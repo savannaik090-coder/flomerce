@@ -18,17 +18,17 @@
 }
 
 .reviews-header .section-title {
-    font-family: var(--cr-classic-title-font, 'Playfair Display', serif);
+    font-family: var(--cr-classic-title-font, var(--font-heading, 'Playfair Display', serif));
     font-size: 2.5rem;
-    color: var(--cr-classic-title-color, #333);
+    color: var(--cr-classic-title-color, var(--section-title-color, var(--brand-primary, #5a3f2a)));
     margin-bottom: 15px;
     font-weight: 400;
 }
 
 .reviews-header .section-subtitle {
-    font-family: var(--cr-classic-subtitle-font, inherit);
+    font-family: var(--cr-classic-subtitle-font, var(--font-primary, inherit));
     font-size: 1.1rem;
-    color: var(--cr-classic-subtitle-color, #666);
+    color: var(--cr-classic-subtitle-color, var(--section-subtitle-color, #666));
     font-weight: 300;
 }
 
