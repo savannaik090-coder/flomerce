@@ -45,7 +45,7 @@
 }
 
 .category-page:not(.modern-theme) .hero-section .hero-content {
-    text-align: start;
+    text-align: center;
     color: var(--cat-page-hero-title-color, white);
     z-index: 2;
     width: 100%;
@@ -185,8 +185,8 @@
        Safe to raise now that the filter modal is portalled to <body>
        and no longer lives inside this stacking context. */
     z-index: 50;
-    background: var(--cat-page-filter-strip-bg, #fbf8f3);
-    border-bottom: 1px solid var(--cat-page-filter-strip-border, #ebe2d3);
+    background: var(--cat-page-filter-strip-bg, var(--brand-primary, #603000));
+    border-bottom: 1px solid var(--cat-page-filter-strip-border, var(--brand-primary, #603000));
 }
 
 /* When chip row is present, push the filter strip below it */
@@ -204,7 +204,7 @@
 /* Restyle FilterSortBar's existing header (no JSX changes) */
 .category-page:not(.modern-theme) .shop-filter-header {
     background-color: transparent;
-    color: var(--cat-page-filter-strip-text, #603000);
+    color: var(--cat-page-filter-strip-text, #ffffff);
     font-family: var(--cat-page-filter-strip-font, var(--font-primary));
     padding: 14px 0;
     margin: 0;
@@ -231,7 +231,7 @@
 }
 
 .category-page:not(.modern-theme) .filter-option {
-    color: var(--cat-page-filter-strip-text, #603000);
+    color: var(--cat-page-filter-strip-text, #ffffff);
     font-family: var(--cat-page-filter-strip-font, var(--font-primary));
     font-size: 12px;
     letter-spacing: 0.25em;
@@ -246,7 +246,7 @@
 }
 
 .category-page:not(.modern-theme) .sort-option {
-    color: var(--cat-page-filter-strip-text, #603000);
+    color: var(--cat-page-filter-strip-text, #ffffff);
     font-family: var(--cat-page-filter-strip-font, var(--font-primary));
     font-size: 12px;
     letter-spacing: 0.25em;
@@ -664,12 +664,13 @@ body:has(.category-page:not(.modern-theme)) .clear-filter-btn {
 }
 
 body:has(.category-page:not(.modern-theme)) .apply-filter-btn {
-    background: #603000;
+    background: var(--brand-primary, #603000);
     box-shadow: none;
 }
 
 body:has(.category-page:not(.modern-theme)) .apply-filter-btn:hover {
-    background: #7B410A;
+    background: var(--brand-primary, #603000);
+    filter: brightness(1.15);
     transform: none;
     box-shadow: none;
 }
