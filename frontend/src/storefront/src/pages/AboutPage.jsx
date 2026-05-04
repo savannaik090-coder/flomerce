@@ -13,26 +13,31 @@ import {
   ABOUT_MODERN_STYLE_DEFAULTS,
 } from '../defaults/index.js';
 
-// Map a resolved style object to inline CSS variables on the page wrapper.
-// about.css consumes these vars (with the same defaults as fallback) so the
-// page renders identically when nothing is set.
+// Map a style object to inline CSS variables on the page wrapper.
+// Only keys with a non-empty value are emitted — unset keys let the
+// about.css fallback chains (which reference brand identity vars) take over.
 function buildStyleVars(style, isModern) {
-  const vars = {
-    '--about-page-bg': style.pageBg,
-    '--about-hero-bg': style.heroBg,
-    '--about-hero-title-color': style.heroTitleColor,
-    '--about-hero-subtitle-color': style.heroSubtitleColor,
-    '--about-story-bg': style.storyBg,
-    '--about-story-heading-color': style.storyHeadingColor,
-    '--about-story-body-color': style.storyBodyColor,
-    '--about-section-heading-color': style.sectionHeadingColor,
-    '--about-section-body-color': style.sectionBodyColor,
-    '--about-heading-font': style.headingFont,
-    '--about-body-font': style.bodyFont,
-  };
+  const s = style && typeof style === 'object' ? style : {};
+  const vars = {};
+  const pairs = [
+    ['--about-page-bg', s.pageBg],
+    ['--about-hero-bg', s.heroBg],
+    ['--about-hero-title-color', s.heroTitleColor],
+    ['--about-hero-subtitle-color', s.heroSubtitleColor],
+    ['--about-story-bg', s.storyBg],
+    ['--about-story-heading-color', s.storyHeadingColor],
+    ['--about-story-body-color', s.storyBodyColor],
+    ['--about-section-heading-color', s.sectionHeadingColor],
+    ['--about-section-body-color', s.sectionBodyColor],
+    ['--about-heading-font', s.headingFont],
+    ['--about-body-font', s.bodyFont],
+  ];
+  for (const [k, v] of pairs) {
+    if (v !== undefined && v !== null && v !== '') vars[k] = v;
+  }
   if (isModern) {
-    vars['--about-accent-color'] = style.accentColor;
-    vars['--about-story-card-bg'] = style.storyCardBg;
+    if (s.accentColor) vars['--about-accent-color'] = s.accentColor;
+    if (s.storyCardBg) vars['--about-story-card-bg'] = s.storyCardBg;
   }
   return vars;
 }
@@ -86,8 +91,13 @@ export default function AboutPage() {
 
   const styleDefaults = isModern ? ABOUT_MODERN_STYLE_DEFAULTS : ABOUT_CLASSIC_STYLE_DEFAULTS;
   const savedStyle = isModern ? aboutPage.modernStyle : aboutPage.classicStyle;
-  const resolvedStyle = resolveStyle(savedStyle, styleDefaults);
-  const styleVars = buildStyleVars(resolvedStyle, isModern);
+  // Classic: pass savedStyle directly so only merchant overrides become inline
+  // CSS vars — unset keys fall through to about.css brand identity fallbacks.
+  // Modern: resolve against defaults so the full variable set is always present.
+  const styleVars = buildStyleVars(
+    isModern ? resolveStyle(savedStyle, styleDefaults) : (savedStyle || {}),
+    isModern
+  );
 
   let contentSections;
   if (aboutPage.sections && aboutPage.sections.length > 0) {
