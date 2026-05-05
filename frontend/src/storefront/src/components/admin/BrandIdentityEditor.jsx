@@ -154,7 +154,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
     { label: 'Accent',    color: brandAccent          || '#d4af37' },
     { label: 'BG',        color: brandBg              || '#f8f8f5' },
     { label: 'Title',     color: sectionTitleColor    || brandPrimary || '#5a3f2a' },
-    { label: 'Subtitle',  color: sectionSubtitleColor || '#666666' },
+    { label: 'Subtitle',  color: sectionSubtitleColor || '#8B7355' },
   ];
 
   const sectionHead = (label) => (
@@ -240,7 +240,7 @@ export default function BrandIdentityEditor({ onSaved, onPreviewUpdate }) {
       <AdminColorField
         label="Subtitle / Muted Text Color"
         value={sectionSubtitleColor}
-        fallback="#666666"
+        fallback="#8B7355"
         onChange={v => handleColor(setSectionSubtitleColor, 'sectionSubtitleColor', v)}
       />
 

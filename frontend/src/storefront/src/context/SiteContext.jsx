@@ -303,7 +303,7 @@ export function SiteProvider({ children }) {
     apply('--font-primary',      settings.brandBodyFont);
     // Global cascade vars — section editors can still override per-section
     apply('--section-title-color',    settings.sectionTitleColor);
-    apply('--section-subtitle-color', settings.sectionSubtitleColor);
+    apply('--section-subtitle-color', settings.sectionSubtitleColor || '#8B7355');
     apply('--brand-nav-font',         settings.brandNavFont);
 
     apply('--promo-bg', settings.promoBannerBg);
