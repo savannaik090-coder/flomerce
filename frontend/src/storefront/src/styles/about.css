@@ -158,7 +158,7 @@
   font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 15.5px;
   line-height: 1.85;
-  color: var(--about-story-body-color, #555);
+  color: var(--about-story-body-color, var(--section-subtitle-color, #555));
   margin: 0 0 18px;
 }
 
@@ -217,7 +217,7 @@
   font-family: var(--about-body-font, var(--font-primary, 'Poppins', sans-serif));
   font-size: 17px;
   line-height: 1.9;
-  color: var(--about-section-body-color, #555);
+  color: var(--about-section-body-color, var(--section-subtitle-color, #555));
   margin: 0 0 22px;
   font-weight: 300;
 }
